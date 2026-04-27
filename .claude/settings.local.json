@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const j=JSON.parse\\(d\\); console.log\\(JSON.stringify\\(j.exports,null,2\\)\\)\")",
+      "Bash(node -e \"import\\('unicorn-magic'\\)\")",
+      "Bash(node -e \"import\\('ora'\\).then\\(m => console.log\\('ok'\\)\\).catch\\(e => console.log\\(e.message\\)\\)\")",
+      "Bash(npm install *)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/app)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/app/install)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/app/projects)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/app/runs)"
+    ]
+  }
+}
