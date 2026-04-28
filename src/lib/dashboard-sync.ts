@@ -9,6 +9,9 @@ export type SyncedRun = {
   risk_before: string | null;
   risk_after: string | null;
   changed_files: string[] | null;
+  watch_status: string | null;
+  watch_warnings: string[] | null;
+  watch_changed_files: string[] | null;
   next_safe_prompt: string | null;
 };
 
@@ -16,7 +19,8 @@ export type SyncedProjectBundle = {
   project: {
     id: string;
     name: string;
-    stack: string | null;
+    stack: string[] | null;
+    package_manager: string | null;
     last_status: string | null;
     last_task: string | null;
     next_safe_action: string | null;
@@ -92,4 +96,3 @@ export async function getSyncedRuns() {
     .limit(100);
   return data ?? [];
 }
-

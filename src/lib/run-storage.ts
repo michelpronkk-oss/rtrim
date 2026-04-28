@@ -28,6 +28,13 @@ export interface RunEvaluationRecord extends EvaluationResult {
   evaluatedAt: string;
 }
 
+export interface WatchEventRecord {
+  type: "forbidden_changed" | "sensitive_changed" | "file_limit_exceeded" | "summary";
+  files: string[];
+  createdAt: string;
+  severity: "info" | "warning" | "critical";
+}
+
 export interface RunRecord {
   id: string;
   createdAt: string;
@@ -36,6 +43,10 @@ export interface RunRecord {
   contract: ContractResult;
   agentExecution?: AgentExecutionRecord;
   evaluation?: RunEvaluationRecord;
+  watchEvents?: WatchEventRecord[];
+  watchStatus?: "safe" | "caution" | "drift_detected" | "limit_exceeded";
+  watchWarnings?: string[];
+  watchChangedFiles?: string[];
   status:
     | "guarded"
     | "checked"

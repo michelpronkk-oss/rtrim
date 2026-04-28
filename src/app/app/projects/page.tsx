@@ -33,7 +33,7 @@ export default async function ProjectsPage() {
     syncedProjects.length > 0
       ? syncedProjects.map((p) => ({
           name: p.name,
-          stack: p.stack || "auto",
+          stack: Array.isArray(p.stack) ? p.stack.join(", ") : "auto",
           latestState: p.last_status || "unknown",
           nextSafeAction: p.next_safe_action || "Run runtrim check before continuing.",
           debt: ["partial", "needs_verification", "no_changes_detected"].includes((p.last_status || "").toLowerCase()) ? 1 : 0,

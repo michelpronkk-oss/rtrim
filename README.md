@@ -72,6 +72,9 @@ runtrim guard "<task>"
 runtrim prepare "<task>"
 runtrim run "<task>"
 runtrim check
+runtrim watch
+runtrim watch --once
+runtrim watch --strict
 runtrim memory
 runtrim memory --prompt
 runtrim report
@@ -143,9 +146,36 @@ Result:
 
 `runtrim memory --prompt` prints only the latest next safe prompt.
 
+## Watch mode
+
+`runtrim watch` monitors local git diff against the latest guarded run scope while your coding agent is working.
+
+- warns when file limits are exceeded
+- warns when sensitive or forbidden scope is touched
+- suggests when to stop and run `runtrim check`
+
+Examples:
+
+```bash
+runtrim watch
+runtrim watch --once
+runtrim watch --strict
+```
+
 ## Sync V0 (private beta)
 
-Sync uploads metadata only. It does not upload source code or `.env` values.
+Sync uploads metadata only. It does not upload source code or file contents.
+
+Uploads:
+- project name, stack, package manager, status
+- task metadata, scores, risk labels, changed file paths
+- memory markdown and next safe prompt
+- watch warnings and watch changed file paths
+
+Does not upload:
+- source code
+- `.env` values
+- secret file contents
 
 ```bash
 runtrim auth set "<token>"
@@ -164,7 +194,7 @@ Required server env:
 RunTrim runs locally.
 V1 does not upload code.
 `.runtrim/` stores local run metadata and memory.
-Cloud sync is not enabled.
+Sync V0 is private beta and metadata-only.
 
 ## Current status
 

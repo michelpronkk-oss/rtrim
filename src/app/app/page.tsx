@@ -58,6 +58,7 @@ export default async function AppPage() {
       synced?.project?.next_safe_prompt ??
       "Continue from the current diff only. Do not modify new files unless verification proves it is required.",
   };
+  const watchWarningCount = runs.reduce((sum, run) => sum + (run.watch_warnings?.length ?? 0), 0);
 
   const guardedCount = runs.length || 18;
   const blockedCount = runs.filter((r) => ["split_required", "blocked"].includes((r.status ?? "").toLowerCase())).length || 6;
@@ -168,6 +169,17 @@ export default async function AppPage() {
           />
         </div>
 
+        {!connected ? (
+          <section className="surface-panel rounded-xl p-5">
+            <p className="font-mono text-[11px] uppercase tracking-[0.09em] text-[#6D7B8C]">Sync status</p>
+            <p className="mt-2 text-[13px] text-[#D7DEE7]">No synced project yet.</p>
+            <p className="mt-2 text-[12px] text-[#9AA7B6]">Run:</p>
+            <p className="mt-1 font-mono text-[12px] text-[#9AEFE3]">runtrim auth set &lt;token&gt;</p>
+            <p className="mt-1 font-mono text-[12px] text-[#9AEFE3]">runtrim sync</p>
+            <p className="mt-3 text-[12px] text-[#9AA7B6]">RunTrim sync stores run metadata, prompts, changed file paths and status. It does not upload source code.</p>
+          </section>
+        ) : null}
+
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <RunDecisionTimeline items={timelineItems.length ? timelineItems : previewTimeline} />
           <div className="space-y-4">
@@ -190,6 +202,7 @@ export default async function AppPage() {
                 {currentPlan.name} <span className="text-[#9AEFE3]">{currentPlan.priceLabel}</span>
               </p>
               <p className="mt-1 text-[12px] text-[#9AA7B6]">Local CLI remains free. Cloud sync and hosted history are planned paid features.</p>
+              <p className="mt-2 text-[12px] text-[#F0BF72]">Watch warnings: {watchWarningCount}</p>
             </section>
           </div>
         </div>

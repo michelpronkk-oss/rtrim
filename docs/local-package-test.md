@@ -26,6 +26,8 @@ echo "console.log('hello')" > index.js
 runtrim init
 runtrim prepare "change hello to hello from RunTrim"
 runtrim run "change hello to hello from RunTrim"
+runtrim watch --once
+runtrim watch --once --strict
 runtrim check
 runtrim memory
 runtrim auth status
@@ -43,6 +45,8 @@ Set-Content index.js "console.log('hello')"
 runtrim init
 runtrim prepare "change hello to hello from RunTrim"
 runtrim run "change hello to hello from RunTrim"
+runtrim watch --once
+runtrim watch --once --strict
 runtrim check
 runtrim memory
 runtrim auth status

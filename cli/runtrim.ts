@@ -25,9 +25,10 @@ import { generateContract } from "../src/lib/run-contract.ts";
 import { saveRun, loadLatestRun, loadAllRuns, updateRun } from "../src/lib/run-storage.ts";
 import { getGitDiff, evaluateAgentOutput } from "../src/lib/run-evaluation.ts";
 import { formatRisk, formatStatus, formatScore, formatDate, truncate } from "../src/lib/format.ts";
-import type { RunEvaluationRecord } from "../src/lib/run-storage.ts";
+import type { RunEvaluationRecord, WatchEventRecord } from "../src/lib/run-storage.ts";
 import { readMemory, writeMemoryFromRuns } from "../src/lib/run-memory.ts";
 import { buildSyncPayload } from "../src/lib/runtrim-sync.ts";
+import { evaluateWatchState } from "../src/lib/run-watch.ts";
 import {
   performBaselineProjectAudit,
   writeProjectAudit,
@@ -162,6 +163,61 @@ function parseMemorySection(memory: string, title: string): string {
     out.push(line.trim());
   }
   return out.join(" ");
+}
+
+function dedupeFiles(files: string[]): string[] {
+  return [...new Set(files.filter(Boolean).map((f) => f.replace(/\\/g, "/")))];
+}
+
+function printWatchSnapshot(input: {
+  task: string;
+  maxFiles: number;
+  summaryOnly: boolean;
+  result: ReturnType<typeof evaluateWatchState>;
+}): void {
+  const { task, maxFiles, summaryOnly, result } = input;
+  const statusColor =
+    result.status === "safe"
+      ? chalk.green
+      : result.status === "caution"
+      ? chalk.yellow
+      : chalk.red;
+
+  console.log(BOLD("RunTrim") + DIM("  watch"));
+  console.log("");
+  console.log(DIM("  Task                 ") + chalk.white(task));
+  console.log(DIM("  Changed files        ") + chalk.white(`${result.changedFiles.length} / ${maxFiles}`));
+  console.log(DIM("  Allowed changes      ") + chalk.white(String(result.relevantFiles.length)));
+  console.log(DIM("  Sensitive changes    ") + chalk.white(String(result.sensitiveFiles.length)));
+  console.log(DIM("  Forbidden changes    ") + chalk.white(String(result.forbiddenFiles.length)));
+  console.log(DIM("  Status               ") + statusColor(formatStatus(result.status)));
+  console.log(DIM("  Next action          ") + chalk.white(result.nextAction));
+
+  if (!summaryOnly) {
+    if (result.changedFiles.length === 0) {
+      console.log("");
+      console.log(DIM("  Watching. No agent changes detected yet."));
+    } else {
+      console.log("");
+      console.log(DIM("  Changed files:"));
+      for (const file of result.changedFiles.slice(0, 12)) {
+        console.log(DIM("  - ") + chalk.white(file));
+      }
+      if (result.changedFiles.length > 12) {
+        console.log(DIM(`  ... ${result.changedFiles.length - 12} more`));
+      }
+    }
+
+    if (result.warnings.length > 0) {
+      console.log("");
+      console.log(chalk.yellow("  Warnings:"));
+      for (const warning of result.warnings) {
+        console.log(chalk.yellow("  - " + warning));
+      }
+    }
+  }
+
+  console.log("");
 }
 
 program
@@ -1330,22 +1386,26 @@ program
     }
 
     const runs = loadAllRuns(cwd);
-    if (runs.length === 0) {
-      console.log(chalk.yellow("  No runs found. Run a guarded task first."));
-      console.log("");
-      return;
-    }
-
-    const latestRun = runs[0];
+    const latestRun = runs[0] ?? null;
+    const audit = loadProjectAudit(cwd);
+    const inferredProjectName = audit?.projectName || path.basename(cwd);
     let memory = readMemory(cwd);
     if (!memory) {
-      memory = writeMemoryFromRuns(latestRun, runs, config, cwd);
+      if (latestRun) {
+        memory = writeMemoryFromRuns(latestRun, runs, config, cwd);
+      } else if (audit) {
+        memory = buildBaselineMemoryMarkdown(audit);
+        fs.writeFileSync(path.join(getConfigDir(cwd), "memory.md"), memory, "utf-8");
+      } else {
+        memory = "RunTrim Project Memory\n\nCurrent state:\nNo local runs yet.\n";
+      }
     }
 
     const payload = buildSyncPayload({
       cwd,
-      projectName: path.basename(cwd),
+      projectName: inferredProjectName,
       config,
+      projectAudit: audit,
       memoryMarkdown: memory,
       runs,
     });
@@ -1427,6 +1487,135 @@ program
     console.log(DIM("  .runtrim/rules.md"));
     console.log(DIM("  .runtrim/memory.md"));
     console.log("");
+  });
+
+program
+  .command("watch")
+  .description("Watch local git diff against the latest guarded run scope")
+  .option("--interval <ms>", "Polling interval in milliseconds", "2000")
+  .option("--strict", "Treat sensitive scope changes as high severity")
+  .option("--once", "Run one check and exit")
+  .option("--summary", "Print compact summary only")
+  .option("--no-clear", "Do not clear screen between updates")
+  .action(async (options: { interval?: string; strict?: boolean; once?: boolean; summary?: boolean; clear?: boolean }) => {
+    const cwd = process.cwd();
+    const config = loadConfig(cwd);
+    const latestRun = loadLatestRun(cwd);
+
+    console.log("");
+
+    if (!latestRun) {
+      console.log(chalk.yellow('  No guarded run found. Start with: runtrim prepare "your task"'));
+      console.log("");
+      return;
+    }
+
+    if (latestRun.status === "blocked" || latestRun.status === "split_required" || latestRun.contract.isBlocked) {
+      console.log(chalk.yellow("  Latest run was blocked. Use runtrim memory --prompt first."));
+      console.log("");
+      return;
+    }
+
+    const relevantScope = latestRun.contract.contract?.relevantScope ?? [];
+    const inferredMax =
+      parseInt((relevantScope.join(" ").match(/maximum\s+(\d+)\s+files/i)?.[1] ?? ""), 10) || config.maxFilesPerRun || 5;
+    const intervalMs = Math.max(500, Number.parseInt(options.interval ?? "2000", 10) || 2000);
+
+    let lastSignature = "";
+    let warningCount = 0;
+
+    const evaluateAndPersist = async (): Promise<ReturnType<typeof evaluateWatchState>> => {
+      const changedFiles = dedupeFiles(await getGitDiff(cwd));
+      const result = evaluateWatchState({
+        changedFiles,
+        run: latestRun,
+        maxFilesPerRun: inferredMax,
+        strict: Boolean(options.strict),
+      });
+
+      const event: WatchEventRecord = {
+        type: result.eventType,
+        files:
+          result.eventType === "file_limit_exceeded"
+            ? result.changedFiles
+            : result.eventType === "sensitive_changed"
+            ? result.sensitiveFiles
+            : result.eventType === "forbidden_changed"
+            ? result.forbiddenFiles
+            : result.changedFiles,
+        createdAt: new Date().toISOString(),
+        severity: result.severity,
+      };
+
+      const existing = loadLatestRun(cwd);
+      if (existing?.id === latestRun.id) {
+        const events = [...(existing.watchEvents ?? []), event].slice(-60);
+        const warnings = dedupeFiles([...(existing.watchWarnings ?? []), ...result.warnings]);
+        updateRun(
+          latestRun.id,
+          {
+            watchEvents: events,
+            watchStatus: result.status,
+            watchWarnings: warnings,
+            watchChangedFiles: result.changedFiles,
+          },
+          cwd
+        );
+      }
+
+      warningCount += result.warnings.length;
+      return result;
+    };
+
+    const render = (result: ReturnType<typeof evaluateWatchState>): void => {
+      const signature = JSON.stringify({
+        status: result.status,
+        files: result.changedFiles,
+        warnings: result.warnings,
+      });
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+
+      if (options.clear !== false && !options.once) console.clear();
+      printWatchSnapshot({
+        task: latestRun.task,
+        maxFiles: inferredMax,
+        summaryOnly: Boolean(options.summary),
+        result,
+      });
+    };
+
+    if (options.once) {
+      const result = await evaluateAndPersist();
+      render(result);
+      return;
+    }
+
+    const first = await evaluateAndPersist();
+    render(first);
+
+    const timer = setInterval(async () => {
+      const result = await evaluateAndPersist();
+      render(result);
+    }, intervalMs);
+
+    process.on("SIGINT", async () => {
+      clearInterval(timer);
+      const finalResult = await evaluateAndPersist();
+      console.log(DIM("  " + SECTION));
+      console.log(DIM("  WATCH SUMMARY"));
+      console.log(DIM("  " + SECTION));
+      console.log("");
+      console.log(DIM("  Changed files        ") + chalk.white(String(finalResult.changedFiles.length)));
+      console.log(DIM("  Warnings             ") + chalk.white(String(warningCount)));
+      console.log(DIM("  Suggested next       ") + chalk.white("runtrim check"));
+      console.log("");
+      process.exit(0);
+    });
+
+    await new Promise(() => {
+      // keep process alive
+    });
   });
 
 program
@@ -1581,6 +1770,9 @@ program
     console.log(DIM("  Status      ") + chalk.white(formatStatus(latestEval?.status ?? latestRun.status)));
     console.log(DIM("  Changed     ") + chalk.white(`${latestEval?.changedFiles?.length ?? 0} file${(latestEval?.changedFiles?.length ?? 0) === 1 ? "" : "s"}`));
     console.log(DIM("  Missing     ") + chalk.white((latestEval?.missingProofItems?.length ?? 0) > 0 ? latestEval?.missingProofItems?.join(", ") : "none"));
+    if ((latestRun.watchWarnings?.length ?? 0) > 0) {
+      console.log(DIM("  Watch       ") + chalk.white(`${latestRun.watchWarnings?.length} warning${latestRun.watchWarnings?.length === 1 ? "" : "s"}`));
+    }
     console.log(DIM("  Next        ") + chalk.white(latestEval?.nextSafeAction ?? "Run runtrim check to evaluate latest run."));
     if (latestEval?.nextPrompt) {
       console.log(DIM("  Prompt      ") + chalk.white(truncate(latestEval.nextPrompt.replace(/\s+/g, " "), 92)));

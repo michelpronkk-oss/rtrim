@@ -55,6 +55,8 @@ export default function InstallPage() {
             title="Check and memory"
             description="Evaluate the run and load continuation context."
             commands={[
+              "npm run runtrim -- watch",
+              "npm run runtrim -- watch --once --strict",
               "npm run runtrim -- check",
               "npm run runtrim -- memory",
               "npm run runtrim -- memory --prompt",
@@ -65,7 +67,7 @@ export default function InstallPage() {
             description="Sync metadata only. Full account auth is planned."
             commands={[
               "npm run runtrim -- auth set <token>",
-              "npm run runtrim -- config set dashboard-url http://localhost:3000/app",
+              "npm run runtrim -- config set dashboard-url https://your-domain.com/app",
               "npm run runtrim -- sync",
             ]}
           />

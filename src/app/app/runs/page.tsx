@@ -108,6 +108,9 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
                     Decision: {(run.status || "").toLowerCase() === "split_required" ? "Split required. Containment before implementation." : "Guarded run evaluated with continuation guidance."}
                   </p>
                   <p className="mt-1 text-[12px] text-[#A5B1BF]">Risk: {(run.risk_before || "unknown").toUpperCase()}{run.risk_after ? ` -> ${(run.risk_after || "").toUpperCase()}` : ""}</p>
+                  {(run.watch_warnings || []).length > 0 ? (
+                    <p className="mt-1 text-[12px] text-[#FF9C88]">Watch warnings: {(run.watch_warnings || []).length}</p>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -125,6 +128,7 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
                   <p>Contract score: {(selectedRun as { score_after?: number }).score_after ?? "n/a"}</p>
                   <p>Changed files: {(selectedRun.changed_files || []).length}</p>
                   <p>Missing proof: {(selectedRun.missing_proof_items || []).length}</p>
+                  <p>Watch warnings: {(selectedRun.watch_warnings || []).length}</p>
                 </div>
                 <div className="rounded-lg border border-white/8 bg-[#0E151E] p-3">
                   <div className="flex items-center justify-between gap-2">

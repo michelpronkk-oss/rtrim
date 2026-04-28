@@ -21,6 +21,9 @@ export const SyncRunSchema = z.object({
   missingProofItems: z.array(z.string()),
   detectedRisks: z.array(z.string()),
   sensitiveAreas: z.array(z.string()),
+  watchStatus: z.string().nullable(),
+  watchWarnings: z.array(z.string()),
+  watchChangedFiles: z.array(z.string()),
   nextSafePrompt: z.string().nullable(),
 });
 
@@ -28,7 +31,8 @@ export const SyncPayloadSchema = z.object({
   project: z.object({
     localProjectId: z.string(),
     name: z.string(),
-    stack: z.string(),
+    stack: z.array(z.string()),
+    packageManager: z.string().nullable(),
     lastUpdated: z.string(),
   }),
   memory: z.object({
@@ -85,10 +89,11 @@ export function buildSyncPayload(input: {
   cwd: string;
   projectName: string;
   config: RunTrimConfig;
+  projectAudit?: { detectedStack?: string[]; packageManager?: string } | null;
   memoryMarkdown: string;
   runs: RunRecord[];
 }): SyncPayload {
-  const { cwd, projectName, config, memoryMarkdown, runs } = input;
+  const { cwd, projectName, config, projectAudit, memoryMarkdown, runs } = input;
   const latest = runs[0];
   const nowIso = new Date().toISOString();
   const localProjectId = buildLocalProjectId(cwd);
@@ -114,6 +119,9 @@ export function buildSyncPayload(input: {
       missingProofItems: run.evaluation?.missingProofItems ?? [],
       detectedRisks: (run.audit?.flags ?? []).map((f) => f.code),
       sensitiveAreas: run.audit?.sensitiveAreasRelevant ?? [],
+      watchStatus: run.watchStatus ?? null,
+      watchWarnings: run.watchWarnings ?? [],
+      watchChangedFiles: run.watchChangedFiles ?? [],
       nextSafePrompt:
         run.evaluation?.nextPrompt ??
         run.evaluation?.nextSafePrompt ??
@@ -127,7 +135,8 @@ export function buildSyncPayload(input: {
     project: {
       localProjectId,
       name: projectName,
-      stack: config.stack || "auto",
+      stack: projectAudit?.detectedStack ?? (config.stack ? config.stack.split(",").map((s) => s.trim()).filter(Boolean) : ["auto"]),
+      packageManager: projectAudit?.packageManager ?? config.packageManager ?? null,
       lastUpdated: nowIso,
     },
     memory: {
@@ -165,4 +174,3 @@ export function buildSyncPayload(input: {
 
   return SyncPayloadSchema.parse(payload);
 }
-

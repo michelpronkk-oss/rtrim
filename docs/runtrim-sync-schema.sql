@@ -1,5 +1,6 @@
 -- RunTrim Sync V0 schema
 -- Private beta setup. This schema stores metadata only.
+-- RLS hardening is required before multi-user production.
 
 create extension if not exists pgcrypto;
 
@@ -7,7 +8,8 @@ create table if not exists runtrim_projects (
   id uuid primary key default gen_random_uuid(),
   local_project_id text unique not null,
   name text not null,
-  stack text,
+  stack jsonb default '[]'::jsonb,
+  package_manager text,
   last_status text,
   last_task text,
   next_safe_action text,
@@ -52,8 +54,10 @@ create table if not exists runtrim_runs (
   missing_proof_items jsonb default '[]'::jsonb,
   detected_risks jsonb default '[]'::jsonb,
   sensitive_areas jsonb default '[]'::jsonb,
+  watch_status text,
+  watch_warnings jsonb default '[]'::jsonb,
+  watch_changed_files jsonb default '[]'::jsonb,
   next_safe_prompt text,
   synced_at timestamptz default now(),
   unique(project_id, local_id)
 );
-

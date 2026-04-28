@@ -45,3 +45,5 @@ next-env.d.ts
 
 .runtrim/
 dist-cli/
+
+*.tgz

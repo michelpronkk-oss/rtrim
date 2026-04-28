@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         local_project_id: payload.project.localProjectId,
         name: payload.project.name,
         stack: payload.project.stack,
+        package_manager: payload.project.packageManager,
         last_status: latestRun?.status ?? payload.memory.latestStatus,
         last_task: latestRun?.task ?? payload.memory.previousTask,
         next_safe_action: payload.memory.nextSafeAction,
@@ -110,6 +111,9 @@ export async function POST(request: Request) {
     missing_proof_items: run.missingProofItems,
     detected_risks: run.detectedRisks,
     sensitive_areas: run.sensitiveAreas,
+    watch_status: run.watchStatus,
+    watch_warnings: run.watchWarnings,
+    watch_changed_files: run.watchChangedFiles,
     next_safe_prompt: run.nextSafePrompt,
     synced_at: new Date().toISOString(),
   }));
@@ -132,4 +136,3 @@ export async function POST(request: Request) {
     projectId,
   });
 }
-
