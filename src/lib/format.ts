@@ -15,6 +15,7 @@ export function formatStatus(status: string): string {
     partial: "Partial",
     needs_verification: "Needs Verification",
     drift_detected: "Drift Detected",
+    no_changes_detected: "No Changes Detected",
     guarded: "Guarded",
     checked: "Checked",
     completed: "Completed",

@@ -20,11 +20,11 @@ export function MotionSection({
   const Tag = motion[as];
   return (
     <Tag
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
+      viewport={{ once: true, margin: "-60px" }}
       transition={{
-        duration: 0.55,
+        duration: 0.38,
         delay,
         ease: [0.21, 0.47, 0.32, 0.98],
       }}
@@ -49,7 +49,7 @@ export function MotionFade({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.6, delay, ease: "easeOut" }}
+      transition={{ duration: 0.32, delay, ease: "easeOut" }}
       className={cn(className)}
     >
       {children}

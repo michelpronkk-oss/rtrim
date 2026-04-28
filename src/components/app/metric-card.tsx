@@ -10,27 +10,12 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, sub, accent, className }: MetricCardProps) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 rounded-sm border border-border bg-card p-5",
-        "transition-colors duration-200 hover:border-accent/30",
-        className
-      )}
-    >
-      <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "text-3xl font-bold tracking-tight leading-none",
-          accent ? "text-accent" : "text-foreground"
-        )}
-      >
+    <div className={cn("surface-panel rounded-lg p-5 transition-colors hover:bg-[#111226]", className)}>
+      <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-[#4A4E72]">{label}</p>
+      <p className={cn("mt-3 text-2xl font-bold tabular-nums tracking-tight", accent ? "text-[#0DDB9E]" : "text-[#EEEEF2]")}>
         {value}
       </p>
-      {sub && (
-        <p className="text-xs text-muted-foreground leading-relaxed">{sub}</p>
-      )}
+      {sub ? <p className="mt-1.5 text-[13px] text-[#4A4E72]">{sub}</p> : null}
     </div>
   );
 }

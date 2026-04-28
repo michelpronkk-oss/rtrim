@@ -22,6 +22,10 @@ export interface AgentExecutionRecord {
 
 export interface RunEvaluationRecord extends EvaluationResult {
   nextPrompt: string;
+  nextSafePrompt?: string;
+  nextSafeAction: string;
+  memorySummary: string;
+  evaluatedAt: string;
 }
 
 export interface RunRecord {

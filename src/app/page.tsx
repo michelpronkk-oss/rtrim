@@ -1,413 +1,410 @@
 import Link from "next/link";
-import { MotionSection, MotionFade } from "@/components/app/motion-section";
+import { ArrowRight } from "lucide-react";
+import { MotionFade } from "@/components/app/motion-section";
+import { HeroTerminal } from "@/components/app/hero-terminal";
 import { TerminalCard } from "@/components/app/terminal-card";
-import { MetricCard } from "@/components/app/metric-card";
 import { CopyButton } from "@/components/app/copy-button";
 import { RiskBadge } from "@/components/app/risk-badge";
-
-const WORKFLOW_STEPS = [
-  {
-    num: "01",
-    cmd: "runtrim init",
-    desc: "Initialize in your repo. Detect your stack, sensitive areas, and project structure.",
-  },
-  {
-    num: "02",
-    cmd: 'runtrim guard "fix checkout redirect"',
-    desc: "Audit the task. Score the waste risk. Build a strict guarded run contract.",
-  },
-  {
-    num: "03",
-    cmd: "Paste into Claude, Codex, or Cursor",
-    desc: "Your agent runs with defined scope, stop rules, and a required output format.",
-  },
-  {
-    num: "04",
-    cmd: "runtrim check",
-    desc: "Read the git diff. Evaluate agent output. Flag scope drift automatically.",
-  },
-  {
-    num: "05",
-    cmd: "runtrim report",
-    desc: "See estimated savings, run history, drift warnings, and project state.",
-  },
-];
+import { planOrder, plans } from "@/lib/plans";
 
 const BEFORE_LINES = [
-  { type: "comment" as const, text: "# Raw task" },
-  { type: "prompt" as const, text: "$ runtrim guard ..." },
+  { type: "comment" as const, text: "# unguarded" },
+  { type: "prompt"  as const, text: "fix checkout redirect, check everything and make sure billing works" },
   { text: "" },
-  { type: "dim" as const, text: "Task:        fix checkout redirect" },
-  { type: "dim" as const, text: "Score:       47/100" },
-  { type: "accent" as const, text: "Risk:        HIGH" },
-  { text: "" },
-  { type: "comment" as const, text: "Flags detected:" },
-  { type: "dim" as const, text: "  ! Vague task description" },
-  { type: "dim" as const, text: "  ! No success condition" },
-  { type: "dim" as const, text: "  ! No stop rules defined" },
-  { type: "dim" as const, text: "  ! No forbidden scope" },
-  { type: "dim" as const, text: "  - No audit-first instruction" },
+  { type: "dim"     as const, text: "  no scope  no stop rules  no success criteria" },
 ];
 
 const AFTER_LINES = [
-  { type: "header" as const, text: "RUNTRIM GUARDED RUN CONTRACT" },
-  { type: "comment" as const, text: "Mode: GUARDED-STRICT  |  Agent: claude / sonnet" },
+  { type: "header" as const, text: "runtrim guarded contract" },
   { text: "" },
-  { type: "header" as const, text: "RELEVANT SCOPE" },
-  { type: "dim" as const, text: "- src/app/ only" },
-  { type: "dim" as const, text: "- Max 5 files total" },
+  { type: "header" as const, text: "objective" },
+  { type: "output" as const, text: "  Fix checkout redirect after payment return." },
   { text: "" },
-  { type: "header" as const, text: "FORBIDDEN SCOPE" },
-  { type: "dim" as const, text: "- Do not touch auth or session handling" },
-  { type: "dim" as const, text: "- Do not modify middleware.ts / proxy.ts" },
-  { type: "dim" as const, text: "- Do not install new dependencies" },
+  { type: "header" as const, text: "scope" },
+  { type: "dim"    as const, text: "  src/app/checkout    src/lib/redirect" },
   { text: "" },
-  { type: "header" as const, text: "STOP RULES" },
-  { type: "dim" as const, text: "- Stop if change requires > 5 files" },
-  { type: "dim" as const, text: "- Stop if forbidden scope is needed" },
+  { type: "header" as const, text: "stop rules" },
+  { type: "dim"    as const, text: "  stop if auth, DB, or billing is needed" },
+  { type: "dim"    as const, text: "  stop if file count exceeds 5" },
   { text: "" },
-  { type: "accent" as const, text: "Score: 92/100  |  Est. ~27,000 tokens trimmed" },
+  { type: "header" as const, text: "required output" },
+  { type: "dim"    as const, text: "  ROOT CAUSE  /  FILES CHANGED  /  HOW TO VERIFY" },
 ];
 
-const SAMPLE_CONTRACT = `RUNTRIM GUARDED RUN CONTRACT
-Mode: GUARDED-STRICT
-Agent: claude / sonnet
+const SPLIT_LINES = [
+  { type: "prompt" as const, text: '$ runtrim guard "rewrite auth flow, fix middleware, update schema, fix billing"' },
+  { text: "" },
+  { type: "accent" as const, text: "  SPLIT REQUIRED    4 systems detected" },
+  { text: "" },
+  { type: "header" as const, text: "recommended split" },
+  { type: "dim"    as const, text: "  1  audit auth flow only" },
+  { type: "dim"    as const, text: "  2  audit middleware only" },
+  { type: "dim"    as const, text: "  3  audit database impact only" },
+  { type: "dim"    as const, text: "  4  audit billing flow only" },
+];
 
-OBJECTIVE
-fix checkout redirect
+const CHECK_LINES = [
+  { type: "prompt" as const, text: "$ npm run runtrim -- check" },
+  { text: "" },
+  { type: "header" as const, text: "changed files" },
+  { type: "dim"    as const, text: "  src/app/checkout/page.tsx" },
+  { type: "dim"    as const, text: "  src/lib/redirect.ts" },
+  { text: "" },
+  { type: "dim"    as const, text: "  contract score  74 / 100" },
+  { type: "dim"    as const, text: "  scope drift     NONE" },
+  { type: "accent" as const, text: "  missing         root cause  verification" },
+  { text: "" },
+  { type: "header" as const, text: "next prompt" },
+  { type: "output" as const, text: '  "Verification-only continuation generated."' },
+];
 
-RELEVANT SCOPE
-- src/app/ - App Router pages and layouts only
-- Only files directly referenced by the task
-- Maximum 5 files total
+const AGENT_MODES = [
+  { cmd: "npm run runtrim -- agent set claude", note: "# Claude Code" },
+  { cmd: "npm run runtrim -- agent set codex",  note: "# OpenAI Codex" },
+  { cmd: "npm run runtrim -- agent set cursor", note: "# Cursor" },
+  { cmd: "npm run runtrim -- agent set copy",   note: "# paste into any tool" },
+];
 
-FORBIDDEN SCOPE
-- Do not touch auth logic, session handling, or JWT tokens
-- Do not modify middleware.ts or proxy.ts
-- Do not install new dependencies without approval
-- Do not refactor code outside the direct task scope
+const WORKFLOW = [
+  ["01", 'Run `runtrim run "<task>"`',       "RunTrim receives the raw task."],
+  ["02", "Task is audited and scored",        "Scope, risk, and system spread are evaluated."],
+  ["03", "Unsafe runs are blocked and split", "Multi-system tasks are divided before the agent starts."],
+  ["04", "Safe runs generate a contract",     "Objective, scope, stop rules, required proof."],
+  ["05", "Post-run diff is verified",         "Scope drift, missing proof, and continuation checked."],
+  ["06", "Next safe prompt is generated",     "Continuation is specific, not a restart from scratch."],
+];
 
-STOP RULES
-- Stop if the change requires touching more than 5 files
-- Stop if you need to modify any forbidden file
-- Stop if you cannot identify a clear root cause`;
+const STATS = [
+  { value: "12 runs",   label: "Project memory",        accent: false },
+  { value: "4 partial", label: "Needs verification",    accent: false },
+  { value: "6 blocked", label: "Mega-runs stopped",     accent: false },
+  { value: "~384k",     label: "Tokens trimmed (est.)", accent: true  },
+];
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+    <div className="min-h-screen overflow-x-hidden bg-[#07080F]">
+
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-white/7 bg-[#07080F]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <span className="text-sm font-bold tracking-tight text-foreground">RunTrim</span>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/app/install"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Docs
-            </Link>
-            <Link
-              href="/app/install"
-              className="rounded-sm bg-accent px-4 py-1.5 text-sm font-medium text-[oklch(0.07_0_0)] hover:bg-accent/90 transition-colors"
-            >
-              Install
-            </Link>
-          </div>
+          <span className="text-base font-bold tracking-tight text-[#EEEEF2]">RunTrim</span>
+          <nav className="hidden items-center gap-8 md:flex">
+            <Link href="#how-it-works" className="text-sm text-[#4A4E72] transition-colors hover:text-[#EEEEF2]">How it works</Link>
+            <Link href="/app/install"  className="text-sm text-[#4A4E72] transition-colors hover:text-[#EEEEF2]">Install</Link>
+            <Link href="/app"          className="text-sm text-[#4A4E72] transition-colors hover:text-[#EEEEF2]">Dashboard</Link>
+          </nav>
+          <Link
+            href="/app/install"
+            className="rounded-md bg-[#0DDB9E] px-4 py-1.5 text-sm font-semibold text-[#02060F] transition-opacity hover:opacity-85"
+          >
+            Get started
+          </Link>
         </div>
-      </nav>
+      </header>
 
-      <section className="relative flex min-h-[92vh] flex-col items-center justify-center px-6 text-center overflow-hidden">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-30"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 50% 40%, oklch(0.72 0.15 70 / 8%) 0%, transparent 60%)",
-          }}
-        />
-        <MotionFade delay={0}>
-          <div className="inline-flex items-center gap-2 rounded-sm border border-border bg-card px-3 py-1.5 mb-8">
-            <span className="size-1.5 rounded-full bg-accent" />
-            <span className="text-xs font-mono text-muted-foreground">
-              CLI guard layer for AI coding runs
-            </span>
-          </div>
-        </MotionFade>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[600px] hero-glow" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[500px] hero-ring"  />
 
-        <MotionFade delay={0.08}>
-          <h1 className="max-w-3xl text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05] text-foreground">
-            Stop wasting tokens
-            <br />
-            <span className="text-accent">on messy AI runs.</span>
-          </h1>
-        </MotionFade>
-
-        <MotionFade delay={0.16}>
-          <p className="mt-6 max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed">
-            RunTrim is a CLI guard layer that audits your task, locks the scope, and creates a run
-            contract before Claude, Codex or Cursor touches your repo.
-          </p>
-        </MotionFade>
-
-        <MotionFade delay={0.24}>
-          <div className="mt-10 flex flex-col sm:flex-row items-center gap-3">
-            <div className="flex items-center gap-3 rounded-sm border border-border bg-card px-4 py-2.5">
-              <span className="font-mono text-sm text-foreground">
-                npm install -g runtrim
-              </span>
-              <CopyButton text="npm install -g runtrim" />
+        <div className="relative mx-auto max-w-4xl px-6 pb-20 pt-28 text-center lg:pt-36">
+          <MotionFade>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#0DDB9E]/20 bg-[#0DDB9E]/6 px-3.5 py-1.5">
+              <span className="size-1.5 rounded-full bg-[#0DDB9E]" />
+              <span className="font-mono text-[11px] tracking-[0.08em] text-[#0DDB9E]">CLI-first agent control</span>
             </div>
-            <Link
-              href="#how-it-works"
-              className="rounded-sm border border-border px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-colors"
-            >
-              See how it works
-            </Link>
-          </div>
-        </MotionFade>
+          </MotionFade>
 
-        <MotionFade delay={0.32}>
-          <p className="mt-5 text-xs font-mono text-muted-foreground/50">
-            V1 does not upload your code. Runs are stored locally in .runtrim/runs/
-          </p>
-        </MotionFade>
+          <MotionFade delay={0.06}>
+            <h1 className="text-[3.75rem] font-bold leading-[1.0] tracking-[-0.04em] text-[#EEEEF2] sm:text-[4.5rem] lg:text-[5.5rem]">
+              Guard every
+              <br />
+              <span className="text-[#0DDB9E]">agent run.</span>
+            </h1>
+          </MotionFade>
+
+          <MotionFade delay={0.10}>
+            <p className="mx-auto mt-7 max-w-xl text-lg leading-7 text-[#6A6E98]">
+              RunTrim audits the task, blocks unsafe mega-runs, and generates a scoped contract before your agent touches the repo.
+            </p>
+          </MotionFade>
+
+          <MotionFade delay={0.14}>
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/app/install"
+                className="inline-flex items-center gap-2.5 rounded-md bg-[#0DDB9E] px-5 py-3 text-sm font-semibold text-[#02060F] transition-opacity hover:opacity-85"
+              >
+                Install RunTrim
+                <ArrowRight className="size-4" />
+              </Link>
+              <Link
+                href="#how-it-works"
+                className="rounded-md border border-white/10 px-5 py-3 text-sm text-[#8888A8] transition-colors hover:border-white/16 hover:text-[#EEEEF2]"
+              >
+                How it works
+              </Link>
+            </div>
+            <p className="mt-5 font-mono text-[11px] text-[#2E3050]">V1 runs locally. Code is not uploaded.</p>
+          </MotionFade>
+
+          <MotionFade delay={0.18}>
+            <div className="mt-14">
+              <HeroTerminal />
+            </div>
+          </MotionFade>
+        </div>
       </section>
 
-      <MotionSection
-        className="border-t border-border bg-card/30 py-20 px-6"
-        id="problem"
-      >
-        <div className="mx-auto max-w-5xl">
-          <p className="text-xs font-mono uppercase tracking-widest text-accent mb-4">
-            The problem
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-12">
-            Vague tasks cause full repo scans.
-            <br />
-            Full repo scans burn tokens.
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              {
-                title: "Token waste",
-                body: "A vague prompt forces the agent to scan your entire repo looking for context. A high-risk task can waste 40-80k tokens before writing a single line of code.",
-                stat: "~40-80k tokens",
-                statLabel: "wasted per messy run",
-              },
-              {
-                title: "Scope drift",
-                body: "Without a forbidden scope, agents touch auth, middleware, and billing logic they were never asked to change. One unbounded run can corrupt multiple systems.",
-                stat: "Auth, billing, env",
-                statLabel: "top drift targets",
-              },
-              {
-                title: "Context bloat",
-                body: "Every re-run after a failed agent run reloads the full conversation history. Without check points, you pay for the same failed context over and over.",
-                stat: "3-5x",
-                statLabel: "cost on repeat runs",
-              },
-            ].map((item) => (
-              <div key={item.title} className="rounded-sm border border-border bg-card p-5">
-                <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-                  {item.title}
-                </p>
-                <p className="text-sm text-foreground/80 leading-relaxed mb-4">{item.body}</p>
-                <div className="border-t border-border pt-4">
-                  <p className="text-xl font-bold text-accent">{item.stat}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.statLabel}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </MotionSection>
-
-      <MotionSection className="py-20 px-6" id="how-it-works">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-xs font-mono uppercase tracking-widest text-accent mb-4">
-            Workflow
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-12">
-            Five commands. Full control.
-          </h2>
-
-          <div className="grid grid-cols-1 gap-3">
-            {WORKFLOW_STEPS.map((step, i) => (
+      {/* Works with */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-14">
+          <p className="mb-6 text-[13px] text-[#4A4E72]">Works with the tools you already use.</p>
+          <div className="overflow-hidden rounded-lg border border-white/7">
+            {AGENT_MODES.map(({ cmd, note }, i) => (
               <div
-                key={step.num}
-                className="flex gap-5 rounded-sm border border-border bg-card p-5 hover:border-accent/25 transition-colors duration-200"
+                key={cmd}
+                className="flex items-center justify-between gap-4 border-b border-white/7 bg-[#0D0E1C] px-5 py-3 last:border-b-0"
               >
-                <span className="text-2xl font-bold text-accent/30 font-mono shrink-0 w-8">
-                  {step.num}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <code className="text-sm font-mono text-foreground">{step.cmd}</code>
-                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{step.desc}</p>
+                <div className="flex min-w-0 items-baseline gap-4">
+                  <code className="shrink-0 font-mono text-[13px] text-[#0DDB9E]">{cmd}</code>
+                  <span className="truncate font-mono text-[12px] text-[#2E3050]">{note}</span>
                 </div>
-                {i < WORKFLOW_STEPS.length - 1 && (
-                  <div className="hidden sm:flex items-center text-muted-foreground/30">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path
-                        d="M8 3l5 5-5 5M3 8h10"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </div>
-                )}
+                <CopyButton text={cmd} />
               </div>
             ))}
           </div>
         </div>
-      </MotionSection>
+      </section>
 
-      <MotionSection className="py-20 px-6 border-t border-border bg-card/30">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-xs font-mono uppercase tracking-widest text-accent mb-4">
-            Before / After
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-12">
-            Raw task. Guarded contract.
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      {/* Problem */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[260px_1fr]">
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                  Before guard
-                </span>
-                <RiskBadge risk="high" />
-              </div>
-              <TerminalCard title="terminal" lines={BEFORE_LINES} />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                  After guard
-                </span>
-                <RiskBadge risk="low" />
-              </div>
-              <TerminalCard
-                title="guarded-contract.txt"
-                lines={AFTER_LINES}
-                copyText={SAMPLE_CONTRACT}
-              />
-            </div>
-          </div>
-
-          <p className="mt-4 text-xs text-muted-foreground/50 font-mono">
-            The guarded contract is copied to clipboard and ready to paste into Claude, Codex, or Cursor.
-          </p>
-        </div>
-      </MotionSection>
-
-      <MotionSection className="py-20 px-6">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-xs font-mono uppercase tracking-widest text-accent mb-4">
-            Estimated savings
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-12">
-            Dashboard preview. Local data, no uploads.
-          </h2>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <MetricCard
-              label="Est. tokens trimmed"
-              value="~127k"
-              sub="Across 5 guarded runs. Estimated, not verified."
-              accent
-            />
-            <MetricCard
-              label="Runs guarded"
-              value="5"
-              sub="Since runtrim init in this repo."
-            />
-            <MetricCard
-              label="Avg. risk reduction"
-              value="71%"
-              sub="Prompt score before vs after guard."
-            />
-            <MetricCard
-              label="Est. spend avoided"
-              value="~$0.38"
-              sub="Based on claude / sonnet pricing. Estimated."
-              accent
-            />
-          </div>
-        </div>
-      </MotionSection>
-
-      <MotionSection className="py-20 px-6 border-t border-border bg-card/30">
-        <div className="mx-auto max-w-3xl">
-          <blockquote className="rounded-sm border border-border bg-card p-8">
-            <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-5">
-              Common objection
-            </p>
-            <p className="text-lg sm:text-xl font-medium text-foreground leading-relaxed mb-6">
-              "Can't I just ask ChatGPT for a better prompt?"
-            </p>
-            <div className="border-t border-border pt-6">
-              <p className="text-muted-foreground leading-relaxed">
-                Once, yes. RunTrim is for every run. It scores the risk, creates a strict
-                contract, checks the result against the git diff, and remembers where you left
-                off. ChatGPT does not know your repo, your sensitive areas, or your last five
-                runs. RunTrim does.
+              <p className="text-sm font-semibold text-[#EEEEF2]">The problem</p>
+              <p className="mt-3 text-sm leading-6 text-[#4A4E72]">
+                Without guard rails, every agent task carries risk that compounds across runs.
               </p>
             </div>
-          </blockquote>
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {[
+                "The agent scans half the repo for a small, isolated fix.",
+                "A quick bug becomes an auth, middleware, and billing change.",
+                "The same failed assumption gets retried across multiple runs.",
+                "You lose context on where the run left off after each restart.",
+                "Prompts have no stop rules, no scope, no success criteria.",
+                "Costs climb while confidence drops with every rerun.",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3 rounded-md border border-white/7 bg-[#0D0E1C] px-4 py-3.5">
+                  <span className="mt-2 size-1 shrink-0 rounded-full bg-[#2E3050]" />
+                  <span className="text-sm leading-6 text-[#8888A8]">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-      </MotionSection>
+      </section>
 
-      <MotionSection className="py-24 px-6">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
-            Scope the run before
-            <br />
-            Claude burns tokens.
-          </h2>
-          <p className="text-muted-foreground mb-10 leading-relaxed">
-            One command before every AI coding run. No account required. No code uploaded.
-          </p>
+      {/* How it works */}
+      <section id="how-it-works" className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p className="mb-8 text-sm font-semibold text-[#EEEEF2]">How it works</p>
+          <div className="overflow-hidden rounded-lg border border-white/7">
+            {WORKFLOW.map(([num, step, detail]) => (
+              <div
+                key={num}
+                className="flex items-start gap-8 border-b border-white/7 bg-[#0D0E1C] px-6 py-4 last:border-b-0 hover:bg-[#111226] transition-colors duration-150"
+              >
+                <span className="mt-0.5 w-6 shrink-0 font-mono text-[11px] text-[#2E3050]">{num}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[#EEEEF2]">{step}</p>
+                  <p className="mt-0.5 text-[13px] text-[#4A4E72]">{detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <div className="flex items-center gap-3 rounded-sm border border-border bg-card px-5 py-3">
-              <span className="font-mono text-sm text-foreground">
-                npm install -g runtrim
-              </span>
-              <CopyButton text="npm install -g runtrim" />
+      {/* Before / After */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p className="mb-8 text-sm font-semibold text-[#EEEEF2]">Before and after</p>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[13px] text-[#4A4E72]">Unguarded task</span>
+                <RiskBadge risk="high" />
+              </div>
+              <TerminalCard title="prompt.txt" lines={BEFORE_LINES} />
             </div>
-            <Link
-              href="/app/install"
-              className="rounded-sm border border-accent/30 bg-accent/5 px-5 py-3 text-sm font-medium text-accent hover:bg-accent/10 transition-colors"
-            >
-              View install guide
-            </Link>
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[13px] text-[#4A4E72]">After RunTrim</span>
+                <RiskBadge risk="low" />
+              </div>
+              <TerminalCard title="contract.txt" lines={AFTER_LINES} />
+            </div>
           </div>
-
-          <p className="mt-6 text-xs font-mono text-muted-foreground/40">
-            Package not published yet? Use: npm run runtrim -- init
-          </p>
         </div>
-      </MotionSection>
+      </section>
 
-      <footer className="border-t border-border py-8 px-6">
-        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-sm font-bold text-foreground">RunTrim</span>
-          <div className="flex items-center gap-6 text-xs text-muted-foreground">
-            <Link href="/app" className="hover:text-foreground transition-colors">
-              Dashboard
-            </Link>
-            <Link href="/app/install" className="hover:text-foreground transition-colors">
-              Install
-            </Link>
-            <Link href="/app/runs" className="hover:text-foreground transition-colors">
-              Runs
-            </Link>
+      {/* Split required */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p className="mb-8 text-sm font-semibold text-[#EEEEF2]">Split required</p>
+          <TerminalCard title="guard-output.txt" lines={SPLIT_LINES} />
+        </div>
+      </section>
+
+      {/* Post-run check */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p className="mb-8 text-sm font-semibold text-[#EEEEF2]">Post-run check</p>
+          <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+            <TerminalCard title="check-output.txt" lines={CHECK_LINES} />
+            <div className="flex flex-col justify-center gap-4">
+              <p className="text-sm leading-7 text-[#8888A8]">
+                RunTrim tracks where the agent left off. Your next prompt continues from the current state instead of restarting the whole problem.
+              </p>
+              <p className="text-[13px] text-[#4A4E72]">
+                Continuation memory is built from local run history and the current diff.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground/40 font-mono">
-            V1 does not upload code.
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p className="mb-3 text-sm font-semibold text-[#EEEEF2]">Dashboard preview</p>
+          <p className="mb-8 text-[13px] text-[#4A4E72]">The CLI does the work. The dashboard shows the memory.</p>
+          <div className="overflow-hidden rounded-lg border border-white/7">
+            <div className="grid grid-cols-2 gap-px bg-white/7 xl:grid-cols-4">
+              {STATS.map(({ value, label, accent }) => (
+                <div key={label} className="bg-[#0D0E1C] px-6 py-7 hover:bg-[#111226] transition-colors duration-150">
+                  <p className={`font-mono text-2xl font-bold tabular-nums tracking-tight ${accent ? "text-[#0DDB9E]" : "text-[#EEEEF2]"}`}>
+                    {value}
+                  </p>
+                  <p className="mt-1.5 text-[13px] text-[#4A4E72]">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p className="mb-3 text-sm font-semibold text-[#EEEEF2]">Plans</p>
+          <p className="mb-8 text-[13px] text-[#4A4E72]">
+            Local CLI remains free. Cloud sync and hosted history are planned paid features.
           </p>
+          <div className="grid gap-4 lg:grid-cols-4">
+            {planOrder.map((id) => {
+              const plan = plans[id];
+              const isFree = id === "free";
+              const isComingSoon = id === "team";
+              return (
+                <div key={id} className="surface-panel rounded-lg p-5">
+                  <p className="text-sm font-semibold text-[#EEEEF2]">{plan.name}</p>
+                  <p className={`mt-2 text-xl font-bold ${isFree ? "text-[#0DDB9E]" : "text-[#EEEEF2]"}`}>
+                    {plan.priceLabel}
+                  </p>
+                  <ul className="mt-4 space-y-1.5">
+                    {plan.bullets.slice(0, 6).map((item) => (
+                      <li key={item} className="text-[12px] leading-5 text-[#8888A8]">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5">
+                    {isFree ? (
+                      <Link
+                        href="/app/install"
+                        className="inline-flex rounded-md bg-[#0DDB9E] px-3.5 py-2 text-xs font-semibold text-[#02060F] transition-opacity hover:opacity-85"
+                      >
+                        {plan.ctaLabel}
+                      </Link>
+                    ) : (
+                      <span
+                        className={`inline-flex rounded-md border px-3.5 py-2 text-xs font-medium ${
+                          isComingSoon
+                            ? "border-white/10 text-[#4A4E72]"
+                            : "border-white/10 text-[#8888A8]"
+                        }`}
+                      >
+                        {plan.ctaLabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="border-t border-white/7">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="max-w-2xl">
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-[#4A4E72]">Common question</p>
+            <h3 className="mt-3 text-xl font-bold tracking-[-0.02em] text-[#EEEEF2]">
+              Can't I just ask ChatGPT for a better prompt?
+            </h3>
+            <p className="mt-4 text-sm leading-7 text-[#8888A8]">
+              Once, yes. RunTrim is for every run. It scores the task, locks the scope, blocks unsafe mega-runs, checks the diff, and remembers where you left off automatically, before the agent starts.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="border-t border-white/7">
+        <div className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-64 hero-glow opacity-50" />
+          <div className="relative mx-auto max-w-6xl px-6 py-28 text-center">
+            <h3 className="text-3xl font-bold tracking-[-0.03em] text-[#EEEEF2] sm:text-4xl">
+              Get started
+            </h3>
+            <p className="mt-3 text-[#4A4E72]">Clone the repo and run locally. Global install is planned.</p>
+            <div className="mx-auto mt-8 flex w-fit items-center gap-3 rounded-md border border-white/7 bg-[#0D0E1C] px-4 py-3">
+              <code className="font-mono text-sm text-[#EEEEF2]">npm run runtrim -- init</code>
+              <CopyButton text="npm run runtrim -- init" />
+            </div>
+            <div className="mt-6 flex justify-center gap-3">
+              <Link
+                href="/app/install"
+                className="rounded-md bg-[#0DDB9E] px-5 py-2.5 text-sm font-semibold text-[#02060F] transition-opacity hover:opacity-85"
+              >
+                Open install guide
+              </Link>
+              <Link
+                href="/app"
+                className="rounded-md border border-white/7 bg-[#0D0E1C] px-5 py-2.5 text-sm text-[#8888A8] transition-colors hover:text-[#EEEEF2]"
+              >
+                View dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/7">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
+          <span className="text-sm font-bold text-[#EEEEF2]">RunTrim</span>
+          <div className="flex items-center gap-6">
+            <Link href="/app/install" className="text-[13px] text-[#4A4E72] transition-colors hover:text-[#8888A8]">Install</Link>
+            <Link href="/app"         className="text-[13px] text-[#4A4E72] transition-colors hover:text-[#8888A8]">Dashboard</Link>
+            <Link href="/app/runs"    className="text-[13px] text-[#4A4E72] transition-colors hover:text-[#8888A8]">Runs</Link>
+          </div>
+          <span className="font-mono text-[11px] text-[#2E3050]">V1. Runs locally. No code uploads.</span>
         </div>
       </footer>
     </div>

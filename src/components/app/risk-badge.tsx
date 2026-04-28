@@ -3,19 +3,19 @@ import { cn } from "@/lib/utils";
 type Risk = "low" | "medium" | "high" | "critical" | "none";
 
 const LABELS: Record<Risk, string> = {
-  none: "None",
-  low: "Low",
-  medium: "Medium",
-  high: "High",
+  none:     "None",
+  low:      "Low",
+  medium:   "Medium",
+  high:     "High",
   critical: "Critical",
 };
 
 const STYLES: Record<Risk, string> = {
-  none: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  low: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  medium: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  high: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  critical: "bg-red-500/10 text-red-400 border-red-500/20",
+  none:     "border-[#0DDB9E]/20 text-[#0DDB9E]",
+  low:      "border-[#0DDB9E]/20 text-[#0DDB9E]",
+  medium:   "border-[#5B8BFF]/20 text-[#5B8BFF]",
+  high:     "border-[#FFA94D]/20 text-[#FFA94D]",
+  critical: "border-[#FF4444]/20 text-[#FF4444]",
 };
 
 interface RiskBadgeProps {
@@ -29,8 +29,8 @@ export function RiskBadge({ risk, className, size = "md" }: RiskBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-sm border font-mono uppercase tracking-wider",
-        size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-0.5",
+        "inline-flex items-center rounded border font-mono uppercase tracking-[0.1em]",
+        size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[11px]",
         STYLES[r],
         className
       )}

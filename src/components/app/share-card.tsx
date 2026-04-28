@@ -10,72 +10,46 @@ interface ShareCardProps {
   className?: string;
 }
 
-export function ShareCard({
-  project,
-  runsGuarded,
-  estimatedTokens,
-  estimatedDollars,
-  riskReduction,
-  className,
-}: ShareCardProps) {
+export function ShareCard({ project, runsGuarded, estimatedTokens, estimatedDollars, riskReduction, className }: ShareCardProps) {
   const shareText = [
     `RunTrim report for ${project}`,
     `${runsGuarded} runs guarded`,
-    `~${estimatedTokens} tokens trimmed (estimated)`,
-    `~${estimatedDollars} model spend avoided (estimated)`,
-    `${riskReduction}% avg. risk reduction`,
-    "",
-    "runtrim.dev",
+    `${estimatedTokens} tokens trimmed (estimated)`,
+    `${estimatedDollars} spend avoided (estimated)`,
+    `${riskReduction}% avg risk reduction`,
   ].join("\n");
 
   return (
-    <div
-      className={cn(
-        "rounded-sm border border-border bg-card overflow-hidden",
-        className
-      )}
-    >
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+    <div className={cn("surface-panel overflow-hidden rounded-lg", className)}>
+      <div className="flex items-center justify-between border-b border-white/7 px-5 py-4">
         <div>
-          <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-            RunTrim Report
-          </p>
-          <p className="text-sm font-medium text-foreground mt-0.5">{project}</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-[#4A4E72]">Run summary</p>
+          <p className="mt-1 text-sm font-semibold text-[#EEEEF2]">{project}</p>
         </div>
-        <CopyButton text={shareText} label="Copy report" />
+        <CopyButton text={shareText} label="Copy" />
       </div>
 
-      <div className="p-5 grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-            Runs guarded
-          </p>
-          <p className="text-2xl font-bold text-foreground mt-1">{runsGuarded}</p>
+      <div className="grid grid-cols-2 gap-px bg-white/7">
+        <div className="bg-[#0D0E1C] px-5 py-5 hover:bg-[#111226] transition-colors">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4A4E72]">Runs guarded</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-[#EEEEF2]">{runsGuarded}</p>
         </div>
-        <div>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-            Risk reduction
-          </p>
-          <p className="text-2xl font-bold text-accent mt-1">{riskReduction}%</p>
+        <div className="bg-[#0D0E1C] px-5 py-5 hover:bg-[#111226] transition-colors">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4A4E72]">Risk reduction</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-[#0DDB9E]">{riskReduction}%</p>
         </div>
-        <div>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-            Est. tokens trimmed
-          </p>
-          <p className="text-2xl font-bold text-foreground mt-1">{estimatedTokens}</p>
+        <div className="bg-[#0D0E1C] px-5 py-5 hover:bg-[#111226] transition-colors">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4A4E72]">Est. tokens</p>
+          <p className="mt-2 text-xl font-bold tabular-nums text-[#EEEEF2]">{estimatedTokens}</p>
         </div>
-        <div>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-            Est. spend avoided
-          </p>
-          <p className="text-2xl font-bold text-accent mt-1">{estimatedDollars}</p>
+        <div className="bg-[#0D0E1C] px-5 py-5 hover:bg-[#111226] transition-colors">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4A4E72]">Est. spend</p>
+          <p className="mt-2 text-xl font-bold tabular-nums text-[#0DDB9E]">{estimatedDollars}</p>
         </div>
       </div>
 
-      <div className="px-5 py-3 border-t border-border">
-        <p className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider">
-          Savings are estimated. RunTrim does not upload code.
-        </p>
+      <div className="border-t border-white/7 px-5 py-3">
+        <p className="font-mono text-[11px] text-[#2E3050]">Local estimates only. No code is uploaded in V1.</p>
       </div>
     </div>
   );

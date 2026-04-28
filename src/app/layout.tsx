@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -14,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RunTrim - CLI guard layer for AI coding runs",
+  title: "RunTrim: Guard layer for AI coding runs",
   description:
-    "Audit your task, lock the scope, and create a run contract before Claude, Codex or Cursor touches your repo.",
+    "Audit the task, lock the scope, and create a run contract before Claude, Codex, or Cursor touches your repo.",
   keywords: ["AI coding", "Claude", "Codex", "Cursor", "token optimization", "CLI tool"],
 };
 
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
@@ -36,9 +37,10 @@ export default function RootLayout({
           theme="dark"
           toastOptions={{
             style: {
-              background: "oklch(0.10 0 0)",
-              border: "1px solid oklch(1 0 0 / 8%)",
-              color: "oklch(0.93 0 0)",
+              background: "#0D0E1C",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "#EEEEF2",
+              fontFamily: "var(--font-sans)",
             },
           }}
         />

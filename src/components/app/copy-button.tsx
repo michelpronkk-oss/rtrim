@@ -17,9 +17,9 @@ export function CopyButton({ text, className, label = "Copy" }: CopyButtonProps)
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 1800);
     } catch {
-      // fallback: select
+      // noop
     }
   }
 
@@ -27,23 +27,13 @@ export function CopyButton({ text, className, label = "Copy" }: CopyButtonProps)
     <button
       onClick={handleCopy}
       className={cn(
-        "inline-flex items-center gap-1.5 text-xs font-mono transition-colors duration-150",
-        "text-muted-foreground hover:text-foreground",
+        "inline-flex items-center gap-1.5 rounded border border-white/7 px-2 py-1 font-mono text-[11px] text-[#4A4E72] transition-colors hover:border-white/12 hover:text-[#8888A8]",
         className
       )}
       aria-label={copied ? "Copied" : label}
     >
-      {copied ? (
-        <>
-          <Check className="size-3 text-accent" />
-          <span className="text-accent">Copied</span>
-        </>
-      ) : (
-        <>
-          <Copy className="size-3" />
-          <span>{label}</span>
-        </>
-      )}
+      {copied ? <Check className="size-3 text-[#0DDB9E]" /> : <Copy className="size-3" />}
+      <span className={copied ? "text-[#0DDB9E]" : ""}>{copied ? "Copied" : label}</span>
     </button>
   );
 }

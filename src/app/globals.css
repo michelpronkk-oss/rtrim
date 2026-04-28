@@ -5,8 +5,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-accent: oklch(0.72 0.15 70);
-  --color-accent-muted: oklch(0.72 0.15 70 / 15%);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -46,87 +44,101 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
+:root,
 .dark {
-  --background: oklch(0.07 0 0);
-  --foreground: oklch(0.93 0 0);
-  --card: oklch(0.10 0 0);
-  --card-foreground: oklch(0.93 0 0);
-  --popover: oklch(0.10 0 0);
-  --popover-foreground: oklch(0.93 0 0);
-  --primary: oklch(0.72 0.15 70);
-  --primary-foreground: oklch(0.07 0 0);
-  --secondary: oklch(0.14 0 0);
-  --secondary-foreground: oklch(0.93 0 0);
-  --muted: oklch(0.13 0 0);
-  --muted-foreground: oklch(0.48 0 0);
-  --accent: oklch(0.14 0 0);
-  --accent-foreground: oklch(0.93 0 0);
-  --destructive: oklch(0.62 0.21 25);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.72 0.15 70 / 40%);
-  --chart-1: oklch(0.72 0.15 70);
-  --chart-2: oklch(0.60 0 0);
-  --chart-3: oklch(0.45 0 0);
-  --chart-4: oklch(0.32 0 0);
-  --chart-5: oklch(0.20 0 0);
-  --sidebar: oklch(0.09 0 0);
-  --sidebar-foreground: oklch(0.93 0 0);
-  --sidebar-primary: oklch(0.72 0.15 70);
-  --sidebar-primary-foreground: oklch(0.07 0 0);
-  --sidebar-accent: oklch(0.13 0 0);
-  --sidebar-accent-foreground: oklch(0.93 0 0);
-  --sidebar-border: oklch(1 0 0 / 6%);
-  --sidebar-ring: oklch(0.72 0.15 70 / 40%);
+  /* Midnight navy base — no blue-dark template feel */
+  --background:        #07080F;
+  --foreground:        #EEEEF2;
+  --card:              #0D0E1C;
+  --card-foreground:   #EEEEF2;
+  --popover:           #0D0E1C;
+  --popover-foreground:#EEEEF2;
+
+  /* Electric teal — CLI cursor / brand signal */
+  --primary:           #0DDB9E;
+  --primary-foreground:#02060F;
+
+  --secondary:         #1A1B2E;
+  --secondary-foreground: #AAAAC0;
+
+  --muted:             #0A0B18;
+  --muted-foreground:  #4A4E72;
+
+  --accent:            #0DDB9E;
+  --accent-foreground: #02060F;
+
+  --destructive:       #FF4444;
+
+  --border:            rgba(255, 255, 255, 0.07);
+  --input:             rgba(255, 255, 255, 0.08);
+  --ring:              rgba(13, 219, 158, 0.30);
+
+  --chart-1:  #0DDB9E;
+  --chart-2:  #5B8BFF;
+  --chart-3:  #FFA94D;
+  --chart-4:  #FF4444;
+  --chart-5:  #3C3E58;
+
+  --radius: 0.5rem;
+
+  --sidebar:              #07080F;
+  --sidebar-foreground:   #AAAAC0;
+  --sidebar-primary:      #0DDB9E;
+  --sidebar-primary-foreground: #02060F;
+  --sidebar-accent:       #1A1B2E;
+  --sidebar-accent-foreground: #EEEEF2;
+  --sidebar-border:       rgba(255, 255, 255, 0.07);
+  --sidebar-ring:         rgba(13, 219, 158, 0.30);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    @apply font-sans;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
+
+  ::selection {
+    background: rgba(13, 219, 158, 0.20);
+    color: #EEEEF2;
+  }
+}
+
+@layer utilities {
+  .surface-panel {
+    background: #0D0E1C;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .surface-raised {
+    background: #1A1B2E;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Hero depth glow — teal, subtle, ours */
+  .hero-glow {
+    background: radial-gradient(
+      ellipse 75% 45% at 50% 110%,
+      rgba(13, 219, 158, 0.13) 0%,
+      rgba(13, 219, 158, 0.04) 50%,
+      transparent 75%
+    );
+  }
+
+  /* Faint noise texture for depth */
+  .hero-ring {
+    background: radial-gradient(
+      ellipse 60% 30% at 50% 105%,
+      rgba(91, 139, 255, 0.06) 0%,
+      transparent 65%
+    );
   }
 }
