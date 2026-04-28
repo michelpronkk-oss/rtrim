@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { RunRecord } from "./run-storage";
 import { getConfigDir, type RunTrimConfig } from "./runtrim-config";
+import { loadProjectAudit } from "./project-audit";
 
 export function getMemoryPath(cwd = process.cwd()): string {
   return path.join(getConfigDir(cwd), "memory.md");
@@ -47,6 +48,23 @@ function normalizeStack(stack: string): string {
   if (!stack || stack === "auto") return "Auto";
   if (stack.includes("nextjs")) return "Next.js";
   return stack;
+}
+
+function resolveProjectName(cwd: string): string {
+  const audit = loadProjectAudit(cwd);
+  if (audit?.projectName) return audit.projectName;
+
+  const pkgPath = path.join(cwd, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { name?: string };
+      if (pkg.name && pkg.name.trim()) return pkg.name.trim();
+    } catch {
+      // ignore
+    }
+  }
+
+  return path.basename(cwd);
 }
 
 function normalizeMissing(items: string[]): string[] {
@@ -165,8 +183,9 @@ export function buildMemoryMarkdown(
   config: RunTrimConfig,
   cwd = process.cwd()
 ): string {
-  const projectName = path.basename(cwd);
+  const projectName = resolveProjectName(cwd);
   const stack = normalizeStack(config.stack || "auto");
+  const audit = loadProjectAudit(cwd);
 
   const evaluation = latestRun.evaluation;
   const status = evaluation?.status ?? latestRun.status;
@@ -222,6 +241,18 @@ export function buildMemoryMarkdown(
   if (missing.length > 0) output.push(...missing.map((m) => `- ${m}`));
   else output.push("No open proof items recorded.");
   output.push("");
+
+  if (audit) {
+    output.push("Project baseline:");
+    output.push(`Stack: ${audit.detectedStack.join(", ") || "unknown"}`);
+    output.push(
+      `Risk surfaces: ${
+        audit.riskSurfaces.length > 0 ? audit.riskSurfaces.map((s) => s.type).join(", ") : "none"
+      }`
+    );
+    output.push(`Package: ${audit.packageManager}`);
+    output.push("");
+  }
 
   if (status === "blocked" || status === "split_required") {
     output.push("Detected high-risk systems:");

@@ -7,6 +7,7 @@ import prompts from "prompts";
 import clipboard from "clipboardy";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { execa } from "execa";
 
 import {
@@ -26,6 +27,16 @@ import { getGitDiff, evaluateAgentOutput } from "../src/lib/run-evaluation.ts";
 import { formatRisk, formatStatus, formatScore, formatDate, truncate } from "../src/lib/format.ts";
 import type { RunEvaluationRecord } from "../src/lib/run-storage.ts";
 import { readMemory, writeMemoryFromRuns } from "../src/lib/run-memory.ts";
+import { buildSyncPayload } from "../src/lib/runtrim-sync.ts";
+import {
+  performBaselineProjectAudit,
+  writeProjectAudit,
+  writeRules,
+  loadProjectAudit,
+  buildBaselineMemoryMarkdown,
+  ensureStarterPromptIfMissing,
+  getProjectAuditPath,
+} from "../src/lib/project-audit.ts";
 
 const ACCENT = chalk.hex("#C8901A");
 const DIM = chalk.gray;
@@ -131,6 +142,28 @@ async function copyToClipboardSafe(value: string): Promise<boolean> {
   }
 }
 
+function resolveSyncEndpoint(dashboardUrl: string): string {
+  try {
+    const u = new URL(dashboardUrl);
+    return `${u.origin}/api/sync`;
+  } catch {
+    return "http://localhost:3000/api/sync";
+  }
+}
+
+function parseMemorySection(memory: string, title: string): string {
+  const lines = memory.split(/\r?\n/);
+  const idx = lines.findIndex((line) => line.trim().toLowerCase() === `${title.toLowerCase()}:`);
+  if (idx === -1) return "";
+  const out: string[] = [];
+  for (let i = idx + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.trim()) break;
+    out.push(line.trim());
+  }
+  return out.join(" ");
+}
+
 program
   .name("runtrim")
   .description("CLI guard layer for AI coding runs")
@@ -141,19 +174,21 @@ program
 program
   .command("init")
   .description("Initialize RunTrim in the current project")
-  .action(async () => {
+  .option("--refresh", "Refresh baseline audit/rules/memory without overwriting config")
+  .action(async (options: { refresh?: boolean }) => {
     const cwd = process.cwd();
 
     console.log("");
-    console.log(BOLD("RunTrim") + DIM("  CLI guard layer for AI coding runs"));
+    console.log(BOLD("RunTrim") + DIM("  init"));
     console.log("");
 
-    if (configExists(cwd)) {
+    const hadConfig = configExists(cwd);
+    if (hadConfig && !options.refresh) {
       console.log(chalk.yellow("  Config already exists at .runtrim/config.json"));
       const { overwrite } = await prompts({
         type: "confirm",
         name: "overwrite",
-        message: "Overwrite existing config?",
+        message: "Overwrite existing config? (Use --refresh to keep config and refresh baseline)",
         initial: false,
       });
       if (!overwrite) {
@@ -163,35 +198,39 @@ program
       }
     }
 
-    const spinner = ora({ text: "Detecting project...", color: "yellow" }).start();
-    const projectInfo = detectProjectInfo(cwd);
-    const projectContext = detectProjectContext(cwd);
-    await new Promise((r) => setTimeout(r, 300));
+    const spinner = ora({ text: "Building baseline project audit...", color: "yellow" }).start();
+    await new Promise((r) => setTimeout(r, 120));
+    const previousAudit = loadProjectAudit(cwd);
+    const baseline = performBaselineProjectAudit(cwd, previousAudit);
     spinner.stop();
-
-    const detected: string[] = [];
-    if (projectContext.framework.length > 0)
-      detected.push("Framework: " + projectContext.framework.join(", "));
-    if (projectContext.hasSrc) detected.push("src/ directory found");
-    if (projectContext.hasApp) detected.push("App Router detected");
-    if (projectContext.hasPages) detected.push("Pages Router detected");
-    if (projectContext.hasMiddleware) detected.push("Middleware file detected");
-    if (projectContext.hasEnvFile) detected.push(".env file detected");
-
-    if (detected.length > 0) {
-      console.log(DIM("  Detected:"));
-      for (const d of detected) console.log(DIM("    " + d));
-      console.log("");
-    }
-
-    const config = { ...DEFAULT_CONFIG, ...projectInfo };
 
     const configDir = getConfigDir(cwd);
     const runsDir = getRunsDir(cwd);
     if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
     if (!fs.existsSync(runsDir)) fs.mkdirSync(runsDir, { recursive: true });
 
-    saveConfig(config, cwd);
+    const existingConfig = hadConfig ? loadConfig(cwd) : null;
+    const baseConfig = { ...DEFAULT_CONFIG, ...detectProjectInfo(cwd) };
+    const nextConfig = options.refresh && existingConfig ? { ...existingConfig } : baseConfig;
+    nextConfig.stack = baseline.detectedStack.join(",");
+    nextConfig.packageManager = baseline.packageManager;
+    nextConfig.baselineInitialized = true;
+    nextConfig.lastAuditAt = baseline.updatedAt;
+    saveConfig(nextConfig, cwd);
+
+    writeProjectAudit(baseline, cwd);
+    writeRules(baseline, cwd);
+
+    const memoryPath = path.join(getConfigDir(cwd), "memory.md");
+    const hasRuns = loadAllRuns(cwd).length > 0;
+    if (hasRuns) {
+      const latest = loadLatestRun(cwd);
+      if (latest) writeMemoryFromRuns(latest, loadAllRuns(cwd), nextConfig, cwd);
+    } else {
+      fs.writeFileSync(memoryPath, buildBaselineMemoryMarkdown(baseline), "utf-8");
+    }
+
+    const starterCreated = ensureStarterPromptIfMissing(cwd);
 
     const gitignorePath = path.join(cwd, ".gitignore");
     if (fs.existsSync(gitignorePath)) {
@@ -201,12 +240,32 @@ program
       }
     }
 
-    console.log(ACCENT.bold("  RunTrim initialized."));
+    const scriptNames = Object.keys(baseline.scripts);
+    console.log(ACCENT.bold("  RunTrim init"));
     console.log("");
-    console.log(DIM("  .runtrim/config.json   ") + chalk.white("created"));
-    console.log(DIM("  .runtrim/runs/         ") + chalk.white("created"));
+    console.log(DIM("  Project detected"));
+    console.log(DIM("  Name        ") + chalk.white(baseline.projectName));
+    console.log(DIM("  Stack       ") + chalk.white(baseline.detectedStack.join(", ") || "unknown"));
+    console.log(DIM("  Package     ") + chalk.white(baseline.packageManager));
     console.log("");
-    console.log(DIM("  Next: ") + chalk.white('runtrim guard "your task here"'));
+    console.log(DIM("  Scripts found"));
+    console.log(DIM("  ") + chalk.white(scriptNames.length ? scriptNames.join(", ") : "none"));
+    console.log("");
+    console.log(DIM("  Risk surfaces"));
+    for (const s of baseline.riskSurfaces.slice(0, 8)) {
+      console.log(DIM("  - ") + chalk.white(s.type));
+    }
+    console.log("");
+    console.log(DIM(options.refresh ? "  Files refreshed" : "  Files created"));
+    console.log(DIM("  .runtrim/config.json"));
+    console.log(DIM("  .runtrim/project-audit.json"));
+    console.log(DIM("  .runtrim/rules.md"));
+    console.log(DIM("  .runtrim/memory.md"));
+    console.log(DIM("  .runtrim/runs/"));
+    if (starterCreated) console.log(DIM("  .runtrim/latest-prompt.md"));
+    console.log("");
+    console.log(DIM("  Next"));
+    console.log(chalk.white('  runtrim prepare "describe your next AI coding task"'));
     console.log("");
   });
 
@@ -316,6 +375,74 @@ agentCommand
     saveConfig(config, cwd);
     console.log("");
     console.log(ACCENT.bold("  Agent prompt mode updated to: " + m));
+    console.log("");
+  });
+
+const authCommand = program.command("auth").description("Configure sync token for dashboard sync");
+
+authCommand
+  .command("set <token>")
+  .description("Set sync token and enable sync")
+  .action((token: string) => {
+    const cwd = process.cwd();
+    if (!configExists(cwd)) {
+      console.log(chalk.yellow("  No config found. Run: runtrim init"));
+      console.log("");
+      return;
+    }
+    const config = loadConfig(cwd);
+    config.syncToken = token.trim();
+    config.syncEnabled = true;
+    saveConfig(config, cwd);
+    console.log("");
+    console.log(ACCENT.bold("  Sync token saved. Sync enabled."));
+    console.log("");
+  });
+
+authCommand
+  .command("status")
+  .description("Show sync token status")
+  .action(() => {
+    const cwd = process.cwd();
+    if (!configExists(cwd)) {
+      console.log(chalk.yellow("  No config found. Run: runtrim init"));
+      console.log("");
+      return;
+    }
+    const config = loadConfig(cwd);
+    const configured = Boolean(config.syncToken);
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  auth status"));
+    console.log("");
+    console.log(DIM("  Sync enabled   ") + chalk.white(config.syncEnabled ? "yes" : "no"));
+    console.log(DIM("  Token set      ") + chalk.white(configured ? "yes" : "no"));
+    console.log(DIM("  Dashboard URL  ") + chalk.white(config.dashboardUrl));
+    console.log("");
+  });
+
+const configCommand = program.command("config").description("Configure RunTrim settings");
+
+configCommand
+  .command("set <key> <value>")
+  .description("Set config values")
+  .action((key: string, value: string) => {
+    const cwd = process.cwd();
+    if (!configExists(cwd)) {
+      console.log(chalk.yellow("  No config found. Run: runtrim init"));
+      console.log("");
+      return;
+    }
+    const config = loadConfig(cwd);
+    if (key === "dashboard-url") {
+      config.dashboardUrl = value.trim();
+      saveConfig(config, cwd);
+      console.log("");
+      console.log(ACCENT.bold("  Dashboard URL updated."));
+      console.log(DIM("  Value: ") + chalk.white(config.dashboardUrl));
+      console.log("");
+      return;
+    }
+    console.log(chalk.yellow("  Unknown config key. Supported: dashboard-url"));
     console.log("");
   });
 
@@ -1185,6 +1312,124 @@ program
 // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ REPORT ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 
 program
+  .command("sync")
+  .description("Sync local RunTrim metadata to dashboard")
+  .action(async () => {
+    const cwd = process.cwd();
+    if (!configExists(cwd)) {
+      console.log(chalk.yellow("  No config found. Run: runtrim init"));
+      console.log("");
+      return;
+    }
+
+    const config = loadConfig(cwd);
+    if (!config.syncToken) {
+      console.log(chalk.yellow("  Sync token missing. Run: runtrim auth set <token>"));
+      console.log("");
+      return;
+    }
+
+    const runs = loadAllRuns(cwd);
+    if (runs.length === 0) {
+      console.log(chalk.yellow("  No runs found. Run a guarded task first."));
+      console.log("");
+      return;
+    }
+
+    const latestRun = runs[0];
+    let memory = readMemory(cwd);
+    if (!memory) {
+      memory = writeMemoryFromRuns(latestRun, runs, config, cwd);
+    }
+
+    const payload = buildSyncPayload({
+      cwd,
+      projectName: path.basename(cwd),
+      config,
+      memoryMarkdown: memory,
+      runs,
+    });
+
+    const endpoint = resolveSyncEndpoint(config.dashboardUrl);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-runtrim-sync-token": config.syncToken,
+        },
+        body: JSON.stringify(payload),
+      });
+      const body = (await response.json().catch(() => ({}))) as { error?: string; syncedRuns?: number };
+      if (!response.ok) {
+        console.log(chalk.red("  Sync failed: " + (body.error || `HTTP ${response.status}`)));
+        console.log(DIM("  Endpoint: ") + chalk.white(endpoint));
+        console.log("");
+        return;
+      }
+      const syncedRuns = body.syncedRuns ?? payload.runs.length;
+      console.log(ACCENT.bold(`  Synced project memory and ${syncedRuns} runs.`));
+      console.log(DIM("  Open dashboard: ") + chalk.white(config.dashboardUrl));
+      console.log("");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown network error";
+      console.log(chalk.red("  Sync failed: " + message));
+      console.log(DIM("  Endpoint: ") + chalk.white(endpoint));
+      console.log(
+        DIM("  If your dashboard backend is offline, start it first and ensure env vars are set.")
+      );
+      console.log("");
+    }
+  });
+
+program
+  .command("audit")
+  .description("Run baseline project audit and refresh local baseline files")
+  .action(() => {
+    const cwd = process.cwd();
+    if (!configExists(cwd)) {
+      console.log(chalk.yellow("  No config found. Run: runtrim init"));
+      console.log("");
+      return;
+    }
+
+    const config = loadConfig(cwd);
+    const previous = loadProjectAudit(cwd);
+    const baseline = performBaselineProjectAudit(cwd, previous);
+    writeProjectAudit(baseline, cwd);
+    writeRules(baseline, cwd);
+
+    const nextConfig = { ...config };
+    nextConfig.stack = baseline.detectedStack.join(",");
+    nextConfig.packageManager = baseline.packageManager;
+    nextConfig.baselineInitialized = true;
+    nextConfig.lastAuditAt = baseline.updatedAt;
+    saveConfig(nextConfig, cwd);
+
+    const runs = loadAllRuns(cwd);
+    if (runs.length > 0) {
+      const latest = loadLatestRun(cwd);
+      if (latest) writeMemoryFromRuns(latest, runs, nextConfig, cwd);
+    } else {
+      fs.writeFileSync(path.join(getConfigDir(cwd), "memory.md"), buildBaselineMemoryMarkdown(baseline), "utf-8");
+    }
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  audit"));
+    console.log("");
+    console.log(DIM("  Project   ") + chalk.white(baseline.projectName));
+    console.log(DIM("  Stack     ") + chalk.white(baseline.detectedStack.join(", ") || "unknown"));
+    console.log(DIM("  Package   ") + chalk.white(baseline.packageManager));
+    console.log(DIM("  Surfaces  ") + chalk.white(String(baseline.riskSurfaces.length)));
+    console.log("");
+    console.log(DIM("  Updated"));
+    console.log(DIM("  " + getProjectAuditPath(cwd)));
+    console.log(DIM("  .runtrim/rules.md"));
+    console.log(DIM("  .runtrim/memory.md"));
+    console.log("");
+  });
+
+program
   .command("memory")
   .description("Show project memory and latest next safe prompt")
   .option("--prompt", "Print only latest next safe prompt")
@@ -1197,8 +1442,32 @@ program
 
     const latestRun = loadLatestRun(cwd);
     if (!latestRun) {
-      console.log(chalk.yellow("  No runs found. Run: runtrim guard \"your task\""));
+      const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+      const audit = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
+      const memoryPath = path.join(getConfigDir(cwd), "memory.md");
+      let memory = readMemory(cwd);
+      if (!memory) {
+        memory = buildBaselineMemoryMarkdown(audit);
+        fs.writeFileSync(memoryPath, memory, "utf-8");
+      }
+      const baselinePrompt = 'runtrim prepare "describe your next AI coding task"';
+      if (options.prompt) {
+        console.log(baselinePrompt);
+        await copyToClipboardSafe(baselinePrompt);
+        console.log("");
+        console.log(ACCENT.bold("  Latest next safe prompt copied."));
+        console.log("");
+        return;
+      }
+      console.log(memory);
+      await copyToClipboardSafe(baselinePrompt);
+      console.log(ACCENT.bold("  Project memory loaded. Latest next safe prompt copied."));
       console.log("");
+      if (config.baselineInitialized !== true) {
+        config.baselineInitialized = true;
+        config.lastAuditAt = audit.updatedAt;
+        saveConfig(config, cwd);
+      }
       return;
     }
     const memory = writeMemoryFromRuns(latestRun, loadAllRuns(cwd), loadConfig(cwd), cwd);
@@ -1245,7 +1514,26 @@ program
     const runs = loadAllRuns(cwd);
 
     if (runs.length === 0) {
-      console.log(chalk.yellow("  No runs found. Run: runtrim guard \"your task\""));
+      const audit = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
+      console.log(DIM("  " + SECTION));
+      console.log(DIM("  WHERE YOU LEFT OFF"));
+      console.log(DIM("  " + SECTION));
+      console.log("");
+      console.log(DIM("  Status      ") + chalk.white("Baseline initialized"));
+      console.log(DIM("  Next        ") + chalk.white('runtrim prepare "describe your next AI coding task"'));
+      console.log("");
+      console.log(DIM("  " + SECTION));
+      console.log(DIM("  PROJECT BASELINE"));
+      console.log(DIM("  " + SECTION));
+      console.log("");
+      console.log(DIM("  Project     ") + chalk.white(audit.projectName));
+      console.log(DIM("  Stack       ") + chalk.white(audit.detectedStack.join(", ") || "unknown"));
+      console.log(DIM("  Package mgr ") + chalk.white(audit.packageManager));
+      console.log(DIM("  Scripts     ") + chalk.white(Object.keys(audit.scripts).join(", ") || "none"));
+      console.log(DIM("  Surfaces    ") + chalk.white(audit.riskSurfaces.map((s) => s.type).join(", ")));
+      console.log(DIM("  Protected   ") + chalk.white(audit.protectedAreas.join(", ")));
+      console.log("");
+      console.log(chalk.yellow("  No guarded runs yet."));
       console.log("");
       return;
     }
@@ -1287,6 +1575,8 @@ program
     console.log(DIM("  WHERE YOU LEFT OFF"));
     console.log(DIM("  " + SECTION));
     console.log("");
+    const audit = loadProjectAudit(cwd);
+    console.log(DIM("  Project     ") + chalk.white(audit?.projectName ?? path.basename(cwd)));
     console.log(DIM("  Focus       ") + chalk.white(truncate(latestRun.contract.contract?.cleanedObjective ?? latestRun.task, 58)));
     console.log(DIM("  Status      ") + chalk.white(formatStatus(latestEval?.status ?? latestRun.status)));
     console.log(DIM("  Changed     ") + chalk.white(`${latestEval?.changedFiles?.length ?? 0} file${(latestEval?.changedFiles?.length ?? 0) === 1 ? "" : "s"}`));

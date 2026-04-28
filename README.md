@@ -75,6 +75,9 @@ runtrim check
 runtrim memory
 runtrim memory --prompt
 runtrim report
+runtrim auth set "<token>"
+runtrim auth status
+runtrim sync
 runtrim agent
 runtrim agent set copy
 runtrim agent set claude
@@ -139,6 +142,22 @@ Result:
 - next safe action and next safe prompt
 
 `runtrim memory --prompt` prints only the latest next safe prompt.
+
+## Sync V0 (private beta)
+
+Sync uploads metadata only. It does not upload source code or `.env` values.
+
+```bash
+runtrim auth set "<token>"
+runtrim config set dashboard-url http://localhost:3000/app
+runtrim sync
+```
+
+Required server env:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `RUNTRIM_SYNC_SECRET`
 
 ## Privacy
 

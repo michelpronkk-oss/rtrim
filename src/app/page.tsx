@@ -299,34 +299,60 @@ export default function Home() {
 
       {/* Pricing */}
       <section className="border-t border-white/7">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <p className="mb-3 text-sm font-semibold text-[#EEEEF2]">Plans</p>
-          <p className="mb-8 text-[13px] text-[#4A4E72]">
-            Local CLI remains free. Cloud sync and hosted history are planned paid features.
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-[#4A4E72]">Pricing</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-[#EEEEF2] sm:text-4xl">
+            Start local. Upgrade when memory matters.
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#6A6E98]">
+            The CLI stays free for local use. Paid plans add hosted memory, synced history, and team visibility.
           </p>
-          <div className="grid gap-4 lg:grid-cols-4">
+
+          <div className="mt-7 rounded-xl border border-white/8 bg-[#0C1119] px-4 py-3.5">
+            <p className="text-[12px] leading-6 text-[#9AA7B6]">
+              Local-first by default. Paid plans are for the memory layer, not for uploading your source code.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 lg:grid-cols-4">
             {planOrder.map((id) => {
               const plan = plans[id];
               const isFree = id === "free";
+              const isBuilder = id === "builder";
               const isComingSoon = id === "team";
               return (
-                <div key={id} className="surface-panel rounded-lg p-5">
-                  <p className="text-sm font-semibold text-[#EEEEF2]">{plan.name}</p>
-                  <p className={`mt-2 text-xl font-bold ${isFree ? "text-[#0DDB9E]" : "text-[#EEEEF2]"}`}>
+                <div
+                  key={id}
+                  className={`rounded-xl border p-5 ${
+                    isBuilder
+                      ? "border-[#0DDB9E]/35 bg-[#111926]"
+                      : "border-white/8 bg-[#0E141E]"
+                  }`}
+                >
+                  <div className="flex min-h-[26px] items-center justify-between gap-2">
+                    <p className="text-[13px] font-semibold tracking-[0.01em] text-[#EEEEF2]">{plan.name}</p>
+                    {plan.badge ? (
+                      <span className="rounded-full border border-[#2A3748] bg-[#151E2B] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#B6C4D4]">
+                        {plan.badge}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className={`mt-2 text-2xl font-bold tracking-[-0.02em] ${isFree ? "text-[#9AEFE3]" : "text-[#F2F5F8]"}`}>
                     {plan.priceLabel}
                   </p>
-                  <ul className="mt-4 space-y-1.5">
-                    {plan.bullets.slice(0, 6).map((item) => (
-                      <li key={item} className="text-[12px] leading-5 text-[#8888A8]">
+                  <p className="mt-2 min-h-[40px] text-[12px] leading-5 text-[#748397]">{plan.summary}</p>
+                  <ul className="mt-4 space-y-2">
+                    {plan.bullets.slice(0, 4).map((item) => (
+                      <li key={item} className="text-[12px] leading-5 text-[#A5B0BF]">
                         {item}
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-5">
+                  <div className="mt-6">
                     {isFree ? (
                       <Link
                         href="/app/install"
-                        className="inline-flex rounded-md bg-[#0DDB9E] px-3.5 py-2 text-xs font-semibold text-[#02060F] transition-opacity hover:opacity-85"
+                        className="inline-flex rounded-md bg-[#0DDB9E] px-3.5 py-2 text-xs font-semibold text-[#04111A] transition-opacity hover:opacity-85"
                       >
                         {plan.ctaLabel}
                       </Link>
@@ -334,8 +360,8 @@ export default function Home() {
                       <span
                         className={`inline-flex rounded-md border px-3.5 py-2 text-xs font-medium ${
                           isComingSoon
-                            ? "border-white/10 text-[#4A4E72]"
-                            : "border-white/10 text-[#8888A8]"
+                            ? "border-[#2A3748] text-[#667483]"
+                            : "border-[#2A3748] text-[#B6C4D4]"
                         }`}
                       >
                         {plan.ctaLabel}
@@ -346,6 +372,24 @@ export default function Home() {
               );
             })}
           </div>
+
+          <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Local CLI", "Free"],
+              ["Cloud memory", "Paid"],
+              ["Source code upload", "Never in V1"],
+              ["Team policies", "Team"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-white/8 bg-[#0C1119] px-3.5 py-2.5">
+                <p className="text-[11px] text-[#6D7B8C]">{label}</p>
+                <p className="mt-0.5 text-[12px] font-medium text-[#D7DEE7]">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 text-[11px] leading-5 text-[#667483]">
+            Cloud sync stores run metadata, prompt history, and changed file paths. Source code stays local.
+          </p>
         </div>
       </section>
 

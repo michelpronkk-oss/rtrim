@@ -13,13 +13,18 @@ export const ConfigSchema = z.object({
     .default(["auth", "billing", "middleware", "database", "env", "payments", "webhooks"]),
   maxFilesPerRun: z.number().default(5),
   auditFirst: z.boolean().default(true),
-  syncEnabled: z.boolean().default(false),
   agentMode: z.enum(["copy", "command"]).default("copy"),
   agentCommand: z.string().default("claude"),
   agentArgs: z.array(z.string()).default([]),
   agentPromptMode: z.enum(["argument", "stdin"]).default("argument"),
   preferredEditor: z.string().default("code"),
   lastPromptPath: z.string().default(".runtrim/latest-prompt.md"),
+  dashboardUrl: z.string().default("http://localhost:3000/app"),
+  syncToken: z.string().optional(),
+  syncEnabled: z.boolean().default(false),
+  baselineInitialized: z.boolean().default(false),
+  lastAuditAt: z.string().optional(),
+  packageManager: z.enum(["npm", "pnpm", "yarn", "bun"]).default("npm"),
 });
 
 export type RunTrimConfig = z.infer<typeof ConfigSchema>;
@@ -40,6 +45,9 @@ export const DEFAULT_CONFIG: RunTrimConfig = {
   agentPromptMode: "argument",
   preferredEditor: "code",
   lastPromptPath: ".runtrim/latest-prompt.md",
+  dashboardUrl: "http://localhost:3000/app",
+  baselineInitialized: false,
+  packageManager: "npm",
 };
 
 export function getConfigDir(cwd = process.cwd()): string {

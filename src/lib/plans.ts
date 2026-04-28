@@ -1,4 +1,4 @@
-export type PlanId = "free" | "pro" | "builder" | "team";
+﻿export type PlanId = "free" | "pro" | "builder" | "team";
 
 export type PlanFeature =
   | "cloudSync"
@@ -17,7 +17,9 @@ export interface Plan {
   id: PlanId;
   name: string;
   priceLabel: string;
+  summary: string;
   ctaLabel: string;
+  badge?: string;
   features: PlanFeature[];
   bullets: string[];
 }
@@ -28,44 +30,43 @@ export const plans: Record<PlanId, Plan> = {
   free: {
     id: "free",
     name: "Free",
-    priceLabel: "€0",
+    priceLabel: "$0",
+    summary: "For local-first developers testing RunTrim in one repo.",
     ctaLabel: "Install CLI",
     features: [],
     bullets: [
       "Local CLI",
-      "runtrim init",
-      "runtrim guard",
-      "runtrim run in copy mode",
-      "basic check",
-      "local report",
-      "local memory.md",
-      "no cloud sync",
-      "no hosted dashboard history",
-      "no share cards",
+      "Baseline project audit",
+      "Guarded run contracts",
+      "Prepare prompt file",
+      "Copy-mode runs",
+      "Basic check",
+      "Local memory and report",
     ],
   },
   pro: {
     id: "pro",
     name: "Pro",
-    priceLabel: "€12/month",
+    priceLabel: "$12/month",
+    summary: "For solo builders using Claude, Codex or Cursor daily.",
     ctaLabel: "Join early access",
     features: ["cloudSync", "cloudHistory", "shareCards", "weeklyReport"],
     bullets: [
-      "unlimited local runs",
-      "cloud run history",
-      "project memory sync",
-      "saved next prompts",
-      "weekly savings report",
-      "share cards",
-      "multi-device dashboard",
-      "better model-cost profiles",
+      "Cloud run history",
+      "Project memory sync",
+      "Saved continuation prompts",
+      "Weekly savings report",
+      "Share cards",
+      "Multi-device dashboard",
     ],
   },
   builder: {
     id: "builder",
     name: "Builder",
-    priceLabel: "€29/month",
+    priceLabel: "$29/month",
+    summary: "For serious builders running multiple AI-assisted projects.",
     ctaLabel: "Join early access",
+    badge: "Recommended",
     features: [
       "cloudSync",
       "cloudHistory",
@@ -78,21 +79,20 @@ export const plans: Record<PlanId, Plan> = {
       "exportableReports",
     ],
     bullets: [
-      "everything in Pro",
-      "multiple projects",
-      "advanced run check",
-      "deeper git diff analysis",
-      "custom project rules",
-      "sensitive area presets",
-      "model recommendation warnings",
-      "command wrapper history",
-      "exportable run reports",
+      "Everything in Pro",
+      "Multiple projects",
+      "Advanced run checks",
+      "Deeper git diff analysis",
+      "Custom project rules",
+      "Model recommendations",
+      "Exportable run reports",
     ],
   },
   team: {
     id: "team",
     name: "Team",
-    priceLabel: "starting at €99/month",
+    priceLabel: "from $99/month",
+    summary: "For teams standardizing AI coding runs.",
     ctaLabel: "Coming soon",
     features: [
       "cloudSync",
@@ -108,14 +108,12 @@ export const plans: Record<PlanId, Plan> = {
       "githubSummaries",
     ],
     bullets: [
-      "everything in Builder",
-      "shared project policies",
-      "team run history",
-      "org-level savings",
+      "Everything in Builder",
+      "Shared run policies",
+      "Team run history",
+      "Org-level savings",
       "GitHub PR summaries",
-      "member usage",
-      "shared forbidden scopes",
-      "budget rules",
+      "Budget rules",
     ],
   },
 };
@@ -127,4 +125,3 @@ export function getPlan(planId: PlanId): Plan {
 export function hasFeature(planId: PlanId, featureName: PlanFeature): boolean {
   return plans[planId].features.includes(featureName);
 }
-

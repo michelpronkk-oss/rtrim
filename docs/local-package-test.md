@@ -28,6 +28,7 @@ runtrim prepare "change hello to hello from RunTrim"
 runtrim run "change hello to hello from RunTrim"
 runtrim check
 runtrim memory
+runtrim auth status
 runtrim report
 ```
 
@@ -44,6 +45,7 @@ runtrim prepare "change hello to hello from RunTrim"
 runtrim run "change hello to hello from RunTrim"
 runtrim check
 runtrim memory
+runtrim auth status
 runtrim report
 ```
 
