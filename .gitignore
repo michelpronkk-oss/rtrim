@@ -44,4 +44,4 @@ next-env.d.ts
 .runtrim/runs/
 
 .runtrim/
-dist-cli/.env*
+dist-cli/

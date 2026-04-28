@@ -1,14 +1,46 @@
 {
   "name": "runtrim",
   "version": "0.1.0",
-  "private": true,
+  "type": "module",
+  "description": "CLI guard layer that scopes AI coding runs before they waste tokens.",
+  "license": "MIT",
+  "author": "RunTrim",
+  "homepage": "https://runtrim.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/michelpronkk-oss/rtrim.git"
+  },
+  "bugs": {
+    "url": "https://github.com/michelpronkk-oss/rtrim/issues"
+  },
+  "keywords": [
+    "cli",
+    "ai-coding",
+    "codex",
+    "claude",
+    "cursor",
+    "developer-tools",
+    "prompt-guard"
+  ],
+  "bin": {
+    "runtrim": "dist-cli/runtrim.js"
+  },
+  "files": [
+    "dist-cli",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:web": "next build",
+    "build:cli": "tsup --config tsup.config.ts",
+    "build:all": "npm run build:cli && npm run build:web",
     "start": "next start",
     "lint": "eslint",
     "runtrim": "tsx cli/runtrim.ts",
-    "runtrim:build": "tsup cli/runtrim.ts --format esm,cjs --dts --out-dir dist-cli"
+    "runtrim:build": "npm run build:cli"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

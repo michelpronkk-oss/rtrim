@@ -1,36 +1,155 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RunTrim
 
-## Getting Started
+RunTrim scopes AI coding runs before they waste tokens.
 
-First, run the development server:
+RunTrim is a local CLI guard layer for Claude, Codex, Cursor, and other AI coding agents. It audits a raw task, blocks unsafe mega-runs, creates a scoped run contract, checks the diff after the agent runs, and remembers where you left off.
+
+## Why RunTrim exists
+
+Agent runs fail in predictable ways:
+- prompts are too broad
+- agents scan too much of the repo
+- sensitive systems get touched by accident
+- follow-up prompts restart from scratch
+
+RunTrim adds pre-run scope control and post-run continuity.
+
+## What it does
+
+- Audits task quality and risk before execution
+- Blocks unsafe mega-runs and recommends split audits
+- Generates guarded run contracts with explicit scope and stop rules
+- Checks git diff and output proof after an agent run
+- Generates next safe prompts for continuation
+- Stores local run memory in `.runtrim/`
+
+## Install
+
+### Local preview (available now)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/michelpronkk-oss/rtrim
+cd rtrim
+npm install
+npm run runtrim -- init
+npm run runtrim -- run "fix checkout redirect"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Local global test (npm link)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build:cli
+npm link
+runtrim init
+runtrim run "fix checkout redirect"
+runtrim memory
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Global npm install (after publish)
 
-## Learn More
+```bash
+npm install -g runtrim
+runtrim init
+runtrim run "fix checkout redirect"
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Quick start
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run runtrim -- init
+npm run runtrim -- run "fix checkout redirect"
+npm run runtrim -- check
+npm run runtrim -- memory
+npm run runtrim -- report
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Core commands
 
-## Deploy on Vercel
+```bash
+runtrim init
+runtrim guard "<task>"
+runtrim run "<task>"
+runtrim check
+runtrim memory
+runtrim memory --prompt
+runtrim report
+runtrim agent
+runtrim agent set copy
+runtrim agent set claude
+runtrim agent set codex
+runtrim agent set custom "<command>"
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Copy mode vs command mode
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Copy mode: RunTrim generates and copies a guarded contract. You paste it into your agent.
+- Command mode: RunTrim wraps your configured local agent command and keeps guard rails.
+
+## Example: blocked mega-run
+
+Input:
+
+```bash
+runtrim run "rewrite auth flow, fix middleware, update database schema, make billing work"
+```
+
+Result:
+- Split required
+- High-risk systems detected
+- Recommended split audit tasks
+- Next safe prompt copied
+
+## Example: guarded run
+
+Input:
+
+```bash
+runtrim run "fix checkout redirect"
+```
+
+Result:
+- Task audited
+- Scope and stop rules generated
+- Guarded contract copied or passed to configured command
+
+## Project memory
+
+`runtrim memory` prints compact project state from local runs:
+- current state
+- previous task
+- latest status
+- changed files
+- missing proof items
+- protected areas
+- next safe action and next safe prompt
+
+`runtrim memory --prompt` prints only the latest next safe prompt.
+
+## Privacy
+
+RunTrim runs locally.
+V1 does not upload code.
+`.runtrim/` stores local run metadata and memory.
+Cloud sync is not enabled.
+
+## Current status
+
+Early V1.
+Savings are estimated.
+RunTrim is not a replacement for Claude, Codex, or Cursor.
+It wraps and controls the agents developers already use.
+
+## Roadmap
+
+- npm publish
+- stronger local policy presets
+- richer post-run analysis
+- optional hosted dashboard features
+
+## Packaging dry run
+
+```bash
+npm run build:cli
+npm pack --dry-run
+npm publish --dry-run
+```
