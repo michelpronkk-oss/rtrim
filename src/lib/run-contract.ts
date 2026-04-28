@@ -1,4 +1,4 @@
-import type { AuditResult, WasteRisk, ProjectContext } from "./run-audit";
+﻿import type { AuditResult, WasteRisk, ProjectContext } from "./run-audit";
 import type { RunTrimConfig } from "./runtrim-config";
 
 export interface RunContract {
@@ -152,7 +152,7 @@ function buildRelevantScope(
 
 /**
  * Build sensitive scope for areas that are relevant but require caution.
- * These areas are NOT forbidden — they may be inspected but editing needs approval.
+ * These areas are NOT forbidden - they may be inspected but editing needs approval.
  */
 function buildSensitiveScope(sensitiveAreasRelevant: string[]): string[] {
   if (sensitiveAreasRelevant.length === 0) return [];
@@ -262,7 +262,7 @@ const SYSTEM_LABELS: Record<string, string> = {
 
 const BLOCKED_REASONS: Record<string, string> = {
   auth: "auth changes without dedicated scope cause session or security regressions",
-  middleware: "middleware edits affect every request — must be isolated",
+  middleware: "middleware edits affect every request and must be isolated",
   database: "schema changes require migration review before any other edit",
   billing: "billing logic requires dedicated verification before touching adjacent code",
   payments: "payment processing changes need isolated review and approval",
@@ -333,7 +333,7 @@ export function generateContract(
   audit: AuditResult,
   config: RunTrimConfig
 ): ContractResult {
-  // Blocked path — mega-run: skip normal contract generation entirely.
+  // Blocked path - mega-run: skip normal contract generation entirely.
   if (audit.isMegaRun) {
     const splitReport = generateSplitReport(audit, config);
 
@@ -424,7 +424,7 @@ export function generateContract(
     "Changes are strictly within the relevant scope.",
     "Output includes the exact list of files changed.",
     ...(sensitiveAreasRelevant.length > 0
-      ? ["Sensitive scope items were read only — not edited without noted approval."]
+      ? ["Sensitive scope items were read only and not edited without noted approval."]
       : []),
   ];
 
@@ -516,7 +516,7 @@ function formatContractText(contract: RunContract, config: RunTrimConfig): strin
   if (contract.sensitiveScope.length > 0) {
     lines.push(
       "",
-      "SENSITIVE SCOPE (inspect allowed — approval required before editing)",
+      "SENSITIVE SCOPE (inspect allowed, approval required before editing)",
       ...contract.sensitiveScope.map((s) => `- ${s}`)
     );
   }
@@ -547,3 +547,5 @@ function formatContractText(contract: RunContract, config: RunTrimConfig): strin
 
   return lines.join("\n");
 }
+
+

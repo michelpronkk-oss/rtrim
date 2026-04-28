@@ -18,6 +18,8 @@ export const ConfigSchema = z.object({
   agentCommand: z.string().default("claude"),
   agentArgs: z.array(z.string()).default([]),
   agentPromptMode: z.enum(["argument", "stdin"]).default("argument"),
+  preferredEditor: z.string().default("code"),
+  lastPromptPath: z.string().default(".runtrim/latest-prompt.md"),
 });
 
 export type RunTrimConfig = z.infer<typeof ConfigSchema>;
@@ -36,6 +38,8 @@ export const DEFAULT_CONFIG: RunTrimConfig = {
   agentCommand: "claude",
   agentArgs: [],
   agentPromptMode: "argument",
+  preferredEditor: "code",
+  lastPromptPath: ".runtrim/latest-prompt.md",
 };
 
 export function getConfigDir(cwd = process.cwd()): string {

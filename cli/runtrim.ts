@@ -18,6 +18,7 @@ import {
   configExists,
   detectProjectInfo,
 } from "../src/lib/runtrim-config.ts";
+import type { RunTrimConfig } from "../src/lib/runtrim-config.ts";
 import { auditTask, detectProjectContext } from "../src/lib/run-audit.ts";
 import { generateContract } from "../src/lib/run-contract.ts";
 import { saveRun, loadLatestRun, loadAllRuns, updateRun } from "../src/lib/run-storage.ts";
@@ -57,6 +58,68 @@ function parseCommandString(input: string): { command: string; args: string[] } 
     command: normalized[0] ?? "",
     args: normalized.slice(1),
   };
+}
+
+function resolvePromptPath(config: RunTrimConfig, cwd: string): string {
+  const configured = config.lastPromptPath?.trim() || ".runtrim/latest-prompt.md";
+  return path.isAbsolute(configured) ? configured : path.join(cwd, configured);
+}
+
+function writeLatestPromptFile(content: string, config: RunTrimConfig, cwd: string): string {
+  const promptPath = resolvePromptPath(config, cwd);
+  const dir = path.dirname(promptPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(promptPath, content, "utf-8");
+  return promptPath;
+}
+
+async function openInEditor(
+  editorValue: string | undefined,
+  config: RunTrimConfig,
+  filePath: string,
+  cwd: string
+): Promise<boolean> {
+  const selected = (editorValue?.trim() || config.preferredEditor || "code").trim();
+  const normalized = selected.toLowerCase();
+  let commandText = selected;
+  if (normalized === "code") commandText = "code";
+  if (normalized === "cursor") commandText = "cursor";
+  const parsed = parseCommandString(commandText);
+  if (!parsed.command) return false;
+  try {
+    await execa(parsed.command, [...parsed.args, filePath], { cwd, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function printPrepareAgentInstructions(agent: string, promptPath: string): void {
+  const a = agent.toLowerCase();
+  console.log(DIM("  AGENT INSTRUCTIONS"));
+  console.log("");
+  if (a === "claude") {
+    console.log(DIM("  - Paste the copied contract into Claude Code."));
+    console.log(
+      DIM("  - Or run manually after review: ") +
+        chalk.white(`Get-Content ${promptPath.replace(/\//g, "\\\\")} -Raw | claude`)
+    );
+    return;
+  }
+  if (a === "codex") {
+    console.log(DIM("  - Paste the copied contract into Codex."));
+    console.log(DIM("  - Or run manually after review with your Codex CLI command."));
+    return;
+  }
+  if (a === "cursor") {
+    console.log(DIM("  - Open .runtrim/latest-prompt.md, review it, then paste into Cursor Composer."));
+    return;
+  }
+  if (a === "chatgpt") {
+    console.log(DIM("  - Paste the copied contract into the active ChatGPT conversation."));
+    return;
+  }
+  console.log(DIM("  - Review .runtrim/latest-prompt.md before running your agent."));
 }
 
 async function copyToClipboardSafe(value: string): Promise<boolean> {
@@ -809,6 +872,128 @@ program
     }
     console.log("");
   });
+
+program
+  .command("prepare <task>")
+  .description("Prepare a guarded prompt without executing an agent")
+  .option("--open", "Open .runtrim/latest-prompt.md in your editor")
+  .option("--editor <editor>", "Editor command: code, cursor, or custom command")
+  .option("--agent <agent>", "Instruction profile: claude, codex, cursor, chatgpt, custom")
+  .option("--no-copy", "Do not copy prompt to clipboard")
+  .option("--print", "Print the full prepared prompt")
+  .action(
+    async (
+      task: string,
+      options: {
+        open?: boolean;
+        editor?: string;
+        agent?: string;
+        copy?: boolean;
+        print?: boolean;
+      }
+    ) => {
+      const cwd = process.cwd();
+
+      console.log("");
+      console.log(BOLD("RunTrim") + DIM("  prepare"));
+      console.log("");
+
+      if (!configExists(cwd)) {
+        console.log(chalk.yellow("  No config found. Run: runtrim init"));
+        console.log("");
+        return;
+      }
+
+      const config = loadConfig(cwd);
+      const selectedAgent = (options.agent ?? config.defaultAgent ?? "claude").toLowerCase();
+      const auditSpinner = ora({ text: "Auditing task...", color: "yellow" }).start();
+      await new Promise((r) => setTimeout(r, 250));
+      const audit = auditTask(task, config, cwd);
+      auditSpinner.stop();
+      const contract = generateContract(task, audit, config);
+      const run = saveRun(task, audit, contract, cwd);
+
+      if (contract.isBlocked && contract.splitReport) {
+        const splitPrompt = contract.splitReport.nextSafePrompt;
+        updateRun(run.id, { status: "split_required" }, cwd);
+        const promptPath = writeLatestPromptFile(splitPrompt, config, cwd);
+        if (options.copy !== false) await copyToClipboardSafe(splitPrompt);
+
+        console.log(chalk.red.bold("  SPLIT REQUIRED"));
+        console.log("");
+        console.log(DIM("  Task      ") + chalk.white(truncate(task, 70)));
+        console.log(DIM("  Prompt    ") + chalk.white(promptPath));
+        console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+        console.log("");
+        printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
+        console.log("");
+        if (options.print) {
+          console.log(splitPrompt);
+          console.log("");
+        }
+        if (options.open) {
+          const opened = await openInEditor(options.editor, config, promptPath, cwd);
+          if (!opened) {
+            console.log(chalk.yellow("  Could not open editor command."));
+            console.log("");
+          }
+        }
+        return;
+      }
+
+      const promptPath = writeLatestPromptFile(contract.contractText, config, cwd);
+      if (options.copy !== false) await copyToClipboardSafe(contract.contractText);
+      updateRun(run.id, { status: "guarded" }, cwd);
+
+      const riskColors: Record<string, ChalkInstance> = {
+        low: chalk.green,
+        medium: chalk.yellow,
+        high: chalk.hex("#FF8C00"),
+        critical: chalk.red,
+      };
+      const riskBefore = riskColors[audit.wasteRiskBefore] ?? chalk.white;
+      const riskAfter = riskColors[contract.wasteRiskAfter] ?? chalk.green;
+      const scoreDelta = contract.promptScoreAfter - audit.promptScoreBefore;
+      const deltaStr = scoreDelta >= 0 ? `+${scoreDelta}` : `${scoreDelta}`;
+
+      console.log(DIM("  " + SECTION));
+      console.log(DIM("  PREPARED GUARD"));
+      console.log(DIM("  " + SECTION));
+      console.log("");
+      console.log(
+        DIM("  Score     ") +
+          chalk.white(formatScore(audit.promptScoreBefore)) +
+          DIM("  ->  ") +
+          chalk.white(formatScore(contract.promptScoreAfter)) +
+          DIM("  (" + deltaStr + ")")
+      );
+      console.log(
+        DIM("  Risk      ") +
+          riskBefore(formatRisk(audit.wasteRiskBefore).toUpperCase()) +
+          DIM("  ->  ") +
+          riskAfter(formatRisk(contract.wasteRiskAfter).toUpperCase())
+      );
+      console.log(DIM("  Reduction ") + chalk.white(contract.riskReductionPercent + "%"));
+      console.log(DIM("  Prompt    ") + chalk.white(promptPath));
+      console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+      console.log("");
+      printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
+      console.log("");
+
+      if (options.print) {
+        console.log(contract.contractText);
+        console.log("");
+      }
+
+      if (options.open) {
+        const opened = await openInEditor(options.editor, config, promptPath, cwd);
+        if (!opened) {
+          console.log(chalk.yellow("  Could not open editor command."));
+          console.log("");
+        }
+      }
+    }
+  );
 
 // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ CHECK ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 

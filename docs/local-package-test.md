@@ -24,6 +24,7 @@ npm init -y
 git init
 echo "console.log('hello')" > index.js
 runtrim init
+runtrim prepare "change hello to hello from RunTrim"
 runtrim run "change hello to hello from RunTrim"
 runtrim check
 runtrim memory
@@ -39,6 +40,7 @@ npm init -y
 git init
 Set-Content index.js "console.log('hello')"
 runtrim init
+runtrim prepare "change hello to hello from RunTrim"
 runtrim run "change hello to hello from RunTrim"
 runtrim check
 runtrim memory

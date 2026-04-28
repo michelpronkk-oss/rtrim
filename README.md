@@ -57,6 +57,7 @@ runtrim run "fix checkout redirect"
 
 ```bash
 npm run runtrim -- init
+npm run runtrim -- prepare "fix checkout redirect"
 npm run runtrim -- run "fix checkout redirect"
 npm run runtrim -- check
 npm run runtrim -- memory
@@ -68,6 +69,7 @@ npm run runtrim -- report
 ```bash
 runtrim init
 runtrim guard "<task>"
+runtrim prepare "<task>"
 runtrim run "<task>"
 runtrim check
 runtrim memory
@@ -84,6 +86,19 @@ runtrim agent set custom "<command>"
 
 - Copy mode: RunTrim generates and copies a guarded contract. You paste it into your agent.
 - Command mode: RunTrim wraps your configured local agent command and keeps guard rails.
+
+## Prepare mode
+
+`runtrim prepare "<task>"` audits and prepares a guarded prompt but never executes an agent.
+
+Examples:
+
+```bash
+runtrim prepare "fix checkout redirect"
+runtrim prepare "fix checkout redirect" --open
+runtrim prepare "fix checkout redirect" --agent cursor --editor cursor
+runtrim prepare "rewrite auth, middleware, database and billing"
+```
 
 ## Example: blocked mega-run
 

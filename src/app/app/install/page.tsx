@@ -22,6 +22,8 @@ const AGENT_EXAMPLES = [
   "npm run runtrim -- agent set copy",
   "npm run runtrim -- agent set claude",
   "npm run runtrim -- agent set codex",
+  'npm run runtrim -- prepare "fix checkout redirect"',
+  'npm run runtrim -- prepare "fix checkout redirect" --open',
   'npm run runtrim -- run "fix checkout redirect"',
   "npm run runtrim -- check",
   "npm run runtrim -- memory",
