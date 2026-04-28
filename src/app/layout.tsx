@@ -15,10 +15,40 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RunTrim: Guard layer for AI coding runs",
+  metadataBase: new URL("https://runtrim.com"),
+  title: {
+    default: "RunTrim: Stop paying twice for the same context",
+    template: "%s | RunTrim",
+  },
   description:
-    "Audit the task, lock the scope, and create a run contract before Claude, Codex, or Cursor touches your repo.",
-  keywords: ["AI coding", "Claude", "Codex", "Cursor", "token optimization", "CLI tool"],
+    "RunTrim tracks your AI coding runs, prompts, reusable context, and estimated savings so every next agent starts from what your project already knows.",
+  keywords: [
+    "AI coding", "Claude Code", "Codex", "Cursor", "ChatGPT",
+    "token savings", "prompt history", "run history", "context reuse", "CLI tool",
+  ],
+  authors: [{ name: "RunTrim" }],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://runtrim.com",
+    siteName: "RunTrim",
+    title: "RunTrim: Stop paying twice for the same context",
+    description:
+      "Track AI coding runs, prompts, and estimated savings. Every next agent starts from what your project already knows.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RunTrim: Stop paying twice for the same context",
+    description:
+      "Track AI coding runs, prompts, and estimated savings. Every next agent starts from what your project already knows.",
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -37,9 +67,9 @@ export default function RootLayout({
           theme="dark"
           toastOptions={{
             style: {
-              background: "#0D0E1C",
-              border: "1px solid rgba(255,255,255,0.07)",
-              color: "#EEEEF2",
+              background: "#0C1119",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "#F5F7FA",
               fontFamily: "var(--font-sans)",
             },
           }}

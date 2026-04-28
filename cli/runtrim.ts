@@ -169,6 +169,138 @@ function dedupeFiles(files: string[]): string[] {
   return [...new Set(files.filter(Boolean).map((f) => f.replace(/\\/g, "/")))];
 }
 
+const CONTINUATION_REASONS = [
+  "usage_limit",
+  "credits_exhausted",
+  "context_limit",
+  "rate_limit",
+  "provider_error",
+  "session_expired",
+  "manual_handoff",
+  "other",
+] as const;
+type ContinuationReason = (typeof CONTINUATION_REASONS)[number];
+
+const CONTINUATION_AGENTS = [
+  "claude",
+  "codex",
+  "cursor",
+  "chatgpt",
+  "gemini",
+  "custom",
+] as const;
+type ContinuationAgent = (typeof CONTINUATION_AGENTS)[number];
+
+function normalizeContinuationReason(value: string | undefined): ContinuationReason {
+  if (!value) return "manual_handoff";
+  const lower = value.trim().toLowerCase();
+  if ((CONTINUATION_REASONS as readonly string[]).includes(lower)) {
+    return lower as ContinuationReason;
+  }
+  return "other";
+}
+
+function normalizeContinuationAgent(value: string | undefined, fallback: string): ContinuationAgent {
+  const candidate = (value || fallback || "custom").trim().toLowerCase();
+  if ((CONTINUATION_AGENTS as readonly string[]).includes(candidate)) {
+    return candidate as ContinuationAgent;
+  }
+  return "custom";
+}
+
+function resolveContinuationPath(cwd: string): string {
+  return path.join(getConfigDir(cwd), "continuation-prompt.md");
+}
+
+function extractMemoryValue(memory: string | null, label: string): string {
+  if (!memory) return "";
+  const rx = new RegExp(`^${label}:\\s*(.*)$`, "im");
+  const m = memory.match(rx);
+  return (m?.[1] ?? "").trim();
+}
+
+function extractMemorySection(memory: string | null, section: string): string[] {
+  if (!memory) return [];
+  const lines = memory.split(/\r?\n/);
+  const idx = lines.findIndex((line) => line.trim().toLowerCase() === `${section.toLowerCase()}:`);
+  if (idx === -1) return [];
+  const out: string[] = [];
+  for (let i = idx + 1; i < lines.length; i += 1) {
+    const line = lines[i].trim();
+    if (!line) break;
+    out.push(line.replace(/^- /, "").trim());
+  }
+  return out;
+}
+
+function continuationReasonLine(reason: ContinuationReason): string {
+  const map: Record<ContinuationReason, string> = {
+    usage_limit: "usage limit reached",
+    credits_exhausted: "credits exhausted",
+    context_limit: "context limit reached",
+    rate_limit: "rate limit interruption",
+    provider_error: "provider error",
+    session_expired: "session expired",
+    manual_handoff: "manual handoff",
+    other: "other interruption",
+  };
+  return map[reason];
+}
+
+function continuationReasonInstruction(reason: ContinuationReason): string {
+  if (reason === "usage_limit" || reason === "credits_exhausted") {
+    return "The previous agent stopped because usage or credits ran out. Do not repeat completed work. Start by summarizing the current state from the information below, then continue only from the next safe action.";
+  }
+  if (reason === "context_limit") {
+    return "The previous agent likely lost context. Use this prompt as the compact source of truth. Do not ask to reload the entire project.";
+  }
+  if (reason === "rate_limit" || reason === "provider_error" || reason === "session_expired") {
+    return "The previous agent stopped due to provider interruption. Continue from the last known state without expanding scope.";
+  }
+  if (reason === "manual_handoff") {
+    return "This is a handoff from another AI session. Treat the project memory below as the source of truth.";
+  }
+  return "Continue from the last known state without restarting the task.";
+}
+
+function continuationExtraReasonInstruction(
+  reason: ContinuationReason,
+  hasUnverifiedChanges: boolean
+): string {
+  if (
+    hasUnverifiedChanges &&
+    (reason === "usage_limit" || reason === "credits_exhausted")
+  ) {
+    return "The previous agent stopped because usage or credits ran out. Do not repeat completed work. Treat this as a verification handoff before any further implementation.";
+  }
+  return "";
+}
+
+function continuationAgentLine(agent: ContinuationAgent): string {
+  if (agent === "claude") return "Paste this continuation prompt into Claude.";
+  if (agent === "codex") return "Paste this continuation prompt into Codex.";
+  if (agent === "cursor") return "Paste this continuation prompt into Cursor Composer.";
+  if (agent === "chatgpt") return "Paste this continuation prompt into ChatGPT.";
+  if (agent === "gemini") return "Paste this continuation prompt into Gemini.";
+  return "Paste this continuation prompt into your selected agent.";
+}
+
+function updateMemoryWithContinuation(
+  memory: string,
+  reason: ContinuationReason,
+  promptPath: string,
+  createdAt: string
+): string {
+  const block = [
+    "Continuation metadata:",
+    `- Last continuation reason: ${reason}`,
+    `- Continuation prompt path: ${promptPath.replace(/\\/g, "/")}`,
+    `- Continuation created at: ${createdAt}`,
+  ].join("\n");
+  const normalized = memory.replace(/\n?Continuation metadata:\n(?:- .*\n?)*/g, "").trimEnd();
+  return `${normalized}\n\n${block}\n`;
+}
+
 function printWatchSnapshot(input: {
   task: string;
   maxFiles: number;
@@ -1372,6 +1504,7 @@ program
   .description("Sync local RunTrim metadata to dashboard")
   .action(async () => {
     const cwd = process.cwd();
+    const cfg = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
     if (!configExists(cwd)) {
       console.log(chalk.yellow("  No config found. Run: runtrim init"));
       console.log("");
@@ -1691,10 +1824,302 @@ program
   });
 
 program
+  .command("continue")
+  .description("Create a safe continuation prompt from latest RunTrim state")
+  .option("--reason <reason>", "Continuation reason")
+  .option("--agent <agent>", "Target agent hint")
+  .option("--print", "Print the full continuation prompt")
+  .option("--open", "Open continuation prompt in editor")
+  .option("--editor <editor>", "Editor command (code, cursor, or custom)")
+  .action(async (options: { reason?: string; agent?: string; print?: boolean; open?: boolean; editor?: string }) => {
+    const cwd = process.cwd();
+    const hasConfig = configExists(cwd);
+    const config = hasConfig ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const latestRun = loadLatestRun(cwd);
+    const allRuns = loadAllRuns(cwd);
+    const audit = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
+    const reason = normalizeContinuationReason(options.reason);
+    const agent = normalizeContinuationAgent(options.agent, config.defaultAgent);
+    const nowIso = new Date().toISOString();
+    const continuationPath = resolveContinuationPath(cwd);
+    const latestPromptPath = resolvePromptPath(config, cwd);
+    const latestPrompt = fs.existsSync(latestPromptPath)
+      ? fs.readFileSync(latestPromptPath, "utf-8").trim()
+      : "";
+
+    let memory = readMemory(cwd);
+    if (!memory) {
+      if (latestRun) memory = writeMemoryFromRuns(latestRun, allRuns, config, cwd);
+      else memory = buildBaselineMemoryMarkdown(audit);
+    }
+
+    const projectName = audit.projectName || path.basename(cwd);
+    const stackLine = audit.detectedStack.length > 0 ? audit.detectedStack.join(", ") : "unknown";
+    const diffFiles = dedupeFiles(await getGitDiff(cwd));
+    const changedFiles = latestRun?.evaluation?.changedFiles?.length
+      ? dedupeFiles(latestRun.evaluation.changedFiles)
+      : diffFiles;
+    const missing = latestRun?.evaluation?.missingProofItems ?? [];
+    const watchWarnings = latestRun?.watchWarnings ?? [];
+    const protectedAreas =
+      audit.protectedAreas?.length > 0
+        ? audit.protectedAreas
+        : [
+            "auth",
+            "middleware",
+            "database schema",
+            "env/secrets",
+            "billing/payments/webhooks",
+          ];
+
+    let stateLine = "Baseline initialized. No guarded runs yet.";
+    let nextObjective = 'Run runtrim prepare "describe your next AI coding task".';
+    let rulesLine = "Continue from baseline and define a scoped first task.";
+    let stillMissing = missing.length > 0 ? missing : ["No open proof items recorded."];
+    let hasUnverifiedChanges = false;
+    let hasContainmentWarning = false;
+
+    if (latestRun) {
+      const status = (latestRun.evaluation?.status ?? latestRun.status).toLowerCase();
+      hasUnverifiedChanges = status === "guarded" && changedFiles.length > 0;
+      hasContainmentWarning =
+        watchWarnings.some((w) =>
+          /(forbidden|drift|file limit exceeded|critical)/i.test(w)
+        ) || false;
+
+      if (status === "guarded" && hasUnverifiedChanges) {
+        if (watchWarnings.length > 0 && hasContainmentWarning) {
+          stateLine =
+            "Guarded run has unverified changes and watch warnings. Do not continue implementation yet.";
+          nextObjective =
+            "Stop implementation and run a post-run verification. Confirm whether the changed files match the original RunTrim contract before continuing.";
+          rulesLine =
+            "Containment first. Do not continue implementation until runtrim check is complete.";
+        } else {
+          stateLine =
+            "Guarded run has unverified changes. Run check before continuing.";
+          nextObjective =
+            "Stop implementation and run a post-run verification. Confirm whether the changed files match the original RunTrim contract before continuing.";
+          rulesLine = "Verification first. Complete post-run check before any new edits.";
+        }
+        stillMissing = [
+          "Post-run check has not been completed",
+          "Root cause has not been verified",
+          "Changed files have not been approved against the contract",
+          "Verification steps are missing",
+        ];
+      } else
+      if (status === "blocked" || status === "split_required" || latestRun.contract.isBlocked) {
+        stateLine = "Split required. Continue with one isolated audit task only.";
+        nextObjective = "Run one split audit task first. Do not implement changes yet.";
+        rulesLine = "Do not begin implementation. Keep scope isolated to one protected system.";
+      } else if (status === "partial" || status === "needs_verification" || status === "no_changes_detected") {
+        stateLine = "Partial verification. Confirm missing proof from the current diff only.";
+        nextObjective = latestRun.evaluation?.nextSafeAction || "Verify the current diff before starting new scope.";
+        rulesLine = "Verification first. No new scope until missing proof is complete.";
+      } else if (status === "drift_detected") {
+        stateLine = "Scope drift detected. Containment is required before any new implementation.";
+        nextObjective = "Inspect out-of-scope files and contain drift before continuing.";
+        rulesLine = "Stop new edits. Identify out-of-scope files and recommend revert or approval.";
+      } else if (status === "passed") {
+        stateLine = "Previous run appears complete.";
+        nextObjective = "Mark this task done or define a new scoped task.";
+        rulesLine = "Do not reopen completed work unless evidence shows a gap.";
+        stillMissing = ["No open proof items recorded."];
+      } else {
+        stateLine = latestRun.evaluation?.memorySummary || "Guarded run available.";
+        nextObjective = latestRun.evaluation?.nextSafeAction || "Run runtrim check before continuing.";
+      }
+    }
+
+    const previousTask = latestRun?.task || extractMemorySection(memory, "Previous task").join(" ") || "No previous guarded task recorded.";
+    const latestStatus = latestRun
+      ? formatStatus(latestRun.evaluation?.status ?? latestRun.status)
+      : "baseline_initialized";
+
+    const memoryCurrentState =
+      extractMemorySection(memory, "Current state").join(" ") ||
+      extractMemoryValue(memory, "Current state");
+    const memoryNextAction =
+      extractMemorySection(memory, "Next safe action").join(" ") ||
+      extractMemoryValue(memory, "Next safe action");
+    const memorySummaryLine = memoryCurrentState || stateLine;
+    const openNextAction = memoryNextAction || nextObjective;
+
+    const whatHappened: string[] = [];
+    whatHappened.push(latestRun?.evaluation?.memorySummary || memorySummaryLine);
+    if (watchWarnings.length > 0) {
+      whatHappened.push(`Watch warnings: ${watchWarnings.join("; ")}`);
+    }
+    if (changedFiles.length > 0) {
+      whatHappened.push(`Changed files detected: ${changedFiles.length}`);
+    } else {
+      whatHappened.push("No changed files detected.");
+    }
+
+    const splitSystems = latestRun?.contract.splitReport?.detectedSystems ?? [];
+    const recommendedSplit = splitSystems.length
+      ? splitSystems.map((s, i) => `${i + 1}. Audit ${s} only. No edits.`)
+      : [
+          "1. Audit auth flow only. No edits.",
+          "2. Audit middleware behavior only. No edits.",
+          "3. Audit database/schema impact only. No edits.",
+          "4. Audit billing or subscription flow only. No edits.",
+        ];
+
+    const promptLines: string[] = [
+      "RUNTRIM CONTINUATION PROMPT",
+      "",
+      "Reason:",
+      continuationReasonLine(reason),
+      "",
+      "Project:",
+      projectName,
+      "Stack:",
+      stackLine,
+      "",
+      "Previous task:",
+      previousTask,
+      "",
+      "Current state:",
+      `${latestStatus}. ${stateLine}`,
+      "",
+      "What already happened:",
+      ...whatHappened.map((line) => `- ${line}`),
+      "",
+      "Changed files:",
+      ...(changedFiles.length > 10
+        ? [
+            `${changedFiles.length} files changed. Showing first 10:`,
+            ...changedFiles.slice(0, 10).map((f) => `- ${f}`),
+            "Run `runtrim check` for full verification.",
+          ]
+        : changedFiles.length > 0
+        ? changedFiles.map((f) => `- ${f}`)
+        : ["- No changed files recorded."]),
+      "",
+      "Still missing:",
+      ...stillMissing.map((m) => `- ${m}`),
+      ...(hasUnverifiedChanges ? [] : [`- ${openNextAction}`]),
+      "",
+      "Protected areas:",
+      ...protectedAreas.map((p) => `- ${p}`),
+      "",
+      "Continuation rules:",
+      "- Continue from the current diff only.",
+      "- Do not restart the entire task.",
+      "- Do not reread unrelated files.",
+      "- Do not modify new files unless verification proves it is required.",
+      "- Identify root cause before editing.",
+      "- Return files changed and verification steps.",
+      "- Stop if scope expands.",
+      "",
+      "Next objective:",
+      nextObjective,
+      "",
+    ];
+
+    if ((latestRun?.evaluation?.status ?? latestRun?.status) === "drift_detected") {
+      promptLines.push("Containment mode:");
+      promptLines.push("- Stop all new edits.");
+      promptLines.push("- Identify files outside allowed scope.");
+      promptLines.push("- Recommend revert, approval, or split before continuing.");
+      promptLines.push("");
+    }
+
+    if ((latestRun?.evaluation?.status ?? latestRun?.status) === "blocked" || (latestRun?.evaluation?.status ?? latestRun?.status) === "split_required") {
+      promptLines.push("Recommended split:");
+      promptLines.push(...recommendedSplit);
+      promptLines.push("");
+    }
+
+    const extraReasonInstruction = continuationExtraReasonInstruction(
+      reason,
+      hasUnverifiedChanges
+    );
+    const selectedReasonInstruction =
+      extraReasonInstruction || continuationReasonInstruction(reason);
+
+    promptLines.push(
+      "Required output:",
+      "- CURRENT UNDERSTANDING",
+      "- FILES TO INSPECT",
+      "- ROOT CAUSE OR OPEN QUESTION",
+      "- PROPOSED NEXT STEP",
+      "- FILES CHANGED",
+      "- HOW TO VERIFY",
+      "- REMAINING RISK",
+      "- NEXT SAFE ACTION",
+      "",
+      "Agent note:",
+      continuationAgentLine(agent),
+      "",
+      selectedReasonInstruction,
+      ""
+    );
+
+    if (latestPrompt) {
+      promptLines.push("Previous prepared prompt reference:");
+      promptLines.push("- Use existing scoped contract as context if still relevant.");
+      promptLines.push("");
+    }
+
+    const continuationPrompt = promptLines.join("\n");
+    const continuationDir = path.dirname(continuationPath);
+    if (!fs.existsSync(continuationDir)) fs.mkdirSync(continuationDir, { recursive: true });
+    fs.writeFileSync(continuationPath, continuationPrompt, "utf-8");
+
+    const copied = await copyToClipboardSafe(continuationPrompt);
+
+    if (memory) {
+      const memoryWithContinuation = updateMemoryWithContinuation(memory, reason, continuationPath, nowIso);
+      fs.writeFileSync(path.join(getConfigDir(cwd), "memory.md"), memoryWithContinuation, "utf-8");
+    }
+
+    if (hasConfig) {
+      const nextConfig = {
+        ...config,
+        lastContinuationReason: reason,
+        continuationPromptPath: continuationPath.replace(/\\/g, "/"),
+        continuationCreatedAt: nowIso,
+      };
+      saveConfig(nextConfig, cwd);
+    }
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  continue"));
+    console.log("");
+    console.log(DIM("  Reason             ") + chalk.white(reason));
+    console.log(DIM("  Latest status      ") + chalk.white(latestStatus));
+    console.log(DIM("  Changed files      ") + chalk.white(String(changedFiles.length)));
+    console.log(DIM("  Prompt path        ") + chalk.white(continuationPath.replace(/\\/g, "/")));
+    console.log(DIM("  Clipboard          ") + chalk.white(copied ? "updated" : "unavailable"));
+    console.log("");
+
+    if (options.print) {
+      console.log(continuationPrompt);
+      console.log("");
+    }
+
+    if (options.open) {
+      const opened = await openInEditor(options.editor, config, continuationPath, cwd);
+      if (!opened) {
+        console.log(chalk.yellow("  Could not open editor automatically."));
+        console.log(DIM("  Open file manually: ") + chalk.white(continuationPath.replace(/\\/g, "/")));
+        console.log("");
+      } else {
+        console.log(ACCENT.bold("  Continuation prompt opened in editor."));
+        console.log("");
+      }
+    }
+  });
+
+program
   .command("report")
   .description("Show a summary of all local RunTrim runs")
   .action(async () => {
     const cwd = process.cwd();
+    const cfg = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
 
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  report"));
@@ -1710,6 +2135,12 @@ program
       console.log("");
       console.log(DIM("  Status      ") + chalk.white("Baseline initialized"));
       console.log(DIM("  Next        ") + chalk.white('runtrim prepare "describe your next AI coding task"'));
+      if (cfg.lastContinuationReason) {
+        console.log(DIM("  Continue    ") + chalk.white(cfg.lastContinuationReason));
+      }
+      if (cfg.continuationPromptPath) {
+        console.log(DIM("  Prompt path ") + chalk.white(cfg.continuationPromptPath));
+      }
       console.log("");
       console.log(DIM("  " + SECTION));
       console.log(DIM("  PROJECT BASELINE"));
@@ -1776,6 +2207,12 @@ program
     console.log(DIM("  Next        ") + chalk.white(latestEval?.nextSafeAction ?? "Run runtrim check to evaluate latest run."));
     if (latestEval?.nextPrompt) {
       console.log(DIM("  Prompt      ") + chalk.white(truncate(latestEval.nextPrompt.replace(/\s+/g, " "), 92)));
+    }
+    if (cfg.lastContinuationReason) {
+      console.log(DIM("  Continue    ") + chalk.white(cfg.lastContinuationReason));
+    }
+    if (cfg.continuationPromptPath) {
+      console.log(DIM("  Prompt path ") + chalk.white(cfg.continuationPromptPath));
     }
     console.log("");
 

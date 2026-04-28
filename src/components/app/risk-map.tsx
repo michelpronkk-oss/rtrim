@@ -1,32 +1,54 @@
-﻿interface RiskMapItem {
+"use client";
+
+import { motion } from "framer-motion";
+
+interface RiskMapItem {
   system: string;
   state: "safe" | "sensitive" | "blocked" | "needs_verification";
   note: string;
 }
 
-const styles = {
-  safe: "border-[#7EE7D8]/30 text-[#9AEFE3] bg-[#7EE7D8]/8",
-  sensitive: "border-[#8BA4C2]/30 text-[#B8C7D7] bg-[#8BA4C2]/8",
-  blocked: "border-[#FF785A]/30 text-[#FF9C88] bg-[#FF785A]/8",
-  needs_verification: "border-[#E9A84D]/30 text-[#F0BF72] bg-[#E9A84D]/8",
+const STATE_CONFIG = {
+  safe:              { dot: "bg-[#4DE8B0]", badge: "border-[#4DE8B0]/25 bg-[#4DE8B0]/8 text-[#4DE8B0]",    label: "Safe",         pulse: false },
+  sensitive:         { dot: "bg-[#7BAEFF]", badge: "border-[#7BAEFF]/25 bg-[#7BAEFF]/8 text-[#7BAEFF]",    label: "Sensitive",    pulse: false },
+  needs_verification:{ dot: "bg-[#F0BF72]", badge: "border-[#F0BF72]/25 bg-[#F0BF72]/8 text-[#F0BF72]",    label: "Verify first", pulse: true  },
+  blocked:           { dot: "bg-[#FF7B5C]", badge: "border-[#FF7B5C]/25 bg-[#FF7B5C]/8 text-[#FF7B5C]",    label: "Blocked",      pulse: true  },
 };
 
 export function RiskMap({ items }: { items: RiskMapItem[] }) {
   return (
-    <section className="surface-panel rounded-xl p-5">
-      <p className="font-mono text-[11px] uppercase tracking-[0.09em] text-[#6D7B8C]">Risk map</p>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {items.map((item) => (
-          <div key={item.system} className="rounded-lg border border-white/8 bg-[#0E151E] p-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-medium capitalize text-[#E4EBF3]">{item.system}</p>
-              <span className={`rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${styles[item.state]}`}>
-                {item.state.replace("_", " ")}
+    <section className="surface-panel rounded-xl">
+      <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">System risk map</p>
+        <span className="font-mono text-[10px] text-[#2E2E50]">{items.length} systems</span>
+      </div>
+      <div className="divide-y divide-white/8">
+        {items.map((item, i) => {
+          const cfg = STATE_CONFIG[item.state];
+          return (
+            <motion.div
+              key={item.system}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, delay: i * 0.04 }}
+              className="flex items-center gap-4 px-5 py-3.5"
+            >
+              <div className="relative size-2 shrink-0">
+                <div className={`size-2 rounded-full ${cfg.dot}`} />
+                {cfg.pulse && (
+                  <div className={`absolute inset-0 rounded-full ${cfg.dot} animate-ping opacity-40`} />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold capitalize text-[#EDEEFF]">{item.system}</p>
+                <p className="text-[12px] text-[#4D5070]">{item.note}</p>
+              </div>
+              <span className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${cfg.badge}`}>
+                {cfg.label}
               </span>
-            </div>
-            <p className="mt-1 text-[12px] text-[#9AA7B6]">{item.note}</p>
-          </div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );

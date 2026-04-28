@@ -1,4 +1,4 @@
-﻿import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type RunStatus =
   | "guarded"
@@ -13,29 +13,29 @@ type RunStatus =
   | "checked";
 
 const LABELS: Record<RunStatus, string> = {
-  guarded: "Guarded",
-  split_required: "Split required",
-  partial: "Partial",
-  needs_verification: "Needs verification",
+  guarded:             "Guarded",
+  split_required:      "Split required",
+  partial:             "Partial",
+  needs_verification:  "Needs verification",
   no_changes_detected: "No changes",
-  passed: "Passed",
-  drift_detected: "Drift detected",
-  blocked: "Blocked",
-  executed: "Executed",
-  checked: "Checked",
+  passed:              "Passed",
+  drift_detected:      "Drift detected",
+  blocked:             "Blocked",
+  executed:            "Executed",
+  checked:             "Checked",
 };
 
 const STYLES: Record<RunStatus, string> = {
-  guarded: "border-white/10 text-[#A5B1BF] bg-white/[0.03]",
-  split_required: "border-[#FF785A]/35 text-[#FF9C88] bg-[#FF785A]/10",
-  partial: "border-[#E9A84D]/35 text-[#F0BF72] bg-[#E9A84D]/10",
-  needs_verification: "border-[#E9A84D]/35 text-[#F0BF72] bg-[#E9A84D]/10",
-  no_changes_detected: "border-[#E9A84D]/35 text-[#F0BF72] bg-[#E9A84D]/10",
-  passed: "border-[#7EE7D8]/35 text-[#9AEFE3] bg-[#7EE7D8]/10",
-  drift_detected: "border-[#FF785A]/35 text-[#FF9C88] bg-[#FF785A]/10",
-  blocked: "border-[#FF785A]/35 text-[#FF9C88] bg-[#FF785A]/10",
-  executed: "border-white/10 text-[#A5B1BF] bg-white/[0.03]",
-  checked: "border-white/10 text-[#A5B1BF] bg-white/[0.03]",
+  guarded:             "border-[#7C6DFA]/30 text-[#9E91FF] bg-[#7C6DFA]/8",
+  split_required:      "border-[#FF7B5C]/30 text-[#FF9C80] bg-[#FF7B5C]/8",
+  partial:             "border-[#F0BF72]/30 text-[#F0BF72] bg-[#F0BF72]/8",
+  needs_verification:  "border-[#F0BF72]/30 text-[#F0BF72] bg-[#F0BF72]/8",
+  no_changes_detected: "border-[#F0BF72]/30 text-[#F0BF72] bg-[#F0BF72]/8",
+  passed:              "border-[#4DE8B0]/30 text-[#4DE8B0] bg-[#4DE8B0]/8",
+  drift_detected:      "border-[#FF7B5C]/30 text-[#FF9C80] bg-[#FF7B5C]/8",
+  blocked:             "border-[#FF7B5C]/30 text-[#FF9C80] bg-[#FF7B5C]/8",
+  executed:            "border-white/10 text-[#A8AACC] bg-white/[0.04]",
+  checked:             "border-white/10 text-[#A8AACC] bg-white/[0.04]",
 };
 
 interface RunStatusBadgeProps {
@@ -50,7 +50,7 @@ export function RunStatusBadge({ status, className }: RunStatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 py-1 font-mono text-[11px] uppercase tracking-[0.08em]",
+        "inline-flex items-center rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em]",
         STYLES[safe],
         className
       )}

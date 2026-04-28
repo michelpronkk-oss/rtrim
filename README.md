@@ -75,6 +75,8 @@ runtrim check
 runtrim watch
 runtrim watch --once
 runtrim watch --strict
+runtrim continue
+runtrim continue --reason usage_limit
 runtrim memory
 runtrim memory --prompt
 runtrim report
@@ -161,6 +163,18 @@ runtrim watch
 runtrim watch --once
 runtrim watch --strict
 ```
+
+## Continuation recovery
+
+Use `runtrim continue` when an agent stops mid-task due to usage limits, credits, context limits, provider errors, or manual handoff.
+
+```bash
+runtrim continue --reason usage_limit
+runtrim continue --reason context_limit --agent codex
+runtrim continue --reason manual_handoff --print
+```
+
+RunTrim creates `.runtrim/continuation-prompt.md`, copies it to clipboard, and keeps continuation metadata in local memory/config.
 
 ## Sync V0 (private beta)
 

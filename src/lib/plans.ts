@@ -49,7 +49,7 @@ export const plans: Record<PlanId, Plan> = {
     name: "Pro",
     priceLabel: "$12/month",
     summary: "For solo builders using Claude, Codex or Cursor daily.",
-    ctaLabel: "Join early access",
+    ctaLabel: "Get started",
     features: ["cloudSync", "cloudHistory", "shareCards", "weeklyReport"],
     bullets: [
       "Cloud run history",
@@ -65,7 +65,7 @@ export const plans: Record<PlanId, Plan> = {
     name: "Builder",
     priceLabel: "$29/month",
     summary: "For serious builders running multiple AI-assisted projects.",
-    ctaLabel: "Join early access",
+    ctaLabel: "Get started",
     badge: "Recommended",
     features: [
       "cloudSync",

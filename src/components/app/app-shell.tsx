@@ -1,12 +1,13 @@
-﻿import Link from "next/link";
-import { LayoutGrid, FolderKanban, History, Download, ShieldCheck, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { LayoutGrid, FolderKanban, History, Download, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/app", label: "Overview", icon: LayoutGrid, hint: "Where you left off" },
-  { href: "/app/projects", label: "Projects", icon: FolderKanban, hint: "Project memory" },
-  { href: "/app/runs", label: "Runs", icon: History, hint: "Investigation log" },
-  { href: "/app/install", label: "Install", icon: Download, hint: "Operator workflow" },
+  { href: "/app",          label: "Overview",  icon: LayoutGrid   },
+  { href: "/app/projects", label: "Projects",  icon: FolderKanban },
+  { href: "/app/runs",     label: "Runs",      icon: History      },
+  { href: "/app/settings", label: "Settings",  icon: SlidersHorizontal },
+  { href: "/app/install",  label: "Install",   icon: Download     },
 ];
 
 interface AppShellProps {
@@ -16,34 +17,32 @@ interface AppShellProps {
 
 export function AppShell({ children, active }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-[#080D12]">
-      <div className="mx-auto flex min-h-screen max-w-[1280px]">
-        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col border-r border-white/8 bg-[#0B1118] md:flex">
-          <div className="border-b border-white/8 px-5 py-5">
-            <Link href="/" className="flex items-center gap-2.5">
-              <span className="rounded-md border border-[#7EE7D8]/30 bg-[#7EE7D8]/10 p-1.5 text-[#7EE7D8]">
-                <ShieldCheck className="size-3.5" />
+    <div className="min-h-screen bg-[#07071A]">
+      <div className="flex min-h-screen">
+
+        {/* Sidebar */}
+        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-white/8 bg-[#08081E] md:flex">
+
+          {/* Wordmark */}
+          <div className="flex items-center gap-2.5 border-b border-white/8 px-5 py-5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded-md" />
+            <span className="text-[14px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+          </div>
+
+          {/* Workspace */}
+          <div className="border-b border-white/8 px-4 py-3">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0E1027] px-3 py-2.5">
+              <div className="size-1.5 rounded-full bg-[#7C6DFA]" />
+              <span className="text-[13px] font-semibold text-[#EDEEFF]">rtrim</span>
+              <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[#7F84AE]">
+                local
               </span>
-              <div>
-                <p className="text-sm font-semibold text-[#F5F7FA]">RunTrim Console</p>
-                <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7D8A99]">CLI-first agent control</p>
-              </div>
-            </Link>
-          </div>
-
-          <div className="border-b border-white/8 px-5 py-4">
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#6D7B8C]">Workspace</p>
-            <div className="mt-2 rounded-lg border border-white/8 bg-[#0E151E] px-3 py-2.5">
-              <p className="text-[13px] font-medium text-[#E4EBF3]">rtrim</p>
-              <p className="mt-0.5 text-[12px] text-[#97A5B5]">Example local project state</p>
-            </div>
-            <div className="mt-2 flex items-center gap-2 text-[12px] text-[#97A5B5]">
-              <RefreshCw className="size-3.5" />
-              <span>Sync status shown per page</span>
             </div>
           </div>
 
-          <nav className="flex-1 px-3 py-3">
+          {/* Nav */}
+          <nav className="flex-1 space-y-1 px-3 py-3">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = active === item.href;
@@ -52,52 +51,57 @@ export function AppShell({ children, active }: AppShellProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "mb-1 block rounded-lg border px-3 py-2.5 transition-colors",
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors duration-100",
                     isActive
-                      ? "border-[#7EE7D8]/25 bg-[#7EE7D8]/8"
-                      : "border-transparent hover:border-white/10 hover:bg-white/[0.02]"
+                      ? "border border-[#7C6DFA]/25 bg-[#7C6DFA]/12 text-[#D3CBFF]"
+                      : "border border-transparent text-[#7F84AE] hover:border-white/8 hover:bg-white/5 hover:text-[#C3C6E8]"
                   )}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={cn("size-3.5", isActive ? "text-[#7EE7D8]" : "text-[#8E9CAC]")} />
-                    <span className={cn("text-[13px] font-medium", isActive ? "text-[#E7F4F2]" : "text-[#A3B0BF]")}>{item.label}</span>
-                  </div>
-                  <p className="mt-1 pl-6 text-[11px] text-[#6D7B8C]">{item.hint}</p>
+                  <Icon className={cn("size-4 shrink-0", isActive ? "text-[#B2A7FF]" : "text-[#6A6F96]")} />
+                  {item.label}
                 </Link>
               );
             })}
           </nav>
 
+          {/* Footer */}
           <div className="border-t border-white/8 px-5 py-4">
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#6D7B8C]">Privacy</p>
-            <p className="mt-1 text-[12px] leading-5 text-[#97A5B5]">
-              Local-first by default. CLI metadata can sync in private beta. Source code is not uploaded.
+            <p className="text-[11px] leading-relaxed text-[#6E7399]">
+              Local-first control layer.
+              <br />
+              Sync is optional metadata only.
             </p>
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0B1118]/90 px-4 py-3 backdrop-blur md:hidden">
-            <div className="flex items-center justify-between gap-3">
-              <Link href="/" className="text-sm font-semibold text-[#F5F7FA]">RunTrim</Link>
-              <nav className="flex gap-1 overflow-x-auto">
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "whitespace-nowrap rounded-md px-2 py-1 text-[12px]",
-                      active === item.href ? "bg-[#7EE7D8]/10 text-[#9AEFE3]" : "text-[#9AA7B6]"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+        {/* Main content */}
+        <div className="min-w-0 flex-1 bg-[#0A0A1F]">
+          {/* Mobile nav */}
+          <header className="flex items-center justify-between border-b border-white/8 bg-[#08081E]/90 px-5 py-4 backdrop-blur md:hidden">
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.svg" alt="" className="size-5 rounded" />
+              <span className="text-sm font-bold text-[#EDEEFF]">RunTrim</span>
             </div>
+            <nav className="flex gap-1">
+              {NAV_ITEMS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "rounded px-2.5 py-1.5 text-[12px] font-medium transition-colors",
+                    active === item.href
+                      ? "bg-[#7C6DFA]/12 text-[#C4B8FF]"
+                      : "text-[#4D5070] hover:text-[#9699BE]"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </header>
 
-          <main className="px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+          <main className="px-5 py-7 sm:px-8 sm:py-10 xl:px-10">{children}</main>
         </div>
       </div>
     </div>

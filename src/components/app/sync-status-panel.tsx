@@ -1,4 +1,6 @@
-﻿interface SyncStatusPanelProps {
+import { Cloud, CloudOff } from "lucide-react";
+
+interface SyncStatusPanelProps {
   connected: boolean;
   lastSynced?: string;
   syncedRuns?: number;
@@ -7,26 +9,40 @@
 export function SyncStatusPanel({ connected, lastSynced, syncedRuns }: SyncStatusPanelProps) {
   return (
     <section className="surface-panel rounded-xl p-5">
-      <p className="font-mono text-[11px] uppercase tracking-[0.09em] text-[#6D7B8C]">Sync status</p>
-      <p className="mt-2 text-sm font-semibold text-[#E4EBF3]">{connected ? "Synced metadata available" : "No synced project yet"}</p>
-      <p className="mt-1 text-[13px] text-[#9AA7B6]">
-        {connected
-          ? "The CLI does the work locally. Sync uploads metadata only, not source code."
-          : "Local memory is available now. Cloud sync is private beta."}
-      </p>
-      <div className="mt-3 space-y-1 text-[12px] text-[#A5B1BF]">
-        {connected ? (
-          <>
-            <p>Last synced: {lastSynced ?? "Unknown"}</p>
-            <p>Synced runs: {syncedRuns ?? 0}</p>
-          </>
-        ) : (
-          <>
-            <p>Run runtrim auth set &lt;token&gt;</p>
-            <p>Then run runtrim sync</p>
-          </>
-        )}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Sync status</p>
+          <p className="mt-2 text-[14px] font-semibold text-[#EDEEFF]">
+            {connected ? "Metadata synced" : "Local only"}
+          </p>
+          <p className="mt-1.5 text-[12px] leading-5 text-[#6870A0]">
+            {connected
+              ? "Run metadata is synced. Source code is never uploaded."
+              : "Local memory is available now. Cloud sync is coming."}
+          </p>
+        </div>
+        <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg border ${connected ? "border-[#4DE8B0]/25 bg-[#4DE8B0]/8 text-[#4DE8B0]" : "border-white/8 bg-white/4 text-[#4D5070]"}`}>
+          {connected ? <Cloud className="size-4" /> : <CloudOff className="size-4" />}
+        </div>
       </div>
+
+      {connected ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded border border-white/8 bg-[#090918] px-3 py-2">
+            <p className="font-mono text-[10px] uppercase text-[#4D5070]">Last synced</p>
+            <p className="mt-0.5 text-[12px] text-[#C0C2E8]">{lastSynced ?? "Unknown"}</p>
+          </div>
+          <div className="rounded border border-white/8 bg-[#090918] px-3 py-2">
+            <p className="font-mono text-[10px] uppercase text-[#4D5070]">Runs synced</p>
+            <p className="mt-0.5 text-[12px] text-[#C0C2E8]">{syncedRuns ?? 0}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-1 rounded border border-white/8 bg-[#090918] p-3 font-mono text-[12px] text-[#4D5070]">
+          <p>runtrim auth set &lt;token&gt;</p>
+          <p>runtrim sync</p>
+        </div>
+      )}
     </section>
   );
 }

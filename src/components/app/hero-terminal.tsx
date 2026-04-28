@@ -1,110 +1,106 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
-const COMMAND = 'npm run runtrim -- run "fix checkout redirect"';
-const TYPE_SPEED = 36;
-
-type LT = "prompt" | "output" | "comment" | "accent" | "dim" | "header";
-interface Line { type?: LT; text: string; }
-
-const LINE_STYLES: Record<LT, string> = {
-  prompt:  "text-[#0DDB9E]",
-  output:  "text-[#C4C4D4]",
-  comment: "text-[#4A4E72]",
-  accent:  "text-[#0DDB9E] font-semibold",
-  dim:     "text-[#4A4E72]",
-  header:  "text-[#8888A8] font-semibold tracking-[0.08em] text-[11px] uppercase",
-};
-
-const OUTPUT: Line[] = [
-  { type: "dim",    text: "  auditing task..." },
-  { text: "" },
-  { type: "dim",    text: "  score         47 / 100" },
-  { type: "dim",    text: "  systems found  auth  middleware  billing" },
-  { type: "accent", text: "  risk          HIGH" },
-  { type: "accent", text: "  decision      SPLIT REQUIRED" },
-  { text: "" },
-  { type: "header", text: "next safe prompt" },
-  { type: "output", text: '  "Audit auth flow only. No edits."' },
-  { text: "" },
-  { type: "dim",    text: "  ~27,000 tokens saved from one blocked run." },
-];
+const VIEWS = [
+  {
+    id: "history",
+    label: "runtrim history",
+    command: "$ runtrim history",
+    lines: [
+      "projects tracked: 4",
+      "runs captured: 47",
+      "prompts reused: 23",
+      "",
+      "latest runs",
+      "run_047  fix checkout redirect                 partial",
+      "run_046  auth audit and middleware review      passed",
+      "run_045  billing and schema rewrite attempt    split_required",
+    ],
+  },
+  {
+    id: "savings",
+    label: "runtrim savings",
+    command: "$ runtrim savings",
+    lines: [
+      "projects tracked: 4",
+      "runs captured: 47",
+      "prompts reused: 23",
+      "est. tokens saved: 847,000",
+      "est. cost saved: $4.12",
+      "",
+      "note: estimates are derived from local run history",
+    ],
+  },
+  {
+    id: "report",
+    label: "runtrim report",
+    command: "$ runtrim report",
+    lines: [
+      "status: partial",
+      "verification debt: 4 runs",
+      "watch warnings: 2",
+      "next safe action: runtrim check",
+      "",
+      "memory layer",
+      "prompt history: active",
+      "reusable context: active",
+    ],
+  },
+] as const;
 
 export function HeroTerminal() {
-  const [charCount,    setCharCount]    = useState(0);
-  const [outputCount,  setOutputCount]  = useState(0);
-  const [phase,        setPhase]        = useState<"typing" | "pause" | "output" | "done">("typing");
-  const [cursorOn,     setCursorOn]     = useState(true);
-
-  // Type command
-  useEffect(() => {
-    if (phase !== "typing") return;
-    if (charCount >= COMMAND.length) { setPhase("pause"); return; }
-    const t = setTimeout(() => setCharCount(c => c + 1), TYPE_SPEED);
-    return () => clearTimeout(t);
-  }, [charCount, phase]);
-
-  // Hold after typing
-  useEffect(() => {
-    if (phase !== "pause") return;
-    const t = setTimeout(() => setPhase("output"), 420);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  // Reveal output lines
-  useEffect(() => {
-    if (phase !== "output") return;
-    if (outputCount >= OUTPUT.length) { setPhase("done"); return; }
-    const t = setTimeout(() => setOutputCount(c => c + 1), 72);
-    return () => clearTimeout(t);
-  }, [phase, outputCount]);
-
-  // Cursor blink
-  useEffect(() => {
-    const t = setInterval(() => setCursorOn(v => !v), 530);
-    return () => clearInterval(t);
-  }, []);
-
-  const showCursor = phase === "typing" || phase === "pause";
+  const [selected, setSelected] = useState<(typeof VIEWS)[number]["id"]>("history");
+  const active = useMemo(() => VIEWS.find((v) => v.id === selected) ?? VIEWS[0], [selected]);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/7 bg-[#06070F]">
-      {/* Title bar */}
-      <div className="flex items-center gap-3 border-b border-white/7 px-4 py-2.5">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#090D16] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-2.5">
         <div className="flex gap-1.5">
           <span className="size-2.5 rounded-full bg-white/10" />
           <span className="size-2.5 rounded-full bg-white/7"  />
           <span className="size-2.5 rounded-full bg-white/4"  />
         </div>
-        <span className="font-mono text-[11px] text-[#2E3050]">runtrim</span>
+        <span className="font-mono text-[11px] text-[#4F5D72]">runtrim preview</span>
       </div>
-
-      <div className="p-5 font-mono text-[13px] leading-[1.8]">
-        {/* Comment */}
-        <div className="text-[#4A4E72]"># guard a task before the agent runs</div>
-        <div className="h-2.5" />
-
-        {/* Prompt with typing cursor */}
-        <div className="text-[#0DDB9E]">
-          $ {COMMAND.slice(0, charCount)}
-          {showCursor && (
-            <span
+      <div className="border-b border-white/10 px-4 py-2">
+        <div className="flex flex-wrap gap-1.5">
+          {VIEWS.map((view) => (
+            <button
+              key={view.id}
+              onClick={() => setSelected(view.id)}
               className={cn(
-                "inline-block w-[0.5em] h-[0.85em] align-middle bg-[#0DDB9E] ml-px",
-                cursorOn ? "opacity-100" : "opacity-0"
+                "rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] transition-colors",
+                selected === view.id
+                  ? "border-[#7C6DFA]/40 bg-[#7C6DFA]/15 text-[#C4B8FF]"
+                  : "border-white/10 text-[#6F7F96] hover:border-white/20 hover:text-[#A7B4C8]"
               )}
-            />
-          )}
+            >
+              {view.label}
+            </button>
+          ))}
         </div>
-
-        {/* Output lines revealed one by one */}
-        {OUTPUT.slice(0, outputCount).map((line, i) => {
-          if (line.text === "") return <div key={i} className="h-2.5" />;
+      </div>
+      <div className="p-5 font-mono text-[12px] leading-[1.8]">
+        <div className="mb-2 text-[#9E91FF]">{active.command}</div>
+        {active.lines.map((line, i) => {
+          if (line === "") return <div key={i} className="h-2.5" />;
+          const isNote = line.startsWith("note:");
+          const isHeading = line === "latest runs" || line === "memory layer";
           return (
-            <div key={i} className={cn("whitespace-pre-wrap", LINE_STYLES[line.type ?? "output"])}>
-              {line.text}
+            <div
+              key={i}
+              className={cn(
+                "whitespace-pre-wrap",
+                isHeading
+                  ? "pt-1 uppercase tracking-[0.08em] text-[#6F7F96]"
+                  : isNote
+                  ? "text-[#5C6B82]"
+                  : "text-[#C8D4DF]"
+              )}
+            >
+              {line}
             </div>
           );
         })}

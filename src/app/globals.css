@@ -48,97 +48,139 @@
 
 :root,
 .dark {
-  /* Midnight navy base — no blue-dark template feel */
-  --background:        #07080F;
-  --foreground:        #EEEEF2;
-  --card:              #0D0E1C;
-  --card-foreground:   #EEEEF2;
-  --popover:           #0D0E1C;
-  --popover-foreground:#EEEEF2;
+  /* Deep violet-black — matches the logo */
+  --background:          #07071A;
+  --foreground:          #EDEEFF;
+  --card:                #0D0C22;
+  --card-foreground:     #EDEEFF;
+  --popover:             #0D0C22;
+  --popover-foreground:  #EDEEFF;
 
-  /* Electric teal — CLI cursor / brand signal */
-  --primary:           #0DDB9E;
-  --primary-foreground:#02060F;
+  /* Brand violet — mid-point of the logo gradient */
+  --primary:             #7C6DFA;
+  --primary-foreground:  #02020E;
 
-  --secondary:         #1A1B2E;
-  --secondary-foreground: #AAAAC0;
+  --secondary:           #131230;
+  --secondary-foreground:#A8AACC;
 
-  --muted:             #0A0B18;
-  --muted-foreground:  #4A4E72;
+  --muted:               #090918;
+  --muted-foreground:    #4D5070;
 
-  --accent:            #0DDB9E;
-  --accent-foreground: #02060F;
+  --accent:              #7C6DFA;
+  --accent-foreground:   #02020E;
 
-  --destructive:       #FF4444;
+  --destructive:         #FF5C5C;
 
-  --border:            rgba(255, 255, 255, 0.07);
-  --input:             rgba(255, 255, 255, 0.08);
-  --ring:              rgba(13, 219, 158, 0.30);
+  --border:              rgba(255, 255, 255, 0.08);
+  --input:               rgba(255, 255, 255, 0.08);
+  --ring:                rgba(124, 109, 250, 0.30);
 
-  --chart-1:  #0DDB9E;
-  --chart-2:  #5B8BFF;
-  --chart-3:  #FFA94D;
-  --chart-4:  #FF4444;
-  --chart-5:  #3C3E58;
+  --chart-1: #7C6DFA;
+  --chart-2: #5B8BFF;
+  --chart-3: #F0BF72;
+  --chart-4: #FF7B5C;
+  --chart-5: #3C3E60;
 
   --radius: 0.5rem;
 
-  --sidebar:              #07080F;
-  --sidebar-foreground:   #AAAAC0;
-  --sidebar-primary:      #0DDB9E;
-  --sidebar-primary-foreground: #02060F;
-  --sidebar-accent:       #1A1B2E;
-  --sidebar-accent-foreground: #EEEEF2;
-  --sidebar-border:       rgba(255, 255, 255, 0.07);
-  --sidebar-ring:         rgba(13, 219, 158, 0.30);
+  --sidebar:                    #08081E;
+  --sidebar-foreground:         #A8AACC;
+  --sidebar-primary:            #7C6DFA;
+  --sidebar-primary-foreground: #02020E;
+  --sidebar-accent:             #131230;
+  --sidebar-accent-foreground:  #EDEEFF;
+  --sidebar-border:             rgba(255, 255, 255, 0.08);
+  --sidebar-ring:               rgba(124, 109, 250, 0.30);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  html {
-    @apply font-sans;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-
+  * { @apply border-border outline-ring/50; }
+  html { @apply font-sans; }
+  body { @apply bg-background text-foreground; }
   ::selection {
-    background: rgba(13, 219, 158, 0.20);
-    color: #EEEEF2;
+    background: rgba(124, 109, 250, 0.22);
+    color: #EDEEFF;
   }
 }
 
 @layer utilities {
   .surface-panel {
-    background: #0D0E1C;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: #0D0C22;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
-
   .surface-raised {
-    background: #1A1B2E;
+    background: #131230;
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  /* Hero depth glow — teal, subtle, ours */
-  .hero-glow {
-    background: radial-gradient(
-      ellipse 75% 45% at 50% 110%,
-      rgba(13, 219, 158, 0.13) 0%,
-      rgba(13, 219, 158, 0.04) 50%,
-      transparent 75%
-    );
+  /* Brand accent utilities */
+  /* Solid gradient — only for decorative line accents (1px borders etc.) */
+  .brand-gradient {
+    background: linear-gradient(135deg, #7C6DFA 0%, #9966FF 100%);
+  }
+  /* Text gradient — ONLY use on large display headings (3rem+) */
+  .brand-gradient-text {
+    background: linear-gradient(135deg, #C4B8FF 0%, #9E91FF 55%, #7C6DFA 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  /* Faint noise texture for depth */
+  /* Hero glows — violet, not teal */
+  .hero-glow {
+    background: radial-gradient(
+      ellipse 70% 42% at 50% 110%,
+      rgba(124, 109, 250, 0.15) 0%,
+      rgba(91, 139, 255, 0.06) 45%,
+      transparent 72%
+    );
+  }
   .hero-ring {
     background: radial-gradient(
-      ellipse 60% 30% at 50% 105%,
-      rgba(91, 139, 255, 0.06) 0%,
+      ellipse 50% 25% at 50% 110%,
+      rgba(112, 64, 240, 0.07) 0%,
       transparent 65%
     );
   }
+
+  /* Subtle dot grid — fades out at edges via mask */
+  .hero-dot-grid {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 38px 38px;
+    mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, black 20%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, black 20%, transparent 100%);
+  }
+
+  .hero-tech-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(to bottom, black 30%, rgba(0, 0, 0, 0.45) 75%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 30%, rgba(0, 0, 0, 0.45) 75%, transparent 100%);
+  }
+
+  /* Glow breathe — very slow */
+  .hero-glow-animate {
+    animation: rt-glow-pulse 8s ease-in-out infinite;
+  }
+}
+
+/* Particle twinkle */
+@keyframes rt-twinkle {
+  0%, 100% { opacity: 0.02; transform: scale(0.9); }
+  50%       { opacity: 0.13; transform: scale(1.3); }
+}
+
+/* Glow breathe */
+@keyframes rt-glow-pulse {
+  0%, 100% { opacity: 0.75; }
+  50%       { opacity: 1;    }
+}
+
+/* Four-point star rotation — very slow */
+@keyframes rt-star-spin {
+  from { transform: rotate(0deg)   scale(1);   opacity: 0.25; }
+  50%  { transform: rotate(45deg)  scale(1.15); opacity: 0.45; }
+  to   { transform: rotate(90deg)  scale(1);   opacity: 0.25; }
 }

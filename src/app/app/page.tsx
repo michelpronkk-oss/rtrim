@@ -1,6 +1,6 @@
-﻿import { AppShell } from "@/components/app/app-shell";
+﻿import Link from "next/link";
+import { AppShell } from "@/components/app/app-shell";
 import { ContinueCard } from "@/components/app/continue-card";
-import { IntelligenceMetric } from "@/components/app/intelligence-metric";
 import { ProjectMemoryPanel } from "@/components/app/project-memory-panel";
 import { RiskMap } from "@/components/app/risk-map";
 import { RunDecisionTimeline } from "@/components/app/run-decision-timeline";
@@ -121,91 +121,112 @@ export default async function AppPage() {
 
   const memoryProtected = ["auth", "middleware", "database schema", "env/secrets", "billing", "webhooks"];
 
+  const riskItems = [
+    { system: "auth",        state: mapStatusToRiskState(lastStatus), note: "Isolate auth scope before edits."              },
+    { system: "middleware",  state: "sensitive" as const,             note: "Changes affect all requests."                  },
+    { system: "database",    state: "sensitive" as const,             note: "Schema changes require migration review."       },
+    { system: "billing",     state: mapStatusToRiskState(lastStatus), note: "Treat billing as protected surface."           },
+    { system: "env/secrets", state: "blocked" as const,               note: "Never read or upload secrets."                  },
+    { system: "webhooks",    state: "needs_verification" as const,    note: "Review event flow before touching handlers."   },
+  ];
+
+  const syncedAt = synced?.project?.updated_at
+    ? new Date(synced.project.updated_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : undefined;
+
+  const KPI_METRICS = [
+    { label: "Runs guarded",       value: String(guardedCount),                    color: "text-[#9E91FF]" },
+    { label: "Mega-runs blocked",  value: String(blockedCount),                    color: "text-[#FF7B5C]" },
+    { label: "Est. tokens trimmed",value: `~${tokens.toLocaleString("en-US")}`,   color: "text-[#9E91FF]" },
+    { label: "Contract score",     value: "75/100",                                color: "text-[#7BAEFF]" },
+    { label: "Verification debt",  value: String(partialCount),                    color: "text-[#F0BF72]" },
+    { label: "Drift detections",   value: String(driftCount),                      color: driftCount > 0 ? "text-[#FF7B5C]" : "text-[#EDEEFF]" },
+  ];
+
   return (
     <AppShell active="/app">
-      <div className="space-y-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="mx-auto w-full max-w-[1340px] space-y-7">
+
+        {/* ── Page header ─────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[#F5F7FA]">AI run intelligence console</h1>
-            <p className="mt-1 text-[13px] text-[#9AA7B6]">The CLI does the work locally. The dashboard is the memory layer.</p>
+            <h1 className="text-[22px] font-bold tracking-[-0.03em] text-[#EDEEFF]">Overview</h1>
+            <p className="mt-0.5 text-[13px] text-[#4D5070]">CLI does the work locally. This is the memory layer.</p>
+          </div>
+          {watchWarningCount > 0 && (
+            <span className="flex items-center gap-1.5 rounded border border-[#F0BF72]/20 bg-[#F0BF72]/6 px-2.5 py-1.5 font-mono text-[11px] text-[#F0BF72]">
+              <span className="size-1.5 rounded-full bg-[#F0BF72]" />
+              {watchWarningCount} watch {watchWarningCount === 1 ? "warning" : "warnings"}
+            </span>
+          )}
+        </div>
+
+        {/* ── KPI strip ───────────────────────────────────── */}
+        <div className="overflow-hidden rounded-xl border border-white/8">
+          <div className="grid grid-cols-2 gap-px bg-white/8 sm:grid-cols-3 xl:grid-cols-6">
+            {KPI_METRICS.map(({ label, value, color }) => (
+              <div key={label} className="bg-[#0D0C22] px-5 py-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">{label}</p>
+                <p className={`mt-2.5 text-3xl font-bold tabular-nums tracking-tight ${color}`}>{value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
+        {/* ── Continue card ───────────────────────────────── */}
         <ContinueCard {...continueData} />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <IntelligenceMetric label="Runs guarded" value={String(guardedCount)} interpretation="Guard rails applied before agent execution." />
-          <IntelligenceMetric label="Mega-runs blocked" value={String(blockedCount)} interpretation="Blocked before unsafe cross-system edits." tone="coral" />
-          <IntelligenceMetric label="Estimated tokens trimmed" value={`~${tokens.toLocaleString("en-US")}`} interpretation="Based on local run scoring and risk reduction." tone="mint" />
-          <IntelligenceMetric label="Avg contract score" value="75/100" interpretation="Contract quality across recent runs." />
-          <IntelligenceMetric label="Verification debt" value={String(partialCount)} interpretation="Runs still missing proof sections." tone="amber" />
-          <IntelligenceMetric label="Drift risk" value={String(driftCount)} interpretation="Runs with out-of-scope file movement." tone={driftCount > 0 ? "coral" : "neutral"} />
-        </div>
+        {/* ── Main two-column ─────────────────────────────── */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
 
-        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <RiskMap
-            items={[
-              { system: "auth", state: mapStatusToRiskState(lastStatus), note: "Isolate auth scope before edits." },
-              { system: "middleware", state: "sensitive", note: "Changes affect all requests." },
-              { system: "database", state: "sensitive", note: "Schema changes require migration review." },
-              { system: "billing", state: mapStatusToRiskState(lastStatus), note: "Treat billing as protected surface." },
-              { system: "env/secrets", state: "blocked", note: "Never read or upload secrets." },
-              { system: "webhooks", state: "needs_verification", note: "Review event flow before touching handlers." },
-            ]}
-          />
-          <SyncStatusPanel
-            connected={connected}
-            lastSynced={
-              synced?.project?.updated_at
-                ? new Date(synced.project.updated_at).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : undefined
-            }
-            syncedRuns={runs.length}
-          />
-        </div>
-
-        {!connected ? (
-          <section className="surface-panel rounded-xl p-5">
-            <p className="font-mono text-[11px] uppercase tracking-[0.09em] text-[#6D7B8C]">Sync status</p>
-            <p className="mt-2 text-[13px] text-[#D7DEE7]">No synced project yet.</p>
-            <p className="mt-2 text-[12px] text-[#9AA7B6]">Run:</p>
-            <p className="mt-1 font-mono text-[12px] text-[#9AEFE3]">runtrim auth set &lt;token&gt;</p>
-            <p className="mt-1 font-mono text-[12px] text-[#9AEFE3]">runtrim sync</p>
-            <p className="mt-3 text-[12px] text-[#9AA7B6]">RunTrim sync stores run metadata, prompts, changed file paths and status. It does not upload source code.</p>
-          </section>
-        ) : null}
-
-        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          {/* Run timeline */}
           <RunDecisionTimeline items={timelineItems.length ? timelineItems : previewTimeline} />
-          <div className="space-y-4">
-            <ProjectMemoryPanel
-              currentFocus={continueData.currentFocus}
-              protectedAreas={memoryProtected}
-              stillMissing={continueData.missingProofItems}
-              nextPrompt={continueData.nextSafePrompt}
-            />
+
+          {/* Right column: risk map + sync */}
+          <div className="flex flex-col gap-6">
+            <RiskMap items={riskItems} />
+            <SyncStatusPanel connected={connected} lastSynced={syncedAt} syncedRuns={runs.length} />
+          </div>
+        </div>
+
+        {/* ── Bottom row ──────────────────────────────────── */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <ProjectMemoryPanel
+            currentFocus={continueData.currentFocus}
+            protectedAreas={memoryProtected}
+            stillMissing={continueData.missingProofItems}
+            nextPrompt={continueData.nextSafePrompt}
+          />
+
+          <div className="flex flex-col gap-5">
             <ShareCard
               project={continueData.project}
               runsGuarded={guardedCount}
               estimatedTokens={`~${tokens.toLocaleString("en-US")}`}
-              estimatedDollars={`~$${standard.toFixed(2)} standard / ~$${expensive.toFixed(2)} expensive`}
+              estimatedDollars={`~$${standard.toFixed(2)}`}
               riskReduction="45"
             />
-            <section className="surface-panel rounded-xl p-5">
-              <p className="font-mono text-[11px] uppercase tracking-[0.09em] text-[#6D7B8C]">Plan</p>
-              <p className="mt-2 text-[14px] font-semibold text-[#F5F7FA]">
-                {currentPlan.name} <span className="text-[#9AEFE3]">{currentPlan.priceLabel}</span>
-              </p>
-              <p className="mt-1 text-[12px] text-[#9AA7B6]">Local CLI remains free. Cloud sync and hosted history are planned paid features.</p>
-              <p className="mt-2 text-[12px] text-[#F0BF72]">Watch warnings: {watchWarningCount}</p>
-            </section>
+            <div className="surface-panel rounded-xl p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Plan</p>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <p className="text-[15px] font-bold text-[#EDEEFF]">{currentPlan.name}</p>
+                    <span className="text-[13px] font-semibold text-[#9E91FF]">{currentPlan.priceLabel}</span>
+                  </div>
+                  <p className="mt-1.5 text-[12px] text-[#4D5070]">Local CLI is free. Cloud sync is coming.</p>
+                </div>
+                <Link
+                  href="/#pricing"
+                  className="shrink-0 rounded border border-white/8 px-3 py-1.5 text-[12px] text-[#6870A0] transition-colors hover:border-white/14 hover:text-[#9699BE]"
+                >
+                  View plans
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
     </AppShell>
   );

@@ -63,8 +63,8 @@ export default function InstallPage() {
             ]}
           />
           <CommandWorkflowCard
-            title="Dashboard sync private beta"
-            description="Sync metadata only. Full account auth is planned."
+            title="Dashboard sync"
+            description="Sync run metadata to the dashboard. Source code is never uploaded."
             commands={[
               "npm run runtrim -- auth set <token>",
               "npm run runtrim -- config set dashboard-url https://your-domain.com/app",

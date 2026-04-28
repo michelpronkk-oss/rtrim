@@ -25,6 +25,9 @@ export const ConfigSchema = z.object({
   baselineInitialized: z.boolean().default(false),
   lastAuditAt: z.string().optional(),
   packageManager: z.enum(["npm", "pnpm", "yarn", "bun"]).default("npm"),
+  lastContinuationReason: z.string().optional(),
+  continuationPromptPath: z.string().optional(),
+  continuationCreatedAt: z.string().optional(),
 });
 
 export type RunTrimConfig = z.infer<typeof ConfigSchema>;
