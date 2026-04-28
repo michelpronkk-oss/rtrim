@@ -6,14 +6,39 @@ import type { ContractResult } from "./run-contract";
 import type { EvaluationResult } from "./run-evaluation";
 import { getRunsDir } from "./runtrim-config";
 
+export interface AgentExecutionRecord {
+  mode: "copy" | "command";
+  command: string;
+  args: string[];
+  promptMode: "argument" | "stdin";
+  startedAt?: string;
+  endedAt?: string;
+  durationMs?: number;
+  exitCode?: number;
+  stdoutPreview?: string;
+  stderrPreview?: string;
+  outputPath?: string;
+}
+
+export interface RunEvaluationRecord extends EvaluationResult {
+  nextPrompt: string;
+}
+
 export interface RunRecord {
   id: string;
   createdAt: string;
   task: string;
   audit: AuditResult;
   contract: ContractResult;
-  evaluation?: EvaluationResult;
-  status: "guarded" | "checked" | "completed" | "blocked";
+  agentExecution?: AgentExecutionRecord;
+  evaluation?: RunEvaluationRecord;
+  status:
+    | "guarded"
+    | "checked"
+    | "completed"
+    | "blocked"
+    | "split_required"
+    | "executed";
 }
 
 export function saveRun(

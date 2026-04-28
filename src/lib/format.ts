@@ -18,6 +18,9 @@ export function formatStatus(status: string): string {
     guarded: "Guarded",
     checked: "Checked",
     completed: "Completed",
+    blocked: "Blocked",
+    split_required: "Split Required",
+    executed: "Executed",
   };
   return map[status] ?? status;
 }

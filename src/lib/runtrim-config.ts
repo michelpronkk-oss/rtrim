@@ -3,7 +3,7 @@ import path from "path";
 import { z } from "zod";
 
 export const ConfigSchema = z.object({
-  defaultAgent: z.enum(["claude", "codex", "cursor", "chatgpt"]).default("claude"),
+  defaultAgent: z.enum(["claude", "codex", "cursor", "chatgpt", "custom"]).default("claude"),
   defaultModel: z.enum(["sonnet", "opus", "haiku", "gpt-4o", "gpt-4o-mini", "o1", "o3-mini"]).default("sonnet"),
   stack: z.string().default("auto"),
   monthlyAiSpend: z.number().default(100),
@@ -14,6 +14,10 @@ export const ConfigSchema = z.object({
   maxFilesPerRun: z.number().default(5),
   auditFirst: z.boolean().default(true),
   syncEnabled: z.boolean().default(false),
+  agentMode: z.enum(["copy", "command"]).default("copy"),
+  agentCommand: z.string().default("claude"),
+  agentArgs: z.array(z.string()).default([]),
+  agentPromptMode: z.enum(["argument", "stdin"]).default("argument"),
 });
 
 export type RunTrimConfig = z.infer<typeof ConfigSchema>;
@@ -28,6 +32,10 @@ export const DEFAULT_CONFIG: RunTrimConfig = {
   maxFilesPerRun: 5,
   auditFirst: true,
   syncEnabled: false,
+  agentMode: "copy",
+  agentCommand: "claude",
+  agentArgs: [],
+  agentPromptMode: "argument",
 };
 
 export function getConfigDir(cwd = process.cwd()): string {

@@ -17,7 +17,9 @@ const GLOBAL_INSTALL = [
 const LOCAL_INSTALL = [
   { type: "comment" as const, text: "# Run locally without global install" },
   { type: "prompt" as const, text: "$ npm run runtrim -- init" },
-  { type: "prompt" as const, text: '$ npm run runtrim -- guard "fix checkout redirect"' },
+  { type: "prompt" as const, text: "$ npm run runtrim -- agent" },
+  { type: "prompt" as const, text: "$ npm run runtrim -- agent set copy" },
+  { type: "prompt" as const, text: '$ npm run runtrim -- run "fix checkout redirect"' },
   { type: "prompt" as const, text: "$ npm run runtrim -- check" },
   { type: "prompt" as const, text: "$ npm run runtrim -- report" },
 ];
@@ -49,16 +51,16 @@ const STEPS = [
     desc: "Creates .runtrim/config.json and .runtrim/runs/. Detects your stack from package.json. Adds .runtrim/runs/ to .gitignore automatically.",
   },
   {
-    title: "Guard a task",
-    cmd: 'runtrim guard "your task"',
-    localCmd: 'npm run runtrim -- guard "fix checkout redirect"',
-    desc: "Audits the raw task for waste risk. Scores it 0-100. Generates a strict guarded run contract with relevant scope, forbidden scope, stop rules, and required output format. Copies to clipboard.",
+    title: "Configure agent mode",
+    cmd: "runtrim agent",
+    localCmd: "npm run runtrim -- agent set copy",
+    desc: "Choose copy mode (default, safest) or command mode that wraps your existing local agent command.",
   },
   {
-    title: "Run your agent",
-    cmd: "Paste contract into Claude, Codex, or Cursor",
-    localCmd: null,
-    desc: "The agent receives a structured contract instead of a raw prompt. Scope drift is reduced. Token waste is reduced. The output format is enforced.",
+    title: "Guard and run",
+    cmd: 'runtrim run "your task"',
+    localCmd: 'npm run runtrim -- run "fix checkout redirect"',
+    desc: "Audits the task, blocks unsafe mega-runs, generates a guarded contract, and then either copies it (copy mode) or executes your configured local agent command (command mode).",
   },
   {
     title: "Check the result",
@@ -106,12 +108,25 @@ export default function InstallPage() {
               lines={LOCAL_INSTALL}
               copyText={[
                 "npm run runtrim -- init",
-                'npm run runtrim -- guard "fix checkout redirect"',
+                "npm run runtrim -- agent set copy",
+                'npm run runtrim -- run "fix checkout redirect"',
                 "npm run runtrim -- check",
                 "npm run runtrim -- report",
               ].join("\n")}
             />
           </div>
+        </div>
+
+        <div className="rounded-sm border border-border bg-card p-5 space-y-2">
+          <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+            Two ways to use RunTrim
+          </h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            1. Copy mode: guard the run, paste into your agent.
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            2. Command mode: RunTrim wraps your configured local agent command.
+          </p>
         </div>
 
         <div>
