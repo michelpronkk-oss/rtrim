@@ -137,7 +137,7 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden border-b border-white/8 pb-20 pt-24">
+      <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden border-b border-white/8 pb-24 pt-28 sm:pb-20 sm:pt-24">
 
         {/* ── Background stack ─────────────────────────────── */}
 
@@ -180,33 +180,32 @@ export default function Home() {
 
           {/* Badge pill */}
           <MotionFade>
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
+            <div className="mb-9 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
               <span className="size-1.5 rounded-full bg-[#7C6DFA]" />
               <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]">
-                CLI guard layer for AI coding runs
+                AI run control
               </span>
             </div>
           </MotionFade>
 
           {/* Headline */}
           <MotionFade delay={0.06}>
-            <h1 className="mx-auto max-w-[860px] text-[2.6rem] font-bold leading-[1.05] tracking-[-0.04em] text-[#EDEEFF] sm:text-[3.6rem] lg:text-[4.6rem] xl:text-[5.2rem]">
-              Stop paying twice for context your{" "}
-              <span className="brand-gradient-text">project already</span>{" "}
-              created.
+            <h1 className="mx-auto max-w-[860px] text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:text-[3.4rem] lg:text-[4.5rem] xl:text-[5rem]">
+              Stop wasting tokens on{" "}
+              <span className="brand-gradient-text">bad AI runs</span>.
             </h1>
           </MotionFade>
 
           {/* Sub */}
           <MotionFade delay={0.12}>
-            <p className="mx-auto mt-6 max-w-[540px] text-[1.05rem] leading-[1.75] text-[#7F8CA3]">
-              RunTrim tracks AI coding runs, prompt history, and reusable context so every next agent starts from what your project already knows, not from scratch.
+            <p className="mx-auto mt-7 max-w-[620px] text-[0.98rem] leading-[1.8] text-[#7F8CA3] sm:text-[1.03rem]">
+              RunTrim scopes AI coding tasks before they drift, touch sensitive systems, or restart from scratch. Guard the task, monitor the run, and keep clean continuation memory.
             </p>
           </MotionFade>
 
           {/* CTAs */}
           <MotionFade delay={0.17}>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-11 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/app/install"
                 className="group inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
@@ -220,6 +219,7 @@ export default function Home() {
               </Link>
               <EarlyAccessModalTrigger
                 label="Join Pro early access"
+                variant="pro"
                 className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-6 py-3 text-[15px] text-[#A3AEBD] backdrop-blur-sm transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
               />
             </div>
@@ -227,7 +227,7 @@ export default function Home() {
 
           {/* Trust line */}
           <MotionFade delay={0.22}>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#4A5170]">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#4A5170]">
               {["Local-first", "Agent-agnostic", "No code uploads", "Sync-ready"].map((t, i) => (
                 <span key={t} className="flex items-center gap-1.5">
                   {i > 0 && <span className="mr-2 text-[#1E2038]">·</span>}
@@ -242,7 +242,7 @@ export default function Home() {
         {/* ── Product visual ───────────────────────────────── */}
         <MotionFade
           delay={0.28}
-          className="relative z-10 mt-16 w-full max-w-4xl px-6"
+          className="relative z-10 mt-20 w-full max-w-4xl px-6 sm:mt-16"
         >
           {/* Glow behind terminal */}
           <div
@@ -266,7 +266,7 @@ export default function Home() {
         {/* ── Feature strip ────────────────────────────────── */}
         <MotionFade
           delay={0.34}
-          className="relative z-10 mt-5 w-full max-w-4xl px-6"
+          className="relative z-10 mt-7 w-full max-w-4xl px-6 sm:mt-5"
         >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -442,8 +442,68 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Mobile pricing cards */}
+          <div className="mt-8 grid gap-3 md:hidden">
+            {planOrder.map((id) => {
+              const plan = plans[id];
+              const isBuilder = id === "builder";
+              const isProOrBuilder = id === "pro" || id === "builder";
+              const mobileFeatures =
+                id === "free"
+                  ? ["Local CLI", "Local memory", "1 local repo", "Basic verification"]
+                  : id === "pro"
+                    ? ["Cloud sync", "Hosted dashboard", "Synced continuation prompts", "Savings report"]
+                    : id === "builder"
+                      ? ["Everything in Pro", "Unlimited tracked repos", "Custom project rules", "Advanced verification"]
+                      : ["Team run policies", "Shared visibility", "GitHub PR summaries (planned)", "Unlimited tracked repos"];
+
+              return (
+                <div
+                  key={id}
+                  className={`rounded-xl border border-white/10 bg-[#0C0C20] p-5 ${isBuilder ? "shadow-[0_0_0_1px_rgba(124,109,250,0.35)]" : ""}`}
+                >
+                  <p className="text-[12px] font-semibold text-[#9699BE]">{plan.name}</p>
+                  <p className={`mt-1 text-2xl font-bold tracking-tight ${isBuilder ? "text-[#9E91FF]" : "text-[#EDEEFF]"}`}>{plan.priceLabel}</p>
+                  <p className="mt-1 text-[12px] leading-5 text-[#6A7398]">{plan.summary}</p>
+                  <ul className="mt-4 space-y-2">
+                    {mobileFeatures.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2 text-[12px] text-[#B8C0D8]">
+                        <Check className="size-3.5 text-[#7C6DFA]" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4">
+                    {id === "free" ? (
+                      <Link
+                        href="/app/install"
+                        className="inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
+                      >
+                        {plan.ctaLabel}
+                      </Link>
+                    ) : isProOrBuilder ? (
+                      <EarlyAccessModalTrigger
+                        label={plan.ctaLabel}
+                        variant={isBuilder ? "builder" : "pro"}
+                        className={`${isBuilder ? "inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85" : "inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"}`}
+                      />
+                    ) : (
+                      <span className="inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] text-[#2E2E50]">
+                        {plan.ctaLabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="rounded-xl border border-white/8 bg-[#07071A] px-4 py-3">
+              <p className="text-[11px] text-[#2E2E50]">Cloud sync stores metadata only. Source code stays local.</p>
+              <p className="mt-1 text-[11px] text-[#2E2E50]">A tracked repo is one codebase with its own `.runtrim` workspace.</p>
+            </div>
+          </div>
+
           {/* Comparison table */}
-          <div className="mt-10 overflow-x-auto">
+          <div className="mt-10 hidden overflow-x-auto md:block">
             <div className="min-w-[680px]">
 
               {/* Plan headers */}
@@ -525,6 +585,7 @@ export default function Home() {
                       ) : isProOrBuilder ? (
                         <EarlyAccessModalTrigger
                           label={plan.ctaLabel}
+                          variant={isBuilder ? "builder" : "pro"}
                           className={`${isBuilder ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85" : "rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"}`}
                         />
                       ) : isSoon ? (
@@ -656,6 +717,7 @@ export default function Home() {
 
             <EarlyAccessModalTrigger
               label="Join Pro early access"
+              variant="pro"
               className="text-[13px] text-[#3E4462] transition-colors hover:text-[#9E91FF]"
             />
           </div>
@@ -755,25 +817,6 @@ export default function Home() {
               </nav>
             </div>
 
-            {/* CTA callout */}
-            <div className="space-y-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Get started</p>
-              <div
-                className="rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 p-4"
-              >
-                <p className="text-[13px] font-semibold text-[#C4B8FF]">Free during V1</p>
-                <p className="mt-1 text-[12px] text-[#5C6490] leading-snug">Install locally, no account required.</p>
-                <Link
-                  href="/app/install"
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#7C6DFA] px-4 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-                  style={{ boxShadow: "0 4px 14px rgba(124,109,250,0.30)" }}
-                >
-                  Install CLI
-                  <ArrowRight className="size-3" />
-                </Link>
-              </div>
-            </div>
-
             {/* Legal */}
             <div className="space-y-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Legal</p>
@@ -802,6 +845,25 @@ export default function Home() {
                   )
                 )}
               </nav>
+            </div>
+
+            {/* CTA callout */}
+            <div className="space-y-4 lg:justify-self-end">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Get started</p>
+              <div
+                className="rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 p-4"
+              >
+                <p className="text-[13px] font-semibold text-[#C4B8FF]">Free during V1</p>
+                <p className="mt-1 text-[12px] text-[#5C6490] leading-snug">Install locally, no account required.</p>
+                <Link
+                  href="/app/install"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#7C6DFA] px-4 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
+                  style={{ boxShadow: "0 4px 14px rgba(124,109,250,0.30)" }}
+                >
+                  Install CLI
+                  <ArrowRight className="size-3" />
+                </Link>
+              </div>
             </div>
           </div>
 

@@ -23,9 +23,10 @@ RunTrim adds structure before the run and continuity after the run.
 Default guided flow:
 
 ```bash
-runtrim init
 runtrim start
 ```
+
+RunTrim will guide you through init, prepare, panel, check, and memory.
 
 Direct operator flow:
 
@@ -43,7 +44,6 @@ Global install for end users:
 
 ```bash
 npm install -g runtrim
-runtrim init
 runtrim start
 ```
 
@@ -76,6 +76,16 @@ runtrim panel --monitor
 runtrim check
 runtrim continue --reason usage_limit
 runtrim memory
+runtrim sync
+```
+
+Advanced commands:
+
+```bash
+runtrim prepare "<task>"
+runtrim panel --monitor
+runtrim check
+runtrim continue --reason usage_limit
 runtrim sync
 ```
 

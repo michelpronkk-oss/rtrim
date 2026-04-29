@@ -355,12 +355,335 @@ function printWatchSnapshot(input: {
   console.log("");
 }
 
+function isInteractiveTerminal(): boolean {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
+async function initializeRunTrim(
+  cwd: string,
+  options: { refresh?: boolean; allowOverwritePrompt?: boolean } = {}
+): Promise<{ ok: boolean }> {
+  const hadConfig = configExists(cwd);
+  if (hadConfig && !options.refresh && options.allowOverwritePrompt) {
+    const { overwrite } = await prompts({
+      type: "confirm",
+      name: "overwrite",
+      message: "Overwrite existing config? (Use --refresh to keep config and refresh baseline)",
+      initial: false,
+    });
+    if (!overwrite) {
+      console.log(DIM("  Aborted."));
+      console.log("");
+      return { ok: false };
+    }
+  }
+
+  const spinner = oraFactory({ text: "Building baseline project audit...", color: "yellow" }).start();
+  await new Promise((r) => setTimeout(r, 120));
+  const previousAudit = loadProjectAudit(cwd);
+  const baseline = performBaselineProjectAudit(cwd, previousAudit);
+  spinner.stop();
+
+  const configDir = getConfigDir(cwd);
+  const runsDir = getRunsDir(cwd);
+  if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+  if (!fs.existsSync(runsDir)) fs.mkdirSync(runsDir, { recursive: true });
+
+  const existingConfig = hadConfig ? loadConfig(cwd) : null;
+  const baseConfig = { ...DEFAULT_CONFIG, ...detectProjectInfo(cwd) };
+  const nextConfig = options.refresh && existingConfig ? { ...existingConfig } : baseConfig;
+  nextConfig.stack = baseline.detectedStack.join(",");
+  nextConfig.packageManager = baseline.packageManager;
+  nextConfig.baselineInitialized = true;
+  nextConfig.lastAuditAt = baseline.updatedAt;
+  saveConfig(nextConfig, cwd);
+
+  writeProjectAudit(baseline, cwd);
+  writeRules(baseline, cwd);
+
+  const memoryPath = path.join(getConfigDir(cwd), "memory.md");
+  const hasRuns = loadAllRuns(cwd).length > 0;
+  if (hasRuns) {
+    const latest = loadLatestRun(cwd);
+    if (latest) writeMemoryFromRuns(latest, loadAllRuns(cwd), nextConfig, cwd);
+  } else {
+    fs.writeFileSync(memoryPath, buildBaselineMemoryMarkdown(baseline), "utf-8");
+  }
+
+  ensureStarterPromptIfMissing(cwd);
+
+  const gitignorePath = path.join(cwd, ".gitignore");
+  if (fs.existsSync(gitignorePath)) {
+    const content = fs.readFileSync(gitignorePath, "utf-8");
+    if (!content.includes(".runtrim/runs")) {
+      fs.appendFileSync(gitignorePath, "\n# RunTrim run history\n.runtrim/runs/\n");
+    }
+  }
+
+  return { ok: true };
+}
+
+async function runPrepareTask(
+  task: string,
+  options: {
+    open?: boolean;
+    editor?: string;
+    agent?: string;
+    copy?: boolean;
+    print?: boolean;
+    showHeader?: boolean;
+  }
+): Promise<void> {
+  const cwd = process.cwd();
+  if (options.showHeader !== false) {
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  prepare"));
+    console.log("");
+  }
+
+  if (!configExists(cwd)) {
+    console.log(chalk.yellow("  No config found. Run: runtrim init"));
+    console.log("");
+    return;
+  }
+
+  const config = loadConfig(cwd);
+  const selectedAgent = (options.agent ?? config.defaultAgent ?? "claude").toLowerCase();
+  const auditSpinner = oraFactory({ text: "Auditing task...", color: "yellow" }).start();
+  await new Promise((r) => setTimeout(r, 250));
+  const audit = auditTask(task, config, cwd);
+  auditSpinner.stop();
+  const contract = generateContract(task, audit, config);
+  const run = saveRun(task, audit, contract, cwd);
+
+  if (contract.isBlocked && contract.splitReport) {
+    const splitPrompt = contract.splitReport.nextSafePrompt;
+    updateRun(run.id, { status: "split_required" }, cwd);
+    const promptPath = writeLatestPromptFile(splitPrompt, config, cwd);
+    if (options.copy !== false) await copyToClipboardSafe(splitPrompt);
+
+    console.log(chalk.red.bold("  SPLIT REQUIRED"));
+    console.log("");
+    console.log(DIM("  Task      ") + chalk.white(truncate(task, 70)));
+    console.log(DIM("  Prompt    ") + chalk.white(promptPath));
+    console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+    console.log("");
+    printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
+    console.log("");
+    if (options.print) {
+      console.log(splitPrompt);
+      console.log("");
+    }
+    if (options.open) {
+      const opened = await openInEditor(options.editor, config, promptPath, cwd);
+      if (!opened) {
+        console.log(chalk.yellow("  Could not open editor command."));
+        console.log("");
+      }
+    }
+    return;
+  }
+
+  const promptPath = writeLatestPromptFile(contract.contractText, config, cwd);
+  if (options.copy !== false) await copyToClipboardSafe(contract.contractText);
+  updateRun(run.id, { status: "guarded" }, cwd);
+
+  const riskColors: Record<string, ChalkInstance> = {
+    low: chalk.green,
+    medium: chalk.yellow,
+    high: chalk.hex("#FF8C00"),
+    critical: chalk.red,
+  };
+  const riskBefore = riskColors[audit.wasteRiskBefore] ?? chalk.white;
+  const riskAfter = riskColors[contract.wasteRiskAfter] ?? chalk.green;
+  const scoreDelta = contract.promptScoreAfter - audit.promptScoreBefore;
+  const deltaStr = scoreDelta >= 0 ? `+${scoreDelta}` : `${scoreDelta}`;
+
+  console.log(DIM("  " + SECTION));
+  console.log(DIM("  PREPARED GUARD"));
+  console.log(DIM("  " + SECTION));
+  console.log("");
+  console.log(
+    DIM("  Score     ") +
+      chalk.white(formatScore(audit.promptScoreBefore)) +
+      DIM("  ->  ") +
+      chalk.white(formatScore(contract.promptScoreAfter)) +
+      DIM("  (" + deltaStr + ")")
+  );
+  console.log(
+    DIM("  Risk      ") +
+      riskBefore(formatRisk(audit.wasteRiskBefore).toUpperCase()) +
+      DIM("  ->  ") +
+      riskAfter(formatRisk(contract.wasteRiskAfter).toUpperCase())
+  );
+  console.log(DIM("  Reduction ") + chalk.white(contract.riskReductionPercent + "%"));
+  console.log(DIM("  Prompt    ") + chalk.white(promptPath));
+  console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+  console.log("");
+  printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
+  console.log("");
+
+  if (options.print) {
+    console.log(contract.contractText);
+    console.log("");
+  }
+
+  if (options.open) {
+    const opened = await openInEditor(options.editor, config, promptPath, cwd);
+    if (!opened) {
+      console.log(chalk.yellow("  Could not open editor command."));
+      console.log("");
+    }
+  }
+}
+
 program
   .name("runtrim")
   .description("CLI guard layer for AI coding runs")
   .version("0.1.0");
 
 // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ INIT ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
+
+program
+  .command("start")
+  .description("Guided RunTrim onboarding and daily loop")
+  .option("--task <task>", "Prepare a guarded run immediately")
+  .action(async (options: { task?: string }) => {
+    const cwd = process.cwd();
+    const interactive = isInteractiveTerminal();
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  start"));
+    console.log("");
+
+    if (!configExists(cwd)) {
+      console.log(chalk.yellow("  RunTrim is not initialized in this repo."));
+      if (!interactive) {
+        console.log(DIM("  Run: runtrim init"));
+        console.log("");
+        return;
+      }
+
+      const { initNow } = await prompts({
+        type: "confirm",
+        name: "initNow",
+        message: "Initialize RunTrim here? Y/n",
+        initial: true,
+      });
+
+      if (!initNow) {
+        console.log(DIM("  Aborted."));
+        console.log("");
+        return;
+      }
+
+      const initResult = await initializeRunTrim(cwd, { allowOverwritePrompt: false });
+      if (!initResult.ok) return;
+      console.log(ACCENT.bold("  RunTrim is ready."));
+      console.log("");
+    }
+
+    const memory = readMemory(cwd);
+    const latestRun = loadLatestRun(cwd);
+    const latestStatus = latestRun?.evaluation?.status ?? latestRun?.status ?? "baseline_initialized";
+    const suggestedNext =
+      options.task
+        ? `runtrim prepare "${options.task}"`
+        : latestRun?.evaluation?.nextSafeAction ||
+          (latestRun ? "runtrim check" : 'runtrim prepare "describe your next AI coding task"');
+
+    console.log(DIM("  Current state"));
+    console.log(DIM("  Status     ") + chalk.white(formatStatus(latestStatus)));
+    if (latestRun?.task) {
+      console.log(DIM("  Last task  ") + chalk.white(truncate(latestRun.task, 80)));
+    }
+    if (memory) {
+      const stateLine = parseMemorySection(memory, "Current state");
+      if (stateLine) console.log(DIM("  Memory     ") + chalk.white(truncate(stateLine, 100)));
+    }
+    console.log(DIM("  Next       ") + chalk.white(suggestedNext));
+    console.log("");
+
+    console.log(DIM("  Next recommended actions"));
+    console.log(chalk.white("  1. Prepare your first AI run"));
+    console.log(chalk.white("  2. Open local panel with monitor"));
+    console.log(chalk.white("  3. Show daily loop"));
+    console.log("");
+
+    if (options.task) {
+      await runPrepareTask(options.task, { showHeader: false });
+      return;
+    }
+
+    if (!interactive) return;
+
+    const hasRuns = Boolean(latestRun);
+    const { action } = await prompts({
+      type: "select",
+      name: "action",
+      message: hasRuns ? "What do you want to do next?" : "What do you want to do next?",
+      choices: hasRuns
+        ? [
+            { title: "Prepare a new run", value: "prepare" },
+            { title: "Open local panel with monitor", value: "panel" },
+            { title: "Check latest run", value: "check" },
+            { title: "Continue after usage/context limit", value: "continue" },
+            { title: "Show memory", value: "memory" },
+            { title: "Sync dashboard", value: "sync" },
+            { title: "Exit", value: "exit" },
+          ]
+        : [
+            { title: "Prepare a new run", value: "prepare" },
+            { title: "Open local panel with monitor", value: "panel" },
+            { title: "Show memory", value: "memory" },
+            { title: "Exit", value: "exit" },
+          ],
+      initial: 0,
+    });
+
+    if (!action || action === "exit") {
+      console.log("");
+      return;
+    }
+
+    if (action === "prepare") {
+      const { task } = await prompts({
+        type: "text",
+        name: "task",
+        message: "Describe the AI coding task:",
+        validate: (value) => (value.trim().length > 0 ? true : "Task is required."),
+      });
+      if (!task) return;
+      await runPrepareTask(task.trim(), { showHeader: false });
+      return;
+    }
+
+    if (action === "panel") {
+      console.log(chalk.white("  runtrim panel --monitor"));
+      console.log("");
+      return;
+    }
+
+    if (action === "check") {
+      console.log(chalk.white("  runtrim check"));
+      console.log("");
+      return;
+    }
+    if (action === "continue") {
+      console.log(chalk.white("  runtrim continue --reason usage_limit"));
+      console.log("");
+      return;
+    }
+    if (action === "memory") {
+      console.log(chalk.white("  runtrim memory"));
+      console.log("");
+      return;
+    }
+    if (action === "sync") {
+      console.log(chalk.white("  runtrim sync"));
+      console.log("");
+    }
+  });
 
 program
   .command("init")
@@ -373,65 +696,16 @@ program
     console.log(BOLD("RunTrim") + DIM("  init"));
     console.log("");
 
-    const hadConfig = configExists(cwd);
-    if (hadConfig && !options.refresh) {
-      console.log(chalk.yellow("  Config already exists at .runtrim/config.json"));
-      const { overwrite } = await prompts({
-        type: "confirm",
-        name: "overwrite",
-        message: "Overwrite existing config? (Use --refresh to keep config and refresh baseline)",
-        initial: false,
-      });
-      if (!overwrite) {
-        console.log(DIM("  Aborted."));
-        console.log("");
-        return;
-      }
-    }
+    const initResult = await initializeRunTrim(cwd, {
+      refresh: options.refresh,
+      allowOverwritePrompt: true,
+    });
+    if (!initResult.ok) return;
 
-    const spinner = oraFactory({ text: "Building baseline project audit...", color: "yellow" }).start();
-    await new Promise((r) => setTimeout(r, 120));
-    const previousAudit = loadProjectAudit(cwd);
-    const baseline = performBaselineProjectAudit(cwd, previousAudit);
-    spinner.stop();
-
-    const configDir = getConfigDir(cwd);
-    const runsDir = getRunsDir(cwd);
-    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
-    if (!fs.existsSync(runsDir)) fs.mkdirSync(runsDir, { recursive: true });
-
-    const existingConfig = hadConfig ? loadConfig(cwd) : null;
-    const baseConfig = { ...DEFAULT_CONFIG, ...detectProjectInfo(cwd) };
-    const nextConfig = options.refresh && existingConfig ? { ...existingConfig } : baseConfig;
-    nextConfig.stack = baseline.detectedStack.join(",");
-    nextConfig.packageManager = baseline.packageManager;
-    nextConfig.baselineInitialized = true;
-    nextConfig.lastAuditAt = baseline.updatedAt;
-    saveConfig(nextConfig, cwd);
-
-    writeProjectAudit(baseline, cwd);
-    writeRules(baseline, cwd);
-
-    const memoryPath = path.join(getConfigDir(cwd), "memory.md");
-    const hasRuns = loadAllRuns(cwd).length > 0;
-    if (hasRuns) {
-      const latest = loadLatestRun(cwd);
-      if (latest) writeMemoryFromRuns(latest, loadAllRuns(cwd), nextConfig, cwd);
-    } else {
-      fs.writeFileSync(memoryPath, buildBaselineMemoryMarkdown(baseline), "utf-8");
-    }
-
-    const starterCreated = ensureStarterPromptIfMissing(cwd);
-
-    const gitignorePath = path.join(cwd, ".gitignore");
-    if (fs.existsSync(gitignorePath)) {
-      const content = fs.readFileSync(gitignorePath, "utf-8");
-      if (!content.includes(".runtrim/runs")) {
-        fs.appendFileSync(gitignorePath, "\n# RunTrim run history\n.runtrim/runs/\n");
-      }
-    }
-
+    const baseline = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
     const scriptNames = Object.keys(baseline.scripts);
+    const starterCreated = fs.existsSync(path.join(getConfigDir(cwd), "latest-prompt.md"));
+
     console.log(ACCENT.bold("  RunTrim init"));
     console.log("");
     console.log(DIM("  Project detected"));
@@ -1210,106 +1484,13 @@ program
         print?: boolean;
       }
     ) => {
-      const cwd = process.cwd();
-
-      console.log("");
-      console.log(BOLD("RunTrim") + DIM("  prepare"));
-      console.log("");
-
-      if (!configExists(cwd)) {
-        console.log(chalk.yellow("  No config found. Run: runtrim init"));
-        console.log("");
-        return;
-      }
-
-      const config = loadConfig(cwd);
-      const selectedAgent = (options.agent ?? config.defaultAgent ?? "claude").toLowerCase();
-      const auditSpinner = oraFactory({ text: "Auditing task...", color: "yellow" }).start();
-      await new Promise((r) => setTimeout(r, 250));
-      const audit = auditTask(task, config, cwd);
-      auditSpinner.stop();
-      const contract = generateContract(task, audit, config);
-      const run = saveRun(task, audit, contract, cwd);
-
-      if (contract.isBlocked && contract.splitReport) {
-        const splitPrompt = contract.splitReport.nextSafePrompt;
-        updateRun(run.id, { status: "split_required" }, cwd);
-        const promptPath = writeLatestPromptFile(splitPrompt, config, cwd);
-        if (options.copy !== false) await copyToClipboardSafe(splitPrompt);
-
-        console.log(chalk.red.bold("  SPLIT REQUIRED"));
-        console.log("");
-        console.log(DIM("  Task      ") + chalk.white(truncate(task, 70)));
-        console.log(DIM("  Prompt    ") + chalk.white(promptPath));
-        console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
-        console.log("");
-        printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
-        console.log("");
-        if (options.print) {
-          console.log(splitPrompt);
-          console.log("");
-        }
-        if (options.open) {
-          const opened = await openInEditor(options.editor, config, promptPath, cwd);
-          if (!opened) {
-            console.log(chalk.yellow("  Could not open editor command."));
-            console.log("");
-          }
-        }
-        return;
-      }
-
-      const promptPath = writeLatestPromptFile(contract.contractText, config, cwd);
-      if (options.copy !== false) await copyToClipboardSafe(contract.contractText);
-      updateRun(run.id, { status: "guarded" }, cwd);
-
-      const riskColors: Record<string, ChalkInstance> = {
-        low: chalk.green,
-        medium: chalk.yellow,
-        high: chalk.hex("#FF8C00"),
-        critical: chalk.red,
-      };
-      const riskBefore = riskColors[audit.wasteRiskBefore] ?? chalk.white;
-      const riskAfter = riskColors[contract.wasteRiskAfter] ?? chalk.green;
-      const scoreDelta = contract.promptScoreAfter - audit.promptScoreBefore;
-      const deltaStr = scoreDelta >= 0 ? `+${scoreDelta}` : `${scoreDelta}`;
-
-      console.log(DIM("  " + SECTION));
-      console.log(DIM("  PREPARED GUARD"));
-      console.log(DIM("  " + SECTION));
-      console.log("");
-      console.log(
-        DIM("  Score     ") +
-          chalk.white(formatScore(audit.promptScoreBefore)) +
-          DIM("  ->  ") +
-          chalk.white(formatScore(contract.promptScoreAfter)) +
-          DIM("  (" + deltaStr + ")")
-      );
-      console.log(
-        DIM("  Risk      ") +
-          riskBefore(formatRisk(audit.wasteRiskBefore).toUpperCase()) +
-          DIM("  ->  ") +
-          riskAfter(formatRisk(contract.wasteRiskAfter).toUpperCase())
-      );
-      console.log(DIM("  Reduction ") + chalk.white(contract.riskReductionPercent + "%"));
-      console.log(DIM("  Prompt    ") + chalk.white(promptPath));
-      console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
-      console.log("");
-      printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
-      console.log("");
-
-      if (options.print) {
-        console.log(contract.contractText);
-        console.log("");
-      }
-
-      if (options.open) {
-        const opened = await openInEditor(options.editor, config, promptPath, cwd);
-        if (!opened) {
-          console.log(chalk.yellow("  Could not open editor command."));
-          console.log("");
-        }
-      }
+      await runPrepareTask(task, {
+        open: options.open,
+        editor: options.editor,
+        agent: options.agent,
+        copy: options.copy,
+        print: options.print,
+      });
     }
   );
 

@@ -28,6 +28,12 @@ export const ConfigSchema = z.object({
   lastContinuationReason: z.string().optional(),
   continuationPromptPath: z.string().optional(),
   continuationCreatedAt: z.string().optional(),
+  telemetry: z
+    .object({
+      enabled: z.boolean().default(false),
+      promptedAt: z.string().optional(),
+    })
+    .default({ enabled: false }),
 });
 
 export type RunTrimConfig = z.infer<typeof ConfigSchema>;
@@ -51,6 +57,9 @@ export const DEFAULT_CONFIG: RunTrimConfig = {
   dashboardUrl: "http://localhost:3000/app",
   baselineInitialized: false,
   packageManager: "npm",
+  telemetry: {
+    enabled: false,
+  },
 };
 
 export function getConfigDir(cwd = process.cwd()): string {

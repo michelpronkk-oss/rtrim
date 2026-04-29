@@ -12,18 +12,37 @@ import {
 
 const AGENTS = ["Claude", "Codex", "Cursor", "ChatGPT", "Other"] as const;
 
+type EarlyAccessVariant = "pro" | "builder";
+
 interface EarlyAccessModalTriggerProps {
   label: string;
   className?: string;
+  variant?: EarlyAccessVariant;
 }
 
-export function EarlyAccessModalTrigger({ label, className }: EarlyAccessModalTriggerProps) {
+const VARIANT_COPY: Record<EarlyAccessVariant, { title: string; subtitle: string; submitLabel: string; source: string }> = {
+  pro: {
+    title: "Join Pro early access",
+    subtitle: "Cloud sync and hosted dashboard access are rolling out to approved solo builders.",
+    submitLabel: "Join Pro early access",
+    source: "homepage_pro",
+  },
+  builder: {
+    title: "Join Builder early access",
+    subtitle: "Multi-project control and advanced workflow access are rolling out to approved builder users.",
+    submitLabel: "Join Builder early access",
+    source: "homepage_builder",
+  },
+};
+
+export function EarlyAccessModalTrigger({ label, className, variant = "pro" }: EarlyAccessModalTriggerProps) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [agent, setAgent] = useState("");
   const [useCase, setUseCase] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const copy = VARIANT_COPY[variant];
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,7 +56,7 @@ export function EarlyAccessModalTrigger({ label, className }: EarlyAccessModalTr
         role,
         agent,
         useCase,
-        source: "homepage",
+        source: copy.source,
       }),
     }).catch(() => null);
 
@@ -65,36 +84,36 @@ export function EarlyAccessModalTrigger({ label, className }: EarlyAccessModalTr
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className={className}>{label}</button>
+        <button type="button" className={className}>{label}</button>
       </DialogTrigger>
-      <DialogContent className="max-w-[560px] border border-white/10 bg-[#0C0C20] p-6 text-[#EDEEFF]">
-        <DialogHeader>
-          <DialogTitle className="text-[19px] font-semibold text-[#EDEEFF]">Join Pro early access</DialogTitle>
-          <DialogDescription className="text-[13px] leading-6 text-[#8E95C3]">
-            Cloud sync and hosted memory are rolling out to approved early users.
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[680px] border border-white/12 bg-[#0B0D23] p-5 text-[#EDEEFF] shadow-[0_28px_80px_rgba(0,0,0,0.55)] sm:w-full sm:rounded-xl sm:p-7">
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="text-[24px] font-semibold tracking-[-0.02em] text-[#EDEEFF]">{copy.title}</DialogTitle>
+          <DialogDescription className="max-w-[56ch] text-[14px] leading-7 text-[#8E95C3]">
+            {copy.subtitle}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={submit} className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-3.5">
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
-            className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[13px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20"
+            className="sm:col-span-2 rounded-lg border border-white/10 bg-[#090918] px-3.5 py-2.5 text-[16px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20 sm:text-[14px]"
           />
           <input
             type="text"
             value={role}
             onChange={(e) => setRole(e.target.value)}
             placeholder="Role (optional)"
-            className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[13px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20"
+            className="rounded-lg border border-white/10 bg-[#090918] px-3.5 py-2.5 text-[16px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20 sm:text-[14px]"
           />
           <select
             value={agent}
             onChange={(e) => setAgent(e.target.value)}
-            className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[13px] text-[#EDEEFF] outline-none focus:border-white/20"
+            className="rounded-lg border border-white/10 bg-[#090918] px-3.5 py-2.5 text-[16px] text-[#EDEEFF] outline-none focus:border-white/20 sm:text-[14px]"
           >
             <option value="">Agent (optional)</option>
             {AGENTS.map((value) => (
@@ -106,15 +125,15 @@ export function EarlyAccessModalTrigger({ label, className }: EarlyAccessModalTr
             value={useCase}
             onChange={(e) => setUseCase(e.target.value)}
             placeholder="Use case (optional)"
-            className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[13px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20"
+            className="sm:col-span-2 rounded-lg border border-white/10 bg-[#090918] px-3.5 py-2.5 text-[16px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20 sm:text-[14px]"
           />
-          <div className="sm:col-span-2 flex items-center gap-3">
+          <div className="sm:col-span-2 mt-1 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <button
               type="submit"
               disabled={status === "loading"}
-              className="rounded-lg bg-[#7C6DFA] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-60"
+              className="w-full rounded-lg bg-[#7C6DFA] px-4 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-60 sm:w-auto"
             >
-              {status === "loading" ? "Submitting..." : "Join early access"}
+              {status === "loading" ? "Submitting..." : copy.submitLabel}
             </button>
             {message && (
               <p className={`text-[12px] ${status === "success" ? "text-[#4DE8B0]" : "text-[#F0BF72]"}`}>
@@ -122,7 +141,7 @@ export function EarlyAccessModalTrigger({ label, className }: EarlyAccessModalTr
               </p>
             )}
           </div>
-          <p className="sm:col-span-2 text-[11px] text-[#6870A0]">Free local CLI does not require an account.</p>
+          <p className="sm:col-span-2 text-[12px] text-[#6870A0]">Local CLI remains free and works without an account.</p>
         </form>
       </DialogContent>
     </Dialog>

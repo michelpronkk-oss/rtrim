@@ -70,6 +70,7 @@ export function AppAccessGateCard({ accessConfigured, nextPath, showDevNote }: A
             </Link>
             <EarlyAccessModalTrigger
               label="Join Pro early access"
+              variant="pro"
               className="rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#AEB8CA] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
             />
           </div>
