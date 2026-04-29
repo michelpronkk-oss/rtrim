@@ -79,10 +79,10 @@ const FEATURES = [
 ];
 
 const SAVINGS_STATS = [
-  { value: "47",      label: "Runs captured",        note: "Across 4 local projects",    accent: false },
-  { value: "23",      label: "Prompts reused",        note: "From saved run history",     accent: false },
-  { value: "~847k",   label: "Est. tokens saved",     note: "Based on local run scoring", accent: true  },
-  { value: "~$4.12",  label: "Est. cost avoided",     note: "Standard model rate",        accent: true  },
+  { value: "186",    label: "Runs scoped",            note: "Across active local projects",  accent: false },
+  { value: "54",     label: "Mega-runs blocked",      note: "Stopped before unsafe edits",   accent: false },
+  { value: "~3.8M",  label: "Tokens trimmed",         note: "From scoped run contracts",      accent: true  },
+  { value: "91",     label: "Continuations preserved", note: "Follow-ups without restarting", accent: true  },
 ];
 
 const FAQS = [
@@ -414,12 +414,12 @@ export default function Home() {
       <section className="border-t border-white/8 bg-[#08081C]">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <div className="mb-10">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">04 / Savings</p>
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">04 / SAVINGS</p>
             <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Context that compounds.
+              Stop paying for messy context.
             </h2>
             <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-              Example figures from a single local project. All estimates.
+              Example results from repeated AI coding sessions. Local estimates only.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -436,7 +436,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <p className="mt-4 font-mono text-[11px] text-[#2A2A45]">All figures are estimates. RunTrim does not access billing data.</p>
+          <p className="mt-4 font-mono text-[11px] text-[#2A2A45]">Estimates based on local run metadata. RunTrim does not access billing data or source code.</p>
         </div>
       </section>
 
