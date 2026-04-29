@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CopyButton } from "@/components/app/copy-button";
+import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 
 function CommandRow({ command }: { command: string }) {
   return (
@@ -13,20 +14,15 @@ function CommandRow({ command }: { command: string }) {
 export default function InstallPage() {
   const quickStart = [
     "npm install -g runtrim",
-    "runtrim init",
     "runtrim start",
-    'runtrim prepare "fix checkout redirect"',
-    "runtrim panel --monitor",
-    "runtrim check",
-    "runtrim memory",
   ];
 
-  const dailyLoop = [
-    { step: "1", title: "Prepare", command: 'runtrim prepare "fix checkout redirect"', note: "Create the guarded prompt before agent edits." },
-    { step: "2", title: "Paste into agent", command: "Paste .runtrim/latest-prompt.md", note: "Run the scoped task in your agent." },
+  const manualDailyLoop = [
+    { step: "1", title: "Initialize", command: "runtrim init", note: "Initialize baseline files when you want explicit setup control." },
+    { step: "2", title: "Prepare", command: 'runtrim prepare "fix checkout redirect"', note: "Create the guarded prompt before agent edits." },
     { step: "3", title: "Monitor", command: "runtrim panel --monitor", note: "Keep local state visible while work is in progress." },
     { step: "4", title: "Check", command: "runtrim check", note: "Verify result quality and missing proof." },
-    { step: "5", title: "Continue later", command: "runtrim memory", note: "Resume from current project memory." },
+    { step: "5", title: "Show memory", command: "runtrim memory", note: "Resume from current project memory." },
   ];
 
   return (
@@ -59,12 +55,14 @@ export default function InstallPage() {
           <h1 className="text-[24px] font-bold tracking-[-0.03em] text-[#EDEEFF]">Install RunTrim</h1>
           <p className="mt-1 text-[13px] text-[#9AA7B6]">RunTrim runs locally in your repo. Source code is not uploaded in V1.</p>
           <p className="mt-1 text-[12px] text-[#6870A0]">No account required for local CLI.</p>
+          <p className="mt-1 text-[12px] text-[#6870A0]">Free includes 1 tracked local repo. A tracked repo is one codebase with its own .runtrim workspace.</p>
         </header>
 
         <section className="surface-panel overflow-hidden rounded-xl border border-white/10">
           <div className="border-b border-white/8 px-6 py-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Primary quick start</p>
-            <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Install once, then run the daily operator flow</h2>
+            <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Install once. Start in any repo.</h2>
+            <p className="mt-1 text-[12px] text-[#9AA7B6]">RunTrim will guide you through init, prepare, panel, check and memory.</p>
           </div>
           <div className="grid gap-4 px-6 py-5 lg:grid-cols-[1.1fr_1fr]">
             <div className="space-y-2.5">
@@ -75,21 +73,18 @@ export default function InstallPage() {
             <div className="rounded-lg border border-white/8 bg-[#090F18] p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5D638D]">What each command does</p>
               <ul className="mt-3 space-y-2 text-[12px] leading-5 text-[#C0C2E8]">
-                <li><span className="text-[#EDEEFF]">init</span> creates local project memory and baseline files.</li>
-                <li><span className="text-[#EDEEFF]">prepare</span> creates the guarded prompt contract.</li>
-                <li><span className="text-[#EDEEFF]">panel --monitor</span> keeps local run state visible while the agent works.</li>
-                <li><span className="text-[#EDEEFF]">check</span> verifies changed files, risk, and proof.</li>
-                <li><span className="text-[#EDEEFF]">memory</span> shows where you left off and what to do next.</li>
+                <li><span className="text-[#EDEEFF]">start</span> checks project state and guides the next step.</li>
+                <li><span className="text-[#EDEEFF]">guided run</span> can initialize RunTrim if needed and route to prepare, monitor, check, and memory flows.</li>
               </ul>
             </div>
           </div>
         </section>
 
         <section className="surface-panel rounded-xl p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Daily loop</p>
-          <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Prepare, monitor, verify, continue</h2>
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Manual daily loop</p>
+          <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Prepare, monitor, check, and memory</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-5">
-            {dailyLoop.map((item) => (
+            {manualDailyLoop.map((item) => (
               <div key={item.step} className="rounded-lg border border-white/8 bg-[#0E151E] p-3">
                 <p className="font-mono text-[10px] text-[#6870A0]">Step {item.step}</p>
                 <p className="mt-1 text-[13px] font-semibold text-[#EDEEFF]">{item.title}</p>
@@ -102,11 +97,22 @@ export default function InstallPage() {
 
         <section className="surface-panel rounded-xl p-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Dashboard sync private beta</p>
-          <p className="mt-1 text-[13px] text-[#9AA7B6]">Sync uploads metadata only: run status, prompts, changed file paths, memory and estimates. It does not upload source code.</p>
-          <div className="mt-4 space-y-2.5">
-            <CommandRow command="runtrim auth set <token>" />
-            <CommandRow command="runtrim config set dashboard-url https://www.runtrim.com/app" />
-            <CommandRow command="runtrim sync" />
+          <div className="mt-3 rounded-lg border border-white/8 bg-[#090F18] p-4">
+            <p className="text-[14px] font-semibold text-[#EDEEFF]">Cloud sync is in private beta</p>
+            <p className="mt-2 text-[13px] leading-6 text-[#9AA7B6]">
+              RunTrim Free works locally without an account. Cloud sync and hosted run history are rolling out to approved early access users.
+            </p>
+            <p className="mt-2 text-[12px] leading-6 text-[#7F8BA3]">
+              When enabled, sync uploads run metadata, generated RunTrim prompts, changed file paths, project memory and estimates. Source code stays local.
+            </p>
+            <div className="mt-4">
+              <EarlyAccessModalTrigger
+                label="Join Pro early access"
+                variant="pro"
+                className="inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
+              />
+            </div>
+            <p className="mt-3 text-[11px] text-[#6870A0]">Approved testers receive their sync setup instructions by email.</p>
           </div>
         </section>
 

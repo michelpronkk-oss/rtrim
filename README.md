@@ -27,6 +27,7 @@ runtrim start
 ```
 
 RunTrim will guide you through init, prepare, panel, check, and memory.
+Free includes 1 tracked local repo.
 
 Direct operator flow:
 
@@ -160,6 +161,8 @@ runtrim sync
 ## Privacy model
 
 RunTrim Free runs locally and stores state in `.runtrim`.
+Free includes 1 tracked local repo. Builder early access supports unlimited tracked repos.
+A tracked repo is one codebase with its own `.runtrim` workspace.
 
 V1 is designed so source code is not uploaded. Cloud sync stores metadata only when enabled.
 

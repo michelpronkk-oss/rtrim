@@ -38,6 +38,13 @@ import {
   ensureStarterPromptIfMissing,
   getProjectAuditPath,
 } from "../src/lib/project-audit.ts";
+import {
+  assertFreeRepoAllowed,
+  getCurrentRepoIdentity,
+  loadGlobalRegistry,
+  registerCurrentRepo,
+  unlinkCurrentRepo,
+} from "../src/lib/global-registry.ts";
 
 const chalk = new Chalk();
 const oraFactory: typeof ora =
@@ -359,6 +366,35 @@ function isInteractiveTerminal(): boolean {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY);
 }
 
+async function ensureRepoAllowedForFree(cwd: string): Promise<boolean> {
+  const check = await assertFreeRepoAllowed(cwd);
+  if (check.allowed) {
+    await registerCurrentRepo(cwd);
+    return true;
+  }
+
+  console.log(chalk.yellow("  Free plan includes 1 tracked repo."));
+  console.log("");
+  console.log(DIM("  Tracked repo:"));
+  console.log(chalk.white(`  ${check.trackedRepo?.path ?? "(none)"}`));
+  console.log("");
+  console.log(DIM("  This repo:"));
+  console.log(chalk.white(`  ${check.currentRepo.path}`));
+  console.log("");
+  console.log(DIM("  Next:"));
+  console.log(chalk.white("  - continue in the tracked repo"));
+  console.log(chalk.white("  - unlink the tracked repo with runtrim repo unlink --force"));
+  console.log(chalk.white("  - join Builder early access for unlimited repos"));
+  console.log("");
+  console.log(
+    DIM(
+      "  RunTrim stores this limit locally in ~/.runtrim/global.json. No source code is uploaded."
+    )
+  );
+  console.log("");
+  return false;
+}
+
 async function initializeRunTrim(
   cwd: string,
   options: { refresh?: boolean; allowOverwritePrompt?: boolean } = {}
@@ -435,6 +471,8 @@ async function runPrepareTask(
   }
 ): Promise<void> {
   const cwd = process.cwd();
+  const allowed = await ensureRepoAllowedForFree(cwd);
+  if (!allowed) return;
   if (options.showHeader !== false) {
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  prepare"));
@@ -551,6 +589,8 @@ program
   .action(async (options: { task?: string }) => {
     const cwd = process.cwd();
     const interactive = isInteractiveTerminal();
+    const allowed = await ensureRepoAllowedForFree(cwd);
+    if (!allowed) return;
 
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  start"));
@@ -691,6 +731,8 @@ program
   .option("--refresh", "Refresh baseline audit/rules/memory without overwriting config")
   .action(async (options: { refresh?: boolean }) => {
     const cwd = process.cwd();
+    const allowed = await ensureRepoAllowedForFree(cwd);
+    if (!allowed) return;
 
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  init"));
@@ -913,6 +955,65 @@ configCommand
 
 // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ GUARD ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 
+const repoCommand = program.command("repo").description("Manage local tracked repo limit");
+
+repoCommand
+  .command("status")
+  .description("Show local tracked repo status")
+  .action(async () => {
+    const cwd = process.cwd();
+    const registry = loadGlobalRegistry();
+    const identity = await getCurrentRepoIdentity(cwd);
+    const check = await assertFreeRepoAllowed(cwd);
+    const tracked = registry.trackedRepos[0] ?? null;
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  repo status"));
+    console.log("");
+    console.log(DIM("  Plan          ") + chalk.white(registry.plan));
+    console.log(DIM("  Current repo  ") + chalk.white(identity.path));
+    console.log(DIM("  Tracked repo  ") + chalk.white(tracked?.path ?? "(none)"));
+    console.log(DIM("  Allowed       ") + chalk.white(check.allowed ? "yes" : "no"));
+    console.log("");
+    if (tracked) {
+      console.log(DIM("  A tracked repo is one codebase with its own .runtrim workspace."));
+      console.log("");
+    }
+  });
+
+repoCommand
+  .command("unlink")
+  .description("Unlink tracked repo from local free-plan registry")
+  .option("--force", "Force unlink tracked repo even when running from another path")
+  .action(async (options: { force?: boolean }) => {
+    const cwd = process.cwd();
+    const result = await unlinkCurrentRepo(cwd, Boolean(options.force));
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  repo unlink"));
+    console.log("");
+
+    if (result.removed) {
+      console.log(ACCENT.bold("  Tracked repo unlinked."));
+      if (result.trackedRepo) {
+        console.log(DIM("  Removed  ") + chalk.white(result.trackedRepo.path));
+      }
+      console.log("");
+      return;
+    }
+
+    if (result.trackedRepo) {
+      console.log(chalk.yellow("  Current repo is not the tracked repo."));
+      console.log(DIM("  Tracked repo: ") + chalk.white(result.trackedRepo.path));
+      console.log(DIM("  To unlink it from here, run: runtrim repo unlink --force"));
+      console.log("");
+      return;
+    }
+
+    console.log(DIM("  No tracked repo found."));
+    console.log("");
+  });
+
 program
   .command("guard <task>")
   .description("Audit a task and generate a guarded run contract")
@@ -1134,6 +1235,8 @@ program
   .description("Guard then run configured local agent command")
   .action(async (task: string) => {
     const cwd = process.cwd();
+    const allowed = await ensureRepoAllowedForFree(cwd);
+    if (!allowed) return;
 
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  run"));
@@ -1688,6 +1791,8 @@ program
   .description("Sync local RunTrim metadata to dashboard")
   .action(async () => {
     const cwd = process.cwd();
+    const allowed = await ensureRepoAllowedForFree(cwd);
+    if (!allowed) return;
     const cfg = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
     if (!configExists(cwd)) {
       console.log(chalk.yellow("  No config found. Run: runtrim init"));
@@ -1823,6 +1928,8 @@ program
   .option("--no-clear", "Do not clear screen between updates")
   .action(async (options: { interval?: string; strict?: boolean; once?: boolean; summary?: boolean; clear?: boolean }) => {
     const cwd = process.cwd();
+    const allowed = await ensureRepoAllowedForFree(cwd);
+    if (!allowed) return;
     const config = loadConfig(cwd);
     const latestRun = loadLatestRun(cwd);
 
