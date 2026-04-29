@@ -19,6 +19,10 @@ export interface GlobalRunTrimRegistry {
   version: 1;
   plan: RunTrimPlan;
   trackedRepos: TrackedRepoEntry[];
+  telemetry?: {
+    enabled: boolean;
+    anonymousId: string;
+  };
 }
 
 export interface CurrentRepoIdentity {
@@ -39,6 +43,10 @@ const DEFAULT_REGISTRY: GlobalRunTrimRegistry = {
   version: 1,
   plan: "free",
   trackedRepos: [],
+  telemetry: {
+    enabled: false,
+    anonymousId: "",
+  },
 };
 
 function normalizeRepoPath(input: string): string {
@@ -79,6 +87,18 @@ export function loadGlobalRegistry(): GlobalRunTrimRegistry {
             }))
             .filter((item) => Boolean(item.id && item.path))
         : [],
+      telemetry: {
+        enabled:
+          typeof raw.telemetry === "object" &&
+          raw.telemetry !== null &&
+          Boolean((raw.telemetry as { enabled?: boolean }).enabled),
+        anonymousId:
+          typeof raw.telemetry === "object" &&
+          raw.telemetry !== null &&
+          typeof (raw.telemetry as { anonymousId?: string }).anonymousId === "string"
+            ? String((raw.telemetry as { anonymousId?: string }).anonymousId).slice(0, 120)
+            : "",
+      },
     };
   } catch {
     return { ...DEFAULT_REGISTRY };

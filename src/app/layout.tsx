@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { RUNTRIM_ICON_PATH } from "@/lib/branding";
+import { SiteAnalytics } from "@/components/app/site-analytics";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -73,6 +74,7 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <SiteAnalytics />
         {children}
         <Toaster
           theme="dark"

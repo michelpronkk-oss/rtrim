@@ -15,12 +15,12 @@ const PROCESS_STEPS = [
   {
     title: "Start",
     command: "runtrim start",
-    body: "RunTrim detects the repo state, initializes local memory if needed, and tells you the next safe command.",
+    body: "RunTrim checks repo state and tells you the next safe command. If the repo is new, it can guide local initialization.",
   },
   {
     title: "Prepare",
     command: 'runtrim prepare "fix checkout redirect"',
-    body: "Turn a short task into a scoped run contract before the agent edits.",
+    body: "This is where RunTrim creates the guarded prompt contract.",
   },
   {
     title: "Guard",
@@ -57,6 +57,7 @@ export default function HowItWorksPage() {
             </Link>
             <Link
               href="/app/install"
+              data-rt-event="install_cta_clicked"
               className="rounded-md bg-[#7C6DFA] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
             >
               Install CLI
@@ -77,6 +78,7 @@ export default function HowItWorksPage() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               href="/app/install"
+              data-rt-event="install_cta_clicked"
               className="rounded-md bg-[#7C6DFA] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
             >
               Install CLI
@@ -177,6 +179,7 @@ export default function HowItWorksPage() {
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Link
               href="/app/install"
+              data-rt-event="install_cta_clicked"
               className="rounded-md bg-[#7C6DFA] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
             >
               Install CLI

@@ -26,8 +26,8 @@ const CLI_PREVIEW = [
   { type: "dim"     as const, text: "  next: runtrim start" },
   { text: "" },
   { type: "prompt"  as const, text: "$ runtrim start" },
-  { type: "dim"     as const, text: "  state: guarded prompt prepared" },
-  { type: "dim"     as const, text: "  next: runtrim panel --monitor" },
+  { type: "dim"     as const, text: "  state: repo checked, guided flow ready" },
+  { type: "dim"     as const, text: "  next safe command: runtrim prepare \"fix checkout redirect\"" },
   { text: "" },
   { type: "prompt"  as const, text: '$ runtrim prepare "fix checkout redirect"' },
   { type: "dim"     as const, text: "  prompt saved to .runtrim/latest-prompt.md" },
@@ -153,12 +153,13 @@ export default function Home() {
             <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
           </div>
           <nav className="hidden items-center gap-8 md:flex">
-            <Link href="/how-it-works" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">How it works</Link>
-            <Link href="#pricing"      className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Pricing</Link>
-            <Link href="/app/install"  className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Docs</Link>
+            <Link href="/how-it-works" data-rt-event="how_it_works_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">How it works</Link>
+            <Link href="#pricing" data-rt-event="pricing_cta_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Pricing</Link>
+            <Link href="/app/install" data-rt-event="docs_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Docs</Link>
           </nav>
           <Link
             href="/app/install"
+            data-rt-event="install_cta_clicked"
             className="rounded-md bg-[#7C6DFA] px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
           >
             Install CLI
@@ -238,6 +239,7 @@ export default function Home() {
             <div className="mt-11 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/app/install"
+                data-rt-event="install_cta_clicked"
                 className="group inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
                 style={{
                   boxShadow:
@@ -749,7 +751,7 @@ export default function Home() {
               npm install -g runtrim
             </code>
             <div className="border-l border-[#7C6DFA]/20 px-4 py-3.5">
-              <CopyButton text="npm install -g runtrim" />
+              <CopyButton text="npm install -g runtrim" trackCommandKey="npm_install_global" />
             </div>
           </div>
 
@@ -757,6 +759,7 @@ export default function Home() {
           <div className="mt-8 flex flex-col items-center gap-4">
               <Link
                 href="/app/install"
+              data-rt-event="install_cta_clicked"
               className="group inline-flex items-center gap-2.5 rounded-xl px-9 py-4 text-[15px] font-semibold text-white transition-all duration-200 hover:opacity-90"
               style={{
                 background: "linear-gradient(160deg, #8B7EFF 0%, #7C6DFA 60%, #6A54E8 100%)",
@@ -899,6 +902,7 @@ export default function Home() {
                 <p className="mt-1 text-[12px] text-[#5C6490] leading-snug">Install locally, no account required.</p>
                 <Link
                   href="/app/install"
+                  data-rt-event="install_cta_clicked"
                   className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#7C6DFA] px-4 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
                   style={{ boxShadow: "0 4px 14px rgba(124,109,250,0.30)" }}
                 >

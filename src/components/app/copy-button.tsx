@@ -3,19 +3,24 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trackWebEvent } from "@/lib/track-client";
 
 interface CopyButtonProps {
   text: string;
   className?: string;
   label?: string;
+  trackCommandKey?: string;
 }
 
-export function CopyButton({ text, className, label = "Copy" }: CopyButtonProps) {
+export function CopyButton({ text, className, label = "Copy", trackCommandKey }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(text);
+      if (trackCommandKey) {
+        trackWebEvent("install_command_copied", { command: trackCommandKey });
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {

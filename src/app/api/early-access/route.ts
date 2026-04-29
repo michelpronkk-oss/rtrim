@@ -4,6 +4,7 @@ import {
   sendEarlyAccessConfirmation,
   sendEarlyAccessNotification,
 } from "@/lib/email";
+import { recordEvent } from "@/lib/analytics-events";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,17 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  await recordEvent({
+    eventName: "early_access_submitted",
+    source: "web",
+    pagePath: "/",
+    metadata: {
+      agent: agent || "",
+      role: role || "",
+      hasUseCase: Boolean(useCase),
+    },
+  });
 
   const createdAtIso = new Date().toISOString();
   const [confirmationSent, notificationSent] = await Promise.all([

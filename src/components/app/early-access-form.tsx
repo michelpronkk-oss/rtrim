@@ -111,7 +111,7 @@ export function EarlyAccessForm() {
 
       <div className="mt-4 flex items-center gap-2 rounded-lg border border-white/8 bg-[#090918] px-3 py-2">
         <code className="font-mono text-[11px] text-[#6870A0]">npm install -g runtrim</code>
-        <CopyButton text="npm install -g runtrim" label="Copy" />
+        <CopyButton text="npm install -g runtrim" label="Copy" trackCommandKey="npm_install_global" />
       </div>
     </section>
   );

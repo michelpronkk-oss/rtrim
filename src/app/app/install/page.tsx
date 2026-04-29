@@ -17,12 +17,18 @@ export const metadata: Metadata = {
 };
 
 function CommandRow({ command }: { command: string }) {
+  const copyKey =
+    command === "npm install -g runtrim"
+      ? "npm_install_global"
+      : command === "runtrim start"
+      ? "runtrim_start"
+      : undefined;
   return (
     <div className="flex max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/8 bg-[#0E151E] px-3 py-2.5">
       <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[11px] text-[#D7DEE7] sm:text-[12px]">
         {command}
       </code>
-      <CopyButton text={command} className="shrink-0" />
+      <CopyButton text={command} className="shrink-0" trackCommandKey={copyKey} />
     </div>
   );
 }
@@ -36,7 +42,7 @@ export default function InstallPage() {
   const directCommands = [
     { step: "1", title: "Initialize", command: "runtrim init", note: "Initialize baseline files when you want explicit setup control." },
     { step: "2", title: "Prepare", command: 'runtrim prepare "fix checkout redirect"', note: "Create the guarded prompt before agent edits." },
-    { step: "3", title: "Monitor", command: "runtrim panel --monitor", note: "Keep local state visible while work is in progress." },
+    { step: "3", title: "Local panel", command: "runtrim panel --monitor", note: "Open the local browser panel with live monitoring during a run." },
     { step: "4", title: "Check", command: "runtrim check", note: "Verify result quality and missing proof." },
     { step: "5", title: "Show memory", command: "runtrim memory", note: "Resume from current project memory." },
   ];
@@ -83,7 +89,7 @@ export default function InstallPage() {
           <div className="border-b border-white/8 px-6 py-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Primary quick start</p>
             <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Install once. Start in any repo.</h2>
-            <p className="mt-1 text-[12px] text-[#9AA7B6]">RunTrim will guide you through init, prepare, panel, check and memory.</p>
+            <p className="mt-1 text-[12px] text-[#9AA7B6]">RunTrim checks repo state, initializes local memory if needed, and tells you the next safe command.</p>
           </div>
           <div className="grid min-w-0 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.1fr_1fr]">
             <div className="min-w-0 space-y-2.5">
@@ -94,6 +100,7 @@ export default function InstallPage() {
                 <p className="text-[11px] text-[#6870A0]">Not sure what happens after start? See the operator flow.</p>
                 <Link
                   href="/how-it-works"
+                  data-rt-event="how_it_works_clicked"
                   className="mt-1 inline-flex text-[12px] font-medium text-[#97A3BA] transition-colors hover:text-[#EDEEFF]"
                 >
                   See the operator flow
@@ -103,7 +110,7 @@ export default function InstallPage() {
             <div className="min-w-0 rounded-lg border border-white/8 bg-[#090F18] p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5D638D]">What each command does</p>
               <ul className="mt-3 space-y-2 text-[12px] leading-5 text-[#C0C2E8]">
-                <li><span className="text-[#EDEEFF]">runtrim start</span> checks project state, initializes RunTrim if needed, and routes you to prepare, monitor, check, or memory.</li>
+                <li><span className="text-[#EDEEFF]">runtrim start</span> is the guided entrypoint. It routes you to init, prepare, watch, check, continue, memory, or sync based on the current repo state.</li>
               </ul>
             </div>
           </div>

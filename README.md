@@ -27,12 +27,14 @@ runtrim start
 ```
 
 RunTrim will guide you through init, prepare, panel, check, and memory.
+`runtrim start` checks repo state and tells you the next safe command.
 Free includes 1 tracked local repo.
 
 Direct operator flow:
 
 ```bash
 runtrim prepare "fix checkout redirect"
+runtrim panel
 runtrim panel --monitor
 runtrim check
 runtrim continue --reason usage_limit
@@ -73,6 +75,7 @@ npm run runtrim -- start
 runtrim init
 runtrim start
 runtrim prepare "<task>"
+runtrim panel
 runtrim panel --monitor
 runtrim check
 runtrim continue --reason usage_limit
@@ -84,6 +87,7 @@ Advanced commands:
 
 ```bash
 runtrim prepare "<task>"
+runtrim panel
 runtrim panel --monitor
 runtrim check
 runtrim continue --reason usage_limit
@@ -106,9 +110,18 @@ runtrim prepare "rewrite auth flow, middleware, database schema and billing"
 
 ## Monitor and panel
 
-Use `runtrim panel --monitor` while your agent is running.
+Use `runtrim panel` to open a local browser panel on localhost.
+Use `runtrim panel --monitor` to open the same local panel with live git change monitoring.
 
 It keeps local run state visible and warns when scope drifts into risky or forbidden areas.
+Quick keys in panel:
+- `p` prepare
+- `g` guard
+- `c` check
+- `m` memory
+- `r` report
+- `s` sync
+- `q` quit
 
 ## Check
 

@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { trackWebEvent } from "@/lib/track-client";
 
 const AGENTS = ["Claude", "Codex", "Cursor", "ChatGPT", "Other"] as const;
 
@@ -55,6 +56,7 @@ export function EarlyAccessModalTrigger({
   const [useCase, setUseCase] = useState("");
   const [status, setStatus]   = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [open, setOpen] = useState(false);
   const copy = VARIANT_COPY[variant];
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -95,7 +97,13 @@ export function EarlyAccessModalTrigger({
   }
 
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) trackWebEvent("early_access_opened", { variant });
+      }}
+    >
       <DialogTrigger asChild>
         <button type="button" className={className}>
           {label}
