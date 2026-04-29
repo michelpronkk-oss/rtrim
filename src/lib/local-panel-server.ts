@@ -101,7 +101,27 @@ function buildHtml(monitorDefault: boolean): string {
         radial-gradient(1000px 480px at 10% -10%, rgba(84,84,170,0.12), transparent 62%),
         var(--bg);
     }
-    .app{max-width:1120px;margin:0 auto}
+    .backdrop{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(900px 360px at 18% 12%, rgba(124,109,250,0.10), transparent 72%),
+        radial-gradient(780px 280px at 82% 8%, rgba(90,96,185,0.09), transparent 70%);
+      z-index:0;
+    }
+    .app{
+      max-width:1120px;
+      margin:0 auto;
+      position:relative;
+      z-index:1;
+    }
+    .shell{
+      min-height:calc(100vh - 72px);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
     .top{
       border:1px solid var(--line);
       border-radius:16px;
@@ -208,11 +228,12 @@ function buildHtml(monitorDefault: boolean): string {
     .empty p{margin:0;color:var(--muted);font-size:13px}
     .note{margin-top:8px;color:var(--muted);font-size:12px}
     .footer{
-      margin-top:14px;
-      padding-top:10px;
+      margin-top:auto;
+      padding-top:12px;
       border-top:1px solid var(--line-soft);
       color:#7d89a1;
       font-size:12px;
+      letter-spacing:0.01em;
     }
     @media (max-width:1060px){
       .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -223,10 +244,12 @@ function buildHtml(monitorDefault: boolean): string {
       .kv{grid-template-columns:1fr}
       .run{grid-template-columns:1fr 1fr}
       .title{font-size:20px}
+      .shell{min-height:auto}
     }
   </style>
 </head>
 <body>
+  <div class="backdrop"></div>
   <div class="app" id="app">Loading RunTrim local panel...</div>
   <script>
     const monitorDefault = ${monitorDefault ? "true" : "false"};
@@ -250,6 +273,7 @@ function buildHtml(monitorDefault: boolean): string {
     }
     function renderEmpty(state){
       return ''
+      +'<div class="shell">'
       +'<div class="top">'
       +'<div class="top-row"><div><div class="title">RunTrim Local Panel</div><div class="repo">'+esc(state.repoPath)+'</div></div>'
       +'<div class="badges"><span class="badge">Local</span><span class="badge">Snapshot</span></div></div>'
@@ -260,6 +284,8 @@ function buildHtml(monitorDefault: boolean): string {
       +'<p>Start the guided flow or initialize manually.</p>'
       +'<div class="btn-row"><button onclick="copyCmd(\\'runtrim start\\')"><code>runtrim start</code></button><button onclick="copyCmd(\\'runtrim init\\')"><code>runtrim init</code></button></div>'
       +'<div class="note">Repo: '+esc(state.repoPath)+'</div>'
+      +'</div>'
+      +'<div class="footer">Source code stays local. Refreshes from local RunTrim metadata.</div>'
       +'</div>';
     }
     function render(state){
@@ -272,6 +298,7 @@ function buildHtml(monitorDefault: boolean): string {
       const changedList = changedFiles.slice(0,6).map((f)=>'<div class="file"><code>'+esc(f)+'</code></div>').join("");
       const changedOverflow = changedFiles.length > 6 ? '<div class="note">+'+String(changedFiles.length - 6)+' more files</div>' : '';
       return ''
+      +'<div class="shell">'
       +'<div class="top">'
       +'<div class="top-row"><div><div class="title">RunTrim Local Panel</div><div class="repo">'+esc(state.projectName)+'<br>'+esc(state.repoPath)+'</div></div>'
       +'<div class="badges"><span class="badge">Local</span><span class="badge '+(monitor ? 'badge-live' : '')+'">'+(monitor ? 'Live' : 'Snapshot')+'</span></div></div>'
@@ -312,7 +339,8 @@ function buildHtml(monitorDefault: boolean): string {
       +'<div class="card"><h2 class="h">Recent runs</h2><div class="runs-list">'+(recent || '<div class="note">No runs yet.</div>')+'</div></div>'
       +'</div>'
       +'</div>'
-      +'<div class="footer">Source code stays local. Refreshes from local RunTrim metadata.</div>';
+      +'<div class="footer">Source code stays local. Refreshes from local RunTrim metadata.</div>'
+      +'</div>';
     }
     async function refresh(){
       try{
