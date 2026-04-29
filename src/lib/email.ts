@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { RUNTRIM_ICON_PATH } from "@/lib/branding";
 
 type EarlyAccessEmailInput = {
   email: string;
@@ -18,6 +19,15 @@ function getResendClient(): Resend | null {
 
 function getFromEmail(): string {
   return process.env.EARLY_ACCESS_FROM_EMAIL?.trim() || "RunTrim <hello@runtrim.com>";
+}
+
+function getSiteUrl(): string {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.runtrim.com";
+  return siteUrl.replace(/\/+$/, "");
+}
+
+function getLogoUrl(): string {
+  return `${getSiteUrl()}${RUNTRIM_ICON_PATH}`;
 }
 
 // ─── Shared design tokens (inlined for email clients) ────────────────────────
@@ -39,6 +49,7 @@ const C = {
 };
 
 function emailShell(content: string): string {
+  const logoUrl = getLogoUrl();
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -61,8 +72,8 @@ function emailShell(content: string): string {
             <td style="padding-bottom:32px;" align="left">
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td style="background-color:${C.accent};border-radius:6px;width:28px;height:28px;text-align:center;vertical-align:middle;">
-                    <span style="font-family:${C.fontMono};font-size:11px;font-weight:700;color:${C.bg};letter-spacing:-0.5px;">RT</span>
+                  <td style="width:32px;height:32px;vertical-align:middle;">
+                    <img src="${logoUrl}" alt="RunTrim" width="32" height="32" style="display:block;border:0;border-radius:6px;outline:none;text-decoration:none;" />
                   </td>
                   <td style="padding-left:10px;vertical-align:middle;">
                     <span style="font-family:${C.fontSans};font-size:15px;font-weight:700;color:${C.text};letter-spacing:-0.3px;">RunTrim</span>

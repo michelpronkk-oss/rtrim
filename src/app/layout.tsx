@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { RUNTRIM_ICON_PATH } from "@/lib/branding";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -53,11 +54,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.svg", sizes: "any" },
+      { url: RUNTRIM_ICON_PATH, type: "image/svg+xml" },
+      { url: RUNTRIM_ICON_PATH, sizes: "any" },
     ],
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    shortcut: RUNTRIM_ICON_PATH,
+    apple: RUNTRIM_ICON_PATH,
   },
 };
 

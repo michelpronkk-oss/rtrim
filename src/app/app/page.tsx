@@ -1,283 +1,83 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AppShell } from "@/components/app/app-shell";
-import { ContinueCard } from "@/components/app/continue-card";
-import { ProjectMemoryPanel } from "@/components/app/project-memory-panel";
-import { RiskMap } from "@/components/app/risk-map";
-import { RunDecisionTimeline } from "@/components/app/run-decision-timeline";
-import { ShareCard } from "@/components/app/share-card";
-import { SyncStatusPanel } from "@/components/app/sync-status-panel";
-import { getLatestSyncedProject } from "@/lib/dashboard-sync";
-import { buildAttemptMeta } from "@/lib/run-grouping";
-import { getPlan } from "@/lib/plans";
+import { Check } from "lucide-react";
+import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
+
 export const metadata: Metadata = {
+  title: "RunTrim Cloud is being prepared",
   robots: {
     index: false,
     follow: false,
   },
 };
 
+const ROADMAP_ITEMS = [
+  "Hosted project memory",
+  "Synced run history",
+  "Continuation prompts across sessions",
+  "Multi-project visibility",
+];
 
-function mapStatusToRiskState(status: string) {
-  const s = status.toLowerCase();
-  if (["blocked", "split_required", "drift_detected"].includes(s)) return "blocked" as const;
-  if (["partial", "needs_verification", "no_changes_detected"].includes(s)) return "needs_verification" as const;
-  if (["guarded", "checked", "executed"].includes(s)) return "sensitive" as const;
-  return "safe" as const;
-}
-
-export default async function AppPage() {
-  const synced = await getLatestSyncedProject();
-  const currentPlan = getPlan("free");
-
-  const runs = synced?.runs ?? [];
-  const connected = Boolean(synced);
-  const lastStatus = (synced?.project?.last_status ?? "guarded").toLowerCase();
-
-  const fallbackMissing = ["ROOT CAUSE section", "HOW TO VERIFY section", "NEXT SAFE ACTION section"];
-
-  const continueData = {
-    project: synced?.project?.name ?? "runtrim",
-    status: lastStatus,
-    lastUpdated: synced?.project?.updated_at
-      ? new Date(synced.project.updated_at).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "Local preview",
-    syncState: connected ? "Sync connected" : "Local preview",
-    currentFocus:
-      synced?.memory?.current_state ??
-      "Verification is still missing. Confirm the current diff before opening a new scope.",
-    nextSafeAction:
-      synced?.memory?.next_safe_action ??
-      synced?.project?.next_safe_action ??
-      "Run runtrim check and confirm missing proof before new implementation.",
-    lastTask:
-      synced?.project?.last_task ??
-      "Improve landing page visual system without changing product strategy.",
-    changedFilesCount: runs[0]?.changed_files?.length ?? 2,
-    missingProofItems: lastStatus === "passed" ? [] : fallbackMissing,
-    detectedRiskSystems: ["auth", "middleware", "database", "billing", "env/secrets", "webhooks"],
-    nextSafePrompt:
-      synced?.memory?.next_safe_prompt ??
-      synced?.project?.next_safe_prompt ??
-      "Continue from the current diff only. Do not modify new files unless verification proves it is required.",
-    promptSource: runs[0]?.local_id ? `Source ${runs[0].local_id}` : "Source memory",
-    promptUpdatedAt: runs[0]?.created_at_local
-      ? new Date(runs[0].created_at_local).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "Not timestamped",
-  };
-  const watchWarningCount = runs.reduce((sum, run) => sum + (run.watch_warnings?.length ?? 0), 0);
-
-  const guardedCount = runs.length || 18;
-  const blockedCount = runs.filter((r) => ["split_required", "blocked"].includes((r.status ?? "").toLowerCase())).length || 6;
-  const partialCount =
-    runs.filter((r) => ["partial", "needs_verification", "no_changes_detected"].includes((r.status ?? "").toLowerCase())).length || 4;
-  const driftCount = runs.filter((r) => (r.status ?? "").toLowerCase() === "drift_detected").length || 2;
-
-  const tokens = Number(synced?.project?.estimated_tokens_trimmed ?? 384000);
-  const standard = Number(synced?.project?.estimated_dollars_standard ?? 1.15);
-  const expensive = Number(synced?.project?.estimated_dollars_expensive ?? 11.5);
-
-  const baseTimelineRuns = runs.slice(0, 30).map((run) => ({
-    id: run.local_id,
-    task: run.task ?? "Untitled run",
-    status: (run.status ?? "guarded").toLowerCase(),
-    riskBefore: (run.risk_before ?? "medium").toLowerCase(),
-    riskAfter: run.risk_after ? run.risk_after.toLowerCase() : undefined,
-    filesChanged: run.changed_files?.length ?? 0,
-    date: run.created_at_local
-      ? new Date(run.created_at_local).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "Preview",
-    hasPrompt: Boolean(run.next_safe_prompt),
-  }));
-  const attemptMeta = buildAttemptMeta(baseTimelineRuns.map((run) => ({ task: run.task })));
-  const usedKeys = new Set<string>();
-  const timelineItems = baseTimelineRuns.flatMap((run, index) => {
-    const meta = attemptMeta[index];
-    if (usedKeys.has(meta.key)) return [];
-    usedKeys.add(meta.key);
-    const decision =
-      run.status === "split_required"
-        ? "RunTrim stopped this run before protected systems were edited together."
-        : run.status === "partial"
-        ? "RunTrim marked verification debt and generated continuation guidance."
-        : "RunTrim guarded scope and logged the outcome.";
-    const primary = {
-      id: run.id,
-      task: run.task,
-      status: run.status,
-      riskBefore: run.riskBefore,
-      riskAfter: run.riskAfter,
-      filesChanged: run.filesChanged,
-      decision,
-      nextAction: run.hasPrompt ? "Use generated next safe prompt." : "Run runtrim check for next action.",
-      date: run.date,
-    };
-    if (meta.attempts <= 1) return [primary];
-    return [
-      primary,
-      {
-        id: `${run.id}-collapsed`,
-        task: `${meta.attempts - 1} previous attempts`,
-        status: "guarded",
-        riskBefore: run.riskBefore,
-        filesChanged: 0,
-        decision: `${meta.attempts - 1} similar runs collapsed.`,
-        nextAction: "Open runs for full attempt history.",
-        date: run.date,
-      },
-    ];
-  }).slice(0, 6);
-
-  const previewTimeline = [
-    {
-      id: "1",
-      task: "Polish app overview risk language and improve command workflow visibility",
-      status: "partial",
-      riskBefore: "high",
-      riskAfter: "medium",
-      filesChanged: 3,
-      decision: "RunTrim identified missing verification proof and kept continuation in scope.",
-      nextAction: "Confirm root cause and verification steps before new scope.",
-      date: "Apr 28, 15:20",
-    },
-    {
-      id: "2",
-      task: "Rewrite auth flow, middleware, database schema and billing",
-      status: "split_required",
-      riskBefore: "critical",
-      filesChanged: 0,
-      decision: "RunTrim blocked this mega-run and requested isolated audits.",
-      nextAction: "Audit auth flow only. No edits.",
-      date: "Apr 28, 12:04",
-    },
-  ];
-
-  const memoryProtected = ["auth", "middleware", "database schema", "env/secrets", "billing", "webhooks"];
-
-  const riskItems = [
-    { system: "auth",        state: mapStatusToRiskState(lastStatus), note: "Isolate auth scope before edits."              },
-    { system: "middleware",  state: "sensitive" as const,             note: "Changes affect all requests."                  },
-    { system: "database",    state: "sensitive" as const,             note: "Schema changes require migration review."       },
-    { system: "billing",     state: mapStatusToRiskState(lastStatus), note: "Treat billing as protected surface."           },
-    { system: "env/secrets", state: "blocked" as const,               note: "Never read or upload secrets."                  },
-    { system: "webhooks",    state: "needs_verification" as const,    note: "Review event flow before touching handlers."   },
-  ];
-
-  const syncedAt = synced?.project?.updated_at
-    ? new Date(synced.project.updated_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-    : undefined;
-
-  const KPI_METRICS = [
-    { label: "Estimated savings",  value: `~$${standard.toFixed(2)}`,              color: "text-[#4DE8B0]" },
-    { label: "Tokens trimmed",     value: `~${tokens.toLocaleString("en-US")}`,    color: "text-[#9E91FF]" },
-    { label: "Runs guarded",       value: String(guardedCount),                    color: "text-[#9E91FF]" },
-    { label: "Contract score",     value: "75/100",                                color: "text-[#7BAEFF]" },
-    { label: "Verification debt",  value: String(partialCount),                    color: "text-[#F0BF72]" },
-    { label: "Drift detections",   value: String(driftCount),                      color: driftCount > 0 ? "text-[#FF7B5C]" : "text-[#EDEEFF]" },
-  ];
-
+export default function AppHoldingPage() {
   return (
-    <AppShell active="/app">
-      <div className="mx-auto w-full max-w-[1340px] space-y-7">
-
-        {/* -- Page header ----------------------------------- */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-[22px] font-bold tracking-[-0.03em] text-[#EDEEFF]">Overview</h1>
-            <p className="mt-0.5 text-[13px] text-[#4D5070]">CLI does the work locally. This is the memory layer.</p>
-          </div>
-          {watchWarningCount > 0 && (
-            <span className="flex items-center gap-1.5 rounded border border-[#F0BF72]/20 bg-[#F0BF72]/6 px-2.5 py-1.5 font-mono text-[11px] text-[#F0BF72]">
-              <span className="size-1.5 rounded-full bg-[#F0BF72]" />
-              {watchWarningCount} watch {watchWarningCount === 1 ? "warning" : "warnings"}
-            </span>
-          )}
+    <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
+      <header className="border-b border-white/10 bg-[#090A1D]/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
+            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+          </Link>
+          <Link
+            href="/app/install"
+            className="rounded-md bg-[#7C6DFA] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
+          >
+            Install CLI
+          </Link>
         </div>
+      </header>
 
-        {/* -- KPI strip ------------------------------------- */}
-        <div className="overflow-hidden rounded-xl border border-white/8">
-          <div className="grid grid-cols-2 gap-px bg-white/8 sm:grid-cols-3 xl:grid-cols-6">
-            {KPI_METRICS.map(({ label, value, color }) => (
-              <div key={label} className="bg-[#0D0C22] px-5 py-5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">{label}</p>
-                <p className={`mt-2.5 text-3xl font-bold tabular-nums tracking-tight ${color}`}>{value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      <main className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-6xl items-center px-6 py-10">
+        <section className="w-full rounded-xl border border-white/10 bg-[#0C0D22] p-6 sm:p-8">
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#7682A6]">CLOUD DASHBOARD</p>
+          <h1 className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-[#EDEEFF] sm:text-[34px]">
+            RunTrim Cloud is being prepared
+          </h1>
+          <p className="mt-3 max-w-3xl text-[14px] leading-7 text-[#9DABC4]">
+            The local CLI is available now. Hosted memory, synced run history, and team visibility are rolling out through Pro early access.
+          </p>
 
-        {/* -- Continue card --------------------------------- */}
-        <ContinueCard {...continueData} />
-
-        {/* -- Main two-column ------------------------------- */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-
-          {/* Run timeline */}
-          <RunDecisionTimeline items={timelineItems.length ? timelineItems : previewTimeline} />
-
-          {/* Right column: risk map + sync */}
-          <div className="flex flex-col gap-6">
-            <RiskMap items={riskItems} />
-            <SyncStatusPanel connected={connected} lastSynced={syncedAt} syncedRuns={runs.length} />
-          </div>
-        </div>
-
-        {/* -- Bottom row ------------------------------------ */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <ProjectMemoryPanel
-            currentFocus={continueData.currentFocus}
-            protectedAreas={memoryProtected}
-            stillMissing={continueData.missingProofItems}
-            nextPrompt={continueData.nextSafePrompt}
-          />
-
-          <div className="flex flex-col gap-5">
-            <ShareCard
-              project={continueData.project}
-              runsGuarded={guardedCount}
-              estimatedTokens={`~${tokens.toLocaleString("en-US")}`}
-              estimatedDollars={`$${standard.toFixed(2)} reference`}
-              riskReduction="45"
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link
+              href="/app/install"
+              className="rounded-md bg-[#7C6DFA] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
+            >
+              Install CLI
+            </Link>
+            <EarlyAccessModalTrigger
+              label="Join Pro early access"
+              variant="pro"
+              className="rounded-md border border-white/12 px-4 py-2 text-[13px] font-medium text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
             />
-            <div className="surface-panel rounded-xl p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Plan</p>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <p className="text-[15px] font-bold text-[#EDEEFF]">{currentPlan.name}</p>
-                    <span className="text-[13px] font-semibold text-[#9E91FF]">{currentPlan.priceLabel}</span>
-                  </div>
-                  <p className="mt-1.5 text-[12px] text-[#4D5070]">Local CLI is free with no account. Cloud sync is Pro early access.</p>
-                </div>
-                <Link
-                  href="/#early-access"
-                  className="shrink-0 rounded border border-white/8 px-3 py-1.5 text-[12px] text-[#6870A0] transition-colors hover:border-white/14 hover:text-[#9699BE]"
-                >
-                  Join early access
-                </Link>
-              </div>
-            </div>
           </div>
-        </div>
 
-      </div>
-    </AppShell>
+          <p className="mt-4 text-[12px] text-[#6C7797]">
+            Free local CLI does not require an account. Source code stays local.
+          </p>
+
+          <div className="mt-6 rounded-lg border border-white/8 bg-[#0A0C1F] p-4 sm:p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#7A85A6]">Roadmap</p>
+            <ul className="mt-3 space-y-2">
+              {ROADMAP_ITEMS.map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-[13px] text-[#CFD7E8]">
+                  <Check className="size-3.5 text-[#7C6DFA]" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }
-

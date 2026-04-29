@@ -18,9 +18,11 @@ export const metadata: Metadata = {
 
 function CommandRow({ command }: { command: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-[#0E151E] px-3 py-2.5">
-      <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-[#D7DEE7]">{command}</code>
-      <CopyButton text={command} />
+    <div className="flex max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/8 bg-[#0E151E] px-3 py-2.5">
+      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[11px] text-[#D7DEE7] sm:text-[12px]">
+        {command}
+      </code>
+      <CopyButton text={command} className="shrink-0" />
     </div>
   );
 }
@@ -40,10 +42,10 @@ export default function InstallPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
+    <div className="min-h-screen overflow-x-hidden bg-[#07071A] text-[#EDEEFF]">
       <header className="border-b border-white/10 bg-[#090A1D]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <Link href="/" className="min-w-0 flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
             <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
@@ -56,15 +58,15 @@ export default function InstallPage() {
           </nav>
           <Link
             href="/"
-            className="rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+            className="shrink-0 rounded-md border border-white/12 px-2.5 py-1.5 text-[11px] text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF] sm:px-3 sm:text-[12px]"
           >
             Back to homepage
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1120px] px-6 py-8 sm:py-10">
-        <div className="space-y-7">
+      <main className="mx-auto w-full max-w-[1120px] px-4 py-8 sm:px-6 sm:py-10">
+        <div className="space-y-7 min-w-0">
         <header>
           <h1 className="text-[24px] font-bold tracking-[-0.03em] text-[#EDEEFF]">Install RunTrim</h1>
           <p className="mt-1 text-[13px] text-[#9AA7B6]">RunTrim runs locally in your repo. Source code is not uploaded in V1.</p>
@@ -78,13 +80,13 @@ export default function InstallPage() {
             <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Install once. Start in any repo.</h2>
             <p className="mt-1 text-[12px] text-[#9AA7B6]">RunTrim will guide you through init, prepare, panel, check and memory.</p>
           </div>
-          <div className="grid gap-4 px-6 py-5 lg:grid-cols-[1.1fr_1fr]">
-            <div className="space-y-2.5">
+          <div className="grid min-w-0 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.1fr_1fr]">
+            <div className="min-w-0 space-y-2.5">
               {quickStart.map((command) => (
                 <CommandRow key={command} command={command} />
               ))}
             </div>
-            <div className="rounded-lg border border-white/8 bg-[#090F18] p-4">
+            <div className="min-w-0 rounded-lg border border-white/8 bg-[#090F18] p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5D638D]">What each command does</p>
               <ul className="mt-3 space-y-2 text-[12px] leading-5 text-[#C0C2E8]">
                 <li><span className="text-[#EDEEFF]">start</span> checks project state and guides the next step.</li>
@@ -97,12 +99,14 @@ export default function InstallPage() {
         <section className="surface-panel rounded-xl p-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Manual daily loop</p>
           <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Prepare, monitor, check, and memory</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-5">
+          <div className="mt-4 grid min-w-0 gap-3 md:grid-cols-5">
             {manualDailyLoop.map((item) => (
-              <div key={item.step} className="rounded-lg border border-white/8 bg-[#0E151E] p-3">
+              <div key={item.step} className="min-w-0 rounded-lg border border-white/8 bg-[#0E151E] p-3">
                 <p className="font-mono text-[10px] text-[#6870A0]">Step {item.step}</p>
                 <p className="mt-1 text-[13px] font-semibold text-[#EDEEFF]">{item.title}</p>
-                <code className="mt-2 block rounded border border-white/8 bg-[#090918] px-2 py-1 font-mono text-[11px] text-[#D7DEE7]">{item.command}</code>
+                <code className="mt-2 block max-w-full overflow-x-auto whitespace-nowrap rounded border border-white/8 bg-[#090918] px-2 py-1 font-mono text-[11px] text-[#D7DEE7]">
+                  {item.command}
+                </code>
                 <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">{item.note}</p>
               </div>
             ))}
@@ -130,8 +134,8 @@ export default function InstallPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <div className="surface-panel rounded-xl p-5">
+        <section className="grid min-w-0 gap-4 lg:grid-cols-2">
+          <div className="surface-panel min-w-0 rounded-xl p-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Local development preview</p>
             <p className="mt-1 text-[13px] text-[#9AA7B6]">Use these commands only when developing RunTrim itself.</p>
             <div className="mt-4 space-y-2.5">
@@ -143,7 +147,7 @@ export default function InstallPage() {
             </div>
           </div>
 
-          <div className="surface-panel rounded-xl p-5">
+          <div className="surface-panel min-w-0 rounded-xl p-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Advanced modes</p>
             <div className="mt-4 space-y-3">
               <div className="rounded-lg border border-white/8 bg-[#0E151E] p-4">
