@@ -205,17 +205,6 @@ export default function InstallPage() {
           </div>
         </section>
 
-        <section className="surface-panel min-w-0 rounded-xl p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Local development preview</p>
-          <p className="mt-1 text-[13px] text-[#9AA7B6]">Use these commands only when developing RunTrim itself.</p>
-          <div className="mt-4 space-y-2.5">
-            <CommandRow command="git clone https://github.com/michelpronkk-oss/rtrim" />
-            <CommandRow command="cd rtrim" />
-            <CommandRow command="npm install" />
-            <CommandRow command="npm run runtrim -- init" />
-            <CommandRow command={'npm run runtrim -- prepare "fix checkout redirect"'} />
-          </div>
-        </section>
         </div>
       </main>
     </div>
