@@ -100,7 +100,7 @@ const PRICING_FEATURES = [
   { label: "Local memory",             free: true,       pro: true,       builder: true,        team: true        },
   { label: "Cloud sync",               free: false,      pro: true,       builder: true,        team: true        },
   { label: "Hosted dashboard",         free: false,      pro: true,       builder: true,        team: true        },
-  { label: "Projects",                 free: "1 local",  pro: "1 synced", builder: "unlimited", team: "unlimited" },
+  { label: "Tracked repos",            free: "1 local",  pro: "1 synced", builder: "unlimited", team: "unlimited" },
   { label: "Continuation prompts",     free: "local",    pro: "synced",   builder: "synced",    team: "synced"    },
   { label: "Savings report",           free: false,      pro: true,       builder: true,        team: true        },
   { label: "Custom project rules",     free: false,      pro: false,      builder: true,        team: true        },
@@ -505,6 +505,7 @@ export default function Home() {
               <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] border-t border-white/8 bg-[#07071A]">
                 <div className="px-5 py-5">
                   <p className="text-[11px] text-[#2E2E50]">Cloud sync stores metadata only. Source code stays local.</p>
+                  <p className="mt-1 text-[11px] text-[#2E2E50]">A tracked repo is one codebase with its own `.runtrim` workspace.</p>
                 </div>
                 {planOrder.map((id) => {
                   const plan = plans[id];
