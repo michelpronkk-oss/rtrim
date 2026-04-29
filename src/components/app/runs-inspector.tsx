@@ -16,6 +16,10 @@ type InspectorRun = {
   watchWarnings: string[];
   detectedRisks: string[];
   sensitiveAreas: string[];
+  attempts?: number;
+  attemptNumber?: number;
+  latestAttempt?: boolean;
+  repeatedTask?: boolean;
 };
 
 interface RunsInspectorProps {
@@ -46,6 +50,14 @@ export function RunsInspector({ run, promptLabel, promptText }: RunsInspectorPro
           <TabsContent value="summary" className="pt-4">
             <p className="font-mono text-[10px] uppercase text-[#4D5070]">Task</p>
             <p className="mt-1.5 text-[13px] leading-5 text-[#C0C2E8]">{run.task}</p>
+            {run.repeatedTask && (
+              <div className="mt-3 rounded-lg border border-white/8 bg-[#090918] p-3">
+                <p className="font-mono text-[10px] uppercase text-[#4D5070]">Attempts</p>
+                <p className="mt-1 text-[12px] text-[#C0C2E8]">{run.attempts} total</p>
+                <p className="mt-1 text-[12px] text-[#8E95C3]">{run.latestAttempt ? "Latest attempt: yes" : "Latest attempt: no"}</p>
+                <p className="mt-1 text-[12px] text-[#8E95C3]">Previous attempts available in timeline.</p>
+              </div>
+            )}
             <div className="mt-4 grid grid-cols-2 gap-px rounded-lg border border-white/8 bg-white/8">
               <div className="bg-[#0D0C22] px-4 py-3">
                 <p className="font-mono text-[10px] uppercase text-[#4D5070]">Score</p>

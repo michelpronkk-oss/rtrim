@@ -71,6 +71,11 @@ export function AppShell({ children, active }: AppShellProps) {
               <br />
               Sync is optional metadata only.
             </p>
+            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#626A94]">
+              <Link href="/privacy" className="transition-colors hover:text-[#B9B2FF]">Privacy</Link>
+              <Link href="/terms" className="transition-colors hover:text-[#B9B2FF]">Terms</Link>
+              <Link href="/security" className="transition-colors hover:text-[#B9B2FF]">Security</Link>
+            </div>
           </div>
         </aside>
 

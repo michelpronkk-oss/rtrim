@@ -1,233 +1,179 @@
 # RunTrim
 
-RunTrim scopes AI coding runs before they waste tokens.
+Scope the run before the agent touches your repo.
 
-RunTrim is a local CLI guard layer for Claude, Codex, Cursor, and other AI coding agents. It audits a raw task, blocks unsafe mega-runs, creates a scoped run contract, checks the diff after the agent runs, and remembers where you left off.
+RunTrim is a local-first control layer for AI coding agents. It prepares guarded prompts, monitors execution scope, checks outcomes, and keeps project memory so the next run starts with context.
+
+## What RunTrim is
+
+RunTrim is a CLI for developers using tools like Claude Code, Codex, Cursor, and ChatGPT. It sits in front of your coding run and helps you avoid risky, oversized, or context-wasting prompts.
 
 ## Why RunTrim exists
 
-Agent runs fail in predictable ways:
-- prompts are too broad
-- agents scan too much of the repo
-- sensitive systems get touched by accident
-- follow-up prompts restart from scratch
+AI coding runs often fail for operational reasons, not model quality:
+- tasks are too broad
+- sensitive surfaces are touched by accident
+- context is lost between sessions
+- teams repeat failed attempts without a reliable run log
 
-RunTrim adds pre-run scope control and post-run continuity.
+RunTrim adds structure before the run and continuity after the run.
 
-## What it does
+## Daily loop
 
-- Audits task quality and risk before execution
-- Blocks unsafe mega-runs and recommends split audits
-- Generates guarded run contracts with explicit scope and stop rules
-- Checks git diff and output proof after an agent run
-- Generates next safe prompts for continuation
-- Stores local run memory in `.runtrim/`
+Default guided flow:
+
+```bash
+runtrim init
+runtrim start
+```
+
+Direct operator flow:
+
+```bash
+runtrim prepare "fix checkout redirect"
+runtrim panel --monitor
+runtrim check
+runtrim continue --reason usage_limit
+runtrim memory
+```
 
 ## Install
 
-### Local preview (available now)
+Global install for end users:
+
+```bash
+npm install -g runtrim
+runtrim init
+runtrim start
+```
+
+Local preview for repository development:
 
 ```bash
 git clone https://github.com/michelpronkk-oss/rtrim
 cd rtrim
 npm install
 npm run runtrim -- init
-npm run runtrim -- run "fix checkout redirect"
+npm run runtrim -- start
 ```
 
-### Local global test (npm link)
+## What RunTrim does
 
-```bash
-npm run build:cli
-npm link
-runtrim init
-runtrim run "fix checkout redirect"
-runtrim memory
-```
-
-### Global npm install (after publish)
-
-```bash
-npm install -g runtrim
-runtrim init
-runtrim run "fix checkout redirect"
-```
-
-## Quick start
-
-```bash
-npm run runtrim -- init
-npm run runtrim -- prepare "fix checkout redirect"
-npm run runtrim -- run "fix checkout redirect"
-npm run runtrim -- check
-npm run runtrim -- memory
-npm run runtrim -- report
-```
+- audits task scope before execution
+- blocks unsafe mega-runs and suggests split-safe follow-ups
+- generates guarded prompts with explicit stop rules
+- monitors changed files during execution
+- checks output quality and missing proof after edits
+- stores local run memory in `.runtrim/`
 
 ## Core commands
 
 ```bash
 runtrim init
-runtrim guard "<task>"
+runtrim start
 runtrim prepare "<task>"
-runtrim run "<task>"
+runtrim panel --monitor
 runtrim check
-runtrim watch
-runtrim watch --once
-runtrim watch --strict
-runtrim continue
 runtrim continue --reason usage_limit
 runtrim memory
-runtrim memory --prompt
-runtrim report
-runtrim auth set "<token>"
-runtrim auth status
 runtrim sync
-runtrim agent
-runtrim agent set copy
-runtrim agent set claude
-runtrim agent set codex
-runtrim agent set custom "<command>"
 ```
 
-## Copy mode vs command mode
+## Examples
 
-- Copy mode: RunTrim generates and copies a guarded contract. You paste it into your agent.
-- Command mode: RunTrim wraps your configured local agent command and keeps guard rails.
-
-## Prepare mode
-
-`runtrim prepare "<task>"` audits and prepares a guarded prompt but never executes an agent.
-
-Examples:
+Guarded prepare flow:
 
 ```bash
 runtrim prepare "fix checkout redirect"
-runtrim prepare "fix checkout redirect" --open
-runtrim prepare "fix checkout redirect" --agent cursor --editor cursor
-runtrim prepare "rewrite auth, middleware, database and billing"
 ```
 
-## Example: blocked mega-run
-
-Input:
+High-risk split-required flow:
 
 ```bash
-runtrim run "rewrite auth flow, fix middleware, update database schema, make billing work"
+runtrim prepare "rewrite auth flow, middleware, database schema and billing"
 ```
 
-Result:
-- Split required
-- High-risk systems detected
-- Recommended split audit tasks
-- Next safe prompt copied
+## Monitor and panel
 
-## Example: guarded run
+Use `runtrim panel --monitor` while your agent is running.
 
-Input:
+It keeps local run state visible and warns when scope drifts into risky or forbidden areas.
 
-```bash
-runtrim run "fix checkout redirect"
-```
+## Check
 
-Result:
-- Task audited
-- Scope and stop rules generated
-- Guarded contract copied or passed to configured command
+Run `runtrim check` after the agent edits files.
 
-## Project memory
-
-`runtrim memory` prints compact project state from local runs:
-- current state
-- previous task
-- latest status
-- changed files
-- missing proof items
-- protected areas
-- next safe action and next safe prompt
-
-`runtrim memory --prompt` prints only the latest next safe prompt.
-
-## Watch mode
-
-`runtrim watch` monitors local git diff against the latest guarded run scope while your coding agent is working.
-
-- warns when file limits are exceeded
-- warns when sensitive or forbidden scope is touched
-- suggests when to stop and run `runtrim check`
-
-Examples:
-
-```bash
-runtrim watch
-runtrim watch --once
-runtrim watch --strict
-```
+It validates changed files, summarizes risk posture, and reports missing proof items before you continue.
 
 ## Continuation recovery
 
-Use `runtrim continue` when an agent stops mid-task due to usage limits, credits, context limits, provider errors, or manual handoff.
+When a run stops due to usage or context limits:
 
 ```bash
 runtrim continue --reason usage_limit
-runtrim continue --reason context_limit --agent codex
-runtrim continue --reason manual_handoff --print
 ```
 
-RunTrim creates `.runtrim/continuation-prompt.md`, copies it to clipboard, and keeps continuation metadata in local memory/config.
+RunTrim prepares a continuation prompt and stores continuation metadata in local memory.
 
-## Sync V0 (private beta)
+## Project memory
 
-Sync uploads metadata only. It does not upload source code or file contents.
+`runtrim memory` shows where the project currently stands:
+- latest task and run status
+- changed files
+- missing proof
+- protected areas
+- next safe action
 
-Uploads:
-- project name, stack, package manager, status
-- task metadata, scores, risk labels, changed file paths
-- memory markdown and next safe prompt
-- watch warnings and watch changed file paths
+## Sync V0 private beta
 
-Does not upload:
+Cloud sync is private beta and metadata-only.
+
+Sync can upload:
+- project name and status
+- run status and risk metadata
+- RunTrim-generated prompts
+- changed file paths
+- project memory summaries
+- timestamps and estimated savings
+
+Sync does not intentionally upload:
 - source code
 - `.env` values
 - secret file contents
 
 ```bash
 runtrim auth set "<token>"
-runtrim config set dashboard-url http://localhost:3000/app
+runtrim config set dashboard-url https://www.runtrim.com/app
 runtrim sync
 ```
 
-Required server env:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `RUNTRIM_SYNC_SECRET`
+## Privacy model
 
-## Privacy
+RunTrim Free runs locally and stores state in `.runtrim`.
 
-RunTrim runs locally.
-V1 does not upload code.
-`.runtrim/` stores local run metadata and memory.
-Sync V0 is private beta and metadata-only.
+V1 is designed so source code is not uploaded. Cloud sync stores metadata only when enabled.
 
-## Current status
+See:
+- https://www.runtrim.com/privacy
+- https://www.runtrim.com/security
 
-Early V1.
-Savings are estimated.
-RunTrim is not a replacement for Claude, Codex, or Cursor.
-It wraps and controls the agents developers already use.
+## Status
+
+RunTrim is in early V1.
+
+Free local CLI is available. Cloud sync and hosted dashboard access are private beta.
 
 ## Roadmap
 
-- npm publish
+- npm package launch hardening
 - stronger local policy presets
-- richer post-run analysis
-- optional hosted dashboard features
+- richer post-run verification workflows
+- expanded cloud memory rollout
 
-## Packaging dry run
+## Packaging
 
 ```bash
+npm run build
 npm run build:cli
 npm pack --dry-run
-npm publish --dry-run
 ```

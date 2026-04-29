@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { RunsInspector } from "@/components/app/runs-inspector";
 import { RunStatusBadge } from "@/components/app/run-status-badge";
 import { getLatestSyncedProject, getSyncedRunsResult } from "@/lib/dashboard-sync";
+import { buildAttemptMeta } from "@/lib/run-grouping";
 
 type Filter = "all" | "guarded" | "split_required" | "partial" | "passed" | "drift_detected";
 const FILTERS: Filter[] = ["all", "guarded", "split_required", "partial", "passed", "drift_detected"];
@@ -25,6 +26,10 @@ type NormalizedRun = {
   nextSafePrompt: string;
   latestPrompt: string;
   continuationPrompt: string;
+  attempts?: number;
+  attemptNumber?: number;
+  latestAttempt?: boolean;
+  repeatedTask?: boolean;
 };
 
 function asString(value: unknown): string {
@@ -111,7 +116,9 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
 
   const rows = runsResult.runs.map(normalizeRun);
   const filtered = rows.filter((r) => selected === "all" || r.status === selected);
-  const selectedRun = filtered[0];
+  const filteredMeta = buildAttemptMeta(filtered.map((run) => ({ task: run.task })));
+  const displayRows = filtered.map((run, index) => ({ ...run, ...filteredMeta[index] }));
+  const selectedRun = displayRows[0];
   const selectedPrompt = selectedRun
     ? pickPromptSource(selectedRun, {
         projectNextSafePrompt: latestBundle?.project?.next_safe_prompt ?? null,
@@ -168,7 +175,7 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
               {filterLabel(f)}
             </a>
           ))}
-          <span className="ml-auto self-center font-mono text-[11px] text-[#2E2E50]">{filtered.length} run{filtered.length !== 1 ? "s" : ""}</span>
+          <span className="ml-auto self-center font-mono text-[11px] text-[#2E2E50]">{displayRows.length} run{displayRows.length !== 1 ? "s" : ""}</span>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
@@ -182,13 +189,13 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
                 <p className="mt-2 font-mono text-[12px] text-[#6870A0]">runtrim prepare "your task"</p>
                 <p className="mt-1 font-mono text-[12px] text-[#6870A0]">runtrim sync</p>
               </div>
-            ) : filtered.length === 0 ? (
+            ) : displayRows.length === 0 ? (
               <div className="px-6 py-9">
                 <p className="text-[13px] text-[#4D5070]">No runs match this filter.</p>
               </div>
             ) : (
               <div className="divide-y divide-white/8">
-                {filtered.map((run) => (
+                {displayRows.map((run) => (
                   <div key={run.localId} className="flex gap-4 px-6 py-5 transition-colors hover:bg-white/[0.02]">
                     <div className="mt-1.5 size-2 shrink-0 rounded-full" style={{
                       background:
@@ -206,6 +213,13 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
                       <div className="mt-1.5 flex flex-wrap items-center gap-3 font-mono text-[11px] text-[#4D5070]">
                         <span>Risk: {(run.riskBefore || "unknown").toUpperCase()}{run.riskAfter ? ` -> ${run.riskAfter.toUpperCase()}` : ""}</span>
                         <span>{run.changedFiles.length} files changed</span>
+                        {run.repeatedTask && (
+                          <>
+                            <span className="rounded border border-white/10 bg-[#0E1026] px-1.5 py-0.5 text-[10px] text-[#8E95C3]">Repeated task</span>
+                            <span>Attempt {run.attemptNumber} of {run.attempts}</span>
+                            {run.latestAttempt && <span className="text-[#9E91FF]">Latest attempt</span>}
+                          </>
+                        )}
                         {run.missingProofItems.length > 0 && (
                           <span className="text-[#F0BF72]">{run.missingProofItems.length} proof items missing</span>
                         )}

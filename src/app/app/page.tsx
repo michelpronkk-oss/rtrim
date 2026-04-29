@@ -7,6 +7,7 @@ import { RunDecisionTimeline } from "@/components/app/run-decision-timeline";
 import { ShareCard } from "@/components/app/share-card";
 import { SyncStatusPanel } from "@/components/app/sync-status-panel";
 import { getLatestSyncedProject } from "@/lib/dashboard-sync";
+import { buildAttemptMeta } from "@/lib/run-grouping";
 import { getPlan } from "@/lib/plans";
 
 function mapStatusToRiskState(status: string) {
@@ -79,30 +80,61 @@ export default async function AppPage() {
   const standard = Number(synced?.project?.estimated_dollars_standard ?? 1.15);
   const expensive = Number(synced?.project?.estimated_dollars_expensive ?? 11.5);
 
-  const timelineItems =
-    runs.slice(0, 6).map((run) => ({
-      id: run.local_id,
-      task: run.task ?? "Untitled run",
-      status: (run.status ?? "guarded").toLowerCase(),
-      riskBefore: (run.risk_before ?? "medium").toLowerCase(),
-      riskAfter: run.risk_after ? run.risk_after.toLowerCase() : undefined,
-      filesChanged: run.changed_files?.length ?? 0,
-      decision:
-        (run.status ?? "").toLowerCase() === "split_required"
-          ? "RunTrim stopped this run before protected systems were edited together."
-          : (run.status ?? "").toLowerCase() === "partial"
-          ? "RunTrim marked verification debt and generated continuation guidance."
-          : "RunTrim guarded scope and logged the outcome.",
-      nextAction: run.next_safe_prompt ? "Use generated next safe prompt." : "Run runtrim check for next action.",
-      date: run.created_at_local
-        ? new Date(run.created_at_local).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "Preview",
-    })) || [];
+  const baseTimelineRuns = runs.slice(0, 30).map((run) => ({
+    id: run.local_id,
+    task: run.task ?? "Untitled run",
+    status: (run.status ?? "guarded").toLowerCase(),
+    riskBefore: (run.risk_before ?? "medium").toLowerCase(),
+    riskAfter: run.risk_after ? run.risk_after.toLowerCase() : undefined,
+    filesChanged: run.changed_files?.length ?? 0,
+    date: run.created_at_local
+      ? new Date(run.created_at_local).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "Preview",
+    hasPrompt: Boolean(run.next_safe_prompt),
+  }));
+  const attemptMeta = buildAttemptMeta(baseTimelineRuns.map((run) => ({ task: run.task })));
+  const usedKeys = new Set<string>();
+  const timelineItems = baseTimelineRuns.flatMap((run, index) => {
+    const meta = attemptMeta[index];
+    if (usedKeys.has(meta.key)) return [];
+    usedKeys.add(meta.key);
+    const decision =
+      run.status === "split_required"
+        ? "RunTrim stopped this run before protected systems were edited together."
+        : run.status === "partial"
+        ? "RunTrim marked verification debt and generated continuation guidance."
+        : "RunTrim guarded scope and logged the outcome.";
+    const primary = {
+      id: run.id,
+      task: run.task,
+      status: run.status,
+      riskBefore: run.riskBefore,
+      riskAfter: run.riskAfter,
+      filesChanged: run.filesChanged,
+      decision,
+      nextAction: run.hasPrompt ? "Use generated next safe prompt." : "Run runtrim check for next action.",
+      date: run.date,
+    };
+    if (meta.attempts <= 1) return [primary];
+    return [
+      primary,
+      {
+        id: `${run.id}-collapsed`,
+        task: `${meta.attempts - 1} previous attempts`,
+        status: "guarded",
+        riskBefore: run.riskBefore,
+        filesChanged: 0,
+        decision: `${meta.attempts - 1} similar runs collapsed.`,
+        nextAction: "Open runs for full attempt history.",
+        date: run.date,
+      },
+    ];
+  }).slice(0, 6);
 
   const previewTimeline = [
     {
@@ -223,13 +255,13 @@ export default async function AppPage() {
                     <p className="text-[15px] font-bold text-[#EDEEFF]">{currentPlan.name}</p>
                     <span className="text-[13px] font-semibold text-[#9E91FF]">{currentPlan.priceLabel}</span>
                   </div>
-                  <p className="mt-1.5 text-[12px] text-[#4D5070]">Local CLI is free. Cloud sync is coming.</p>
+                  <p className="mt-1.5 text-[12px] text-[#4D5070]">Local CLI is free with no account. Cloud sync is Pro early access.</p>
                 </div>
                 <Link
-                  href="/#pricing"
+                  href="/#early-access"
                   className="shrink-0 rounded border border-white/8 px-3 py-1.5 text-[12px] text-[#6870A0] transition-colors hover:border-white/14 hover:text-[#9699BE]"
                 >
-                  View plans
+                  Join early access
                 </Link>
               </div>
             </div>

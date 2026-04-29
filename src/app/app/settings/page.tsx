@@ -16,25 +16,29 @@ export default function SettingsPage() {
         </section>
 
         <section className="surface-panel rounded-xl p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Private beta sync</p>
-          <p className="mt-2 text-[13px] text-[#C0C2E8]">Configure token-based sync for metadata only. Full account auth is not enabled yet.</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Cloud sync private beta</p>
+          <p className="mt-2 text-[13px] text-[#C0C2E8]">Current V0 token-based sync is for approved testers. Join Pro early access for access.</p>
           <div className="mt-3 rounded-lg border border-white/8 bg-[#090918] p-3 font-mono text-[12px] leading-6 text-[#9E91FF]">
             <p>runtrim auth set &lt;token&gt;</p>
-            <p>runtrim config set dashboard-url https://your-domain.com/app</p>
+            <p>runtrim config set dashboard-url https://www.runtrim.com/app</p>
             <p>runtrim sync</p>
           </div>
+          <a
+            href="/#early-access"
+            className="mt-3 inline-flex rounded border border-white/8 px-3 py-1.5 text-[12px] text-[#6870A0] transition-colors hover:border-white/14 hover:text-[#9699BE]"
+          >
+            Join Pro early access
+          </a>
         </section>
 
         <section className="surface-panel rounded-xl p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Environment variables</p>
-          <p className="mt-2 text-[12px] text-[#8C93BE]">Set these in your runtime environment for self-hosted sync:</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Public environment hints</p>
+          <p className="mt-2 text-[12px] text-[#8C93BE]">Set only non-secret values in your local runtime as needed:</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {[
               "RUNTRIM_SYNC_URL",
-              "RUNTRIM_SYNC_SECRET",
               "NEXT_PUBLIC_SUPABASE_URL",
               "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-              "SUPABASE_SERVICE_ROLE_KEY",
             ].map((envKey) => (
               <div key={envKey} className="rounded border border-white/8 bg-[#0D0C22] px-3 py-2 font-mono text-[12px] text-[#C0C2E8]">
                 {envKey}

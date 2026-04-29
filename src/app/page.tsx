@@ -4,28 +4,31 @@ import { MotionFade } from "@/components/app/motion-section";
 import { HeroTerminal } from "@/components/app/hero-terminal";
 import { TerminalCard } from "@/components/app/terminal-card";
 import { CopyButton } from "@/components/app/copy-button";
+import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 import { planOrder, plans } from "@/lib/plans";
 
 // â”€â”€ Terminal data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CLI_PREVIEW = [
-  { type: "comment" as const, text: "# initialize RunTrim in your project" },
+  { type: "comment" as const, text: "# initialize and follow the guided next step" },
   { type: "prompt"  as const, text: "$ runtrim init" },
-  { type: "dim"     as const, text: "  config created  .runtrim/config.json" },
+  { type: "dim"     as const, text: "  baseline created" },
+  { type: "dim"     as const, text: "  next: runtrim start" },
   { text: "" },
-  { type: "comment" as const, text: "# capture a completed run" },
-  { type: "prompt"  as const, text: '$ runtrim capture "fixed sync handling in checkout"' },
-  { type: "dim"     as const, text: "  run captured  run_47  2 files  score 84/100" },
+  { type: "prompt"  as const, text: "$ runtrim start" },
+  { type: "dim"     as const, text: "  state: guarded prompt prepared" },
+  { type: "dim"     as const, text: "  next: runtrim panel --monitor" },
   { text: "" },
-  { type: "comment" as const, text: "# view full run and prompt history" },
-  { type: "prompt"  as const, text: "$ runtrim history" },
-  { type: "dim"     as const, text: "  run_47  fixed sync handling       partial  Apr 28" },
-  { type: "dim"     as const, text: "  run_46  auth flow audit            passed   Apr 27" },
-  { type: "dim"     as const, text: "  run_45  rewrite billing and schema split     Apr 26" },
+  { type: "prompt"  as const, text: '$ runtrim prepare "fix checkout redirect"' },
+  { type: "dim"     as const, text: "  prompt saved to .runtrim/latest-prompt.md" },
+  { type: "dim"     as const, text: "  next: paste into your agent, then runtrim check" },
   { text: "" },
-  { type: "comment" as const, text: "# see estimated savings across all runs" },
-  { type: "prompt"  as const, text: "$ runtrim savings" },
-  { type: "accent"  as const, text: "  tokens saved  ~847,000    cost saved  ~$4.12" },
+  { type: "prompt"  as const, text: "$ runtrim continue --reason usage_limit" },
+  { type: "dim"     as const, text: "  continuation prompt copied" },
+  { type: "dim"     as const, text: "  next: paste into the next agent" },
+  { text: "" },
+  { type: "prompt"  as const, text: "$ runtrim sync" },
+  { type: "accent"  as const, text: "  synced project memory and runs" },
 ];
 
 const AGENT_MODES = [
@@ -75,7 +78,7 @@ const SAVINGS_STATS = [
 const FAQS = [
   {
     q: "Does RunTrim upload my source code?",
-    a: "No. V1 runs entirely locally. Source code never leaves your machine. Cloud sync in paid plans uploads run metadata only, not file contents or env values.",
+    a: "No. V1 runs entirely locally. Source code never leaves your machine. Cloud sync in Pro early access uploads run metadata only, not file contents or env values.",
   },
   {
     q: "How accurate are the savings estimates?",
@@ -125,7 +128,7 @@ export default function Home() {
             href="/app/install"
             className="rounded-md bg-[#7C6DFA] px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
           >
-            Install RunTrim
+            Install CLI
           </Link>
         </div>
       </header>
@@ -209,15 +212,13 @@ export default function Home() {
                     "0 0 0 1px rgba(124,109,250,0.45), 0 8px 20px rgba(124,109,250,0.22), inset 0 1px 0 rgba(255,255,255,0.12)",
                 }}
               >
-                Install RunTrim
+                Install CLI
                 <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
               </Link>
-              <Link
-                href="#how-it-works"
+              <EarlyAccessModalTrigger
+                label="Join Pro early access"
                 className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-6 py-3 text-[15px] text-[#A3AEBD] backdrop-blur-sm transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-              >
-                View CLI flow
-              </Link>
+              />
             </div>
           </MotionFade>
 
@@ -352,12 +353,12 @@ export default function Home() {
       <section className="border-t border-white/8 bg-[#07071A]">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <div className="mb-10">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">03 / The CLI</p>
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">03 / The loop</p>
             <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Five commands. Full memory.
+              Guided when you want it. Precise when you need it.
             </h2>
             <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-              No GUI required for capture, history, or savings tracking.
+              RunTrim tells you the next safe command after every step. Use start when you are unsure, or run the exact control you need.
             </p>
           </div>
           <TerminalCard title="runtrim — terminal" lines={CLI_PREVIEW} />
@@ -434,7 +435,7 @@ export default function Home() {
               Start local. Scale when it matters.
             </h2>
             <p className="mt-4 max-w-lg text-[14px] leading-[1.75] text-[#5E6A88]">
-              The CLI is free. Paid plans add cloud memory, multi-device history, and team visibility.
+              Free local CLI works without an account. Cloud sync and hosted dashboard are Pro early access.
             </p>
           </div>
 
@@ -507,6 +508,7 @@ export default function Home() {
                   const isFree    = id === "free";
                   const isBuilder = id === "builder";
                   const isSoon    = id === "team";
+                  const isProOrBuilder = id === "pro" || id === "builder";
                   return (
                     <div key={id} className={`flex items-center px-5 py-5 ${isBuilder ? "bg-[#0D0C22]" : ""}`}>
                       {isFree ? (
@@ -516,13 +518,11 @@ export default function Home() {
                         >
                           {plan.ctaLabel}
                         </Link>
-                      ) : isBuilder ? (
-                        <Link
-                          href="/app/install"
-                          className="rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-                        >
-                          {plan.ctaLabel}
-                        </Link>
+                      ) : isProOrBuilder ? (
+                        <EarlyAccessModalTrigger
+                          label={plan.ctaLabel}
+                          className={`${isBuilder ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85" : "rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"}`}
+                        />
                       ) : isSoon ? (
                         <span className="rounded-md border border-white/8 px-3.5 py-2 text-[12px] text-[#2E2E50]">
                           {plan.ctaLabel}
@@ -599,7 +599,7 @@ export default function Home() {
 
           {/* Headline — gradient only on the last line, white on the first */}
           <h3 className="text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] sm:text-[2.8rem] lg:text-[3.2rem]">
-            <span className="block text-[#EDEEFF]">Stop starting</span>
+            <span className="block text-[#EDEEFF]">Start local.</span>
             <span
               className="block"
               style={{
@@ -609,12 +609,12 @@ export default function Home() {
                 color: "transparent",
               }}
             >
-              from scratch.
+              Add cloud memory when you need it.
             </span>
           </h3>
 
           <p className="mx-auto mt-5 max-w-[360px] text-[14px] leading-[1.75] text-[#505870]">
-            Install the CLI, capture your first run, and see exactly what your project already knows.
+            Install the CLI for free. Join Pro early access when you want hosted run history and synced project memory.
           </p>
 
           {/* Install command */}
@@ -637,25 +637,23 @@ export default function Home() {
 
           {/* Primary button */}
           <div className="mt-8 flex flex-col items-center gap-4">
-            <Link
-              href="/app/install"
+              <Link
+                href="/app/install"
               className="group inline-flex items-center gap-2.5 rounded-xl px-9 py-4 text-[15px] font-semibold text-white transition-all duration-200 hover:opacity-90"
               style={{
                 background: "linear-gradient(160deg, #8B7EFF 0%, #7C6DFA 60%, #6A54E8 100%)",
                 boxShadow:
                   "0 0 0 1px rgba(155,140,255,0.50), 0 8px 32px rgba(124,109,250,0.40), 0 2px 8px rgba(124,109,250,0.30), inset 0 1px 0 rgba(255,255,255,0.18)",
               }}
-            >
-              Get started free
-              <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
-            </Link>
+              >
+                Install CLI
+                <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+              </Link>
 
-            <Link
-              href="/app"
+            <EarlyAccessModalTrigger
+              label="Join Pro early access"
               className="text-[13px] text-[#3E4462] transition-colors hover:text-[#9E91FF]"
-            >
-              Explore the dashboard
-            </Link>
+            />
           </div>
 
           {/* Trust indicators — legible */}
@@ -705,7 +703,7 @@ export default function Home() {
 
         {/* Main footer body */}
         <div className="mx-auto max-w-6xl px-6 py-14">
-          <div className="grid gap-10 sm:grid-cols-[1fr_auto_auto_auto]">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]">
 
             {/* Brand */}
             <div className="space-y-4">
@@ -770,6 +768,36 @@ export default function Home() {
                   <ArrowRight className="size-3" />
                 </Link>
               </div>
+            </div>
+
+            {/* Legal */}
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Legal</p>
+              <nav className="flex flex-col gap-3">
+                {[
+                  { href: "/privacy", label: "Privacy" },
+                  { href: "/terms", label: "Terms" },
+                  { href: "/security", label: "Security" },
+                  { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub", external: true },
+                  { href: "mailto:hello@runtrim.com", label: "Contact", external: true },
+                ].map((l) =>
+                  l.external ? (
+                    <a
+                      key={l.href}
+                      href={l.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]"
+                    >
+                      {l.label}
+                    </a>
+                  ) : (
+                    <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
+                      {l.label}
+                    </Link>
+                  )
+                )}
+              </nav>
             </div>
           </div>
 
