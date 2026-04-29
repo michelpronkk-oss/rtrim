@@ -764,20 +764,9 @@ export default function Home() {
             />
           </div>
 
-          {/* Trust indicators — legible */}
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
-            {[
-              "No credit card",
-              "Local-first",
-              "Free in V1",
-              "Agent-agnostic",
-            ].map((t) => (
-              <span key={t} className="flex items-center gap-1.5 text-[12px] text-[#525C7A]">
-                <Check className="size-3.5 shrink-0 text-[#7C6DFA]" />
-                {t}
-              </span>
-            ))}
-          </div>
+          <p className="mt-8 px-4 text-center text-[11px] leading-6 text-[#4E5577] sm:text-[12px]">
+            Free in V1 · No account required · Local-first · Agent-agnostic
+          </p>
         </div>
       </section>
 

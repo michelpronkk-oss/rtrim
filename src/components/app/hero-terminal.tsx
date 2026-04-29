@@ -66,6 +66,54 @@ const LINE_COLOR: Record<string, string> = {
   ok:      "text-[#4DE8B0]",
 };
 
+type RunStatus = "PASS" | "PART" | "SPLIT";
+
+const STATUS_STYLES: Record<RunStatus, string> = {
+  PASS: "border-[#4DE8B0]/25 bg-[#4DE8B0]/10 text-[#9EE6CD]",
+  PART: "border-[#F0BF72]/25 bg-[#F0BF72]/10 text-[#F2C88D]",
+  SPLIT: "border-[#FF7B5C]/25 bg-[#FF7B5C]/10 text-[#FFAC98]",
+};
+
+function parseRunRow(text: string): { id: string; task: string; status: RunStatus } | null {
+  const parts = text.trim().split(/\s+/);
+  const id = parts.shift();
+  const rawStatus = parts.pop();
+
+  if (!id || !rawStatus) return null;
+
+  let status: RunStatus | null = null;
+  if (rawStatus === "passed") status = "PASS";
+  if (rawStatus === "partial") status = "PART";
+  if (rawStatus === "split") status = "SPLIT";
+  if (!status) return null;
+
+  return {
+    id,
+    task: parts.join(" "),
+    status,
+  };
+}
+
+function RunRow({ text }: { text: string }) {
+  const parsed = parseRunRow(text);
+  if (!parsed) return <div className="leading-[1.75] text-[#A0AFBE]">{text}</div>;
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 leading-[1.6] sm:flex-nowrap">
+      <span className="shrink-0 text-[#7A8AA0]">{parsed.id}</span>
+      <span className="min-w-0 flex-1 truncate text-[#A0AFBE]">{parsed.task}</span>
+      <span
+        className={cn(
+          "ml-auto shrink-0 rounded-[6px] border px-1.5 py-[2px] text-[10px] uppercase tracking-[0.08em]",
+          STATUS_STYLES[parsed.status]
+        )}
+      >
+        {parsed.status}
+      </span>
+    </div>
+  );
+}
+
 /* ── Typewriter hook ─────────────────────────────────────── */
 function useTypewriter(text: string, charDelay = 32) {
   const [count, setCount] = useState(0);
@@ -111,6 +159,9 @@ function AnimatedLines({
     <>
       {lines.slice(0, shown).map((line, i) => {
         if (line.kind === "blank") return <div key={i} className="h-2" />;
+        if (line.kind === "row" || line.kind === "row-ok" || line.kind === "row-warn") {
+          return <RunRow key={i} text={line.text} />;
+        }
         return (
           <div
             key={i}
