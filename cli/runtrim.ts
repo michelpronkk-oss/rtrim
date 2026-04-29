@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import chalk, { type ChalkInstance } from "chalk";
+import { Chalk, type ChalkInstance } from "chalk";
 import ora from "ora";
 import prompts from "prompts";
 import clipboard from "clipboardy";
@@ -39,6 +39,9 @@ import {
   getProjectAuditPath,
 } from "../src/lib/project-audit.ts";
 
+const chalk = new Chalk();
+const oraFactory: typeof ora =
+  (typeof ora === "function" ? ora : ((ora as unknown as { default?: typeof ora }).default ?? ora));
 const ACCENT = chalk.hex("#C8901A");
 const DIM = chalk.gray;
 const BOLD = chalk.white.bold;
@@ -386,7 +389,7 @@ program
       }
     }
 
-    const spinner = ora({ text: "Building baseline project audit...", color: "yellow" }).start();
+    const spinner = oraFactory({ text: "Building baseline project audit...", color: "yellow" }).start();
     await new Promise((r) => setTimeout(r, 120));
     const previousAudit = loadProjectAudit(cwd);
     const baseline = performBaselineProjectAudit(cwd, previousAudit);
@@ -654,7 +657,7 @@ program
 
     const config = loadConfig(cwd);
 
-    const auditSpinner = ora({ text: "Auditing task...", color: "yellow" }).start();
+    const auditSpinner = oraFactory({ text: "Auditing task...", color: "yellow" }).start();
     await new Promise((r) => setTimeout(r, 250));
     const audit = auditTask(task, config, cwd);
     auditSpinner.stop();
@@ -1221,7 +1224,7 @@ program
 
       const config = loadConfig(cwd);
       const selectedAgent = (options.agent ?? config.defaultAgent ?? "claude").toLowerCase();
-      const auditSpinner = ora({ text: "Auditing task...", color: "yellow" }).start();
+      const auditSpinner = oraFactory({ text: "Auditing task...", color: "yellow" }).start();
       await new Promise((r) => setTimeout(r, 250));
       const audit = auditTask(task, config, cwd);
       auditSpinner.stop();
@@ -1380,7 +1383,7 @@ program
       return;
     }
 
-    const diffSpinner = ora({ text: "Reading git diff...", color: "yellow" }).start();
+    const diffSpinner = oraFactory({ text: "Reading git diff...", color: "yellow" }).start();
     const changedFiles = await getGitDiff(cwd);
     diffSpinner.stop();
 

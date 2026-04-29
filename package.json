@@ -1,7 +1,6 @@
 {
   "name": "runtrim",
   "version": "0.1.0",
-  "type": "module",
   "description": "CLI guard layer that scopes AI coding runs before they waste tokens.",
   "license": "MIT",
   "author": "RunTrim",
@@ -23,7 +22,7 @@
     "prompt-guard"
   ],
   "bin": {
-    "runtrim": "dist-cli/runtrim.js"
+    "runtrim": "./dist-cli/runtrim.cjs"
   },
   "files": [
     "dist-cli",
@@ -35,7 +34,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:web": "next build",
-    "build:cli": "tsup --config tsup.config.ts",
+    "build:cli": "tsup --config tsup.config.ts && node scripts/fix-cli-runtime.mjs",
     "build:all": "npm run build:cli && npm run build:web",
     "start": "next start",
     "lint": "eslint",
