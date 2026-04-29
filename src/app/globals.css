@@ -101,6 +101,32 @@
     background: rgba(124, 109, 250, 0.22);
     color: #EDEEFF;
   }
+
+  /*
+   * Mobile dialog: convert Radix Dialog from centred-with-transform to a
+   * bottom sheet. This fixes the iOS cursor-offset bug where the OS places
+   * the text cursor at the element's DOM position rather than its visual
+   * position after `transform: translate(-50%, -50%)` is applied.
+   *
+   * Below sm (639 px): remove the transform, anchor to the bottom edge,
+   * allow the sheet to scroll internally so the keyboard doesn't clip fields.
+   */
+  @media (max-width: 639px) {
+    [data-radix-dialog-content] {
+      top: auto !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      transform: none !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      border-radius: 20px 20px 0 0 !important;
+      max-height: 92dvh !important;
+      overflow-y: auto !important;
+      /* iOS momentum scrolling inside the sheet */
+      -webkit-overflow-scrolling: touch;
+    }
+  }
 }
 
 @layer utilities {

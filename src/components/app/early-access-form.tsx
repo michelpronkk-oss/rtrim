@@ -67,14 +67,14 @@ export function EarlyAccessForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
-          className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[13px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20"
+          className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[16px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20 sm:text-[13px]"
         />
         <input
           type="text"
           value={role}
           onChange={(e) => setRole(e.target.value)}
           placeholder="Role (optional)"
-          className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[13px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20"
+          className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[16px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20 sm:text-[13px]"
         />
         <select
           value={agent}
@@ -91,7 +91,7 @@ export function EarlyAccessForm() {
           value={useCase}
           onChange={(e) => setUseCase(e.target.value)}
           placeholder="Use case (optional)"
-          className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[13px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20"
+          className="rounded-lg border border-white/10 bg-[#090918] px-3 py-2 text-[16px] text-[#EDEEFF] outline-none placeholder:text-[#4D5070] focus:border-white/20 sm:text-[13px]"
         />
         <div className="sm:col-span-2 flex items-center gap-3">
           <button
