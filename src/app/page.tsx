@@ -153,7 +153,7 @@ export default function Home() {
             <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
           </div>
           <nav className="hidden items-center gap-8 md:flex">
-            <Link href="#how-it-works" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">How it works</Link>
+            <Link href="/how-it-works" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">How it works</Link>
             <Link href="#pricing"      className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Pricing</Link>
             <Link href="/app/install"  className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Docs</Link>
           </nav>
@@ -390,6 +390,17 @@ export default function Home() {
                 <p className="text-[13px] leading-[1.7] text-[#5E6A88]">{body}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center">
+            <p className="max-w-[560px] text-[12px] leading-6 text-[#6870A0]">
+              See how RunTrim prepares, monitors, checks, and remembers each AI coding run.
+            </p>
+            <Link
+              href="/how-it-works"
+              className="inline-flex rounded-md border border-white/10 px-4 py-2 text-[12px] font-medium text-[#97A3BA] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+            >
+              See the operator flow
+            </Link>
           </div>
         </div>
       </section>
