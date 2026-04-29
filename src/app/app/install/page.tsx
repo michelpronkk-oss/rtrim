@@ -1,4 +1,4 @@
-import { AppShell } from "@/components/app/app-shell";
+import Link from "next/link";
 import { CopyButton } from "@/components/app/copy-button";
 
 function CommandRow({ command }: { command: string }) {
@@ -30,8 +30,31 @@ export default function InstallPage() {
   ];
 
   return (
-    <AppShell active="/app/install">
-      <div className="mx-auto w-full max-w-[1120px] space-y-7">
+    <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
+      <header className="border-b border-white/10 bg-[#090A1D]/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
+            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+          </Link>
+          <nav className="hidden items-center gap-6 md:flex">
+            <Link href="/#how-it-works" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">How it works</Link>
+            <Link href="/#pricing" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">Pricing</Link>
+            <Link href="/privacy" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">Privacy</Link>
+            <Link href="/terms" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">Terms</Link>
+          </nav>
+          <Link
+            href="/"
+            className="rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+          >
+            Back to homepage
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-[1120px] px-6 py-8 sm:py-10">
+        <div className="space-y-7">
         <header>
           <h1 className="text-[24px] font-bold tracking-[-0.03em] text-[#EDEEFF]">Install RunTrim</h1>
           <p className="mt-1 text-[13px] text-[#9AA7B6]">RunTrim runs locally in your repo. Source code is not uploaded in V1.</p>
@@ -114,7 +137,8 @@ export default function InstallPage() {
             </div>
           </div>
         </section>
-      </div>
-    </AppShell>
+        </div>
+      </main>
+    </div>
   );
 }

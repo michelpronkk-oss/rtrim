@@ -31,7 +31,7 @@ export const plans: Record<PlanId, Plan> = {
     id: "free",
     name: "Free",
     priceLabel: "$0",
-    summary: "For local-first developers testing RunTrim in one repo.",
+    summary: "Local control for one repo.",
     ctaLabel: "Install CLI",
     features: [],
     bullets: [
@@ -48,7 +48,7 @@ export const plans: Record<PlanId, Plan> = {
     id: "pro",
     name: "Pro",
     priceLabel: "$12/month",
-    summary: "For solo builders using Claude, Codex or Cursor daily.",
+    summary: "Cloud memory for solo builders.",
     ctaLabel: "Join Pro early access",
     features: ["cloudSync", "cloudHistory", "shareCards", "weeklyReport"],
     bullets: [
@@ -64,7 +64,7 @@ export const plans: Record<PlanId, Plan> = {
     id: "builder",
     name: "Builder",
     priceLabel: "$29/month",
-    summary: "For serious builders running multiple AI-assisted projects.",
+    summary: "Multi-project control for serious builders.",
     ctaLabel: "Join early access",
     badge: "Recommended",
     features: [
@@ -92,7 +92,7 @@ export const plans: Record<PlanId, Plan> = {
     id: "team",
     name: "Team",
     priceLabel: "from $99/month",
-    summary: "For teams standardizing AI coding runs.",
+    summary: "Policies and visibility for teams.",
     ctaLabel: "Coming soon",
     features: [
       "cloudSync",

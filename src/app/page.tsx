@@ -96,14 +96,17 @@ const FAQS = [
 
 // Feature rows for pricing comparison
 const PRICING_FEATURES = [
-  { label: "Local CLI",                free: true,       pro: true,       builder: true,       team: true       },
-  { label: "Run history",              free: "local",    pro: "cloud",    builder: "cloud",     team: "cloud"    },
-  { label: "Prompt history",           free: "local",    pro: "cloud",    builder: "cloud",     team: "cloud"    },
-  { label: "Projects",                 free: "1",        pro: "1",        builder: "unlimited", team: "unlimited" },
-  { label: "Savings report",           free: false,      pro: true,       builder: true,       team: true       },
-  { label: "Custom project rules",     free: false,      pro: false,      builder: true,       team: true       },
-  { label: "Team run policies",        free: false,      pro: false,      builder: false,      team: true       },
-  { label: "GitHub PR summaries",      free: false,      pro: false,      builder: false,      team: true       },
+  { label: "Local CLI",                free: true,       pro: true,       builder: true,        team: true        },
+  { label: "Local memory",             free: true,       pro: true,       builder: true,        team: true        },
+  { label: "Cloud sync",               free: false,      pro: true,       builder: true,        team: true        },
+  { label: "Hosted dashboard",         free: false,      pro: true,       builder: true,        team: true        },
+  { label: "Projects",                 free: "1 local",  pro: "1 synced", builder: "unlimited", team: "unlimited" },
+  { label: "Continuation prompts",     free: "local",    pro: "synced",   builder: "synced",    team: "synced"    },
+  { label: "Savings report",           free: false,      pro: true,       builder: true,        team: true        },
+  { label: "Custom project rules",     free: false,      pro: false,      builder: true,        team: true        },
+  { label: "Advanced verification",    free: "basic",    pro: "standard", builder: "advanced",  team: "advanced"  },
+  { label: "Team run policies",        free: false,      pro: false,      builder: false,       team: true        },
+  { label: "GitHub PR summaries",      free: false,      pro: false,      builder: false,       team: "planned"   },
 ];
 
 // â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
