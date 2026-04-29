@@ -28,7 +28,7 @@ export default async function AppPage() {
   const fallbackMissing = ["ROOT CAUSE section", "HOW TO VERIFY section", "NEXT SAFE ACTION section"];
 
   const continueData = {
-    project: synced?.project?.name ?? "rtrim",
+    project: synced?.project?.name ?? "runtrim",
     status: lastStatus,
     lastUpdated: synced?.project?.updated_at
       ? new Date(synced.project.updated_at).toLocaleString("en-US", {

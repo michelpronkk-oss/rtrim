@@ -239,7 +239,9 @@ export function buildMemoryMarkdown(
 
   output.push("Still missing:");
   if (missing.length > 0) output.push(...missing.map((m) => `- ${m}`));
-  else output.push("No open proof items recorded.");
+  else if (status === "guarded" && changedFiles.length === 0) {
+    output.push("Post-run check has not been completed yet.");
+  } else output.push("No open proof items recorded.");
   output.push("");
 
   if (audit) {

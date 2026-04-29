@@ -151,31 +151,41 @@ export async function POST(request: Request) {
     );
   }
 
-  const runRows = payload.runs.map((run) => ({
-    project_id: projectId,
-    local_id: run.localId,
-    task: run.task,
-    status: run.status,
-    created_at_local: run.createdAt,
-    evaluated_at_local: run.evaluatedAt,
-    risk_before: run.riskBefore,
-    risk_after: run.riskAfter,
-    score_before: run.scoreBefore,
-    score_after: run.scoreAfter,
-    risk_reduction_percent: run.riskReductionPercent,
-    estimated_tokens_trimmed: run.estimatedTokensTrimmed,
-    estimated_dollars_standard: run.estimatedDollarsStandard,
-    estimated_dollars_expensive: run.estimatedDollarsExpensive,
-    changed_files: run.changedFiles,
-    missing_proof_items: run.missingProofItems,
-    detected_risks: run.detectedRisks,
-    sensitive_areas: run.sensitiveAreas,
-    watch_status: run.watchStatus,
-    watch_warnings: run.watchWarnings,
-    watch_changed_files: run.watchChangedFiles,
-    next_safe_prompt: run.nextSafePrompt,
-    synced_at: new Date().toISOString(),
-  }));
+  const runRows = payload.runs.map((run) => {
+    const status = (run.status || "").toLowerCase();
+    const resolvedNextSafePrompt =
+      run.nextSafePrompt ??
+      (status === "guarded" && run.latestPrompt ? run.latestPrompt : null) ??
+      run.fallbackNextPrompt ??
+      null;
+    return {
+      project_id: projectId,
+      local_id: run.localId,
+      task: run.task,
+      status: run.status,
+      created_at_local: run.createdAt,
+      evaluated_at_local: run.evaluatedAt,
+      risk_before: run.riskBefore,
+      risk_after: run.riskAfter,
+      score_before: run.scoreBefore,
+      score_after: run.scoreAfter,
+      risk_reduction_percent: run.riskReductionPercent,
+      estimated_tokens_trimmed: run.estimatedTokensTrimmed,
+      estimated_dollars_standard: run.estimatedDollarsStandard,
+      estimated_dollars_expensive: run.estimatedDollarsExpensive,
+      changed_files: run.changedFiles,
+      missing_proof_items: run.missingProofItems,
+      detected_risks: run.detectedRisks,
+      sensitive_areas: run.sensitiveAreas,
+      watch_status: run.watchStatus,
+      watch_warnings: run.watchWarnings,
+      watch_changed_files: run.watchChangedFiles,
+      next_safe_prompt: resolvedNextSafePrompt,
+      latest_prompt: run.latestPrompt,
+      continuation_prompt: run.continuationPrompt,
+      synced_at: new Date().toISOString(),
+    };
+  });
 
   if (runRows.length > 0) {
     const { error: runsError } = await supabase

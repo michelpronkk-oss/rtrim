@@ -1,4 +1,6 @@
 import { createHash } from "crypto";
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import type { RunRecord } from "./run-storage";
 import type { RunTrimConfig } from "./runtrim-config";
@@ -25,6 +27,9 @@ export const SyncRunSchema = z.object({
   watchWarnings: z.array(z.string()),
   watchChangedFiles: z.array(z.string()),
   nextSafePrompt: z.string().nullable(),
+  latestPrompt: z.string().nullable(),
+  continuationPrompt: z.string().nullable(),
+  fallbackNextPrompt: z.string().nullable(),
 });
 
 export const SyncPayloadSchema = z.object({
@@ -81,6 +86,58 @@ function readSection(memory: string, title: string): string {
   return out.join(" ");
 }
 
+function readTextFileIfExists(filePath: string): string | null {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    const text = fs.readFileSync(filePath, "utf-8").trim();
+    return text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveProjectName(cwd: string, inputName: string, auditName?: string): string {
+  if (auditName?.trim()) return auditName.trim();
+  const pkgPath = path.join(cwd, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { name?: string };
+      if (pkg.name?.trim()) return pkg.name.trim();
+    } catch {
+      // ignore invalid package.json
+    }
+  }
+  if (inputName.trim()) return inputName.trim();
+  return path.basename(cwd);
+}
+
+function pickFallbackNextPrompt(input: {
+  status: string;
+  latestPromptText: string | null;
+  continuationPromptText: string | null;
+  run: RunRecord;
+  memoryNextPrompt: string;
+}): string | null {
+  const { status, latestPromptText, continuationPromptText, run, memoryNextPrompt } = input;
+  const runNextPrompt =
+    run.evaluation?.nextPrompt ??
+    run.evaluation?.nextSafePrompt ??
+    run.evaluation?.nextGuardedPrompt ??
+    run.contract?.splitReport?.nextSafePrompt ??
+    null;
+  const normalized = status.toLowerCase();
+
+  if (normalized === "guarded" && latestPromptText) return latestPromptText;
+  if (normalized === "split_required" || normalized === "blocked") {
+    return runNextPrompt ?? (memoryNextPrompt || null);
+  }
+  if (normalized === "partial" || normalized === "needs_verification") {
+    return continuationPromptText ?? run.evaluation?.nextPrompt ?? runNextPrompt ?? null;
+  }
+
+  return runNextPrompt;
+}
+
 export function buildLocalProjectId(cwd: string): string {
   return createHash("sha256").update(cwd).digest("hex").slice(0, 24);
 }
@@ -89,7 +146,7 @@ export function buildSyncPayload(input: {
   cwd: string;
   projectName: string;
   config: RunTrimConfig;
-  projectAudit?: { detectedStack?: string[]; packageManager?: string } | null;
+  projectAudit?: { projectName?: string; detectedStack?: string[]; packageManager?: string } | null;
   memoryMarkdown: string;
   runs: RunRecord[];
 }): SyncPayload {
@@ -97,14 +154,27 @@ export function buildSyncPayload(input: {
   const latest = runs[0];
   const nowIso = new Date().toISOString();
   const localProjectId = buildLocalProjectId(cwd);
+  const latestPromptText = readTextFileIfExists(path.join(cwd, ".runtrim", "latest-prompt.md"));
+  const continuationPromptText = readTextFileIfExists(
+    path.join(cwd, ".runtrim", "continuation-prompt.md")
+  );
+  const memoryNextSafePrompt = readSection(memoryMarkdown, "Next safe prompt");
 
   const mappedRuns = runs.slice(0, 200).map((run) => {
     const tokens = Math.round(parseEstimatedNumber(String(run.contract.estimatedTokensTrimmed)));
     const dollars = estimateSavingsFromTokens(tokens);
+    const status = run.evaluation?.status ?? run.status;
+    const fallbackNextPrompt = pickFallbackNextPrompt({
+      status,
+      latestPromptText,
+      continuationPromptText,
+      run,
+      memoryNextPrompt: memoryNextSafePrompt,
+    });
     return {
       localId: run.id,
       task: run.task,
-      status: run.evaluation?.status ?? run.status,
+      status,
       createdAt: run.createdAt,
       evaluatedAt: run.evaluation?.evaluatedAt ?? null,
       riskBefore: run.audit?.wasteRiskBefore ?? null,
@@ -127,14 +197,18 @@ export function buildSyncPayload(input: {
         run.evaluation?.nextSafePrompt ??
         run.evaluation?.nextGuardedPrompt ??
         run.contract?.splitReport?.nextSafePrompt ??
+        fallbackNextPrompt ??
         null,
+      latestPrompt: latestPromptText,
+      continuationPrompt: continuationPromptText,
+      fallbackNextPrompt,
     };
   });
 
   const payload: SyncPayload = {
     project: {
       localProjectId,
-      name: projectName,
+      name: resolveProjectName(cwd, projectName, projectAudit?.projectName),
       stack: projectAudit?.detectedStack ?? (config.stack ? config.stack.split(",").map((s) => s.trim()).filter(Boolean) : ["auto"]),
       packageManager: projectAudit?.packageManager ?? config.packageManager ?? null,
       lastUpdated: nowIso,

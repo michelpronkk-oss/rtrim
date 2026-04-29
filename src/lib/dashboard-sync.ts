@@ -13,6 +13,8 @@ export type SyncedRun = {
   watch_warnings: string[] | null;
   watch_changed_files: string[] | null;
   next_safe_prompt: string | null;
+  latest_prompt: string | null;
+  continuation_prompt: string | null;
 };
 
 export type SyncedProjectBundle = {

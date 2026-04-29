@@ -1,10 +1,39 @@
 ﻿import { AppShell } from "@/components/app/app-shell";
 import { CopyButton } from "@/components/app/copy-button";
 import { RunStatusBadge } from "@/components/app/run-status-badge";
-import { getSyncedRuns } from "@/lib/dashboard-sync";
+import { getLatestSyncedProject, getSyncedRuns } from "@/lib/dashboard-sync";
 
 type Filter = "all" | "guarded" | "split_required" | "partial" | "passed" | "drift_detected";
 const FILTERS: Filter[] = ["all", "guarded", "split_required", "partial", "passed", "drift_detected"];
+
+function pickPromptSource(
+  run: {
+    status?: string | null;
+    next_safe_prompt?: string | null;
+    continuation_prompt?: string | null;
+    latest_prompt?: string | null;
+  },
+  fallback: { projectNextSafePrompt?: string | null; memoryNextSafePrompt?: string | null }
+) {
+  const status = (run.status || "").toLowerCase();
+  const next = run.next_safe_prompt?.trim() || "";
+  const continuation = run.continuation_prompt?.trim() || "";
+  const latest = run.latest_prompt?.trim() || "";
+  const projectPrompt = fallback.projectNextSafePrompt?.trim() || "";
+  const memoryPrompt = fallback.memoryNextSafePrompt?.trim() || "";
+
+  if (next) {
+    if (status === "guarded" && latest && next === latest) {
+      return { text: next, label: "Prepared run contract" };
+    }
+    return { text: next, label: "Next safe prompt" };
+  }
+  if (continuation) return { text: continuation, label: "Continuation prompt" };
+  if (latest) return { text: latest, label: "Prepared run contract" };
+  if (projectPrompt) return { text: projectPrompt, label: "Next safe prompt" };
+  if (memoryPrompt) return { text: memoryPrompt, label: "Next safe prompt" };
+  return { text: "", label: "Next safe prompt" };
+}
 
 const PREVIEW_RUNS = [
   {
@@ -48,10 +77,16 @@ function fmt(iso: string) {
 export default async function RunsPage({ searchParams }: { searchParams?: Promise<{ filter?: string }> }) {
   const params = (await searchParams) || {};
   const selected = (params.filter as Filter) || "all";
-  const synced = await getSyncedRuns();
+  const [synced, latestBundle] = await Promise.all([getSyncedRuns(), getLatestSyncedProject()]);
   const rows = synced.length > 0 ? synced : PREVIEW_RUNS;
   const filtered = rows.filter((r) => selected === "all" || (r.status || "").toLowerCase() === selected);
   const selectedRun = filtered[0];
+  const selectedPrompt = selectedRun
+    ? pickPromptSource(selectedRun, {
+        projectNextSafePrompt: latestBundle?.project?.next_safe_prompt ?? null,
+        memoryNextSafePrompt: latestBundle?.memory?.next_safe_prompt ?? null,
+      })
+    : { text: "", label: "Next safe prompt" };
 
   const partialCount = rows.filter((r) => ["partial", "needs_verification", "no_changes_detected"].includes((r.status || "").toLowerCase())).length;
   const blockedCount = rows.filter((r) => ["blocked", "split_required", "drift_detected"].includes((r.status || "").toLowerCase())).length;
@@ -178,12 +213,12 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
                 </div>
                 <div className="px-5 py-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <p className="font-mono text-[10px] uppercase text-[#4D5070]">Next safe prompt</p>
-                    <CopyButton text={selectedRun.next_safe_prompt || ""} />
+                    <p className="font-mono text-[10px] uppercase text-[#4D5070]">{selectedPrompt.label}</p>
+                    <CopyButton text={selectedPrompt.text} />
                   </div>
                   <div className="rounded-lg border border-white/8 bg-[#090918] p-3">
                     <p className="font-mono text-[12px] leading-6 text-[#C0C2E8]">
-                      {selectedRun.next_safe_prompt || "No prompt recorded."}
+                      {selectedPrompt.text || "No prompt recorded."}
                     </p>
                   </div>
                 </div>

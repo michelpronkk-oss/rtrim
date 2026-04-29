@@ -1936,6 +1936,9 @@ program
       } else {
         stateLine = latestRun.evaluation?.memorySummary || "Guarded run available.";
         nextObjective = latestRun.evaluation?.nextSafeAction || "Run runtrim check before continuing.";
+        if (status === "guarded" && changedFiles.length === 0 && missing.length === 0) {
+          stillMissing = ["Post-run check has not been completed yet."];
+        }
       }
     }
 

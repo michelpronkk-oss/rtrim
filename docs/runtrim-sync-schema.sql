@@ -58,6 +58,14 @@ create table if not exists runtrim_runs (
   watch_warnings jsonb default '[]'::jsonb,
   watch_changed_files jsonb default '[]'::jsonb,
   next_safe_prompt text,
+  latest_prompt text,
+  continuation_prompt text,
   synced_at timestamptz default now(),
   unique(project_id, local_id)
 );
+
+-- Safe migration for existing tables
+alter table public.runtrim_runs add column if not exists next_safe_prompt text;
+alter table public.runtrim_runs add column if not exists latest_prompt text;
+alter table public.runtrim_runs add column if not exists continuation_prompt text;
+alter table public.runtrim_project_memory add column if not exists next_safe_prompt text;

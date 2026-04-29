@@ -5,7 +5,7 @@ import { getSyncedProjects } from "@/lib/dashboard-sync";
 
 const PREVIEW = [
   {
-    name: "rtrim",
+    name: "runtrim",
     stack: "Next.js",
     latestState: "Partial verification",
     nextSafeAction: "Confirm root cause and verification steps before new scope.",

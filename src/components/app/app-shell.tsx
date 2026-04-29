@@ -34,7 +34,7 @@ export function AppShell({ children, active }: AppShellProps) {
           <div className="border-b border-white/8 px-4 py-3">
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0E1027] px-3 py-2.5">
               <div className="size-1.5 rounded-full bg-[#7C6DFA]" />
-              <span className="text-[13px] font-semibold text-[#EDEEFF]">rtrim</span>
+              <span className="text-[13px] font-semibold text-[#EDEEFF]">runtrim</span>
               <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[#7F84AE]">
                 local
               </span>
