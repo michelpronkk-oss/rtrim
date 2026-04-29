@@ -129,26 +129,27 @@
   /* Hero glows — violet, not teal */
   .hero-glow {
     background: radial-gradient(
-      ellipse 70% 42% at 50% 110%,
-      rgba(124, 109, 250, 0.15) 0%,
-      rgba(91, 139, 255, 0.06) 45%,
+      ellipse 80% 55% at 50% 108%,
+      rgba(124, 109, 250, 0.22) 0%,
+      rgba(91, 139, 255, 0.09) 50%,
       transparent 72%
     );
   }
   .hero-ring {
     background: radial-gradient(
-      ellipse 50% 25% at 50% 110%,
-      rgba(112, 64, 240, 0.07) 0%,
+      ellipse 55% 30% at 50% 108%,
+      rgba(112, 64, 240, 0.10) 0%,
       transparent 65%
     );
   }
 
   /* Subtle dot grid — fades out at edges via mask */
   .hero-dot-grid {
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
-    background-size: 38px 38px;
-    mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, black 20%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, black 20%, transparent 100%);
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.13) 1px, transparent 1px);
+    background-size: 26px 26px;
+    /* Fade edges: solid across most of the area, invisible only at extreme edges */
+    mask-image: radial-gradient(ellipse 92% 88% at 50% 45%, black 55%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 92% 88% at 50% 45%, black 55%, transparent 100%);
   }
 
   .hero-tech-grid {
