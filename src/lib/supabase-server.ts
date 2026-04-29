@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import { validateSyncEnv } from "@/lib/sync-env";
 
 export function getSupabaseServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRole || !url.startsWith("http")) return null;
-  return createClient(url, serviceRole, {
+  const env = validateSyncEnv();
+  if (!env.supabaseConfigured || !env.supabaseUrl || !env.serviceRoleKey) return null;
+  return createClient(env.supabaseUrl, env.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

@@ -1553,10 +1553,17 @@ program
         },
         body: JSON.stringify(payload),
       });
-      const body = (await response.json().catch(() => ({}))) as { error?: string; syncedRuns?: number };
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        syncedRuns?: number;
+        missing?: string[];
+      };
       if (!response.ok) {
         console.log(chalk.red("  Sync failed: " + (body.error || `HTTP ${response.status}`)));
         console.log(DIM("  Endpoint: ") + chalk.white(endpoint));
+        if (Array.isArray(body.missing) && body.missing.length > 0) {
+          console.log(DIM("  Missing:  ") + chalk.white(body.missing.join(", ")));
+        }
         console.log("");
         return;
       }

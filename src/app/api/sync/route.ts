@@ -1,14 +1,55 @@
 import { NextResponse } from "next/server";
 import { SyncPayloadSchema } from "@/lib/runtrim-sync";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { validateSyncEnv } from "@/lib/sync-env";
+
+export const runtime = "nodejs";
+
+function methodNotAllowed() {
+  return NextResponse.json(
+    { ok: false, error: "Method not allowed. Use POST for sync." },
+    { status: 405 }
+  );
+}
+
+export async function GET() {
+  const env = validateSyncEnv();
+  const response: {
+    ok: true;
+    route: "/api/sync";
+    method: "GET";
+    message: string;
+    supabaseConfigured: boolean;
+    syncSecretConfigured: boolean;
+    missing?: string[];
+  } = {
+    ok: true,
+    route: "/api/sync",
+    method: "GET",
+    message:
+      "RunTrim sync endpoint is online. Use POST from the RunTrim CLI to sync metadata.",
+    supabaseConfigured: env.supabaseConfigured,
+    syncSecretConfigured: env.syncSecretConfigured,
+  };
+
+  if (env.missing.length > 0) response.missing = env.missing;
+
+  return NextResponse.json(response);
+}
 
 export async function POST(request: Request) {
-  const expected = process.env.RUNTRIM_SYNC_SECRET;
+  const env = validateSyncEnv();
+  const expected = env.syncSecret;
   const provided = request.headers.get("x-runtrim-sync-token");
 
-  if (!expected) {
+  if (!env.syncSecretConfigured || !expected) {
+    const missing = env.missing.filter((name) => name === "RUNTRIM_SYNC_SECRET");
     return NextResponse.json(
-      { error: "Server sync secret is not configured." },
+      {
+        ok: false,
+        error: "Sync secret configuration missing.",
+        missing,
+      },
       { status: 503 }
     );
   }
@@ -17,10 +58,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized sync token." }, { status: 401 });
   }
 
+  if (!env.supabaseConfigured) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Supabase service configuration missing.",
+        missing: env.missing.filter(
+          (name) =>
+            name === "NEXT_PUBLIC_SUPABASE_URL" || name === "SUPABASE_SERVICE_ROLE_KEY"
+        ),
+      },
+      { status: 503 }
+    );
+  }
+
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase service configuration missing." },
+      {
+        ok: false,
+        error: "Supabase service configuration missing.",
+        missing: ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+      },
       { status: 503 }
     );
   }
@@ -135,4 +194,24 @@ export async function POST(request: Request) {
     syncedRuns: runRows.length,
     projectId,
   });
+}
+
+export async function PUT() {
+  return methodNotAllowed();
+}
+
+export async function PATCH() {
+  return methodNotAllowed();
+}
+
+export async function DELETE() {
+  return methodNotAllowed();
+}
+
+export async function HEAD() {
+  return methodNotAllowed();
+}
+
+export async function OPTIONS() {
+  return methodNotAllowed();
 }
