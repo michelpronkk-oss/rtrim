@@ -3,7 +3,11 @@ import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
   title: "RunTrim Privacy Policy",
-  description: "RunTrim privacy policy for local CLI and cloud sync metadata handling.",
+  description:
+    "RunTrim is local-first. Free CLI data stays local, and cloud sync stores metadata only. Source code is not uploaded in V1.",
+  alternates: {
+    canonical: "https://www.runtrim.com/privacy",
+  },
 };
 
 const LAST_UPDATED = "2026-04";

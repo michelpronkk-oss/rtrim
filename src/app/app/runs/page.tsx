@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { AppShell } from "@/components/app/app-shell";
 import { RunsInspector } from "@/components/app/runs-inspector";
 import { RunStatusBadge } from "@/components/app/run-status-badge";
 import { getLatestSyncedProject, getSyncedRunsResult } from "@/lib/dashboard-sync";
 import { buildAttemptMeta } from "@/lib/run-grouping";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 type Filter = "all" | "guarded" | "split_required" | "partial" | "passed" | "drift_detected";
 const FILTERS: Filter[] = ["all", "guarded", "split_required", "partial", "passed", "drift_detected"];
@@ -243,3 +251,4 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
     </AppShell>
   );
 }
+

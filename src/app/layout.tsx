@@ -15,13 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://runtrim.com"),
+  metadataBase: new URL("https://www.runtrim.com"),
   title: {
-    default: "RunTrim: Stop paying twice for the same context",
+    default: "RunTrim | Scope AI coding runs before they waste tokens",
     template: "%s | RunTrim",
   },
   description:
-    "RunTrim tracks your AI coding runs, prompts, reusable context, and estimated savings so every next agent starts from what your project already knows.",
+    "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
   keywords: [
     "AI coding", "Claude Code", "Codex", "Cursor", "ChatGPT",
     "token savings", "prompt history", "run history", "context reuse", "CLI tool",
@@ -30,17 +30,26 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://runtrim.com",
+    url: "https://www.runtrim.com",
     siteName: "RunTrim",
-    title: "RunTrim: Stop paying twice for the same context",
+    title: "RunTrim | Scope AI coding runs before they waste tokens",
     description:
-      "Track AI coding runs, prompts, and estimated savings. Every next agent starts from what your project already knows.",
+      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "RunTrim",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim: Stop paying twice for the same context",
+    title: "RunTrim | Scope AI coding runs before they waste tokens",
     description:
-      "Track AI coding runs, prompts, and estimated savings. Every next agent starts from what your project already knows.",
+      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
+    images: ["/opengraph-image"],
   },
   icons: {
     icon: [

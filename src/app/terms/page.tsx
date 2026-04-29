@@ -3,7 +3,10 @@ import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
   title: "RunTrim Terms of Service",
-  description: "RunTrim terms for local CLI and early access cloud features.",
+  description: "Terms for using RunTrim, a local-first control layer for AI coding agents.",
+  alternates: {
+    canonical: "https://www.runtrim.com/terms",
+  },
 };
 
 const LAST_UPDATED = "2026-04";

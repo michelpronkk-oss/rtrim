@@ -3,7 +3,11 @@ import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
   title: "RunTrim Security",
-  description: "RunTrim security posture and local-first sync model.",
+  description:
+    "RunTrim is designed around local-first usage, metadata-only sync, and no source code upload in V1.",
+  alternates: {
+    canonical: "https://www.runtrim.com/security",
+  },
 };
 
 const LAST_UPDATED = "2026-04";

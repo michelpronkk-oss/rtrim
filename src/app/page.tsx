@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import type { Metadata } from "next";
 import { ArrowRight, Check, BookMarked, History, Layers, TrendingDown, Terminal, Shield, Zap, GitMerge } from "lucide-react";
 import { MotionFade } from "@/components/app/motion-section";
 import { HeroTerminal } from "@/components/app/hero-terminal";
@@ -6,6 +7,15 @@ import { TerminalCard } from "@/components/app/terminal-card";
 import { CopyButton } from "@/components/app/copy-button";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 import { planOrder, plans } from "@/lib/plans";
+
+export const metadata: Metadata = {
+  title: "RunTrim | Stop wasting tokens on bad AI runs",
+  description:
+    "Scope the task, monitor the run, and continue cleanly when your AI coding agent stops or drifts.",
+  alternates: {
+    canonical: "https://www.runtrim.com",
+  },
+};
 
 // â”€â”€ Terminal data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -112,8 +122,28 @@ const PRICING_FEATURES = [
 // â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function Home() {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "RunTrim",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Windows, macOS, Linux",
+    description:
+      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
+    url: "https://www.runtrim.com",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+  };
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#07071A]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/8 bg-[#07071A]/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -199,7 +229,7 @@ export default function Home() {
           {/* Sub */}
           <MotionFade delay={0.12}>
             <p className="mx-auto mt-7 max-w-[620px] text-[0.98rem] leading-[1.8] text-[#7F8CA3] sm:text-[1.03rem]">
-              RunTrim scopes AI coding tasks before they drift, touch sensitive systems, or restart from scratch. Guard the task, monitor the run, and keep clean continuation memory.
+              Scope the task, monitor the run, and continue cleanly when your agent stops or drifts.
             </p>
           </MotionFade>
 
@@ -227,15 +257,27 @@ export default function Home() {
 
           {/* Trust line */}
           <MotionFade delay={0.22}>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#4A5170]">
-              {["Local-first", "Agent-agnostic", "No code uploads", "Sync-ready"].map((t, i) => (
-                <span key={t} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="mr-2 text-[#1E2038]">·</span>}
-                  <Check className="size-3 text-[#7C6DFA]/70" />
-                  {t}
-                </span>
-              ))}
-            </div>
+            <>
+              <div className="mt-10 grid grid-cols-2 gap-2.5 sm:hidden">
+                {["Local-first", "No code uploads", "Agent-agnostic", "Sync-ready"].map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-md border border-white/8 bg-[#0D0C22]/72 px-3 py-2 text-center font-mono text-[10px] tracking-[0.02em] text-[#676E8F]"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-8 hidden flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#4A5170] sm:flex">
+                {["Local-first", "Agent-agnostic", "No code uploads", "Sync-ready"].map((t, i) => (
+                  <span key={t} className="flex items-center gap-1.5">
+                    {i > 0 && <span className="mr-2 text-[#1E2038]">·</span>}
+                    <Check className="size-3 text-[#7C6DFA]/70" />
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </>
           </MotionFade>
         </div>
 

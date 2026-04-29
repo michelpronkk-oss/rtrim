@@ -1,7 +1,15 @@
-﻿import Link from "next/link";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { AppShell } from "@/components/app/app-shell";
 import { RunStatusBadge } from "@/components/app/run-status-badge";
 import { getSyncedProjects } from "@/lib/dashboard-sync";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 const PREVIEW = [
   {
@@ -159,3 +167,4 @@ export default async function ProjectsPage() {
     </AppShell>
   );
 }
+

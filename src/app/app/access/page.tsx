@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AppAccessGateCard } from "@/components/app/app-access-gate-card";
 import { isAppAccessCodeConfigured } from "@/lib/app-gate";
+
+export const metadata: Metadata = {
+  title: "RunTrim Cloud private beta access",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 interface AppAccessPageProps {
   searchParams?: Promise<{ next?: string }>;

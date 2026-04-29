@@ -1,4 +1,5 @@
-﻿import Link from "next/link";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { AppShell } from "@/components/app/app-shell";
 import { ContinueCard } from "@/components/app/continue-card";
 import { ProjectMemoryPanel } from "@/components/app/project-memory-panel";
@@ -9,6 +10,13 @@ import { SyncStatusPanel } from "@/components/app/sync-status-panel";
 import { getLatestSyncedProject } from "@/lib/dashboard-sync";
 import { buildAttemptMeta } from "@/lib/run-grouping";
 import { getPlan } from "@/lib/plans";
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
 
 function mapStatusToRiskState(status: string) {
   const s = status.toLowerCase();
@@ -188,7 +196,7 @@ export default async function AppPage() {
     <AppShell active="/app">
       <div className="mx-auto w-full max-w-[1340px] space-y-7">
 
-        {/* ── Page header ─────────────────────────────────── */}
+        {/* -- Page header ----------------------------------- */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[22px] font-bold tracking-[-0.03em] text-[#EDEEFF]">Overview</h1>
@@ -202,7 +210,7 @@ export default async function AppPage() {
           )}
         </div>
 
-        {/* ── KPI strip ───────────────────────────────────── */}
+        {/* -- KPI strip ------------------------------------- */}
         <div className="overflow-hidden rounded-xl border border-white/8">
           <div className="grid grid-cols-2 gap-px bg-white/8 sm:grid-cols-3 xl:grid-cols-6">
             {KPI_METRICS.map(({ label, value, color }) => (
@@ -214,10 +222,10 @@ export default async function AppPage() {
           </div>
         </div>
 
-        {/* ── Continue card ───────────────────────────────── */}
+        {/* -- Continue card --------------------------------- */}
         <ContinueCard {...continueData} />
 
-        {/* ── Main two-column ─────────────────────────────── */}
+        {/* -- Main two-column ------------------------------- */}
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
 
           {/* Run timeline */}
@@ -230,7 +238,7 @@ export default async function AppPage() {
           </div>
         </div>
 
-        {/* ── Bottom row ──────────────────────────────────── */}
+        {/* -- Bottom row ------------------------------------ */}
         <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
           <ProjectMemoryPanel
             currentFocus={continueData.currentFocus}
@@ -272,3 +280,4 @@ export default async function AppPage() {
     </AppShell>
   );
 }
+

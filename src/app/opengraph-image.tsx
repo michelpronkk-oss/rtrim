@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "RunTrim — Stop paying twice for the same context";
+export const alt = "RunTrim | Scope the run before the agent touches your repo.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -14,99 +14,58 @@ export default function OGImage() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          padding: "80px 96px",
+          justifyContent: "space-between",
+          padding: "52px 64px",
           background: "#07071A",
-          fontFamily: "sans-serif",
+          color: "#EDEEFF",
+          fontFamily: "Inter, system-ui, sans-serif",
           position: "relative",
         }}
       >
-        {/* Glow */}
         <div
           style={{
             position: "absolute",
-            bottom: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 900,
-            height: 400,
+            inset: 0,
             background:
-              "radial-gradient(ellipse at 50% 100%, rgba(124,109,250,0.18) 0%, rgba(91,139,255,0.07) 45%, transparent 72%)",
-            pointerEvents: "none",
+              "radial-gradient(ellipse at 70% 100%, rgba(124,109,250,0.22) 0%, rgba(124,109,250,0.06) 40%, transparent 72%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+            opacity: 0.2,
           }}
         />
 
-        {/* Badge */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            border: "1px solid rgba(124,109,250,0.30)",
-            borderRadius: 99,
-            padding: "6px 14px",
-            marginBottom: 32,
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, zIndex: 2 }}>
           <div
             style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              background: "#7C6DFA",
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              border: "1px solid rgba(124,109,250,0.4)",
+              background: "rgba(124,109,250,0.16)",
             }}
           />
-          <span style={{ color: "#9E91FF", fontSize: 14, fontWeight: 600, letterSpacing: "0.05em" }}>
-            CLI-first · Free to use
-          </span>
+          <div style={{ fontWeight: 700, fontSize: 30, letterSpacing: "-0.02em" }}>RunTrim</div>
         </div>
 
-        {/* Headline */}
-        <div
-          style={{
-            fontSize: 64,
-            fontWeight: 800,
-            color: "#F5F7FA",
-            lineHeight: 1.05,
-            letterSpacing: "-0.03em",
-            maxWidth: 820,
-          }}
-        >
-          Stop paying twice
-          <br />
-          <span style={{ color: "#A897FF" }}>for the same context.</span>
-        </div>
-
-        {/* Sub */}
-        <div
-          style={{
-            marginTop: 28,
-            fontSize: 22,
-            color: "#7A8EA0",
-            lineHeight: 1.5,
-            maxWidth: 680,
-          }}
-        >
-          RunTrim tracks AI coding runs, prompts, and estimated savings so every next agent starts from what your project already knows.
-        </div>
-
-        {/* Wordmark */}
-        <div
-          style={{
-            position: "absolute",
-            top: 52,
-            right: 96,
-            fontSize: 22,
-            fontWeight: 800,
-            color: "#F5F7FA",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          RunTrim
+        <div style={{ display: "flex", flexDirection: "column", gap: 18, zIndex: 2, maxWidth: 900 }}>
+          <div style={{ fontSize: 64, lineHeight: 1.05, fontWeight: 800, letterSpacing: "-0.03em" }}>
+            Scope the run before the agent touches your repo.
+          </div>
+          <div style={{ fontSize: 30, lineHeight: 1.3, color: "#A7B2C6" }}>
+            Local-first CLI for AI coding agents.
+          </div>
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+    }
   );
 }

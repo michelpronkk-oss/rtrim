@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyButton } from "@/components/app/copy-button";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
+
+export const metadata: Metadata = {
+  title: "Install RunTrim | Local-first AI run control",
+  description:
+    "Install RunTrim, initialize your repo, and start guiding AI coding runs with local memory, scoped prompts, monitoring, and checks.",
+  alternates: {
+    canonical: "https://www.runtrim.com/app/install",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
 
 function CommandRow({ command }: { command: string }) {
   return (
