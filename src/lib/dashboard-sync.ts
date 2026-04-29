@@ -1,6 +1,18 @@
 import "server-only";
 import { getSupabaseServiceClient } from "./supabase-server";
 
+export type SyncedRunsError = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+export type SyncedRunsResult = {
+  runs: unknown[];
+  error: SyncedRunsError | null;
+};
+
 export type SyncedRun = {
   local_id: string;
   task: string | null;
@@ -89,12 +101,36 @@ export async function getSyncedProjects() {
 }
 
 export async function getSyncedRuns() {
+  const result = await getSyncedRunsResult();
+  return result.runs;
+}
+
+export async function getSyncedRunsResult(): Promise<SyncedRunsResult> {
   const supabase = getSupabaseServiceClient();
-  if (!supabase) return [];
-  const { data } = await supabase
+  if (!supabase) return { runs: [], error: null };
+  const { data, error } = await supabase
     .from("runtrim_runs")
     .select("*")
     .order("synced_at", { ascending: false })
     .limit(100);
-  return data ?? [];
+
+  if (error) {
+    console.error("Failed to load synced runs", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return {
+      runs: [],
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      },
+    };
+  }
+
+  return { runs: data ?? [], error: null };
 }
