@@ -122,7 +122,7 @@ export default function Home() {
           <nav className="hidden items-center gap-8 md:flex">
             <Link href="#how-it-works" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">How it works</Link>
             <Link href="#pricing"      className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Pricing</Link>
-            <Link href="/app"          className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Dashboard</Link>
+            <Link href="/app/install"  className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Docs</Link>
           </nav>
           <Link
             href="/app/install"

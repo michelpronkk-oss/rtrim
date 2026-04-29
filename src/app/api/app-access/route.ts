@@ -21,11 +21,11 @@ export async function POST(request: Request) {
 
   const expectedCode = getConfiguredAppAccessCode();
   if (!expectedCode) {
-    return NextResponse.json({ ok: false, error: "Dashboard access is not configured." }, { status: 503 });
+    return NextResponse.json({ ok: false, error: "Cloud dashboard access is temporarily unavailable." }, { status: 503 });
   }
 
   if (!submittedCode || submittedCode !== expectedCode) {
-    return NextResponse.json({ ok: false, error: "Invalid access code." }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "That access code is not valid." }, { status: 401 });
   }
 
   const response = NextResponse.json({ ok: true });
