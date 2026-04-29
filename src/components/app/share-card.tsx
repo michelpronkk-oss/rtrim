@@ -43,8 +43,8 @@ export function ShareCard({ project, runsGuarded, estimatedTokens, estimatedDoll
           <p className="mt-2 text-xl font-bold tabular-nums text-[#EEEEF2]">{estimatedTokens}</p>
         </div>
         <div className="bg-[#0D0E1C] px-5 py-5 hover:bg-[#111226] transition-colors">
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4A4E72]">Est. spend</p>
-          <p className="mt-2 text-xl font-bold tabular-nums text-[#0DDB9E]">{estimatedDollars}</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4A4E72]">Savings reference</p>
+          <p className="mt-2 text-[13px] font-semibold tabular-nums text-[#8E95C3]">{estimatedDollars}</p>
         </div>
       </div>
 

@@ -17,6 +17,8 @@ interface ContinueCardProps {
   missingProofItems: string[];
   detectedRiskSystems: string[];
   nextSafePrompt: string;
+  promptSource: string;
+  promptUpdatedAt: string;
 }
 
 function PromptCopy({ text }: { text: string }) {
@@ -41,10 +43,11 @@ export function ContinueCard(props: ContinueCardProps) {
   const {
     project, status, lastUpdated, syncState, currentFocus,
     nextSafeAction, lastTask, changedFilesCount,
-    missingProofItems, detectedRiskSystems, nextSafePrompt,
+    missingProofItems, detectedRiskSystems, nextSafePrompt, promptSource, promptUpdatedAt,
   } = props;
 
   const hasDebt = missingProofItems.length > 0;
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.section
@@ -111,16 +114,41 @@ export function ContinueCard(props: ContinueCardProps) {
       {/* Next safe prompt */}
       <div className="border-t border-white/8 px-6 py-5">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {hasDebt && <AlertTriangle className="size-3.5 text-[#F0BF72]" />}
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4D5070]">Next safe prompt</p>
+            <span className="rounded border border-white/10 bg-[#0E1026] px-2 py-0.5 font-mono text-[10px] text-[#8E95C3]">
+              {status === "guarded" ? "Prepared contract" : "Generated guidance"}
+            </span>
           </div>
-          <PromptCopy text={nextSafePrompt} />
+          <div className="flex items-center gap-2">
+            <a
+              href="/app/runs"
+              className="rounded border border-white/8 px-2.5 py-1 font-mono text-[11px] text-[#4D5070] transition-colors hover:border-white/14 hover:text-[#9699BE]"
+            >
+              Open full prompt
+            </a>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded border border-white/8 px-2.5 py-1 font-mono text-[11px] text-[#4D5070] transition-colors hover:border-white/14 hover:text-[#9699BE]"
+            >
+              {expanded ? "Collapse" : "Expand"}
+            </button>
+            <PromptCopy text={nextSafePrompt} />
+          </div>
         </div>
-        <div className="rounded-lg border border-white/8 bg-[#090918] px-4 py-3.5">
-          <p className="font-mono text-[13px] leading-6 text-[#C0C2E8]">
+        <div className="mb-2 flex items-center gap-2 font-mono text-[10px] text-[#5D638D]">
+          <span>{promptSource}</span>
+          <span className="text-[#2E2E50]">•</span>
+          <span>{promptUpdatedAt}</span>
+        </div>
+        <div className={`relative rounded-lg border border-white/8 bg-[#090918] px-4 py-3.5 ${expanded ? "max-h-[320px] overflow-auto" : ""}`}>
+          <p className={`font-mono text-[13px] leading-6 text-[#C0C2E8] ${expanded ? "" : "line-clamp-4"}`}>
             {nextSafePrompt || "Run runtrim check or runtrim memory --prompt to generate."}
           </p>
+          {!expanded && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#090918] to-transparent" />
+          )}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {["runtrim memory --prompt", "runtrim check", "runtrim sync"].map((cmd) => (

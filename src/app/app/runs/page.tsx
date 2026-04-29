@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app/app-shell";
-import { CopyButton } from "@/components/app/copy-button";
+import { RunsInspector } from "@/components/app/runs-inspector";
 import { RunStatusBadge } from "@/components/app/run-status-badge";
 import { getLatestSyncedProject, getSyncedRunsResult } from "@/lib/dashboard-sync";
 
@@ -171,7 +171,7 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
           <span className="ml-auto self-center font-mono text-[11px] text-[#2E2E50]">{filtered.length} run{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <section className="surface-panel overflow-hidden rounded-xl">
             <div className="border-b border-white/8 px-6 py-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Timeline</p>
@@ -218,49 +218,8 @@ export default async function RunsPage({ searchParams }: { searchParams?: Promis
           </section>
 
           <section className="surface-panel sticky top-6 h-fit overflow-hidden rounded-xl">
-            <div className="border-b border-white/8 px-5 py-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">Run inspector</p>
-            </div>
             {selectedRun ? (
-              <div className="divide-y divide-white/8">
-                <div className="px-5 py-4">
-                  <p className="font-mono text-[10px] uppercase text-[#4D5070]">Task</p>
-                  <p className="mt-1.5 text-[13px] leading-5 text-[#C0C2E8]">{selectedRun.task}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-px bg-white/8">
-                  <div className="bg-[#0D0C22] px-5 py-4">
-                    <p className="font-mono text-[10px] uppercase text-[#4D5070]">Score</p>
-                    <p className="mt-1 text-xl font-bold tabular-nums text-[#9E91FF]">{selectedRun.scoreAfter ?? "n/a"}</p>
-                  </div>
-                  <div className="bg-[#0D0C22] px-5 py-4">
-                    <p className="font-mono text-[10px] uppercase text-[#4D5070]">Files</p>
-                    <p className="mt-1 text-xl font-bold tabular-nums text-[#EDEEFF]">{selectedRun.changedFiles.length}</p>
-                  </div>
-                  <div className="bg-[#0D0C22] px-5 py-4">
-                    <p className="font-mono text-[10px] uppercase text-[#4D5070]">Proof missing</p>
-                    <p className={`mt-1 text-xl font-bold tabular-nums ${selectedRun.missingProofItems.length > 0 ? "text-[#F0BF72]" : "text-[#4DE8B0]"}`}>
-                      {selectedRun.missingProofItems.length}
-                    </p>
-                  </div>
-                  <div className="bg-[#0D0C22] px-5 py-4">
-                    <p className="font-mono text-[10px] uppercase text-[#4D5070]">Warnings</p>
-                    <p className={`mt-1 text-xl font-bold tabular-nums ${selectedRun.watchWarnings.length > 0 ? "text-[#FF7B5C]" : "text-[#EDEEFF]"}`}>
-                      {selectedRun.watchWarnings.length}
-                    </p>
-                  </div>
-                </div>
-                <div className="px-5 py-4">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <p className="font-mono text-[10px] uppercase text-[#4D5070]">{selectedPrompt.label}</p>
-                    <CopyButton text={selectedPrompt.text} />
-                  </div>
-                  <div className="rounded-lg border border-white/8 bg-[#090918] p-3">
-                    <p className="font-mono text-[12px] leading-6 text-[#C0C2E8]">
-                      {selectedPrompt.text || "No prompt synced yet. Run `runtrim prepare` and `runtrim sync`."}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <RunsInspector run={selectedRun} promptLabel={selectedPrompt.label} promptText={selectedPrompt.text} />
             ) : (
               <p className="px-5 py-8 text-[13px] text-[#4D5070]">No run selected.</p>
             )}

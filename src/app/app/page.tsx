@@ -57,6 +57,15 @@ export default async function AppPage() {
       synced?.memory?.next_safe_prompt ??
       synced?.project?.next_safe_prompt ??
       "Continue from the current diff only. Do not modify new files unless verification proves it is required.",
+    promptSource: runs[0]?.local_id ? `Source ${runs[0].local_id}` : "Source memory",
+    promptUpdatedAt: runs[0]?.created_at_local
+      ? new Date(runs[0].created_at_local).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "Not timestamped",
   };
   const watchWarningCount = runs.reduce((sum, run) => sum + (run.watch_warnings?.length ?? 0), 0);
 
@@ -135,9 +144,9 @@ export default async function AppPage() {
     : undefined;
 
   const KPI_METRICS = [
+    { label: "Estimated savings",  value: `~$${standard.toFixed(2)}`,              color: "text-[#4DE8B0]" },
+    { label: "Tokens trimmed",     value: `~${tokens.toLocaleString("en-US")}`,    color: "text-[#9E91FF]" },
     { label: "Runs guarded",       value: String(guardedCount),                    color: "text-[#9E91FF]" },
-    { label: "Mega-runs blocked",  value: String(blockedCount),                    color: "text-[#FF7B5C]" },
-    { label: "Est. tokens trimmed",value: `~${tokens.toLocaleString("en-US")}`,   color: "text-[#9E91FF]" },
     { label: "Contract score",     value: "75/100",                                color: "text-[#7BAEFF]" },
     { label: "Verification debt",  value: String(partialCount),                    color: "text-[#F0BF72]" },
     { label: "Drift detections",   value: String(driftCount),                      color: driftCount > 0 ? "text-[#FF7B5C]" : "text-[#EDEEFF]" },
@@ -203,7 +212,7 @@ export default async function AppPage() {
               project={continueData.project}
               runsGuarded={guardedCount}
               estimatedTokens={`~${tokens.toLocaleString("en-US")}`}
-              estimatedDollars={`~$${standard.toFixed(2)}`}
+              estimatedDollars={`$${standard.toFixed(2)} reference`}
               riskReduction="45"
             />
             <div className="surface-panel rounded-xl p-5">
