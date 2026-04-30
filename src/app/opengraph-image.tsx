@@ -94,36 +94,40 @@ export default function OGImage() {
               paddingRight: 48,
             }}
           >
-            {/* Wordmark */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {/* R mark — gradient matches icon.svg */}
+            {/* Wordmark — RT mark reconstructed from icon.svg shapes, scale ×0.42 */}
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 9,
-                  background: "linear-gradient(170deg, #4E65FF 0%, #6E30CC 100%)",
+                  width: 42,
+                  height: 42,
+                  borderRadius: 10,
+                  background: "linear-gradient(160deg, #4E65FF 0%, #6E30CC 100%)",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                  flexShrink: 0,
                 }}
               >
-                <span
-                  style={{
-                    fontFamily: "system-ui",
-                    fontSize: 20,
-                    fontWeight: 800,
-                    color: "#ffffff",
-                    letterSpacing: "-0.5px",
-                    lineHeight: 1,
-                  }}
-                >
-                  R
-                </span>
+                {/* Top horizontal bar */}
+                <div style={{ position: "absolute", left: 11, top: 8,  width: 24, height: 5,  background: "rgba(255,255,255,0.95)", display: "flex" }} />
+                {/* Left vertical stem */}
+                <div style={{ position: "absolute", left: 11, top: 8,  width: 5,  height: 29, background: "rgba(255,255,255,0.95)", display: "flex" }} />
+                {/* Shoulder arm triangle */}
+                <div style={{ position: "absolute", left: 23, top: 8, width: 12, height: 12,
+                  background: "rgba(255,255,255,0.95)",
+                  clipPath: "polygon(12px 0px, 0px 12px, 12px 6px)",
+                  display: "flex",
+                }} />
+                {/* Diagonal leg */}
+                <div style={{ position: "absolute", left: 16, top: 20, width: 18, height: 18,
+                  background: "rgba(255,255,255,0.95)",
+                  clipPath: "polygon(0px 0px, 6px 0px, 18px 18px, 12px 18px)",
+                  display: "flex",
+                }} />
               </div>
               <span
                 style={{
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: 700,
                   color: "#EDEEFF",
                   letterSpacing: "-0.02em",

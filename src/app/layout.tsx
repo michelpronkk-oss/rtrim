@@ -53,14 +53,9 @@ export const metadata: Metadata = {
       "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
     images: ["/opengraph-image"],
   },
-  icons: {
-    icon: [
-      { url: RUNTRIM_ICON_PATH, type: "image/svg+xml" },
-      { url: RUNTRIM_ICON_PATH, sizes: "any" },
-    ],
-    shortcut: RUNTRIM_ICON_PATH,
-    apple: RUNTRIM_ICON_PATH,
-  },
+  // icon.tsx and apple-icon.tsx in this directory are auto-discovered by Next.js
+  // and served as /icon.png and /apple-icon.png respectively.
+  // No manual icons config needed — Next.js handles the <link> tags automatically.
 };
 
 export default function RootLayout({
