@@ -1,7 +1,7 @@
-import { ImageResponse } from "next/og";
+﻿import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "RunTrim — Stop paying twice for context your project already created.";
+export const alt = "RunTrim â€” Stop paying twice for context your project already created.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 const RUNTRIM_ICON_DATA_URI =
@@ -24,7 +24,7 @@ export default function OGImage() {
           fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif",
         }}
       >
-        {/* ── Background layers ──────────────────────────────── */}
+        {/* â”€â”€ Background layers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
 
         {/* Dot grid */}
         <div
@@ -38,7 +38,7 @@ export default function OGImage() {
           }}
         />
 
-        {/* Primary glow — rises from bottom centre */}
+        {/* Primary glow â€” rises from bottom centre */}
         <div
           style={{
             position: "absolute",
@@ -53,7 +53,7 @@ export default function OGImage() {
           }}
         />
 
-        {/* Secondary cool-blue accent — top right */}
+        {/* Secondary cool-blue accent â€” top right */}
         <div
           style={{
             position: "absolute",
@@ -67,7 +67,7 @@ export default function OGImage() {
           }}
         />
 
-        {/* Corner vignette — fades extreme edges */}
+        {/* Corner vignette â€” fades extreme edges */}
         <div
           style={{
             position: "absolute",
@@ -78,7 +78,7 @@ export default function OGImage() {
           }}
         />
 
-        {/* ── Main layout: left text, right terminal ─────────── */}
+        {/* â”€â”€ Main layout: left text, right terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div
           style={{
             position: "relative",
@@ -231,7 +231,7 @@ export default function OGImage() {
             </div>
           </div>
 
-          {/* Right column — terminal card */}
+          {/* Right column â€” terminal card */}
           <div
             style={{
               flex: 1,
@@ -287,7 +287,7 @@ export default function OGImage() {
                     marginLeft: 4,
                   }}
                 >
-                  runtrim — guard
+                  runtrim â€” guard
                 </span>
                 <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
                   <div
@@ -319,20 +319,20 @@ export default function OGImage() {
               >
                 {/* Prompt */}
                 <span style={{ color: "#9E91FF", fontWeight: 600 }}>
-                  {'$ runtrim guard "fix checkout redirect"'}
+                  {'$ runtrim guard "your task"'}
                 </span>
 
                 <div style={{ height: 8, display: "flex" }} />
 
                 {/* Divider */}
                 <span style={{ color: "rgba(255,255,255,0.09)" }}>
-                  {"─".repeat(38)}
+                  {"â”€".repeat(38)}
                 </span>
                 <span style={{ color: "rgba(255,255,255,0.40)", fontWeight: 600, letterSpacing: "0.06em", fontSize: 11 }}>
                   AUDIT REPORT
                 </span>
                 <span style={{ color: "rgba(255,255,255,0.09)" }}>
-                  {"─".repeat(38)}
+                  {"â”€".repeat(38)}
                 </span>
 
                 <div style={{ height: 6, display: "flex" }} />
@@ -340,11 +340,11 @@ export default function OGImage() {
                 {/* KV rows */}
                 <div style={{ display: "flex", gap: 0 }}>
                   <span style={{ color: "rgba(255,255,255,0.30)", width: 72 }}>Score   </span>
-                  <span style={{ color: "#7BAEFF" }}>47/100  →  92/100  (+45)</span>
+                  <span style={{ color: "#7BAEFF" }}>47/100  â†’  92/100  (+45)</span>
                 </div>
                 <div style={{ display: "flex" }}>
                   <span style={{ color: "rgba(255,255,255,0.30)", width: 72 }}>Risk    </span>
-                  <span style={{ color: "#4DE8B0" }}>HIGH  →  LOW</span>
+                  <span style={{ color: "#4DE8B0" }}>HIGH  â†’  LOW</span>
                 </div>
                 <div style={{ display: "flex" }}>
                   <span style={{ color: "rgba(255,255,255,0.30)", width: 72 }}>Tokens  </span>
@@ -355,13 +355,13 @@ export default function OGImage() {
 
                 {/* Divider */}
                 <span style={{ color: "rgba(255,255,255,0.09)" }}>
-                  {"─".repeat(38)}
+                  {"â”€".repeat(38)}
                 </span>
                 <span style={{ color: "rgba(255,255,255,0.40)", fontWeight: 600, letterSpacing: "0.06em", fontSize: 11 }}>
                   GUARDED CONTRACT
                 </span>
                 <span style={{ color: "rgba(255,255,255,0.09)" }}>
-                  {"─".repeat(38)}
+                  {"â”€".repeat(38)}
                 </span>
 
                 <div style={{ height: 6, display: "flex" }} />
@@ -394,7 +394,7 @@ export default function OGImage() {
           </div>
         </div>
 
-        {/* ── Bottom accent line ──────────────────────────────── */}
+        {/* â”€â”€ Bottom accent line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div
           style={{
             position: "absolute",
@@ -412,3 +412,5 @@ export default function OGImage() {
     { ...size }
   );
 }
+
+

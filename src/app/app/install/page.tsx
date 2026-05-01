@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyButton } from "@/components/app/copy-button";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
@@ -41,7 +41,7 @@ export default function InstallPage() {
 
   const directCommands = [
     { step: "1", title: "Initialize", command: "runtrim init", note: "Initialize baseline files when you want explicit setup control." },
-    { step: "2", title: "Prepare", command: 'runtrim prepare "fix checkout redirect"', note: "Create the guarded prompt before agent edits." },
+    { step: "2", title: "Prepare", command: 'runtrim prepare "your task"', note: "Create the guarded prompt before agent edits." },
     { step: "3", title: "Open panel", command: "runtrim panel --monitor", note: "Open the local browser panel and monitor drift during a run." },
     { step: "4", title: "Check", command: "runtrim check", note: "Verify result quality and missing proof." },
     { step: "5", title: "Show memory", command: "runtrim memory", note: "Resume from current project memory." },
@@ -49,7 +49,7 @@ export default function InstallPage() {
 
   const commandModeCommands = [
     "runtrim agent set <agent>",
-    'runtrim run "fix checkout redirect"',
+    'runtrim run "your task"',
   ];
 
   return (
@@ -131,7 +131,7 @@ export default function InstallPage() {
               </div>
               <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">RunTrim prepares the contract and copies it for your agent.</p>
               <div className="mt-3 space-y-2.5">
-                <CommandRow command='runtrim prepare "fix checkout redirect"' />
+                <CommandRow command='runtrim prepare "your task"' />
               </div>
               <p className="mt-2 text-[11px] leading-5 text-[#6870A0]">
                 Copy mode is the default. Use <code className="font-mono text-[#9AA7B6]">runtrim agent set copy</code> if you changed modes before.
@@ -210,3 +210,5 @@ export default function InstallPage() {
     </div>
   );
 }
+
+

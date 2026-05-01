@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const RUNTRIM_SITE_URL = "https://www.runtrim.com";
 export const RUNTRIM_OG_IMAGE = "/opengraph-image";
@@ -60,7 +60,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim continuation workflow",
         commands: [
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -338,8 +338,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim guardrail workflow",
         commands: [
-          'runtrim guard "fix checkout redirect"',
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim guard "your task"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -407,7 +407,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Cursor continuation workflow",
         commands: [
           "runtrim agent set cursor",
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -550,8 +550,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Cursor guardrail workflow",
         commands: [
           "runtrim agent set cursor",
-          'runtrim guard "fix checkout redirect"',
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim guard "your task"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -619,7 +619,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Codex CLI continuation workflow",
         commands: [
           "runtrim agent set codex",
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -693,8 +693,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Codex CLI guardrail workflow",
         commands: [
           "runtrim agent set codex",
-          'runtrim guard "fix checkout redirect"',
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim guard "your task"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -761,8 +761,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim Claude Code scoped run workflow",
         commands: [
-          'runtrim guard "fix checkout redirect"',
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim guard "your task"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit"
@@ -834,8 +834,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim scope drift prevention workflow",
         commands: [
-          'runtrim guard "fix checkout redirect"',
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim guard "your task"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -906,8 +906,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim token waste reduction workflow",
         commands: [
-          'runtrim guard "fix checkout redirect"',
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim guard "your task"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -980,7 +980,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim verification workflow",
         commands: [
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim prepare "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim report"
@@ -1052,7 +1052,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim prompt reuse workflow",
         commands: [
-          'runtrim prepare "fix checkout redirect"',
+          'runtrim prepare "your task"',
           "runtrim memory",
           "runtrim memory --prompt"
         ]
@@ -1215,3 +1215,5 @@ export function buildSeoMetadata(page: SeoLandingPageData): Metadata {
 }
 
 export const seoPageSlugs = Object.keys(seoPages);
+
+

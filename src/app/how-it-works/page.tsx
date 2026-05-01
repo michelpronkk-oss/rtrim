@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
@@ -19,7 +19,7 @@ const PROCESS_STEPS = [
   },
   {
     title: "Prepare",
-    command: 'runtrim prepare "fix checkout redirect"',
+    command: 'runtrim prepare "your task"',
     body: "This is where RunTrim creates the guarded prompt contract.",
   },
   {
@@ -195,3 +195,5 @@ export default function HowItWorksPage() {
     </div>
   );
 }
+
+

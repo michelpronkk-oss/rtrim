@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ const VIEWS = [
       { text: "prompts reused:   23",                           kind: "kv"      },
       { text: "",                                               kind: "blank"   },
       { text: "latest runs",                                    kind: "heading" },
-      { text: "run_047  fix checkout redirect         partial", kind: "row"     },
+      { text: "run_047  your task         partial", kind: "row"     },
       { text: "run_046  auth audit and middleware      passed",  kind: "row-ok"  },
       { text: "run_045  billing and schema attempt    split",   kind: "row-warn"},
     ],
@@ -114,7 +114,7 @@ function RunRow({ text }: { text: string }) {
   );
 }
 
-/* ── Typewriter hook ─────────────────────────────────────── */
+/* â”€â”€ Typewriter hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function useTypewriter(text: string, charDelay = 32) {
   const [count, setCount] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -147,7 +147,7 @@ function useTypewriter(text: string, charDelay = 32) {
   return { visible: text.slice(0, count), done: count >= text.length };
 }
 
-/* ── Animated output ─────────────────────────────────────── */
+/* â”€â”€ Animated output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AnimatedLines({
   lines,
   active,
@@ -203,7 +203,7 @@ function AnimatedLines({
   );
 }
 
-/* ── Main component ──────────────────────────────────────── */
+/* â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export function HeroTerminal() {
   const [selected, setSelected] = useState<ViewId>("history");
   const [animKey, setAnimKey] = useState(0);
@@ -248,7 +248,7 @@ export function HeroTerminal() {
           <span className="size-2.5 rounded-full bg-[#FFBD2E]/60" />
           <span className="size-2.5 rounded-full bg-[#28CA41]/60" />
         </div>
-        <span className="font-mono text-[11px] text-[#3A4560]">runtrim — terminal</span>
+        <span className="font-mono text-[11px] text-[#3A4560]">runtrim â€” terminal</span>
         <div className="ml-auto flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-[#7C6DFA] opacity-70" />
           <span className="font-mono text-[10px] text-[#7C6DFA]/70">live</span>
@@ -302,3 +302,5 @@ export function HeroTerminal() {
     </div>
   );
 }
+
+

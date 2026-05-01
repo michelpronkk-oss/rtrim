@@ -20,25 +20,28 @@ export const metadata: Metadata = {
 // â”€â”€ Terminal data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CLI_PREVIEW = [
-  { type: "comment" as const, text: "# initialize and follow the guided next step" },
-  { type: "prompt"  as const, text: "$ runtrim init" },
-  { type: "dim"     as const, text: "  baseline created" },
-  { type: "dim"     as const, text: "  next: runtrim start" },
-  { text: "" },
+  { type: "comment" as const, text: "# free guided loop" },
   { type: "prompt"  as const, text: "$ runtrim start" },
-  { type: "dim"     as const, text: "  state: repo checked, guided flow ready" },
-  { type: "dim"     as const, text: "  next safe command: runtrim prepare \"fix checkout redirect\"" },
+  { type: "dim"     as const, text: "  repo checked" },
+  { type: "dim"     as const, text: "  local memory ready" },
+  { type: "dim"     as const, text: "  next: runtrim prepare \"your task\"" },
   { text: "" },
-  { type: "prompt"  as const, text: '$ runtrim prepare "fix checkout redirect"' },
-  { type: "dim"     as const, text: "  prompt saved to .runtrim/latest-prompt.md" },
-  { type: "dim"     as const, text: "  next: paste into your agent, then runtrim check" },
+  { type: "prompt"  as const, text: '$ runtrim prepare "your task"' },
+  { type: "dim"     as const, text: "  guarded prompt saved to .runtrim/latest-prompt.md" },
+  { type: "dim"     as const, text: "  next: paste into your agent" },
+  { text: "" },
+  { type: "prompt"  as const, text: "$ runtrim panel" },
+  { type: "dim"     as const, text: "  local panel open" },
+  { type: "dim"     as const, text: "  watching changed files" },
+  { text: "" },
+  { type: "prompt"  as const, text: "$ runtrim check" },
+  { type: "dim"     as const, text: "  changed files reviewed" },
+  { type: "dim"     as const, text: "  proof gaps recorded" },
+  { type: "dim"     as const, text: "  next: runtrim continue --reason usage_limit" },
   { text: "" },
   { type: "prompt"  as const, text: "$ runtrim continue --reason usage_limit" },
   { type: "dim"     as const, text: "  continuation prompt copied" },
-  { type: "dim"     as const, text: "  next: paste into the next agent" },
-  { text: "" },
-  { type: "prompt"  as const, text: "$ runtrim sync" },
-  { type: "accent"  as const, text: "  synced project memory and runs" },
+  { type: "dim"     as const, text: "  next: paste into the next agent session" },
 ];
 
 const AGENT_MODES = [
@@ -150,7 +153,7 @@ export default function Home() {
       {/* Hero */}
       <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden border-b border-white/8 pb-24 pt-28 sm:pb-20 sm:pt-24">
 
-        {/* ── Background stack ─────────────────────────────── */}
+        {/* -- Background stack ------------------------------- */}
 
         {/* 1. Dot grid — soft, 30px pitch */}
         <div
@@ -186,7 +189,7 @@ export default function Home() {
           style={{ background: "linear-gradient(to top, #07071A, transparent)" }}
         />
 
-        {/* ── Content ──────────────────────────────────────── */}
+        {/* -- Content ---------------------------------------- */}
         <div className="relative z-10 flex w-full flex-col items-center px-6 text-center">
 
           {/* Badge pill */}
@@ -263,7 +266,7 @@ export default function Home() {
           </MotionFade>
         </div>
 
-        {/* ── Product visual ───────────────────────────────── */}
+        {/* -- Product visual --------------------------------- */}
         <MotionFade
           delay={0.28}
           className="relative z-10 mt-20 w-full max-w-4xl px-6 sm:mt-16"
@@ -287,7 +290,7 @@ export default function Home() {
           </div>
         </MotionFade>
 
-        {/* ── Feature strip ────────────────────────────────── */}
+        {/* -- Feature strip ---------------------------------- */}
         <MotionFade
           delay={0.34}
           className="relative z-10 mt-7 w-full max-w-4xl px-6 sm:mt-5"
@@ -310,7 +313,7 @@ export default function Home() {
           </div>
         </MotionFade>
       </section>
-      {/* ── Section label helper ─────────────────────────────── */}
+      {/* -- Section label helper ------------------------------- */}
       {/* Problem */}
       <section className="border-t border-white/8 bg-[#07071A]">
         <div className="mx-auto max-w-6xl px-6 py-24">
@@ -925,4 +928,6 @@ export default function Home() {
     </div>
   );
 }
+
+
 
