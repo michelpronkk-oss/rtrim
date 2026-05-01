@@ -9,6 +9,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { execa } from "execa";
+import packageJson from "../package.json";
 
 import {
   loadConfig,
@@ -52,6 +53,7 @@ const chalk = new Chalk();
 const oraFactory: typeof ora =
   (typeof ora === "function" ? ora : ((ora as unknown as { default?: typeof ora }).default ?? ora));
 const ACCENT = chalk.hex("#C8901A");
+const GO_ACCENT = chalk.hex("#8B7CFF");
 const DIM = chalk.gray;
 const BOLD = chalk.white.bold;
 
@@ -597,7 +599,7 @@ async function tryLaunchPanelMonitorDetached(cwd: string): Promise<boolean> {
 program
   .name("runtrim")
   .description("CLI guard layer for AI coding runs")
-  .version("0.1.0");
+  .version(packageJson.version);
 
 let commandStartAt = Date.now();
 program.hook("preAction", async () => {
@@ -1669,23 +1671,26 @@ program
     }
 
     console.log("");
-    console.log(ACCENT.bold("RunTrim go"));
+    console.log(GO_ACCENT.bold("RunTrim go"));
     console.log("");
-    console.log(ACCENT.bold("Task"));
+    console.log(GO_ACCENT.bold("Task"));
     console.log(chalk.white(task));
     console.log("");
-    console.log(ACCENT.bold("Guarded prompt"));
+    console.log(GO_ACCENT.bold("Guarded prompt"));
     console.log(copied ? chalk.white("Copied to clipboard.") : DIM("Clipboard unavailable. Prompt saved to .runtrim/latest-prompt.md"));
     console.log("");
-    console.log(ACCENT.bold("Next"));
+    console.log(GO_ACCENT.bold("Next"));
     console.log(chalk.white("1. Paste into your preferred coding agent, like Claude, Codex, Cursor, ChatGPT, Kimi, or another agent."));
     console.log(chalk.white("2. Keep the local panel open:"));
     console.log(chalk.white("   runtrim panel --monitor"));
     console.log(chalk.white("3. After edits:"));
     console.log(chalk.white("   runtrim check"));
     console.log("");
-    console.log(ACCENT.bold("Why this helps"));
-    console.log(DIM("RunTrim keeps the run scoped, remembered and easier to continue."));
+    console.log(GO_ACCENT.bold("Why this helps"));
+    console.log(DIM("RunTrim keeps each run scoped, remembered, and easier to continue."));
+    console.log("");
+    console.log(GO_ACCENT.bold("Need more control?"));
+    console.log(chalk.white("Run `runtrim --help` to see all commands."));
     console.log("");
   });
 
