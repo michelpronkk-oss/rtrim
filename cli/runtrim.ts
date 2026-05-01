@@ -9,7 +9,6 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { execa } from "execa";
-import packageJson from "../package.json";
 
 import {
   loadConfig,
@@ -62,6 +61,55 @@ const SECTION = "-------------------------------------------------";
 const OUTPUT_PREVIEW_MAX = 1600;
 const STANDARD_RATE_PER_MILLION = 3;
 const EXPENSIVE_RATE_PER_MILLION = 30;
+function resolveCliLauncherPath(): string | null {
+  const invokedPath = process.argv[1]?.trim();
+  if (invokedPath) {
+    const absolute = path.resolve(invokedPath);
+    if (fs.existsSync(absolute)) return absolute;
+  }
+
+  const localFallback = path.resolve(process.cwd(), "dist-cli", "runtrim.cjs");
+  if (fs.existsSync(localFallback)) return localFallback;
+  return null;
+}
+
+function resolveCliRuntimeDir(): string {
+  const launcher = resolveCliLauncherPath();
+  if (launcher) return path.dirname(launcher);
+  return process.cwd();
+}
+
+function resolveCliVersion(): string {
+  const cliDir = resolveCliRuntimeDir();
+  const candidates = [
+    path.resolve(cliDir, "..", "package.json"),
+    path.resolve(cliDir, "package.json"),
+    path.resolve(process.cwd(), "package.json"),
+  ];
+
+  for (const packageJsonPath of candidates) {
+    try {
+      const raw = fs.readFileSync(packageJsonPath, "utf-8");
+      const parsed = JSON.parse(raw) as { version?: string };
+      if (parsed.version && parsed.version.trim()) return parsed.version.trim();
+    } catch {
+      // continue
+    }
+  }
+
+  try {
+    const fromNodeExecArgv = process.execArgv.find((arg) => arg.startsWith("--runtrim-version="));
+    if (fromNodeExecArgv) {
+      const v = fromNodeExecArgv.split("=")[1]?.trim();
+      if (v) return v;
+    }
+  } catch {
+    // continue
+  }
+
+  const envVersion = process.env.npm_package_version?.trim();
+  return envVersion || "0.0.0";
+}
 
 function parseEstimatedNumber(value: string | undefined): number {
   if (!value) return 0;
@@ -658,7 +706,7 @@ async function runPrepareTask(
 }
 
 async function tryLaunchPanelMonitorDetached(cwd: string): Promise<boolean> {
-  const entry = path.join(__dirname, "runtrim.cjs");
+  const entry = resolveCliLauncherPath() ?? path.resolve(cwd, "dist-cli", "runtrim.cjs");
   if (!fs.existsSync(entry)) return false;
   try {
     const child = execa(process.execPath, [entry, "panel", "--monitor"], {
@@ -677,7 +725,7 @@ async function tryLaunchPanelMonitorDetached(cwd: string): Promise<boolean> {
 program
   .name("runtrim")
   .description("CLI guard layer for AI coding runs")
-  .version(packageJson.version);
+  .version(resolveCliVersion());
 
 let commandStartAt = Date.now();
 program.hook("preAction", async () => {
