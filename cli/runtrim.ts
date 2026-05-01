@@ -1830,24 +1830,26 @@ program
     if (changedFiles.length > maxFiles) riskFlags.add(`File count exceeded scope limit (${maxFiles})`);
 
     const verificationDebt = new Set<string>();
-    if (run.status === "guarded") verificationDebt.add("Run is still guarded and not checked.");
-    if (changedFiles.length > 0 && !run.evaluation) verificationDebt.add("Changed files exist but no post-run check was recorded.");
-    if (scope.sensitiveFiles.length > 0) verificationDebt.add("Sensitive files changed. Review and verify before continuing.");
-    if (scope.forbiddenFiles.length > 0) verificationDebt.add("Forbidden files changed. Manual containment required.");
-    if (changedFiles.length > maxFiles) verificationDebt.add("Too many files changed for one scoped run. Split the task.");
-    if (lowerChanged.some((f) => /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$/.test(f))) {
-      verificationDebt.add("Lockfile changed. Confirm dependency intent.");
+    if (changedFiles.length > 0) {
+      if (run.status === "guarded") verificationDebt.add("Run is still guarded and not checked.");
+      if (!run.evaluation) verificationDebt.add("Changed files exist but no post-run check was recorded.");
+      if (scope.sensitiveFiles.length > 0) verificationDebt.add("Sensitive files changed. Review and verify before continuing.");
+      if (scope.forbiddenFiles.length > 0) verificationDebt.add("Forbidden files changed. Manual containment required.");
+      if (changedFiles.length > maxFiles) verificationDebt.add("Too many files changed for one scoped run. Split the task.");
+      if (lowerChanged.some((f) => /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$/.test(f))) {
+        verificationDebt.add("Lockfile changed. Confirm dependency intent.");
+      }
+      if (lowerChanged.some((f) => /(migration|migrations|schema|database)/.test(f))) {
+        verificationDebt.add("Database or migration-related changes need explicit verification.");
+      }
+      if (lowerChanged.some((f) => /(middleware|auth|login|session|jwt|payment|billing|stripe|webhook)/.test(f))) {
+        verificationDebt.add("Auth, middleware, payment, or webhook surface changed. Run focused verification.");
+      }
+      if (scope.outOfScopeFiles.length > 0) {
+        verificationDebt.add("Some changed files appear outside declared relevant scope.");
+      }
+      for (const item of run.evaluation?.missingProofItems ?? []) verificationDebt.add(item);
     }
-    if (lowerChanged.some((f) => /(migration|migrations|schema|database)/.test(f))) {
-      verificationDebt.add("Database or migration-related changes need explicit verification.");
-    }
-    if (lowerChanged.some((f) => /(middleware|auth|login|session|jwt|payment|billing|stripe|webhook)/.test(f))) {
-      verificationDebt.add("Auth, middleware, payment, or webhook surface changed. Run focused verification.");
-    }
-    if (scope.outOfScopeFiles.length > 0) {
-      verificationDebt.add("Some changed files appear outside declared relevant scope.");
-    }
-    for (const item of run.evaluation?.missingProofItems ?? []) verificationDebt.add(item);
 
     let nextSafeAction = "Run is ready to continue.";
     if (scope.forbiddenFiles.length > 0) {
@@ -2374,7 +2376,12 @@ program
     }
     console.log("");
     console.log(BOLD("Continuation"));
-    if (latestPrompt) {
+    const noChangesState =
+      status === "no_changes_detected" ||
+      (latestRun.checkSummary?.changedFilesCount ?? latestRun.evaluation?.changedFiles?.length ?? 0) === 0;
+    if (noChangesState) {
+      console.log(chalk.white("No continuation prompt needed yet. Run `runtrim continue --reason usage_limit` when context runs out."));
+    } else if (latestPrompt) {
       const compact = latestPrompt.replace(/\s+/g, " ").trim();
       const isDrift = /scope drift detected/i.test(compact);
       if (isDrift) {
