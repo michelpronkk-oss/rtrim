@@ -90,8 +90,8 @@ npm run runtrim -- start
 - blocks unsafe mega-runs and suggests split-safe follow-ups
 - generates guarded prompts with explicit stop rules
 - monitors changed files during execution
-- checks output quality and missing proof after edits
-- stores local run memory in `.runtrim/`
+- reviews changed files, risk flags, verification debt, and next safe action after edits
+- shows current project memory, latest run state, and continuation guidance in `.runtrim/`
 
 ## Core commands
 

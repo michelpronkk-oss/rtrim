@@ -47,6 +47,17 @@ export interface RunRecord {
   watchStatus?: "safe" | "caution" | "drift_detected" | "limit_exceeded";
   watchWarnings?: string[];
   watchChangedFiles?: string[];
+  checkSummary?: {
+    checkedAt: string;
+    changedFilesCount: number;
+    allowedCount: number;
+    sensitiveCount: number;
+    forbiddenCount: number;
+    outsideScopeCount: number;
+    verificationDebt: string[];
+    riskFlags: string[];
+    nextSafeAction: string;
+  };
   status:
     | "guarded"
     | "checked"

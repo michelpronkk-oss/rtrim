@@ -183,6 +183,84 @@ function dedupeFiles(files: string[]): string[] {
   return [...new Set(files.filter(Boolean).map((f) => f.replace(/\\/g, "/")))];
 }
 
+const HIGH_RISK_PATH_KEYWORDS = [
+  "auth",
+  "login",
+  "signup",
+  "session",
+  "jwt",
+  "middleware",
+  "proxy",
+  "billing",
+  "payment",
+  "stripe",
+  "dodo",
+  "checkout",
+  "webhook",
+  "database",
+  "schema",
+  "migration",
+  "supabase",
+  "env",
+  "secret",
+  "token",
+  "admin",
+  "permission",
+  "security",
+  "package.json",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "yarn.lock",
+];
+
+function inferMaxFilesFromScope(scope: string[], fallback: number): number {
+  const text = scope.join(" ").toLowerCase();
+  const n = Number.parseInt(text.match(/maximum\s+(\d+)\s+files/)?.[1] ?? "", 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  return Math.max(1, fallback || 5);
+}
+
+function collectProtectedSystems(
+  run: ReturnType<typeof loadLatestRun>,
+  config: RunTrimConfig,
+  audit: ReturnType<typeof loadProjectAudit>
+): string[] {
+  const values = new Set<string>();
+  const add = (v: string): void => {
+    const x = v.trim().toLowerCase();
+    if (!x) return;
+    values.add(x);
+  };
+  for (const a of config.sensitiveAreas ?? []) add(a);
+  for (const a of audit?.protectedAreas ?? []) add(a);
+  for (const s of run?.contract.contract?.sensitiveScope ?? []) add(s);
+  for (const s of run?.contract.contract?.forbiddenScope ?? []) add(s);
+
+  const mapped = new Set<string>();
+  for (const raw of values) {
+    if (raw.includes("auth")) mapped.add("auth");
+    if (raw.includes("middleware") || raw.includes("proxy")) mapped.add("middleware");
+    if (raw.includes("database") || raw.includes("schema") || raw.includes("migration")) mapped.add("database");
+    if (raw.includes("env") || raw.includes("secret")) mapped.add("env/secrets");
+    if (raw.includes("billing")) mapped.add("billing");
+    if (raw.includes("payment") || raw.includes("stripe") || raw.includes("dodo")) mapped.add("payments");
+    if (raw.includes("webhook")) mapped.add("webhooks");
+    if (raw.includes("package") || raw.includes("lock")) mapped.add("package/config changes");
+  }
+
+  const ordered = [
+    "auth",
+    "middleware",
+    "database",
+    "env/secrets",
+    "billing",
+    "payments",
+    "webhooks",
+    "package/config changes",
+  ];
+  return ordered.filter((x) => mapped.has(x));
+}
+
 const CONTINUATION_REASONS = [
   "usage_limit",
   "credits_exhausted",
@@ -1697,7 +1775,8 @@ program
 program
   .command("check")
   .description("Check the latest run and evaluate agent output")
-  .action(async () => {
+  .option("--json", "Print machine-readable check summary")
+  .action(async (options: { json?: boolean }) => {
     const cwd = process.cwd();
 
     console.log("");
@@ -1706,93 +1785,21 @@ program
 
     const run = loadLatestRun(cwd);
     if (!run) {
-      console.log(chalk.yellow("  No runs found. Run: runtrim guard \"your task\""));
+      console.log(chalk.yellow('  No runs found. Start with: runtrim go "your task"'));
       console.log("");
       return;
     }
-    if (run.evaluation) {
-      const { recheck } = await prompts({
-        type: "confirm",
-        name: "recheck",
-        message: "Latest run already has an evaluation. Re-check now?",
-        initial: false,
-      });
-      if (!recheck) {
-        console.log(DIM("  Skipped. Existing evaluation retained."));
-        console.log("");
-        return;
-      }
-    }
-
-    console.log(DIM("  Latest run:  ") + chalk.white(truncate(run.task, 55)));
-    console.log(DIM("  Guarded at:  ") + chalk.white(formatDate(run.createdAt)));
-    console.log("");
-
-    if (run.status === "blocked" || run.status === "split_required") {
-      const evaluationBase = evaluateAgentOutput(null, [], {
-        task: run.task,
-        relevantScope: run.contract.contract?.relevantScope ?? [],
-        sensitiveScope: run.contract.contract?.sensitiveScope ?? [],
-        forbiddenScope: run.contract.contract?.forbiddenScope ?? [],
-        runStatus: run.status,
-      });
-      const evaluation: RunEvaluationRecord = {
-        ...evaluationBase,
-        nextPrompt: evaluationBase.nextGuardedPrompt,
-        nextSafePrompt: evaluationBase.nextGuardedPrompt,
-        nextSafeAction: evaluationBase.nextSafeAction,
-        memorySummary: evaluationBase.memorySummary,
-        evaluatedAt: evaluationBase.evaluatedAt,
-      };
-
-      updateRun(run.id, { evaluation, status: "checked" }, cwd);
-      const latestAfterUpdate = loadLatestRun(cwd);
-      if (latestAfterUpdate) {
-        writeMemoryFromRuns(latestAfterUpdate, loadAllRuns(cwd), loadConfig(cwd), cwd);
-      }
-
-      await copyToClipboardSafe(evaluation.nextPrompt);
-      console.log(chalk.yellow("  Latest run was blocked. Start with the recommended split audit task."));
-      console.log("");
-      console.log(DIM("  Next safe prompt:"));
-      for (const line of evaluation.nextPrompt.split("\n")) console.log(DIM("    " + line));
-      console.log("");
-      console.log(ACCENT.bold("  Next prompt copied to clipboard."));
-      console.log("");
-      return;
-    }
-
-    const diffSpinner = oraFactory({ text: "Reading git diff...", color: "yellow" }).start();
-    const changedFiles = await getGitDiff(cwd);
-    diffSpinner.stop();
-
-    if (changedFiles.length > 0) {
-      console.log(DIM("  Changed files (" + changedFiles.length + "):"));
-      for (const f of changedFiles) console.log(DIM("    " + f));
-      console.log("");
-    } else {
-      console.log(DIM("  No git changes detected since last commit."));
-      console.log("");
-    }
-
-    const { pasteOutput } = await prompts({
-      type: "confirm",
-      name: "pasteOutput",
-      message: "Evaluate agent output? (paste output or skip)",
-      initial: true,
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const changedFiles = dedupeFiles(await getGitDiff(cwd));
+    const maxFiles = inferMaxFilesFromScope(run.contract.contract?.relevantScope ?? [], config.maxFilesPerRun);
+    const scope = evaluateWatchState({
+      changedFiles,
+      run,
+      maxFilesPerRun: maxFiles,
+      strict: false,
     });
 
-    let agentOutput: string | null = null;
-    if (pasteOutput) {
-      const { output } = await prompts({
-        type: "text",
-        name: "output",
-        message: "Paste agent output:",
-      });
-      agentOutput = (output as string) ?? null;
-    }
-
-    const evaluationBase = evaluateAgentOutput(agentOutput, changedFiles, {
+    const evaluationBase = evaluateAgentOutput(null, changedFiles, {
       task: run.task,
       relevantScope: run.contract.contract?.relevantScope ?? [],
       sensitiveScope: run.contract.contract?.sensitiveScope ?? [],
@@ -1807,76 +1814,138 @@ program
       memorySummary: evaluationBase.memorySummary,
       evaluatedAt: evaluationBase.evaluatedAt,
     };
+    const lowerChanged = changedFiles.map((f) => f.toLowerCase());
+    const riskFlags = new Set<string>();
+    for (const file of lowerChanged) {
+      for (const kw of HIGH_RISK_PATH_KEYWORDS) {
+        if (file.includes(kw)) {
+          riskFlags.add(`High-risk path touched: ${kw}`);
+          break;
+        }
+      }
+    }
+    if (scope.forbiddenFiles.length > 0) riskFlags.add("Forbidden scope changed");
+    if (scope.sensitiveFiles.length > 0) riskFlags.add("Sensitive scope changed");
+    if (scope.outOfScopeFiles.length > 0) riskFlags.add("Potential outside-scope changes detected");
+    if (changedFiles.length > maxFiles) riskFlags.add(`File count exceeded scope limit (${maxFiles})`);
 
-    updateRun(run.id, { evaluation, status: "checked" }, cwd);
+    const verificationDebt = new Set<string>();
+    if (run.status === "guarded") verificationDebt.add("Run is still guarded and not checked.");
+    if (changedFiles.length > 0 && !run.evaluation) verificationDebt.add("Changed files exist but no post-run check was recorded.");
+    if (scope.sensitiveFiles.length > 0) verificationDebt.add("Sensitive files changed. Review and verify before continuing.");
+    if (scope.forbiddenFiles.length > 0) verificationDebt.add("Forbidden files changed. Manual containment required.");
+    if (changedFiles.length > maxFiles) verificationDebt.add("Too many files changed for one scoped run. Split the task.");
+    if (lowerChanged.some((f) => /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$/.test(f))) {
+      verificationDebt.add("Lockfile changed. Confirm dependency intent.");
+    }
+    if (lowerChanged.some((f) => /(migration|migrations|schema|database)/.test(f))) {
+      verificationDebt.add("Database or migration-related changes need explicit verification.");
+    }
+    if (lowerChanged.some((f) => /(middleware|auth|login|session|jwt|payment|billing|stripe|webhook)/.test(f))) {
+      verificationDebt.add("Auth, middleware, payment, or webhook surface changed. Run focused verification.");
+    }
+    if (scope.outOfScopeFiles.length > 0) {
+      verificationDebt.add("Some changed files appear outside declared relevant scope.");
+    }
+    for (const item of run.evaluation?.missingProofItems ?? []) verificationDebt.add(item);
+
+    let nextSafeAction = "Run is ready to continue.";
+    if (scope.forbiddenFiles.length > 0) {
+      nextSafeAction = "Stop and inspect forbidden files before continuing.";
+    } else if (scope.sensitiveFiles.length > 0) {
+      nextSafeAction = "Review sensitive changes, then run tests before continuing.";
+    } else if (changedFiles.length > maxFiles) {
+      nextSafeAction = "Stop scope drift and split the task.";
+    } else if (changedFiles.length === 0) {
+      nextSafeAction = "No local changes detected. Continue or prepare the next run.";
+    } else if (verificationDebt.size > 0) {
+      nextSafeAction = "Resolve verification debt, then run runtrim check again.";
+    }
+
+    evaluation.nextSafeAction = nextSafeAction;
+    evaluation.nextPrompt = evaluation.nextGuardedPrompt;
+    evaluation.nextSafePrompt = evaluation.nextGuardedPrompt;
+
+    const checkSummary = {
+      checkedAt: new Date().toISOString(),
+      changedFilesCount: changedFiles.length,
+      allowedCount: scope.relevantFiles.length,
+      sensitiveCount: scope.sensitiveFiles.length,
+      forbiddenCount: scope.forbiddenFiles.length,
+      outsideScopeCount: scope.outOfScopeFiles.length,
+      verificationDebt: [...verificationDebt],
+      riskFlags: [...riskFlags],
+      nextSafeAction,
+    };
+
+    updateRun(run.id, { evaluation, checkSummary, status: "checked" }, cwd);
     const latestAfterUpdate = loadLatestRun(cwd);
-    if (latestAfterUpdate) {
+    if (latestAfterUpdate && configExists(cwd)) {
       writeMemoryFromRuns(latestAfterUpdate, loadAllRuns(cwd), loadConfig(cwd), cwd);
     }
 
-    const statusColors: Record<string, ChalkInstance> = {
-      passed: chalk.green,
-      partial: chalk.yellow,
-      needs_verification: chalk.hex("#FF8C00"),
-      no_changes_detected: chalk.hex("#FF8C00"),
-      drift_detected: chalk.red,
-      blocked: chalk.red,
-    };
-    const driftColors: Record<string, ChalkInstance> = {
-      none: chalk.green,
-      low: chalk.yellow,
-      medium: chalk.hex("#FF8C00"),
-      high: chalk.red,
-    };
-
-    const statusColor = statusColors[evaluation.status] ?? chalk.white;
-    const driftColor = driftColors[evaluation.scopeDriftRisk] ?? chalk.white;
-
-    console.log("");
-    console.log(DIM("  " + SECTION));
-    console.log(DIM("  EVALUATION"));
-    console.log(DIM("  " + SECTION));
-    console.log("");
-    console.log(DIM("  Status         ") + statusColor(formatStatus(evaluation.status).toUpperCase()));
-    console.log(DIM("  Contract score ") + chalk.white(formatScore(evaluation.contractScore)));
-    console.log(DIM("  Scope drift    ") + driftColor(evaluation.scopeDriftRisk.toUpperCase()));
-    console.log(DIM("  Next action    ") + chalk.white(evaluation.nextSafeAction));
-    console.log("");
-
-    if (evaluation.driftedFiles.length > 0) {
-      console.log(chalk.red("  Drifted files:"));
-      for (const f of evaluation.driftedFiles) console.log(chalk.red("    x " + f));
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            runId: run.id,
+            task: run.task,
+            scopeResult: {
+              allowedChanges: checkSummary.allowedCount,
+              sensitiveChanges: checkSummary.sensitiveCount,
+              forbiddenChanges: checkSummary.forbiddenCount,
+              outsideScope: checkSummary.outsideScopeCount,
+            },
+            verificationDebt: checkSummary.verificationDebt,
+            riskFlags: checkSummary.riskFlags,
+            changedFiles: changedFiles,
+            nextSafeAction: checkSummary.nextSafeAction,
+            checkedAt: checkSummary.checkedAt,
+          },
+          null,
+          2
+        )
+      );
       console.log("");
+      return;
     }
 
-    if (evaluation.outOfScopeFiles.length > 0) {
-      console.log(chalk.yellow("  Out-of-scope files:"));
-      for (const f of evaluation.outOfScopeFiles) console.log(DIM("    - " + f));
-      console.log("");
-    }
+    const changedPreview = changedFiles.slice(0, 8);
+    const extraCount = Math.max(0, changedFiles.length - changedPreview.length);
 
-    if (evaluation.missingProofItems.length > 0) {
-      console.log(chalk.yellow("  Missing:"));
-      for (const item of evaluation.missingProofItems) console.log(DIM("    - " + item));
-      console.log("");
-    }
-
-    console.log(DIM("  " + SECTION));
-    console.log(DIM("  NEXT GUARDED PROMPT"));
-    console.log(DIM("  " + SECTION));
+    console.log(BOLD("Run"));
+    console.log(chalk.white(run.task?.trim() ? truncate(run.task, 68) : "Latest run"));
     console.log("");
-    for (const line of evaluation.nextPrompt.split("\n")) {
-      console.log(DIM("  " + line));
+    console.log(BOLD("Scope result"));
+    console.log(chalk.white(`- Allowed changes: ${checkSummary.allowedCount}`));
+    console.log(chalk.white(`- Sensitive changes: ${checkSummary.sensitiveCount}`));
+    console.log(chalk.white(`- Forbidden changes: ${checkSummary.forbiddenCount}`));
+    console.log(chalk.white(`- Outside scope: ${checkSummary.outsideScopeCount}`));
+    console.log("");
+    console.log(BOLD("Verification debt"));
+    if (checkSummary.verificationDebt.length === 0) {
+      console.log(chalk.white("No verification debt recorded."));
+    } else {
+      for (const item of checkSummary.verificationDebt) console.log(chalk.white(`- ${item}`));
     }
     console.log("");
-
-    try {
-      await clipboard.write(evaluation.nextPrompt);
-      console.log(ACCENT.bold("  Next prompt copied to clipboard."));
-    } catch {
-      // ignore
+    console.log(BOLD("Risk flags"));
+    if (checkSummary.riskFlags.length === 0) {
+      console.log(chalk.white("No high-risk flags detected."));
+    } else {
+      for (const flag of checkSummary.riskFlags) console.log(chalk.white(`- ${flag}`));
     }
-
+    console.log("");
+    console.log(BOLD("Changed files"));
+    if (changedFiles.length === 0) {
+      console.log(chalk.white("No local changed files detected."));
+    } else {
+      for (const file of changedPreview) console.log(chalk.white(`- ${file}`));
+      if (extraCount > 0) console.log(chalk.white(`+${extraCount} more`));
+    }
+    console.log("");
+    console.log(BOLD("Next safe action"));
+    console.log(chalk.white(checkSummary.nextSafeAction));
     console.log("");
   });
 // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ REPORT ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
@@ -2164,24 +2233,28 @@ program
   .command("memory")
   .description("Show project memory and latest next safe prompt")
   .option("--prompt", "Print only latest next safe prompt")
-  .action(async (options: { prompt?: boolean }) => {
+  .option("--full", "Print full memory markdown")
+  .action(async (options: { prompt?: boolean; full?: boolean }) => {
     const cwd = process.cwd();
 
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  memory"));
     console.log("");
 
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const audit = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
+    const memoryPath = path.join(getConfigDir(cwd), "memory.md");
     const latestRun = loadLatestRun(cwd);
+
     if (!latestRun) {
-      const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
-      const audit = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
-      const memoryPath = path.join(getConfigDir(cwd), "memory.md");
       let memory = readMemory(cwd);
       if (!memory) {
+        const memoryDir = path.dirname(memoryPath);
+        if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
         memory = buildBaselineMemoryMarkdown(audit);
         fs.writeFileSync(memoryPath, memory, "utf-8");
       }
-      const baselinePrompt = 'runtrim prepare "describe your next AI coding task"';
+      const baselinePrompt = 'runtrim go "your task"';
       if (options.prompt) {
         console.log(baselinePrompt);
         await copyToClipboardSafe(baselinePrompt);
@@ -2190,9 +2263,37 @@ program
         console.log("");
         return;
       }
-      console.log(memory);
-      await copyToClipboardSafe(baselinePrompt);
-      console.log(ACCENT.bold("  Project memory loaded. Latest next safe prompt copied."));
+      if (options.full) {
+        console.log(memory);
+        console.log("");
+      }
+      console.log(BOLD("Project"));
+      console.log(chalk.white(audit.projectName || cwd));
+      console.log("");
+      console.log(BOLD("Current state"));
+      console.log(chalk.white("No runs recorded yet."));
+      console.log("");
+      console.log(BOLD("Latest run"));
+      console.log(chalk.white("- Task: none"));
+      console.log(chalk.white("- Status: baseline"));
+      console.log(chalk.white("- Proof: needs check"));
+      console.log(chalk.white(`- Next: ${baselinePrompt}`));
+      console.log("");
+      console.log(BOLD("Protected systems"));
+      const protectedSystems = collectProtectedSystems(null, config, audit);
+      console.log(chalk.white((protectedSystems.length ? protectedSystems : ["auth", "middleware", "database", "env/secrets", "billing", "webhooks", "migrations"]).join(", ")));
+      console.log("");
+      console.log(BOLD("Recent context"));
+      console.log(chalk.white("No recent memory items yet."));
+      console.log("");
+      console.log(BOLD("Continuation"));
+      console.log(chalk.white("No continuation prompt yet. Run `runtrim continue --reason usage_limit` when context runs out."));
+      console.log("");
+      console.log(BOLD("Useful commands"));
+      console.log(chalk.white('- runtrim go "your task"'));
+      console.log(chalk.white("- runtrim panel --monitor"));
+      console.log(chalk.white("- runtrim check"));
+      console.log(chalk.white("- runtrim continue --reason usage_limit"));
       console.log("");
       if (config.baselineInitialized !== true) {
         config.baselineInitialized = true;
@@ -2201,7 +2302,8 @@ program
       }
       return;
     }
-    const memory = writeMemoryFromRuns(latestRun, loadAllRuns(cwd), loadConfig(cwd), cwd);
+    const allRuns = loadAllRuns(cwd);
+    const memory = writeMemoryFromRuns(latestRun, allRuns, config, cwd);
     const latestPrompt =
       latestRun?.evaluation?.nextPrompt ??
       latestRun?.evaluation?.nextSafePrompt ??
@@ -2222,13 +2324,76 @@ program
       return;
     }
 
-    console.log(memory);
-    if (latestPrompt) {
-      await copyToClipboardSafe(latestPrompt);
-      console.log(ACCENT.bold("  Project memory loaded. Latest next safe prompt copied."));
-    } else {
-      console.log(DIM("  Project memory loaded."));
+    if (options.full) {
+      console.log(memory);
+      console.log("");
     }
+
+    const status = latestRun.evaluation?.status ?? latestRun.status;
+    const checkSummary = latestRun.checkSummary;
+    const protectedSystems = collectProtectedSystems(latestRun, config, audit);
+    const recent = allRuns.slice(0, 3).map((r) => {
+      const s = r.evaluation?.status ?? r.status;
+      return `- ${truncate(r.task, 56)} (${s})`;
+    });
+    const nextAction =
+      checkSummary?.nextSafeAction ??
+      latestRun.evaluation?.nextSafeAction ??
+      "runtrim check";
+    const proofState =
+      checkSummary
+        ? checkSummary.verificationDebt.length > 0
+          ? "verification debt"
+          : "checked"
+        : latestRun.evaluation
+        ? latestRun.evaluation.missingProofItems.length > 0
+          ? "verification debt"
+          : "checked"
+        : "needs check";
+
+    console.log(BOLD("Project"));
+    console.log(chalk.white(audit.projectName || cwd));
+    console.log("");
+    console.log(BOLD("Current state"));
+    console.log(chalk.white(latestRun.evaluation?.memorySummary || `Latest run is ${status}.`));
+    console.log("");
+    console.log(BOLD("Latest run"));
+    console.log(chalk.white(`- Task: ${truncate(latestRun.task, 72)}`));
+    console.log(chalk.white(`- Status: ${status}`));
+    console.log(chalk.white(`- Proof: ${proofState}`));
+    console.log(chalk.white(`- Next: ${nextAction}`));
+    console.log("");
+    console.log(BOLD("Protected systems"));
+    console.log(chalk.white((protectedSystems.length ? protectedSystems : ["auth", "middleware", "database", "env/secrets", "billing", "webhooks", "migrations"]).join(", ")));
+    console.log("");
+    console.log(BOLD("Recent context"));
+    if (recent.length > 0) {
+      for (const line of recent) console.log(chalk.white(line));
+    } else {
+      console.log(chalk.white("No recent memory items yet."));
+    }
+    console.log("");
+    console.log(BOLD("Continuation"));
+    if (latestPrompt) {
+      const compact = latestPrompt.replace(/\s+/g, " ").trim();
+      const isDrift = /scope drift detected/i.test(compact);
+      if (isDrift) {
+        console.log(chalk.white("Scope drift detected. Run `runtrim check` before continuing."));
+      } else if (compact.length > 160) {
+        console.log(chalk.white(truncate(compact, 160)));
+      } else {
+        console.log(chalk.white(compact));
+      }
+      await copyToClipboardSafe(latestPrompt);
+    } else {
+      console.log(chalk.white("No continuation prompt yet. Run `runtrim continue --reason usage_limit` when context runs out."));
+    }
+    console.log("");
+    console.log(BOLD("Useful commands"));
+    console.log(chalk.white('- runtrim go "your task"'));
+    console.log(chalk.white("- runtrim panel --monitor"));
+    console.log(chalk.white("- runtrim check"));
+    console.log(chalk.white("- runtrim continue --reason usage_limit"));
     console.log("");
   });
 
