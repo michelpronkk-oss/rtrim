@@ -1678,7 +1678,7 @@ program
     console.log(copied ? chalk.white("Copied to clipboard.") : DIM("Clipboard unavailable. Prompt saved to .runtrim/latest-prompt.md"));
     console.log("");
     console.log(ACCENT.bold("Next"));
-    console.log(chalk.white("1. Paste into Claude, Codex, Cursor or ChatGPT."));
+    console.log(chalk.white("1. Paste into your preferred coding agent, like Claude, Codex, Cursor, ChatGPT, Kimi, or another agent."));
     console.log(chalk.white("2. Keep the local panel open:"));
     console.log(chalk.white("   runtrim panel --monitor"));
     console.log(chalk.white("3. After edits:"));

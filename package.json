@@ -22,7 +22,7 @@
     "prompt-guard"
   ],
   "bin": {
-    "runtrim": "./dist-cli/runtrim.cjs"
+    "runtrim": "dist-cli/runtrim.cjs"
   },
   "files": [
     "dist-cli",
@@ -94,4 +94,3 @@
     "typescript": "^5"
   }
 }
-
