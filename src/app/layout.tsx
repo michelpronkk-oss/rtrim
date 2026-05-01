@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
-import { RUNTRIM_ICON_PATH } from "@/lib/branding";
 import { SiteAnalytics } from "@/components/app/site-analytics";
 import "./globals.css";
 
@@ -60,9 +59,14 @@ export const metadata: Metadata = {
       "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
     images: ["/opengraph-image"],
   },
-  // icon.tsx and apple-icon.tsx in this directory are auto-discovered by Next.js
-  // and served as /icon.png and /apple-icon.png respectively.
-  // No manual icons config needed — Next.js handles the <link> tags automatically.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+  },
 };
 
 export default function RootLayout({

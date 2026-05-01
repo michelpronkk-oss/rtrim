@@ -104,7 +104,7 @@ function RunRow({ text }: { text: string }) {
       <span className="min-w-0 flex-1 truncate text-[#A0AFBE]">{parsed.task}</span>
       <span
         className={cn(
-          "ml-auto shrink-0 rounded-[6px] border px-1.5 py-[2px] text-[10px] uppercase tracking-[0.08em]",
+          "ml-auto shrink-0 rounded-[6px] border px-1.5 py-[2px] text-[10px] uppercase tracking-[0.08em] rt-terminal-badge-in",
           STATUS_STYLES[parsed.status]
         )}
       >
@@ -117,8 +117,22 @@ function RunRow({ text }: { text: string }) {
 /* ── Typewriter hook ─────────────────────────────────────── */
 function useTypewriter(text: string, charDelay = 32) {
   const [count, setCount] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReducedMotion(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setCount(text.length);
+      return;
+    }
     setCount(0);
     if (!text) return;
     let i = 0;
@@ -128,7 +142,7 @@ function useTypewriter(text: string, charDelay = 32) {
       if (i >= text.length) clearInterval(id);
     }, charDelay);
     return () => clearInterval(id);
-  }, [text, charDelay]);
+  }, [text, charDelay, reducedMotion]);
 
   return { visible: text.slice(0, count), done: count >= text.length };
 }
@@ -142,8 +156,22 @@ function AnimatedLines({
   active: boolean;
 }) {
   const [shown, setShown] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReducedMotion(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setShown(lines.length);
+      return;
+    }
     setShown(0);
     if (!active) return;
     let i = 0;
@@ -153,7 +181,7 @@ function AnimatedLines({
       if (i >= lines.length) clearInterval(id);
     }, 55);
     return () => clearInterval(id);
-  }, [lines, active]);
+  }, [lines, active, reducedMotion]);
 
   return (
     <>
@@ -179,6 +207,29 @@ function AnimatedLines({
 export function HeroTerminal() {
   const [selected, setSelected] = useState<ViewId>("history");
   const [animKey, setAnimKey] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReducedMotion(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const id = window.setInterval(() => {
+      setSelected((prev) => {
+        const idx = VIEWS.findIndex((v) => v.id === prev);
+        const next = VIEWS[(idx + 1) % VIEWS.length];
+        return next.id;
+      });
+      setAnimKey((k) => k + 1);
+    }, 5800);
+    return () => window.clearInterval(id);
+  }, [reducedMotion]);
 
   const view = VIEWS.find((v) => v.id === selected) ?? VIEWS[0];
   const { visible: typedCmd, done: cmdDone } = useTypewriter(view.command, 30);
@@ -225,7 +276,13 @@ export function HeroTerminal() {
       </div>
 
       {/* Output */}
-      <div key={animKey} className="min-h-[200px] p-5 font-mono text-[12px]">
+      <div
+        key={animKey}
+        className={cn(
+          "min-h-[200px] p-5 font-mono text-[12px]",
+          reducedMotion ? "" : "rt-terminal-view-in"
+        )}
+      >
         {/* Typed command */}
         <div className="mb-3 text-[#9E91FF]">
           {typedCmd}

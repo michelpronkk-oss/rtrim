@@ -191,8 +191,8 @@ export default function Home() {
 
           {/* Badge pill */}
           <MotionFade>
-            <div className="mb-9 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
-              <span className="size-1.5 rounded-full bg-[#7C6DFA]" />
+            <div className="rt-ai-pill mb-9 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
+              <span className="rt-ai-pill-dot size-1.5 rounded-full bg-[#7C6DFA]" />
               <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]">
                 AI run control
               </span>

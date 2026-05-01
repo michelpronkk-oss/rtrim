@@ -191,6 +191,35 @@
   .hero-glow-animate {
     animation: rt-glow-pulse 8s ease-in-out infinite;
   }
+
+  .rt-terminal-view-in {
+    animation: rt-terminal-fade-in 380ms ease-out;
+  }
+
+  .rt-terminal-badge-in {
+    animation: rt-terminal-badge-in 320ms ease-out;
+  }
+
+  .rt-ai-pill {
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(124, 109, 250, 0.18), 0 0 18px rgba(124, 109, 250, 0.08);
+    animation: rt-pill-pulse 5.6s ease-in-out infinite;
+  }
+
+  .rt-ai-pill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 18%, rgba(196, 184, 255, 0.16) 48%, transparent 78%);
+    transform: translateX(-115%);
+    animation: rt-pill-sheen 6.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .rt-ai-pill-dot {
+    animation: rt-pill-dot 3.4s ease-in-out infinite;
+  }
 }
 
 /* Particle twinkle */
@@ -205,9 +234,55 @@
   50%       { opacity: 1;    }
 }
 
+@keyframes rt-terminal-fade-in {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rt-terminal-badge-in {
+  0% { opacity: 0.65; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rt-pill-pulse {
+  0%, 100% {
+    background-color: rgba(124, 109, 250, 0.08);
+    border-color: rgba(124, 109, 250, 0.22);
+    box-shadow: 0 0 0 1px rgba(124, 109, 250, 0.18), 0 0 18px rgba(124, 109, 250, 0.08);
+  }
+  50% {
+    background-color: rgba(124, 109, 250, 0.14);
+    border-color: rgba(124, 109, 250, 0.34);
+    box-shadow: 0 0 0 1px rgba(124, 109, 250, 0.22), 0 0 22px rgba(124, 109, 250, 0.14);
+  }
+}
+
+@keyframes rt-pill-sheen {
+  0%, 58% { transform: translateX(-115%); opacity: 0; }
+  66% { opacity: 0.9; }
+  82% { transform: translateX(115%); opacity: 0.25; }
+  100% { transform: translateX(115%); opacity: 0; }
+}
+
+@keyframes rt-pill-dot {
+  0%, 100% { opacity: 0.72; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.13); }
+}
+
 /* Four-point star rotation — very slow */
 @keyframes rt-star-spin {
   from { transform: rotate(0deg)   scale(1);   opacity: 0.25; }
   50%  { transform: rotate(45deg)  scale(1.15); opacity: 0.45; }
   to   { transform: rotate(90deg)  scale(1);   opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-terminal-view-in,
+  .rt-terminal-badge-in,
+  .rt-ai-pill,
+  .rt-ai-pill::after,
+  .rt-ai-pill-dot {
+    animation: none !important;
+    transform: none !important;
+  }
 }
