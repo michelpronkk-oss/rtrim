@@ -4,6 +4,11 @@ export const runtime = "edge";
 export const alt = "RunTrim — Stop paying twice for context your project already created.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+const RUNTRIM_ICON_DATA_URI =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="mark" x1="18" y1="18" x2="84" y2="86" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6E8DFF"/><stop offset="100%" stop-color="#7A4DFF"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="#0A0B1F"/><rect x="25" y="20" width="58" height="13" fill="url(#mark)"/><polygon points="83,20 56,47 83,33" fill="url(#mark)"/><rect x="25" y="20" width="13" height="68" fill="url(#mark)"/><polygon points="38,46 52,46 80,88 66,88" fill="url(#mark)"/></svg>`
+  );
 
 export default function OGImage() {
   return new ImageResponse(
@@ -94,39 +99,19 @@ export default function OGImage() {
               paddingRight: 48,
             }}
           >
-            {/* Wordmark — RT mark reconstructed from icon.svg shapes, scale ×0.42 */}
+            {/* Wordmark - uses canonical RunTrim favicon-equivalent icon */}
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div
+              <img
+                src={RUNTRIM_ICON_DATA_URI}
+                alt=""
                 style={{
                   width: 42,
                   height: 42,
                   borderRadius: 10,
-                  background: "linear-gradient(160deg, #4E65FF 0%, #6E30CC 100%)",
-                  display: "flex",
-                  position: "relative",
-                  overflow: "hidden",
                   flexShrink: 0,
                 }}
-              >
-                {/* Top horizontal bar */}
-                <div style={{ position: "absolute", left: 11, top: 8,  width: 24, height: 5,  background: "rgba(255,255,255,0.95)", display: "flex" }} />
-                {/* Left vertical stem */}
-                <div style={{ position: "absolute", left: 11, top: 8,  width: 5,  height: 29, background: "rgba(255,255,255,0.95)", display: "flex" }} />
-                {/* Shoulder arm triangle */}
-                <div style={{ position: "absolute", left: 23, top: 8, width: 12, height: 12,
-                  background: "rgba(255,255,255,0.95)",
-                  clipPath: "polygon(12px 0px, 0px 12px, 12px 6px)",
-                  display: "flex",
-                }} />
-                {/* Diagonal leg */}
-                <div style={{ position: "absolute", left: 16, top: 20, width: 18, height: 18,
-                  background: "rgba(255,255,255,0.95)",
-                  clipPath: "polygon(0px 0px, 6px 0px, 18px 18px, 12px 18px)",
-                  display: "flex",
-                }} />
-              </div>
-              <span
-                style={{
+              />
+              <span style={{
                   fontSize: 24,
                   fontWeight: 700,
                   color: "#EDEEFF",
