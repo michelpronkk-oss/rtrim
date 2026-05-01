@@ -1690,7 +1690,7 @@ program
     console.log(DIM("RunTrim keeps each run scoped, remembered, and easier to continue."));
     console.log("");
     console.log(GO_ACCENT.bold("Need more control?"));
-    console.log(chalk.white("Run `runtrim --help` to see all commands."));
+    console.log(chalk.white("Run `runtrim --help` for panel, check, memory and continuation commands."));
     console.log("");
   });
 
