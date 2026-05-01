@@ -42,7 +42,7 @@ export default function InstallPage() {
   const directCommands = [
     { step: "1", title: "Initialize", command: "runtrim init", note: "Initialize baseline files when you want explicit setup control." },
     { step: "2", title: "Prepare", command: 'runtrim prepare "fix checkout redirect"', note: "Create the guarded prompt before agent edits." },
-    { step: "3", title: "Local panel", command: "runtrim panel --monitor", note: "Open the local browser panel with live monitoring during a run." },
+    { step: "3", title: "Open panel", command: "runtrim panel --monitor", note: "Open the local browser panel and monitor drift during a run." },
     { step: "4", title: "Check", command: "runtrim check", note: "Verify result quality and missing proof." },
     { step: "5", title: "Show memory", command: "runtrim memory", note: "Resume from current project memory." },
   ];
@@ -89,7 +89,7 @@ export default function InstallPage() {
           <div className="border-b border-white/8 px-6 py-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Primary quick start</p>
             <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Install once. Start in any repo.</h2>
-            <p className="mt-1 text-[12px] text-[#9AA7B6]">RunTrim checks repo state, initializes local memory if needed, and tells you the next safe command.</p>
+            <p className="mt-1 text-[12px] text-[#9AA7B6]">RunTrim checks the repo, initializes local memory if needed, and tells you the next safe command.</p>
           </div>
           <div className="grid min-w-0 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.1fr_1fr]">
             <div className="min-w-0 space-y-2.5">

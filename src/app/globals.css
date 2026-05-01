@@ -204,7 +204,7 @@
     position: relative;
     overflow: hidden;
     box-shadow: 0 0 0 1px rgba(124, 109, 250, 0.18), 0 0 18px rgba(124, 109, 250, 0.08);
-    animation: rt-pill-pulse 5.6s ease-in-out infinite;
+    animation: rt-pill-pulse 3.9s ease-in-out infinite;
   }
 
   .rt-ai-pill::after {
@@ -213,12 +213,12 @@
     inset: 0;
     background: linear-gradient(110deg, transparent 18%, rgba(196, 184, 255, 0.16) 48%, transparent 78%);
     transform: translateX(-115%);
-    animation: rt-pill-sheen 6.4s ease-in-out infinite;
+    animation: rt-pill-sheen 4.5s ease-in-out infinite;
     pointer-events: none;
   }
 
   .rt-ai-pill-dot {
-    animation: rt-pill-dot 3.4s ease-in-out infinite;
+    animation: rt-pill-dot 2.4s ease-in-out infinite;
   }
 }
 
