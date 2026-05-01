@@ -99,7 +99,7 @@ function RunRow({ text }: { text: string }) {
   if (!parsed) return <div className="leading-[1.75] text-[#A0AFBE]">{text}</div>;
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 leading-[1.6] sm:flex-nowrap">
+    <div className="flex min-w-0 items-center gap-x-2 leading-[1.6]">
       <span className="shrink-0 text-[#7A8AA0]">{parsed.id}</span>
       <span className="min-w-0 flex-1 truncate text-[#A0AFBE]">{parsed.task}</span>
       <span
@@ -240,7 +240,7 @@ export function HeroTerminal() {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#07091A]">
+    <div className="flex h-[356px] flex-col overflow-hidden rounded-xl border border-white/10 bg-[#07091A] sm:h-[372px]">
       {/* Title bar */}
       <div className="flex items-center gap-3 border-b border-white/10 px-4 py-2.5">
         <div className="flex gap-1.5">
@@ -276,15 +276,16 @@ export function HeroTerminal() {
       </div>
 
       {/* Output */}
-      <div
-        key={animKey}
-        className={cn(
-          "min-h-[200px] p-5 font-mono text-[12px]",
-          reducedMotion ? "" : "rt-terminal-view-in"
-        )}
-      >
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div
+          key={animKey}
+          className={cn(
+            "h-full overflow-hidden p-5 font-mono text-[12px]",
+            reducedMotion ? "" : "rt-terminal-view-in"
+          )}
+        >
         {/* Typed command */}
-        <div className="mb-3 text-[#9E91FF]">
+        <div className="mb-3 overflow-hidden whitespace-nowrap text-ellipsis text-[#9E91FF]">
           {typedCmd}
           {!cmdDone && (
             <span className="ml-px inline-block h-[13px] w-[7px] translate-y-[1px] animate-pulse bg-[#7C6DFA]/80" />
@@ -293,6 +294,7 @@ export function HeroTerminal() {
 
         {/* Output lines, revealed after command finishes */}
         <AnimatedLines key={animKey} lines={view.lines} active={cmdDone} />
+        </div>
       </div>
 
       {/* Bottom accent bar */}
