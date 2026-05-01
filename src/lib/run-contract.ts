@@ -504,9 +504,9 @@ function formatContractText(contract: RunContract, config: RunTrimConfig): strin
   const lines: string[] = [
     "RUNTRIM GUARDED RUN CONTRACT",
     `Mode: ${contract.mode.toUpperCase()}`,
-    `Agent: ${config.defaultAgent} / ${config.defaultModel}`,
+    "Agent: Claude, Codex, Cursor, ChatGPT, or configured agent",
     "",
-    "OBJECTIVE (cleaned)",
+    "OBJECTIVE",
     contract.cleanedObjective,
     "",
     "RELEVANT SCOPE",

@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 
 export const RUNTRIM_SITE_URL = "https://www.runtrim.com";
 export const RUNTRIM_OG_IMAGE = "/opengraph-image";
@@ -60,7 +60,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim continuation workflow",
         commands: [
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -204,7 +204,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim run history flow",
         commands: [
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim check",
           "runtrim memory",
           "runtrim report"
@@ -273,7 +273,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim local-first start",
         commands: [
           "npm install -g runtrim",
-          "runtrim start"
+          "runtrim go \"your task\""
         ]
       }
     ],
@@ -339,7 +339,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim guardrail workflow",
         commands: [
           'runtrim guard "your task"',
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -407,7 +407,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Cursor continuation workflow",
         commands: [
           "runtrim agent set cursor",
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -481,7 +481,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Cursor run history flow",
         commands: [
           "runtrim agent set cursor",
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim check",
           "runtrim memory",
           "runtrim report"
@@ -551,7 +551,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         commands: [
           "runtrim agent set cursor",
           'runtrim guard "your task"',
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -619,7 +619,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Codex CLI continuation workflow",
         commands: [
           "runtrim agent set codex",
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -694,7 +694,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         commands: [
           "runtrim agent set codex",
           'runtrim guard "your task"',
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -762,7 +762,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim Claude Code scoped run workflow",
         commands: [
           'runtrim guard "your task"',
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit"
@@ -835,7 +835,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim scope drift prevention workflow",
         commands: [
           'runtrim guard "your task"',
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check"
         ]
@@ -907,7 +907,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim token waste reduction workflow",
         commands: [
           'runtrim guard "your task"',
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim continue --reason usage_limit",
@@ -980,7 +980,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim verification workflow",
         commands: [
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim watch",
           "runtrim check",
           "runtrim report"
@@ -1052,7 +1052,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim prompt reuse workflow",
         commands: [
-          'runtrim prepare "your task"',
+          'runtrim go "your task"',
           "runtrim memory",
           "runtrim memory --prompt"
         ]
@@ -1079,7 +1079,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim store manually written prompts?",
-        answer: "RunTrim saves the prompts it generates from runtrim prepare. Prompts written and pasted directly into agents are not captured."
+        answer: "RunTrim saves the prompts it generates from runtrim go and runtrim prepare. Prompts written and pasted directly into agents are not captured."
       },
       {
         question: "Is prompt history stored locally or in the cloud?",
@@ -1215,5 +1215,6 @@ export function buildSeoMetadata(page: SeoLandingPageData): Metadata {
 }
 
 export const seoPageSlugs = Object.keys(seoPages);
+
 
 

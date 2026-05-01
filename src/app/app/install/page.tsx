@@ -22,6 +22,8 @@ function CommandRow({ command }: { command: string }) {
       ? "npm_install_global"
       : command === "runtrim start"
       ? "runtrim_start"
+      : command === 'runtrim go "your task"'
+      ? "runtrim_go"
       : undefined;
   return (
     <div className="flex max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/8 bg-[#0E151E] px-3 py-2.5">
@@ -36,15 +38,16 @@ function CommandRow({ command }: { command: string }) {
 export default function InstallPage() {
   const quickStart = [
     "npm install -g runtrim",
-    "runtrim start",
+    'runtrim go "your task"',
   ];
 
   const directCommands = [
-    { step: "1", title: "Initialize", command: "runtrim init", note: "Initialize baseline files when you want explicit setup control." },
-    { step: "2", title: "Prepare", command: 'runtrim prepare "your task"', note: "Create the guarded prompt before agent edits." },
+    { step: "1", title: "Guided menu", command: "runtrim start", note: "Use this when you want RunTrim to choose the next safe command." },
+    { step: "2", title: "Prepare", command: 'runtrim prepare "your task"', note: "Manual guarded prompt generation when you want explicit control." },
     { step: "3", title: "Open panel", command: "runtrim panel --monitor", note: "Open the local browser panel and monitor drift during a run." },
-    { step: "4", title: "Check", command: "runtrim check", note: "Verify result quality and missing proof." },
+    { step: "4", title: "Check", command: "runtrim check", note: "Review changed files and proof gaps after edits." },
     { step: "5", title: "Show memory", command: "runtrim memory", note: "Resume from current project memory." },
+    { step: "6", title: "Continue", command: "runtrim continue --reason usage_limit", note: "Create a continuation prompt when a session runs out of context or usage." },
   ];
 
   const commandModeCommands = [
@@ -89,7 +92,7 @@ export default function InstallPage() {
           <div className="border-b border-white/8 px-6 py-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Primary quick start</p>
             <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Install once. Start in any repo.</h2>
-            <p className="mt-1 text-[12px] text-[#9AA7B6]">RunTrim checks the repo, initializes local memory if needed, and tells you the next safe command.</p>
+            <p className="mt-1 text-[12px] text-[#9AA7B6]">Use one daily command to prepare a guarded prompt and start the run.</p>
           </div>
           <div className="grid min-w-0 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.1fr_1fr]">
             <div className="min-w-0 space-y-2.5">
@@ -97,7 +100,7 @@ export default function InstallPage() {
                 <CommandRow key={command} command={command} />
               ))}
               <div className="pt-1">
-                <p className="text-[11px] text-[#6870A0]">Not sure what happens after start? See the operator flow.</p>
+                <p className="text-[11px] text-[#6870A0]">go prepares a guarded prompt, copies it for your agent, records the run locally, and tells you what to do next.</p>
                 <Link
                   href="/how-it-works"
                   data-rt-event="how_it_works_clicked"
@@ -110,7 +113,8 @@ export default function InstallPage() {
             <div className="min-w-0 rounded-lg border border-white/8 bg-[#090F18] p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5D638D]">What each command does</p>
               <ul className="mt-3 space-y-2 text-[12px] leading-5 text-[#C0C2E8]">
-                <li><span className="text-[#EDEEFF]">runtrim start</span> is the guided entrypoint. It routes you to init, prepare, watch, check, continue, memory, or sync based on the current repo state.</li>
+                <li><span className="text-[#EDEEFF]">runtrim go &quot;your task&quot;</span> is the fastest daily path for guarded prompt creation and local run tracking.</li>
+                <li><span className="text-[#EDEEFF]">runtrim start</span> is the guided menu when you want RunTrim to choose the next safe command.</li>
               </ul>
             </div>
           </div>
@@ -131,7 +135,7 @@ export default function InstallPage() {
               </div>
               <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">RunTrim prepares the contract and copies it for your agent.</p>
               <div className="mt-3 space-y-2.5">
-                <CommandRow command='runtrim prepare "your task"' />
+                <CommandRow command='runtrim go "your task"' />
               </div>
               <p className="mt-2 text-[11px] leading-5 text-[#6870A0]">
                 Copy mode is the default. Use <code className="font-mono text-[#9AA7B6]">runtrim agent set copy</code> if you changed modes before.
@@ -161,8 +165,16 @@ export default function InstallPage() {
         </section>
 
         <section className="surface-panel rounded-xl p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Daily shortcut</p>
+          <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">runtrim go prepares a guarded prompt, copies it for your agent, records the run locally, and prints next steps.</p>
+          <div className="mt-3">
+            <CommandRow command='runtrim go "your task"' />
+          </div>
+        </section>
+
+        <section className="surface-panel rounded-xl p-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Direct commands</p>
-          <p className="mt-1 text-[12px] text-[#9AA7B6]">Use these only when you want direct control instead of the guided start flow.</p>
+          <p className="mt-1 text-[12px] text-[#9AA7B6]">Manual controls when you want explicit command-by-command operation.</p>
           <div className="mt-4 overflow-hidden rounded-lg border border-white/8 bg-[#0E151E]">
             {directCommands.map((item, index) => (
               <div

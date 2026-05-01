@@ -13,28 +13,28 @@ export const metadata: Metadata = {
 
 const PROCESS_STEPS = [
   {
-    title: "Start",
-    command: "runtrim start",
-    body: "RunTrim checks repo state and tells you the next safe command. If the repo is new, it can guide local initialization.",
+    title: "Go",
+    command: 'runtrim go "your task"',
+    body: "Prepare a guarded prompt, copy it for your agent, and save the run locally.",
   },
   {
-    title: "Prepare",
-    command: 'runtrim prepare "your task"',
-    body: "This is where RunTrim creates the guarded prompt contract.",
+    title: "Paste into your agent",
+    body: "Use Claude, Codex, Cursor, ChatGPT, or your configured agent.",
   },
   {
-    title: "Guard",
-    body: "RunTrim defines the objective, relevant scope, sensitive systems, forbidden areas, stop rules, and required output.",
+    title: "Monitor",
+    command: "runtrim panel --monitor",
+    body: "Keep local state visible while the agent works.",
   },
   {
-    title: "Monitor and check",
-    command: "runtrim panel --monitor\nruntrim check",
-    body: "While the agent works, RunTrim keeps local state visible. After edits, it checks changed file paths, proof, risk, and drift.",
+    title: "Check",
+    command: "runtrim check",
+    body: "Review changed files, proof gaps, and drift before continuing.",
   },
   {
     title: "Continue",
     command: "runtrim continue --reason usage_limit",
-    body: "If usage, credits, or context runs out, RunTrim creates a continuation prompt so the next session starts from the right state.",
+    body: "Create a continuation prompt when context, usage, or the session runs out.",
   },
 ];
 
@@ -74,6 +74,9 @@ export default function HowItWorksPage() {
           </h1>
           <p className="mt-3 max-w-3xl text-[14px] leading-7 text-[#9DABC4]">
             Start with one command. RunTrim scopes the work before the agent starts, watches what changes, and preserves the next safe step.
+          </p>
+          <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#7F8BA3]">
+            If you are unsure, run <code className="font-mono text-[#C0C2E8]">runtrim start</code>.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
@@ -174,7 +177,7 @@ export default function HowItWorksPage() {
             Free local CLI works without an account. Cloud memory is rolling out through Pro early access.
           </p>
           <code className="mt-4 block max-w-full overflow-x-auto whitespace-pre rounded border border-white/8 bg-[#090918] px-3 py-2 font-mono text-[11px] text-[#D7DEE7]">
-            npm install -g runtrim{"\n"}runtrim start
+            npm install -g runtrim{"\n"}runtrim go "your task"
           </code>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Link

@@ -20,21 +20,45 @@ RunTrim adds structure before the run and continuity after the run.
 
 ## Daily loop
 
-Default guided flow:
+Recommended daily flow:
+
+```bash
+runtrim go "your task"
+```
+
+RunTrim prepares a guarded prompt, copies it for your agent, records the run locally, and prints the next steps.
+Paste the guarded prompt into your agent.
+Keep the local panel open:
+
+```bash
+runtrim panel --monitor
+```
+
+After edits:
+
+```bash
+runtrim check
+```
+
+If context or usage runs out:
+
+```bash
+runtrim continue --reason usage_limit
+```
+
+Guided menu when unsure:
 
 ```bash
 runtrim start
 ```
 
-RunTrim will guide you through init, prepare, panel, check, and memory.
 `runtrim start` checks repo state and tells you the next safe command.
 Free includes 1 tracked local repo.
 
 Direct operator flow:
 
 ```bash
-runtrim prepare "fix checkout redirect"
-runtrim panel
+runtrim go "fix checkout redirect"
 runtrim panel --monitor
 runtrim check
 runtrim continue --reason usage_limit
@@ -47,7 +71,7 @@ Global install for end users:
 
 ```bash
 npm install -g runtrim
-runtrim start
+runtrim go "your task"
 ```
 
 Local preview for repository development:
@@ -73,6 +97,7 @@ npm run runtrim -- start
 
 ```bash
 runtrim init
+runtrim go "<task>"
 runtrim start
 runtrim prepare "<task>"
 runtrim panel
@@ -87,11 +112,11 @@ Advanced commands:
 
 ```bash
 runtrim prepare "<task>"
+runtrim start
 runtrim panel
 runtrim panel --monitor
 runtrim check
 runtrim continue --reason usage_limit
-runtrim sync
 ```
 
 ## Examples

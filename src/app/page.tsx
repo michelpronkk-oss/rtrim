@@ -21,16 +21,11 @@ export const metadata: Metadata = {
 
 const CLI_PREVIEW = [
   { type: "comment" as const, text: "# free guided loop" },
-  { type: "prompt"  as const, text: "$ runtrim start" },
-  { type: "dim"     as const, text: "  repo checked" },
-  { type: "dim"     as const, text: "  local memory ready" },
-  { type: "dim"     as const, text: "  next: runtrim prepare \"your task\"" },
-  { text: "" },
-  { type: "prompt"  as const, text: '$ runtrim prepare "your task"' },
-  { type: "dim"     as const, text: "  guarded prompt saved to .runtrim/latest-prompt.md" },
+  { type: "prompt"  as const, text: '$ runtrim go "your task"' },
+  { type: "dim"     as const, text: "  guarded prompt copied" },
   { type: "dim"     as const, text: "  next: paste into your agent" },
   { text: "" },
-  { type: "prompt"  as const, text: "$ runtrim panel" },
+  { type: "prompt"  as const, text: "$ runtrim panel --monitor" },
   { type: "dim"     as const, text: "  local panel open" },
   { type: "dim"     as const, text: "  watching changed files" },
   { text: "" },
@@ -399,7 +394,7 @@ export default function Home() {
               Guided when you want it. Precise when you need it.
             </h2>
             <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-              RunTrim tells you the next safe command after every step. Use start when you are unsure, or run the exact control you need.
+              RunTrim starts with one daily command, then guides the next safe step when you need more control.
             </p>
           </div>
           <TerminalCard title="runtrim — terminal" lines={CLI_PREVIEW} />
