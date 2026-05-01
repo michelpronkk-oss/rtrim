@@ -122,28 +122,8 @@ const PRICING_FEATURES = [
 // â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function Home() {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "RunTrim",
-    applicationCategory: "DeveloperApplication",
-    operatingSystem: "Windows, macOS, Linux",
-    description:
-      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
-    url: "https://www.runtrim.com",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-    },
-  };
-
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#07071A]">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/8 bg-[#07071A]/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -814,7 +794,7 @@ export default function Home() {
 
         {/* Main footer body */}
         <div className="mx-auto max-w-6xl px-6 py-14">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto_auto]">
 
             {/* Brand */}
             <div className="space-y-4">
@@ -854,6 +834,24 @@ export default function Home() {
                   { href: "/app/runs",     label: "Runs"      },
                   { href: "/app/projects", label: "Projects"  },
                   { href: "/app/settings", label: "Settings"  },
+                ].map((l) => (
+                  <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
+                    {l.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+
+            {/* Resources */}
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Resources</p>
+              <nav className="flex flex-col gap-3">
+                {[
+                  { href: "/claude-code-context-limit", label: "Claude Code context limit" },
+                  { href: "/ai-coding-continuation-prompts", label: "Continuation prompts" },
+                  { href: "/ai-coding-run-history", label: "Run history" },
+                  { href: "/local-first-ai-coding-tool", label: "Local-first AI coding" },
+                  { href: "/ai-coding-agent-guardrails", label: "Agent guardrails" },
                 ].map((l) => (
                   <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
                     {l.label}

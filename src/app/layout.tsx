@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.runtrim.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com"),
   title: {
     default: "RunTrim | Scope AI coding runs before they waste tokens",
     template: "%s | RunTrim",
@@ -25,8 +25,15 @@ export const metadata: Metadata = {
   description:
     "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
   keywords: [
-    "AI coding", "Claude Code", "Codex", "Cursor", "ChatGPT",
-    "token savings", "prompt history", "run history", "context reuse", "CLI tool",
+    "runtrim", "RunTrim CLI", "AI coding agent", "AI run control",
+    "Claude Code", "Claude Code context limit", "Claude Code token waste",
+    "Cursor", "Cursor context limit", "Cursor agent guardrails",
+    "Codex CLI", "Codex CLI continuation", "ChatGPT coding agent",
+    "AI coding agent guardrails", "AI agent scope drift", "AI coding token waste",
+    "AI coding continuation prompt", "AI coding run history", "AI coding verification",
+    "AI coding prompt reuse", "local first AI coding tool", "local AI coding",
+    "continue AI coding session", "AI token savings", "agent scope control",
+    "AI coding CLI", "AI run history", "AI run state", "coding agent memory",
   ],
   authors: [{ name: "RunTrim" }],
   openGraph: {
@@ -63,12 +70,32 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const softwareJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "RunTrim",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Windows, macOS, Linux",
+    description:
+      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents.",
+    url: "https://www.runtrim.com",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+  };
+
   return (
     <html
       lang="en"
       className={`${spaceGrotesk.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+        />
         <SiteAnalytics />
         {children}
         <Toaster

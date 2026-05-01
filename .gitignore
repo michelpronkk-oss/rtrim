@@ -49,3 +49,5 @@ next-env.d.ts
 dist-cli/
 
 *.tgz
+
+.claude/

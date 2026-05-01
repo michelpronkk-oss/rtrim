@@ -4,7 +4,29 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { trackWebEvent } from "@/lib/track-client";
 
-const TRACKED_PAGE_PATHS = new Set(["/", "/app/install", "/how-it-works", "/privacy", "/terms", "/security"]);
+const TRACKED_PAGE_PATHS = new Set([
+  "/",
+  "/app/install",
+  "/how-it-works",
+  "/privacy",
+  "/terms",
+  "/security",
+  "/claude-code-context-limit",
+  "/ai-coding-continuation-prompts",
+  "/ai-coding-run-history",
+  "/local-first-ai-coding-tool",
+  "/ai-coding-agent-guardrails",
+  "/cursor-context-limit",
+  "/cursor-agent-run-history",
+  "/cursor-agent-guardrails",
+  "/codex-cli-continuation",
+  "/codex-cli-guardrails",
+  "/claude-code-token-waste",
+  "/ai-agent-scope-drift",
+  "/ai-coding-token-waste",
+  "/ai-coding-verification",
+  "/ai-coding-prompt-reuse",
+]);
 
 export function SiteAnalytics() {
   const pathname = usePathname();
@@ -39,4 +61,3 @@ export function SiteAnalytics() {
 
   return null;
 }
-
