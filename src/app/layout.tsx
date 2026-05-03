@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { SiteAnalytics } from "@/components/app/site-analytics";
+import { NoiseOverlay } from "@/components/app/noise-overlay";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -100,6 +101,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
         />
+        <NoiseOverlay />
         <SiteAnalytics />
         {children}
         <Toaster

@@ -14,6 +14,11 @@ type Payload = {
   agent?: string;
   useCase?: string;
   source?: string;
+  // Extended fields (dashboard early access form)
+  planInterest?: string;
+  workflow?: string;
+  biggestPain?: string;
+  notes?: string;
 };
 
 function isValidEmail(email: string): boolean {
@@ -27,6 +32,10 @@ export async function POST(request: Request) {
   const agent = (payload.agent ?? "").trim();
   const useCase = (payload.useCase ?? "").trim();
   const source = (payload.source ?? "homepage").trim() || "homepage";
+  const planInterest = (payload.planInterest ?? "").trim() || null;
+  const workflow = (payload.workflow ?? "").trim() || null;
+  const biggestPain = (payload.biggestPain ?? "").trim() || null;
+  const notes = (payload.notes ?? "").trim() || null;
 
   if (!email || !isValidEmail(email)) {
     return NextResponse.json(
@@ -57,6 +66,10 @@ export async function POST(request: Request) {
     agent: agent || null,
     use_case: useCase || null,
     source,
+    plan_interest: planInterest,
+    workflow,
+    biggest_pain: biggestPain,
+    notes,
   });
 
   if (error) {

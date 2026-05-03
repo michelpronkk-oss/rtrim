@@ -1,4 +1,4 @@
-﻿export type PlanId = "free" | "pro" | "builder" | "team";
+export type PlanId = "free" | "pro" | "builder" | "team";
 
 export type PlanFeature =
   | "cloudSync"
@@ -11,7 +11,8 @@ export type PlanFeature =
   | "modelRecommendations"
   | "teamPolicies"
   | "githubSummaries"
-  | "exportableReports";
+  | "exportableReports"
+  | "agentEarlyAccess";
 
 export interface Plan {
   id: PlanId;
@@ -31,40 +32,40 @@ export const plans: Record<PlanId, Plan> = {
     id: "free",
     name: "Free",
     priceLabel: "$0",
-    summary: "Local control for one repo.",
+    summary: "Local CLI for saving and inspecting AI coding runs.",
     ctaLabel: "Install CLI",
     features: [],
     bullets: [
       "Local CLI",
-      "Baseline project audit",
-      "Guarded run contracts",
-      "Prepare prompt file",
-      "Copy-mode runs",
-      "Basic check",
-      "Local memory and report",
+      "Run history (local)",
+      "Reusable context (local)",
+      "Token savings estimate",
+      "Cost savings estimate",
+      "Basic reports",
+      "Clean continuation",
     ],
   },
   pro: {
     id: "pro",
     name: "Pro",
     priceLabel: "$12/month",
-    summary: "Cloud memory for solo builders.",
+    summary: "Cloud memory, reports, continuation packs, and Agent early access.",
     ctaLabel: "Join Pro early access",
-    features: ["cloudSync", "cloudHistory", "shareCards", "weeklyReport"],
+    features: ["cloudSync", "cloudHistory", "shareCards", "weeklyReport", "agentEarlyAccess"],
     bullets: [
       "Cloud run history",
       "Project memory sync",
       "Saved continuation prompts",
       "Weekly savings report",
       "Share cards",
-      "Multi-device dashboard",
+      "Agent early access",
     ],
   },
   builder: {
     id: "builder",
     name: "Builder",
     priceLabel: "$29/month",
-    summary: "Multi-project control for serious builders.",
+    summary: "Project guardrails, risk scores, scope drift detection, and timelines.",
     ctaLabel: "Join early access",
     badge: "Recommended",
     features: [
@@ -77,14 +78,14 @@ export const plans: Record<PlanId, Plan> = {
       "customRules",
       "modelRecommendations",
       "exportableReports",
+      "agentEarlyAccess",
     ],
     bullets: [
       "Everything in Pro",
-      "Multiple projects",
-      "Advanced run checks",
-      "Deeper git diff analysis",
+      "Unlimited projects",
+      "Scope drift detection",
       "Custom project rules",
-      "Model recommendations",
+      "Risk scores (advanced)",
       "Exportable run reports",
     ],
   },
@@ -92,7 +93,7 @@ export const plans: Record<PlanId, Plan> = {
     id: "team",
     name: "Team",
     priceLabel: "from $99/month",
-    summary: "Policies and visibility for teams.",
+    summary: "Shared workspaces, policies, GitHub checks, audit logs, and team control.",
     ctaLabel: "Coming soon",
     features: [
       "cloudSync",
@@ -106,14 +107,15 @@ export const plans: Record<PlanId, Plan> = {
       "exportableReports",
       "teamPolicies",
       "githubSummaries",
+      "agentEarlyAccess",
     ],
     bullets: [
       "Everything in Builder",
       "Shared run policies",
       "Team run history",
-      "Org-level savings",
-      "GitHub PR summaries",
-      "Budget rules",
+      "GitHub PR checks",
+      "Audit logs",
+      "Org-level budget rules",
     ],
   },
 };

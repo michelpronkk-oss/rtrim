@@ -1,12 +1,29 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const VIEWS = [
   {
+    id: "contract",
+    label: "run contract",
+    command: '$ runtrim run "fix billing redirect"',
+    lines: [
+      { text: "RUN CONTRACT",                           kind: "heading" },
+      { text: "",                                       kind: "blank"   },
+      { text: "goal:       fix billing redirect",       kind: "kv"      },
+      { text: "allowed:    billing route, checkout",    kind: "ok"      },
+      { text: "forbidden:  auth, db schema, env files", kind: "warn"    },
+      { text: "budget:     25,000 tokens",              kind: "kv"      },
+      { text: "stop if:    scope expands",              kind: "kv"      },
+      { text: "",                                       kind: "blank"   },
+      { text: "risk:       medium",                     kind: "warn"    },
+      { text: "status:     guarded",                    kind: "accent"  },
+    ],
+  },
+  {
     id: "history",
-    label: "runtrim history",
+    label: "run history",
     command: "$ runtrim history",
     lines: [
       { text: "projects tracked: 4",                            kind: "kv"      },
@@ -14,14 +31,14 @@ const VIEWS = [
       { text: "prompts reused:   23",                           kind: "kv"      },
       { text: "",                                               kind: "blank"   },
       { text: "latest runs",                                    kind: "heading" },
-      { text: "run_047  your task         partial", kind: "row"     },
-      { text: "run_046  auth audit and middleware      passed",  kind: "row-ok"  },
-      { text: "run_045  billing and schema attempt    split",   kind: "row-warn"},
+      { text: "run_047  fix billing redirect     partial",      kind: "row"     },
+      { text: "run_046  auth audit and middleware passed",      kind: "row-ok"  },
+      { text: "run_045  billing and schema attempt split",      kind: "row-warn"},
     ],
   },
   {
     id: "savings",
-    label: "runtrim savings",
+    label: "savings",
     command: "$ runtrim savings",
     lines: [
       { text: "projects tracked:  4",          kind: "kv"     },
@@ -32,21 +49,6 @@ const VIEWS = [
       { text: "est. cost saved:   ~$4.12",     kind: "accent" },
       { text: "",                              kind: "blank"  },
       { text: "estimates are derived from local run history", kind: "dim" },
-    ],
-  },
-  {
-    id: "report",
-    label: "runtrim report",
-    command: "$ runtrim report",
-    lines: [
-      { text: "status:            partial",      kind: "kv"    },
-      { text: "verification debt: 4 runs",       kind: "warn"  },
-      { text: "watch warnings:    2",            kind: "warn"  },
-      { text: "next safe action:  runtrim check",kind: "kv"    },
-      { text: "",                                kind: "blank" },
-      { text: "memory layer",                    kind: "heading"},
-      { text: "prompt history:    active",       kind: "ok"    },
-      { text: "reusable context:  active",       kind: "ok"    },
     ],
   },
 ] as const;
@@ -114,7 +116,6 @@ function RunRow({ text }: { text: string }) {
   );
 }
 
-/* â”€â”€ Typewriter hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function useTypewriter(text: string, charDelay = 32) {
   const [count, setCount] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -147,7 +148,6 @@ function useTypewriter(text: string, charDelay = 32) {
   return { visible: text.slice(0, count), done: count >= text.length };
 }
 
-/* â”€â”€ Animated output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AnimatedLines({
   lines,
   active,
@@ -203,9 +203,8 @@ function AnimatedLines({
   );
 }
 
-/* â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export function HeroTerminal() {
-  const [selected, setSelected] = useState<ViewId>("history");
+  const [selected, setSelected] = useState<ViewId>("contract");
   const [animKey, setAnimKey] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -248,10 +247,10 @@ export function HeroTerminal() {
           <span className="size-2.5 rounded-full bg-[#FFBD2E]/60" />
           <span className="size-2.5 rounded-full bg-[#28CA41]/60" />
         </div>
-        <span className="font-mono text-[11px] text-[#3A4560]">runtrim â€” terminal</span>
+        <span className="font-mono text-[11px] text-[#3A4560]">runtrim — terminal</span>
         <div className="ml-auto flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-[#7C6DFA] opacity-70" />
-          <span className="font-mono text-[10px] text-[#7C6DFA]/70">live</span>
+          <span className="font-mono text-[10px] text-[#7C6DFA]/70">guarded</span>
         </div>
       </div>
 
@@ -284,16 +283,13 @@ export function HeroTerminal() {
             reducedMotion ? "" : "rt-terminal-view-in"
           )}
         >
-        {/* Typed command */}
-        <div className="mb-3 overflow-hidden whitespace-nowrap text-ellipsis text-[#9E91FF]">
-          {typedCmd}
-          {!cmdDone && (
-            <span className="ml-px inline-block h-[13px] w-[7px] translate-y-[1px] animate-pulse bg-[#7C6DFA]/80" />
-          )}
-        </div>
-
-        {/* Output lines, revealed after command finishes */}
-        <AnimatedLines key={animKey} lines={view.lines} active={cmdDone} />
+          <div className="mb-3 overflow-hidden whitespace-nowrap text-ellipsis text-[#9E91FF]">
+            {typedCmd}
+            {!cmdDone && (
+              <span className="ml-px inline-block h-[13px] w-[7px] translate-y-[1px] animate-pulse bg-[#7C6DFA]/80" />
+            )}
+          </div>
+          <AnimatedLines key={animKey} lines={view.lines} active={cmdDone} />
         </div>
       </div>
 
@@ -302,5 +298,3 @@ export function HeroTerminal() {
     </div>
   );
 }
-
-
