@@ -35,6 +35,16 @@ type FullRunRow = {
   synced_at: string | null;
   project_id: string | null;
   user_id: string | null;
+  // Bridge Mode fields
+  goal: string | null;
+  allowed_scope: string[] | null;
+  forbidden_scope: string[] | null;
+  stop_conditions: string[] | null;
+  memory_used: boolean | null;
+  memory_summary: string | null;
+  token_budget: number | null;
+  scope_drift_status: string | null;
+  report_summary: string | null;
 };
 
 const RISK_COLOR: Record<string, string> = {
@@ -152,10 +162,10 @@ export default async function RunDetailPage({
       {/* Summary row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Status",       value: r.status ?? "—" },
-          { label: "Risk before",  value: r.risk_before ?? "—" },
-          { label: "Risk after",   value: r.risk_after ?? "—" },
-          { label: "Risk drop",    value: r.risk_reduction_percent != null ? `${r.risk_reduction_percent}%` : "—" },
+          { label: "Status",        value: r.status ?? "—" },
+          { label: "Risk before",   value: r.risk_before ?? "—" },
+          { label: "Risk after",    value: r.risk_after ?? "—" },
+          { label: "Token budget",  value: r.token_budget != null ? `~${r.token_budget.toLocaleString()}` : "—" },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-lg border border-white/7 bg-[#0C0C20] px-4 py-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4D5070]">{label}</p>
@@ -163,6 +173,60 @@ export default async function RunDetailPage({
           </div>
         ))}
       </div>
+
+      {/* Bridge contract — shown when Bridge Mode fields exist */}
+      {(r.goal || r.allowed_scope || r.forbidden_scope || r.scope_drift_status || r.report_summary) && (
+        <>
+          {(r.goal || r.allowed_scope || r.forbidden_scope || r.stop_conditions) && (
+            <Section title="Scoped contract">
+              {r.goal && <DataRow label="Goal" value={r.goal} />}
+              {r.scope_drift_status && (
+                <DataRow
+                  label="Scope drift"
+                  value={
+                    <span className={
+                      r.scope_drift_status === "passed" ? "text-[#4DE8B0]"
+                        : r.scope_drift_status === "forbidden_touched" ? "text-[#FF6B6B]"
+                        : "text-[#F0BF72]"
+                    }>
+                      {r.scope_drift_status === "passed" ? "Passed" : r.scope_drift_status.replace(/_/g, " ")}
+                    </span>
+                  }
+                />
+              )}
+              {r.memory_used != null && (
+                <DataRow label="Memory used" value={r.memory_used ? "Yes" : "No"} mono />
+              )}
+            </Section>
+          )}
+
+          {r.allowed_scope && r.allowed_scope.length > 0 && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <Section title="Allowed scope">
+                <StringList items={r.allowed_scope} emptyLabel="Not specified" />
+              </Section>
+              <Section title="Forbidden scope">
+                <StringList items={r.forbidden_scope} emptyLabel="Standard forbidden areas" />
+              </Section>
+            </div>
+          )}
+
+          {r.stop_conditions && r.stop_conditions.length > 0 && (
+            <Section title="Stop conditions">
+              <StringList items={r.stop_conditions} />
+            </Section>
+          )}
+
+          {r.report_summary && (
+            <Section title="Report summary">
+              <p className="text-[13px] leading-[1.7] text-[#9699BE]">{r.report_summary}</p>
+              {r.memory_summary && (
+                <p className="mt-2 text-[12px] leading-[1.6] text-[#4D5070]">{r.memory_summary}</p>
+              )}
+            </Section>
+          )}
+        </>
+      )}
 
       {/* Task + timestamps */}
       <Section title="Run details">

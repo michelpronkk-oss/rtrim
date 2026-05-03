@@ -28,6 +28,12 @@ import { formatRisk, formatStatus, formatScore, formatDate, truncate } from "../
 import type { RunEvaluationRecord, WatchEventRecord } from "../src/lib/run-storage.ts";
 import { readMemory, writeMemoryFromRuns } from "../src/lib/run-memory.ts";
 import { buildSyncPayload } from "../src/lib/runtrim-sync.ts";
+import {
+  deriveBridgeContext,
+  writeBridgeFiles,
+  buildBridgePrompt,
+  type BridgeContext,
+} from "../src/lib/bridge.ts";
 import { evaluateWatchState } from "../src/lib/run-watch.ts";
 import { startLocalPanelServer } from "../src/lib/local-panel-server.ts";
 import {
@@ -1763,10 +1769,21 @@ program
 
 program
   .command("go <task>")
-  .description("Daily shortcut: initialize if needed, prepare a guarded prompt, and show next steps")
-  .option("--monitor", "Open local panel monitor in the background (best effort)")
-  .action(async (task: string, options: { monitor?: boolean }) => {
+  .description("Bridge Mode: generate a scoped contract, write protocol files, and prepare the guarded prompt")
+  .option("--no-clipboard", "Print prompt to terminal instead of copying to clipboard")
+  .option("--no-sync",      "Skip cloud sync even if a CLI token is configured")
+  .option("--no-bridge",    "Skip bridge file writing (RUNTRIM.md, contracts, memory)")
+  .option("--print",        "Always print the prompt to terminal in addition to copying")
+  .option("--monitor",      "Open local panel monitor in the background (best effort)")
+  .action(async (task: string, options: {
+    clipboard?: boolean;
+    sync?: boolean;
+    bridge?: boolean;
+    print?: boolean;
+    monitor?: boolean;
+  }) => {
     const cwd = process.cwd();
+
     const allowed = await ensureRepoAllowedForFree(cwd);
     if (!allowed) return;
 
@@ -1775,48 +1792,154 @@ program
       if (!initResult.ok) return;
     }
 
-    const originalLog = console.log;
-    const originalError = console.error;
-    console.log = () => undefined;
-    console.error = () => undefined;
-    try {
-      await runPrepareTask(task, { showHeader: false, copy: true });
-    } finally {
-      console.log = originalLog;
-      console.error = originalError;
-    }
-
-    if (!configExists(cwd)) return;
     const config = loadConfig(cwd);
-    const promptPath = resolvePromptPath(config, cwd);
-    const promptValue = fs.existsSync(promptPath) ? fs.readFileSync(promptPath, "utf-8") : "";
-    const copied = promptValue ? await copyToClipboardSafe(promptValue) : false;
 
-    if (options.monitor) {
-      void tryLaunchPanelMonitorDetached(cwd);
+    // ── Audit + contract ─────────────────────────────────────────────────
+    const auditSpinner = oraFactory({ text: "  Auditing task...", color: "blue" }).start();
+    await new Promise((r) => setTimeout(r, 180));
+    const audit = auditTask(task, config, cwd);
+    auditSpinner.stop();
+
+    const contract = generateContract(task, audit, config);
+
+    // Handle blocked mega-run
+    if (contract.isBlocked && contract.splitReport) {
+      const sr = contract.splitReport;
+      updateRun(saveRun(task, audit, contract, cwd).id, { status: "blocked" }, cwd);
+      console.log("");
+      console.log(GO_ACCENT.bold("RunTrim go"));
+      console.log("");
+      console.log(chalk.red.bold("  SPLIT REQUIRED"));
+      console.log("");
+      console.log(DIM("  Task    ") + chalk.white(truncate(task, 60)));
+      console.log(DIM("  Risk    ") + chalk.red("CRITICAL"));
+      console.log("");
+      console.log(DIM("  This task crosses multiple high-risk systems."));
+      console.log(DIM("  Running it in one agent session would cause scope drift and token waste."));
+      console.log("");
+      console.log(DIM("  Detected: ") + chalk.white(sr.detectedSystems.join(", ")));
+      console.log("");
+      for (const step of sr.recommendedSplit) {
+        console.log(DIM("  ") + chalk.white(step));
+      }
+      console.log("");
+      console.log(DIM("  Estimated waste avoided: ") + ACCENT(sr.estimatedWasteAvoided));
+      console.log("");
+      return;
     }
+
+    // ── Save run ─────────────────────────────────────────────────────────
+    const runs = loadAllRuns(cwd);
+    const projectAudit = loadProjectAudit(cwd);
+    const projectName = projectAudit?.projectName ?? path.basename(cwd);
+    const memoryMarkdown = (() => { try { return readMemory(cwd); } catch { return null; } })();
+    const memoryUsed = Boolean(memoryMarkdown && memoryMarkdown.trim().length > 50);
+
+    const run = saveRun(task, audit, contract, cwd);
+    updateRun(run.id, {
+      status: "guarded",
+      bridgeMode: true,
+      tokenBudget: deriveBridgeContext(task, contract, runs, projectName).tokenBudget,
+      memoryUsed,
+    }, cwd);
+
+    // ── Bridge files ──────────────────────────────────────────────────────
+    const bridgeCtx: BridgeContext = deriveBridgeContext(task, contract, runs, projectName);
+    let bridgeWritten: string[] = [];
+
+    if (options.bridge !== false) {
+      const result = writeBridgeFiles(bridgeCtx, cwd);
+      bridgeWritten = result.written;
+    }
+
+    // ── Prompt ────────────────────────────────────────────────────────────
+    const rawPrompt  = contract.contractText;
+    const fullPrompt = options.bridge !== false
+      ? buildBridgePrompt(rawPrompt, bridgeCtx)
+      : rawPrompt;
+
+    const promptPath = writeLatestPromptFile(fullPrompt, config, cwd);
+    const doCopy     = options.clipboard !== false;
+    const copied     = doCopy ? await copyToClipboardSafe(fullPrompt) : false;
+
+    if (options.monitor) void tryLaunchPanelMonitorDetached(cwd);
+
+    // ── Cloud sync ────────────────────────────────────────────────────────
+    let synced = false;
+    if (options.sync !== false) {
+      const globalAuth = loadGlobalAuth();
+      const rawToken = globalAuth?.token ?? config.syncToken ?? null;
+      if (rawToken?.startsWith("rt_live_")) {
+        try {
+          const freshRuns = loadAllRuns(cwd);
+          const payload = buildSyncPayload({
+            cwd, projectName, config,
+            projectAudit: projectAudit ?? null,
+            memoryMarkdown: memoryMarkdown ?? "",
+            runs: freshRuns,
+          });
+          const apiBase = resolveApiBase(config);
+          const r = await fetch(`${apiBase}/api/sync`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${rawToken}` },
+            body: JSON.stringify(payload),
+          });
+          synced = r.ok;
+        } catch { /* non-fatal */ }
+      }
+    }
+
+    // ── Output ────────────────────────────────────────────────────────────
+    const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, typeof chalk>)[bridgeCtx.riskLevel] ?? chalk.white;
 
     console.log("");
     console.log(GO_ACCENT.bold("RunTrim go"));
     console.log("");
     console.log(GO_ACCENT.bold("Task"));
-    console.log(chalk.white(task));
+    console.log(chalk.white("  " + task));
     console.log("");
-    console.log(GO_ACCENT.bold("Guarded prompt"));
-    console.log(copied ? chalk.white("Copied to clipboard.") : DIM("Clipboard unavailable. Prompt saved to .runtrim/latest-prompt.md"));
+    console.log(GO_ACCENT.bold("Memory"));
+    console.log(DIM("  " + (memoryUsed ? `Loaded ${runs.length} prior run${runs.length === 1 ? "" : "s"} and project context.` : "No prior runs. Starting from project context.")));
+    console.log("");
+    console.log(GO_ACCENT.bold("Contract"));
+    console.log(DIM("  Risk          ") + riskColor(bridgeCtx.riskLevel));
+    console.log(DIM("  Token budget  ") + chalk.white("~" + bridgeCtx.tokenBudget.toLocaleString()));
+    if (bridgeCtx.allowedScope.length > 0) {
+      console.log(DIM("  Allowed       ") + chalk.white(truncate(bridgeCtx.allowedScope.slice(0, 2).join(", "), 60)));
+    }
+    if (bridgeCtx.forbiddenScope.length > 0) {
+      console.log(DIM("  Forbidden     ") + chalk.white(truncate(bridgeCtx.forbiddenScope.slice(0, 2).join(", "), 60)));
+    }
+    console.log(DIM("  Run saved     ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+    console.log("");
+    if (bridgeWritten.length > 0) {
+      console.log(GO_ACCENT.bold("Bridge"));
+      for (const f of bridgeWritten) {
+        console.log(DIM("  ") + chalk.white(f));
+      }
+      console.log("");
+    }
+    if (options.sync !== false) {
+      console.log(GO_ACCENT.bold("Cloud sync"));
+      console.log(DIM("  ") + (synced ? chalk.white("Synced.") : DIM("Skipped. Run runtrim login to connect your dashboard.")));
+      console.log("");
+    }
+    console.log(GO_ACCENT.bold("Prompt"));
+    if (copied) {
+      console.log(chalk.white("  Copied to clipboard."));
+    } else if (!doCopy) {
+      console.log(chalk.white("  Saved to: " + promptPath));
+    } else {
+      console.log(DIM("  Clipboard unavailable. Saved to: " + promptPath));
+    }
+    if (options.print) {
+      console.log("");
+      console.log(fullPrompt);
+    }
     console.log("");
     console.log(GO_ACCENT.bold("Next"));
-    console.log(chalk.white("1. Paste into your preferred coding agent, like Claude, Codex, Cursor, ChatGPT, Kimi, or another agent."));
-    console.log(chalk.white("2. Keep the local panel open:"));
-    console.log(chalk.white("   runtrim panel --monitor"));
-    console.log(chalk.white("3. After edits:"));
-    console.log(chalk.white("   runtrim check"));
-    console.log("");
-    console.log(GO_ACCENT.bold("Why this helps"));
-    console.log(DIM("RunTrim keeps each run scoped, remembered, and easier to continue."));
-    console.log("");
-    console.log(GO_ACCENT.bold("Need more control?"));
-    console.log(chalk.white("Run `runtrim --help` for panel, check, memory and continuation commands."));
+    console.log(chalk.white("  Paste the guarded prompt into Claude Code, Codex, Cursor, or your agent."));
+    console.log(chalk.white("  After edits are done, run: runtrim finish"));
     console.log("");
   });
 
@@ -2000,90 +2123,6 @@ program
   });
 // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ REPORT ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 
-program
-  .command("sync")
-  .description("Sync local RunTrim metadata to dashboard")
-  .action(async () => {
-    const cwd = process.cwd();
-    const allowed = await ensureRepoAllowedForFree(cwd);
-    if (!allowed) return;
-    const cfg = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
-    if (!configExists(cwd)) {
-      console.log(chalk.yellow("  No config found. Run: runtrim init"));
-      console.log("");
-      return;
-    }
-
-    const config = loadConfig(cwd);
-    if (!config.syncToken) {
-      console.log(chalk.yellow("  Sync token missing. Run: runtrim auth set <token>"));
-      console.log("");
-      return;
-    }
-
-    const runs = loadAllRuns(cwd);
-    const latestRun = runs[0] ?? null;
-    const audit = loadProjectAudit(cwd);
-    const inferredProjectName = audit?.projectName || path.basename(cwd);
-    let memory = readMemory(cwd);
-    if (!memory) {
-      if (latestRun) {
-        memory = writeMemoryFromRuns(latestRun, runs, config, cwd);
-      } else if (audit) {
-        memory = buildBaselineMemoryMarkdown(audit);
-        fs.writeFileSync(path.join(getConfigDir(cwd), "memory.md"), memory, "utf-8");
-      } else {
-        memory = "RunTrim Project Memory\n\nCurrent state:\nNo local runs yet.\n";
-      }
-    }
-
-    const payload = buildSyncPayload({
-      cwd,
-      projectName: inferredProjectName,
-      config,
-      projectAudit: audit,
-      memoryMarkdown: memory,
-      runs,
-    });
-
-    const endpoint = resolveSyncEndpoint(config.dashboardUrl);
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-runtrim-sync-token": config.syncToken,
-        },
-        body: JSON.stringify(payload),
-      });
-      const body = (await response.json().catch(() => ({}))) as {
-        error?: string;
-        syncedRuns?: number;
-        missing?: string[];
-      };
-      if (!response.ok) {
-        console.log(chalk.red("  Sync failed: " + (body.error || `HTTP ${response.status}`)));
-        console.log(DIM("  Endpoint: ") + chalk.white(endpoint));
-        if (Array.isArray(body.missing) && body.missing.length > 0) {
-          console.log(DIM("  Missing:  ") + chalk.white(body.missing.join(", ")));
-        }
-        console.log("");
-        return;
-      }
-      const syncedRuns = body.syncedRuns ?? payload.runs.length;
-      console.log(ACCENT.bold(`  Synced project memory and ${syncedRuns} runs.`));
-      console.log(DIM("  Open dashboard: ") + chalk.white(config.dashboardUrl));
-      console.log("");
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown network error";
-      console.log(chalk.red("  Sync failed: " + message));
-      console.log(DIM("  Endpoint: ") + chalk.white(endpoint));
-      console.log(
-        DIM("  If your dashboard backend is offline, start it first and ensure env vars are set.")
-      );
-      console.log("");
-    }
-  });
 
 program
   .command("audit")
@@ -3032,6 +3071,206 @@ program
     console.log("");
     console.log(DIM("  Next: navigate to a project and run ") + GO_ACCENT("runtrim sync"));
     console.log("");
+  });
+
+// ── runtrim finish ────────────────────────────────────────────────────────────
+
+program
+  .command("finish")
+  .description("Bridge Mode: evaluate agent output, check scope, mark run completed, and sync")
+  .option("--no-sync", "Skip cloud sync even if a CLI token is configured")
+  .action(async (options: { sync?: boolean }) => {
+    const cwd = process.cwd();
+
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim finish"));
+    console.log("");
+
+    // ── Find latest active bridge run ─────────────────────────────────────
+    const allRuns = loadAllRuns(cwd);
+    const activeRun = allRuns.find((r) => r.status === "guarded" || r.status === "checked");
+
+    if (!activeRun) {
+      console.log(chalk.yellow("  No active RunTrim session found."));
+      console.log(DIM("  Start a new session with: runtrim go \"<task>\""));
+      console.log("");
+      return;
+    }
+
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const projectAudit = loadProjectAudit(cwd);
+    const projectName = projectAudit?.projectName ?? path.basename(cwd);
+
+    console.log(DIM("  Run     ") + chalk.white(truncate(activeRun.task, 60)));
+    console.log(DIM("  Run ID  ") + chalk.white(activeRun.id));
+    console.log("");
+
+    // ── Git diff ──────────────────────────────────────────────────────────
+    const changedFiles = dedupeFiles(await getGitDiff(cwd));
+    const maxFiles = inferMaxFilesFromScope(
+      activeRun.contract.contract?.relevantScope ?? [],
+      config.maxFilesPerRun
+    );
+
+    // ── Scope evaluation ──────────────────────────────────────────────────
+    const scope = evaluateWatchState({
+      changedFiles,
+      run: activeRun,
+      maxFilesPerRun: maxFiles,
+      strict: false,
+    });
+
+    const evaluation = evaluateAgentOutput(null, changedFiles, {
+      task: activeRun.task,
+      relevantScope:  activeRun.contract.contract?.relevantScope ?? [],
+      sensitiveScope: activeRun.contract.contract?.sensitiveScope ?? [],
+      forbiddenScope: activeRun.contract.contract?.forbiddenScope ?? [],
+      runStatus: activeRun.status,
+    });
+
+    // ── Derive scope drift status ─────────────────────────────────────────
+    let scopeDriftStatus = "passed";
+    if (scope.forbiddenFiles.length > 0)       scopeDriftStatus = "forbidden_touched";
+    else if (scope.outOfScopeFiles.length > 0)  scopeDriftStatus = "out_of_scope";
+    else if (evaluation.scopeDriftRisk === "high" || evaluation.scopeDriftRisk === "medium")
+      scopeDriftStatus = "drift_detected";
+
+    // ── Report summary ────────────────────────────────────────────────────
+    const forbiddenCount = scope.forbiddenFiles.length;
+    const reportParts: string[] = [];
+    if (changedFiles.length === 0) {
+      reportParts.push("No changes detected.");
+    } else {
+      reportParts.push(`${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"} changed.`);
+    }
+    if (forbiddenCount > 0) {
+      reportParts.push(`${forbiddenCount} forbidden file${forbiddenCount === 1 ? "" : "s"} touched.`);
+    } else if (changedFiles.length > 0) {
+      reportParts.push("No forbidden systems touched.");
+    }
+    if (scopeDriftStatus === "passed" && changedFiles.length > 0) {
+      reportParts.push("Changes within contract.");
+    }
+    if (evaluation.memorySummary) reportParts.push(evaluation.memorySummary);
+    const reportSummary = reportParts.join(" ");
+
+    // ── Continuation pack ─────────────────────────────────────────────────
+    const continuationPack = evaluation.nextGuardedPrompt || null;
+    if (continuationPack) {
+      const contDir = getConfigDir(cwd);
+      if (!fs.existsSync(contDir)) fs.mkdirSync(contDir, { recursive: true });
+      fs.writeFileSync(path.join(contDir, "continuation-prompt.md"), continuationPack, "utf-8");
+    }
+
+    // ── Update run record ─────────────────────────────────────────────────
+    const evalRecord: RunEvaluationRecord = {
+      ...evaluation,
+      nextPrompt:     evaluation.nextGuardedPrompt,
+      nextSafePrompt: evaluation.nextGuardedPrompt,
+      nextSafeAction: evaluation.nextSafeAction,
+      memorySummary:  evaluation.memorySummary,
+      evaluatedAt:    evaluation.evaluatedAt,
+    };
+
+    updateRun(activeRun.id, {
+      status: "completed",
+      evaluation: evalRecord,
+      scopeDriftStatus,
+      reportSummary,
+      watchStatus: scope.status,
+      watchWarnings: scope.warnings,
+      watchChangedFiles: changedFiles,
+    }, cwd);
+
+    // Write memory from updated runs
+    const freshRuns = loadAllRuns(cwd);
+    const updatedRun = freshRuns.find((r) => r.id === activeRun.id) ?? activeRun;
+    writeMemoryFromRuns(updatedRun, freshRuns, config, cwd);
+
+    // ── Cloud sync ────────────────────────────────────────────────────────
+    let synced = false;
+    if (options.sync !== false) {
+      const globalAuth = loadGlobalAuth();
+      const rawToken = globalAuth?.token ?? config.syncToken ?? null;
+      if (rawToken?.startsWith("rt_live_")) {
+        try {
+          const memoryMarkdown = (() => { try { return readMemory(cwd); } catch { return null; } })();
+          const payload = buildSyncPayload({
+            cwd, projectName, config,
+            projectAudit: projectAudit ?? null,
+            memoryMarkdown: memoryMarkdown ?? "",
+            runs: freshRuns,
+          });
+          const apiBase = resolveApiBase(config);
+          const r = await fetch(`${apiBase}/api/sync`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${rawToken}` },
+            body: JSON.stringify(payload),
+          });
+          synced = r.ok;
+        } catch { /* non-fatal */ }
+      }
+    }
+
+    // ── Output ────────────────────────────────────────────────────────────
+    const scopeColor = scopeDriftStatus === "passed" ? chalk.green
+      : scopeDriftStatus === "forbidden_touched" ? chalk.red
+      : chalk.yellow;
+
+    const riskAfter = activeRun.contract.wasteRiskAfter ?? "medium";
+    const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, typeof chalk>)[riskAfter] ?? chalk.white;
+
+    console.log(GO_ACCENT.bold("Run"));
+    console.log(chalk.white("  " + truncate(activeRun.task, 70)));
+    console.log("");
+
+    if (changedFiles.length > 0) {
+      console.log(GO_ACCENT.bold("Changed files"));
+      for (const f of changedFiles.slice(0, 8)) {
+        const isForbidden = scope.forbiddenFiles.includes(f);
+        const isSensitive = scope.sensitiveFiles.includes(f);
+        const marker = isForbidden ? chalk.red(" [forbidden]") : isSensitive ? chalk.yellow(" [sensitive]") : "";
+        console.log(chalk.white("  - " + f) + marker);
+      }
+      if (changedFiles.length > 8) {
+        console.log(DIM(`  ... and ${changedFiles.length - 8} more`));
+      }
+      console.log("");
+    } else {
+      console.log(GO_ACCENT.bold("Changed files"));
+      console.log(DIM("  None detected."));
+      console.log("");
+    }
+
+    console.log(GO_ACCENT.bold("Scope"));
+    console.log(scopeColor("  " + (scopeDriftStatus === "passed" ? "Passed" : scopeDriftStatus === "forbidden_touched" ? "Failed — forbidden files touched" : "Drift detected")));
+    console.log("");
+
+    console.log(GO_ACCENT.bold("Risk"));
+    console.log(riskColor("  " + riskAfter));
+    console.log("");
+
+    console.log(GO_ACCENT.bold("Report"));
+    console.log(chalk.white("  " + reportSummary));
+    console.log("");
+
+    if (continuationPack) {
+      console.log(GO_ACCENT.bold("Continuation"));
+      console.log(chalk.white("  Saved to .runtrim/continuation-prompt.md"));
+      console.log("");
+    }
+
+    if (evaluation.nextSafeAction && evaluation.nextSafeAction !== "Run is ready to continue.") {
+      console.log(GO_ACCENT.bold("Next safest step"));
+      console.log(chalk.white("  " + evaluation.nextSafeAction));
+      console.log("");
+    }
+
+    if (options.sync !== false) {
+      console.log(GO_ACCENT.bold("Cloud sync"));
+      console.log(DIM("  ") + (synced ? chalk.white("Completed.") : DIM("Skipped. Run runtrim login to connect your dashboard.")));
+      console.log("");
+    }
   });
 
 // ── runtrim sync ──────────────────────────────────────────────────────────────

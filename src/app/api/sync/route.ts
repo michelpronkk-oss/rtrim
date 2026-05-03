@@ -235,6 +235,16 @@ export async function POST(request: Request) {
       latest_prompt: run.latestPrompt,
       continuation_prompt: run.continuationPrompt,
       synced_at: new Date().toISOString(),
+      // Bridge Mode fields (only set when present)
+      ...(run.goal                !== undefined ? { goal: run.goal } : {}),
+      ...(run.allowedScope        !== undefined ? { allowed_scope: run.allowedScope } : {}),
+      ...(run.forbiddenScope      !== undefined ? { forbidden_scope: run.forbiddenScope } : {}),
+      ...(run.stopConditions      !== undefined ? { stop_conditions: run.stopConditions } : {}),
+      ...(run.memoryUsed          !== undefined ? { memory_used: run.memoryUsed } : {}),
+      ...(run.memorySummary       !== undefined ? { memory_summary: run.memorySummary } : {}),
+      ...(run.tokenBudget         !== undefined ? { token_budget: run.tokenBudget } : {}),
+      ...(run.scopeDriftStatus    !== undefined ? { scope_drift_status: run.scopeDriftStatus } : {}),
+      ...(run.reportSummary       !== undefined ? { report_summary: run.reportSummary } : {}),
       ...(userId ? { user_id: userId } : {}),
     };
   });

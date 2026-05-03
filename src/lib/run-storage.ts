@@ -65,6 +65,13 @@ export interface RunRecord {
     | "blocked"
     | "split_required"
     | "executed";
+  // Bridge Mode fields (set by runtrim go / runtrim finish)
+  bridgeMode?: boolean;
+  tokenBudget?: number;
+  memorySummary?: string;
+  memoryUsed?: boolean;
+  reportSummary?: string;
+  scopeDriftStatus?: string;
 }
 
 export function saveRun(

@@ -9,6 +9,16 @@ export const SyncRunSchema = z.object({
   localId: z.string(),
   task: z.string(),
   status: z.string(),
+  // Bridge Mode optional fields
+  goal: z.string().optional(),
+  allowedScope: z.array(z.string()).optional(),
+  forbiddenScope: z.array(z.string()).optional(),
+  stopConditions: z.array(z.string()).optional(),
+  memoryUsed: z.boolean().optional(),
+  memorySummary: z.string().optional(),
+  tokenBudget: z.number().optional(),
+  scopeDriftStatus: z.string().optional(),
+  reportSummary: z.string().optional(),
   createdAt: z.string(),
   evaluatedAt: z.string().nullable(),
   riskBefore: z.string().nullable(),
@@ -202,6 +212,19 @@ export function buildSyncPayload(input: {
       latestPrompt: latestPromptText,
       continuationPrompt: continuationPromptText,
       fallbackNextPrompt,
+      // Bridge Mode fields
+      goal: run.contract?.contract?.cleanedObjective || undefined,
+      allowedScope: run.contract?.contract?.relevantScope?.length
+        ? run.contract.contract.relevantScope : undefined,
+      forbiddenScope: run.contract?.contract?.forbiddenScope?.length
+        ? run.contract.contract.forbiddenScope : undefined,
+      stopConditions: run.contract?.contract?.stopRules?.length
+        ? run.contract.contract.stopRules : undefined,
+      memoryUsed: run.memoryUsed ?? undefined,
+      memorySummary: run.memorySummary ?? run.evaluation?.memorySummary ?? undefined,
+      tokenBudget: run.tokenBudget ?? undefined,
+      scopeDriftStatus: run.scopeDriftStatus ?? undefined,
+      reportSummary: run.reportSummary ?? undefined,
     };
   });
 
