@@ -1847,9 +1847,11 @@ program
     const bridgeCtx: BridgeContext = deriveBridgeContext(task, contract, runs, projectName);
     let bridgeWritten: string[] = [];
 
+    let bridgeManagedPaths: string[] = [];
     if (options.bridge !== false) {
       const result = writeBridgeFiles(bridgeCtx, cwd);
       bridgeWritten = result.written;
+      bridgeManagedPaths = result.managedPaths;
     }
 
     // ── Prompt ────────────────────────────────────────────────────────────
@@ -1859,10 +1861,19 @@ program
       : rawPrompt;
 
     const promptPath = writeLatestPromptFile(fullPrompt, config, cwd);
-    const doCopy     = options.clipboard !== false;
-    const copied     = doCopy ? await copyToClipboardSafe(fullPrompt) : false;
+    // Track the prompt file itself as RunTrim-managed
+    const promptRelative = ".runtrim/latest-prompt.md";
+    if (!bridgeManagedPaths.includes(promptRelative)) {
+      bridgeManagedPaths.push(promptRelative);
+    }
+
+    const doCopy = options.clipboard !== false;
+    const copied = doCopy ? await copyToClipboardSafe(fullPrompt) : false;
 
     if (options.monitor) void tryLaunchPanelMonitorDetached(cwd);
+
+    // Persist the managed file list so runtrim finish can exclude them from drift
+    updateRun(run.id, { bridgeManagedFiles: bridgeManagedPaths }, cwd);
 
     // ── Cloud sync ────────────────────────────────────────────────────────
     let synced = false;
@@ -3106,13 +3117,46 @@ program
     console.log("");
 
     // ── Git diff ──────────────────────────────────────────────────────────
-    const changedFiles = dedupeFiles(await getGitDiff(cwd));
+    const allChangedFiles = dedupeFiles(await getGitDiff(cwd));
+
+    // ── Split RunTrim-owned files from agent files ─────────────────────────
+    // RunTrim writes bridge/protocol files during `runtrim go`. These must not
+    // be counted as agent code changes or trigger false scope drift.
+    const sessionManagedFiles = activeRun.bridgeManagedFiles ?? [];
+
+    // Static patterns always owned by RunTrim
+    function isRuntrimOwned(f: string): boolean {
+      const norm = f.replace(/\\/g, "/").toLowerCase();
+      // Any .runtrim/ directory file (contracts, memory, bridge, prompts, etc.)
+      if (norm.startsWith(".runtrim/")) return true;
+      // Root protocol file
+      if (norm === "runtrim.md") return true;
+      // Session-specific files logged by writeBridgeFiles
+      if (sessionManagedFiles.some(
+        (m) => m.replace(/\\/g, "/").toLowerCase() === norm
+      )) return true;
+      return false;
+    }
+
+    const runtrimFiles: string[] = [];
+    const agentFiles:   string[] = [];
+
+    for (const f of allChangedFiles) {
+      if (isRuntrimOwned(f)) {
+        runtrimFiles.push(f);
+      } else {
+        agentFiles.push(f);
+      }
+    }
+
+    // All scope evaluation runs only on agent-changed files
+    const changedFiles = agentFiles;
     const maxFiles = inferMaxFilesFromScope(
       activeRun.contract.contract?.relevantScope ?? [],
       config.maxFilesPerRun
     );
 
-    // ── Scope evaluation ──────────────────────────────────────────────────
+    // ── Scope evaluation (agent files only) ───────────────────────────────
     const scope = evaluateWatchState({
       changedFiles,
       run: activeRun,
@@ -3139,7 +3183,7 @@ program
     const forbiddenCount = scope.forbiddenFiles.length;
     const reportParts: string[] = [];
     if (changedFiles.length === 0) {
-      reportParts.push("No changes detected.");
+      reportParts.push("No agent changes detected.");
     } else {
       reportParts.push(`${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"} changed.`);
     }
@@ -3179,7 +3223,7 @@ program
       reportSummary,
       watchStatus: scope.status,
       watchWarnings: scope.warnings,
-      watchChangedFiles: changedFiles,
+      watchChangedFiles: agentFiles, // only agent changes, not RunTrim protocol files
     }, cwd);
 
     // Write memory from updated runs
@@ -3224,6 +3268,7 @@ program
     console.log(chalk.white("  " + truncate(activeRun.task, 70)));
     console.log("");
 
+    // Agent-changed files (what matters for drift/risk)
     if (changedFiles.length > 0) {
       console.log(GO_ACCENT.bold("Changed files"));
       for (const f of changedFiles.slice(0, 8)) {
@@ -3238,12 +3283,25 @@ program
       console.log("");
     } else {
       console.log(GO_ACCENT.bold("Changed files"));
-      console.log(DIM("  None detected."));
+      console.log(DIM("  No agent changes detected."));
+      console.log("");
+    }
+
+    // RunTrim-managed files (shown separately, excluded from drift)
+    if (runtrimFiles.length > 0) {
+      console.log(GO_ACCENT.bold("RunTrim files"));
+      for (const f of runtrimFiles) {
+        console.log(DIM("  - " + f));
+      }
       console.log("");
     }
 
     console.log(GO_ACCENT.bold("Scope"));
-    console.log(scopeColor("  " + (scopeDriftStatus === "passed" ? "Passed" : scopeDriftStatus === "forbidden_touched" ? "Failed — forbidden files touched" : "Drift detected")));
+    if (changedFiles.length === 0) {
+      console.log(chalk.green("  No agent changes to evaluate."));
+    } else {
+      console.log(scopeColor("  " + (scopeDriftStatus === "passed" ? "Passed" : scopeDriftStatus === "forbidden_touched" ? "Failed — forbidden files touched" : "Drift detected")));
+    }
     console.log("");
 
     console.log(GO_ACCENT.bold("Risk"));

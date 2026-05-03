@@ -267,7 +267,13 @@ export function appendBridgeBlock(filePath: string): boolean {
 }
 
 export interface WriteBridgeFilesResult {
+  /** Human-readable display labels. */
   written: string[];
+  /**
+   * Actual relative file paths that RunTrim wrote or appended to this session.
+   * Used by `runtrim finish` to exclude these from agent drift evaluation.
+   */
+  managedPaths: string[];
 }
 
 export function writeBridgeFiles(
@@ -275,24 +281,30 @@ export function writeBridgeFiles(
   cwd: string
 ): WriteBridgeFilesResult {
   const written: string[] = [];
+  const managedPaths: string[] = [];
+
+  const track = (relativePath: string, label?: string) => {
+    managedPaths.push(relativePath);
+    written.push(label ?? relativePath);
+  };
 
   writeRootProtocolFile(ctx, cwd);
-  written.push("RUNTRIM.md");
+  track("RUNTRIM.md");
 
   writeContractFile(ctx, cwd);
-  written.push(".runtrim/contracts/latest.md");
+  track(".runtrim/contracts/latest.md");
 
   writeMemoryFile(ctx, cwd);
-  written.push(".runtrim/memory/current.md");
+  track(".runtrim/memory/current.md");
 
   writeBridgeInstructions(cwd);
-  written.push(".runtrim/bridge/agent-instructions.md");
+  track(".runtrim/bridge/agent-instructions.md");
 
   // Append block to CLAUDE.md and AGENTS.md only if they already exist
-  if (appendBridgeBlock(path.join(cwd, "CLAUDE.md")))  written.push("CLAUDE.md (bridge block appended)");
-  if (appendBridgeBlock(path.join(cwd, "AGENTS.md")))  written.push("AGENTS.md (bridge block appended)");
+  if (appendBridgeBlock(path.join(cwd, "CLAUDE.md")))  track("CLAUDE.md", "CLAUDE.md (bridge block appended)");
+  if (appendBridgeBlock(path.join(cwd, "AGENTS.md")))  track("AGENTS.md", "AGENTS.md (bridge block appended)");
 
-  return { written };
+  return { written, managedPaths };
 }
 
 // ── Guarded bridge prompt ─────────────────────────────────────────────────────

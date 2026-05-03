@@ -72,6 +72,8 @@ export interface RunRecord {
   memoryUsed?: boolean;
   reportSummary?: string;
   scopeDriftStatus?: string;
+  /** Relative paths of files written/appended by RunTrim during this session. */
+  bridgeManagedFiles?: string[];
 }
 
 export function saveRun(
