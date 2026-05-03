@@ -17,18 +17,23 @@ type ProfileRow = {
   bridge_runs_period: string | null;
 };
 
-type RunRow = {
+// Only the fields needed for the "Last guarded run" card
+type RecentRunRow = {
   id: string;
   task: string | null;
   status: string | null;
   risk_before: string | null;
   risk_after: string | null;
-  estimated_tokens_trimmed: number | null;
-  estimated_dollars_standard: number | null;
   created_at_local: string | null;
   evaluated_at_local: string | null;
   created_at: string | null;
   synced_at: string | null;
+};
+
+// Only the two numeric columns needed for aggregate sums
+type AggRunRow = {
+  estimated_tokens_trimmed: number | null;
+  estimated_dollars_standard: number | null;
 };
 
 type ProjectRow = { id: string; name: string | null };
@@ -39,7 +44,7 @@ function toTimeMs(value: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-function runSortTime(run: RunRow): number {
+function runSortTime(run: RecentRunRow): number {
   return (
     toTimeMs(run.evaluated_at_local) ??
     toTimeMs(run.created_at_local) ??
@@ -53,53 +58,79 @@ async function getDashboardData(userId: string) {
   const supabase = getSupabaseServiceClient();
   if (!supabase) return null;
 
-  const [profileResult, runsResult, projectsResult] = await Promise.all([
+  // ── Five parallel queries ──────────────────────────────────────────────
+  // 1. Profile (plan + bridge usage)
+  // 2. Exact run count — no data fetched, just the integer
+  // 3. Aggregate columns across ALL runs (no artificial limit)
+  //    Note: Supabase default server limit is ~1 000 rows; sufficient for beta.
+  // 4. All projects (count is small)
+  // 5. Last 10 runs for the "Last guarded run" card only
+  const [
+    profileResult,
+    runCountResult,
+    runAggResult,
+    projectsResult,
+    recentRunResult,
+  ] = await Promise.all([
     supabase
       .from("runtrim_profiles")
       .select("plan, plan_status, bridge_runs_used, bridge_runs_period")
       .eq("id", userId)
       .maybeSingle(),
+
     supabase
       .from("runtrim_runs")
-      .select("id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_dollars_standard, created_at_local, evaluated_at_local, created_at, synced_at")
-      .eq("user_id", userId)
-      .limit(50),
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+
+    supabase
+      .from("runtrim_runs")
+      .select("estimated_tokens_trimmed, estimated_dollars_standard")
+      .eq("user_id", userId),
+
     supabase
       .from("runtrim_projects")
       .select("id, name")
       .eq("user_id", userId),
+
+    supabase
+      .from("runtrim_runs")
+      .select("id, task, status, risk_before, risk_after, created_at_local, evaluated_at_local, created_at, synced_at")
+      .eq("user_id", userId)
+      .order("synced_at", { ascending: false })
+      .limit(10),
   ]);
 
-  const profile  = profileResult.data as ProfileRow | null;
-  const runs     = (runsResult.data ?? []) as RunRow[];
-  const projects = (projectsResult.data ?? []) as ProjectRow[];
+  const profile    = profileResult.data as ProfileRow | null;
+  const totalRuns  = runCountResult.count ?? 0;
+  const aggRuns    = (runAggResult.data   ?? []) as AggRunRow[];
+  const projects   = (projectsResult.data ?? []) as ProjectRow[];
+  const recentRuns = (recentRunResult.data ?? []) as RecentRunRow[];
 
-  const plan       = profile?.plan || "free";
-  const period     = currentPeriod();
-  const ents       = getEntitlements(plan);
-  const runsUsed   = profile?.bridge_runs_period === period
+  const plan        = profile?.plan || "free";
+  const period      = currentPeriod();
+  const ents        = getEntitlements(plan);
+  const runsUsed    = profile?.bridge_runs_period === period
     ? (profile.bridge_runs_used ?? 0)
     : 0;
-  const runsLimit  = ents.bridgeRunsPerMonth; // null = unlimited
+  const runsLimit   = ents.bridgeRunsPerMonth;
 
-  runs.sort((a, b) => runSortTime(b) - runSortTime(a));
-
-  const totalRuns    = runs.length;
+  // Aggregate across ALL synced runs (not capped at 50)
+  const totalTokens   = aggRuns.reduce((s, r) => s + (r.estimated_tokens_trimmed  ?? 0), 0);
+  const totalCost     = aggRuns.reduce((s, r) => s + (r.estimated_dollars_standard ?? 0), 0);
   const totalProjects = projects.length;
-  const totalTokens  = runs.reduce((s, r) => s + (r.estimated_tokens_trimmed ?? 0), 0);
-  const totalCost    = runs.reduce((s, r) => s + (r.estimated_dollars_standard ?? 0), 0);
+
+  // Most recent "interesting" run for the card
+  recentRuns.sort((a, b) => runSortTime(b) - runSortTime(a));
   const lastRun =
-    runs.find((r) => {
-      const status = (r.status ?? "").toLowerCase();
-      return status === "guarded" || status === "completed" || status === "passed";
+    recentRuns.find((r) => {
+      const s = (r.status ?? "").toLowerCase();
+      return s === "guarded" || s === "completed" || s === "passed";
     }) ??
-    runs[0] ??
+    recentRuns[0] ??
     null;
 
-  return {
-    plan, runsUsed, runsLimit,
-    runs, projects, totalRuns, totalProjects, totalTokens, totalCost, lastRun,
-  };
+  return { plan, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun };
 }
 
 const RISK_BADGE: Record<string, string> = {
@@ -137,13 +168,18 @@ export default async function OverviewPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const data = await getDashboardData(user.id);
+  const data    = await getDashboardData(user.id);
   const isEmpty = !data || data.totalRuns === 0;
 
   const formatTokens = (n: number) =>
     n >= 1_000_000 ? `~${(n / 1_000_000).toFixed(1)}M`
     : n >= 1_000   ? `~${(n / 1_000).toFixed(0)}k`
     : String(n);
+
+  const formatCost = (n: number) =>
+    n >= 1_000 ? `$${(n / 1_000).toFixed(1)}k`
+    : n >= 0.01 ? `$${n.toFixed(2)}`
+    : "$0.00";
 
   const plan        = data?.plan ?? "free";
   const runsUsed    = data?.runsUsed ?? 0;
@@ -219,12 +255,32 @@ export default async function OverviewPage() {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Stats — derived from all-time aggregates, not a capped query */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Runs"         value={String(data?.totalRuns ?? 0)}  sub="synced from CLI"       icon={Activity}     />
-        <StatCard label="Projects"     value={String(data?.totalProjects ?? 0)} sub="tracked"            icon={Layers}       />
-        <StatCard label="Tokens saved" value={data && data.totalTokens > 0 ? formatTokens(data.totalTokens) : "0"} sub="estimated" icon={TrendingDown} />
-        <StatCard label="Cost saved"   value={data && data.totalCost > 0 ? `$${data.totalCost.toFixed(2)}` : "$0.00"} sub="estimated, local only" icon={Shield} />
+        <StatCard
+          label="Runs"
+          value={String(data?.totalRuns ?? 0)}
+          sub="all-time"
+          icon={Activity}
+        />
+        <StatCard
+          label="Projects"
+          value={String(data?.totalProjects ?? 0)}
+          sub="tracked"
+          icon={Layers}
+        />
+        <StatCard
+          label="Tokens saved"
+          value={data && data.totalTokens > 0 ? formatTokens(data.totalTokens) : "0"}
+          sub="across all synced runs"
+          icon={TrendingDown}
+        />
+        <StatCard
+          label="Cost saved"
+          value={data && data.totalCost > 0 ? formatCost(data.totalCost) : "$0.00"}
+          sub="estimated cumulative savings"
+          icon={Shield}
+        />
       </div>
 
       {isEmpty ? (
@@ -261,13 +317,22 @@ export default async function OverviewPage() {
                   {data.lastRun.task ?? "Untitled run"}
                 </p>
                 <p className="mt-1 font-mono text-[11px] text-[#4D5070]">
-                  {(() => { const when = toTimeMs(data.lastRun.evaluated_at_local) ?? toTimeMs(data.lastRun.created_at_local) ?? toTimeMs(data.lastRun.created_at) ?? toTimeMs(data.lastRun.synced_at); return when ? new Date(when).toLocaleString() : "—"; })()}
+                  {(() => {
+                    const when =
+                      toTimeMs(data.lastRun.evaluated_at_local) ??
+                      toTimeMs(data.lastRun.created_at_local) ??
+                      toTimeMs(data.lastRun.created_at) ??
+                      toTimeMs(data.lastRun.synced_at);
+                    return when ? new Date(when).toLocaleString() : "—";
+                  })()}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <RiskBadge level={data.lastRun.risk_after ?? data.lastRun.risk_before} />
-                <Link href={`/app/runs/${data.lastRun.id}`}
-                      className="font-mono text-[11px] text-[#7C6DFA] transition-colors hover:text-[#B2A7FF]">
+                <Link
+                  href={`/app/runs/${data.lastRun.id}`}
+                  className="font-mono text-[11px] text-[#7C6DFA] transition-colors hover:text-[#B2A7FF]"
+                >
                   View report
                 </Link>
               </div>
@@ -286,8 +351,10 @@ export default async function OverviewPage() {
               <code className="font-mono text-[#9E91FF]">runtrim sync</code> from any project.
             </p>
           </div>
-          <Link href="/app/connect"
-                className="shrink-0 rounded-lg border border-white/10 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]">
+          <Link
+            href="/app/connect"
+            className="shrink-0 rounded-lg border border-white/10 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+          >
             Connect CLI
           </Link>
         </div>
@@ -295,4 +362,3 @@ export default async function OverviewPage() {
     </div>
   );
 }
-
