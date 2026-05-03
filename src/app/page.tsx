@@ -143,7 +143,7 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <section className="relative flex flex-col items-center overflow-hidden border-b border-white/8 pb-16 pt-20 sm:pb-24 sm:pt-28">
+      <section className="relative overflow-hidden border-b border-white/8">
 
         {/* Background */}
         <div
@@ -169,87 +169,111 @@ export default function Home() {
           style={{ background: "linear-gradient(to top, #07071A, transparent)" }}
         />
 
-        {/* Content */}
-        <div className="relative z-10 flex w-full flex-col items-center px-6 text-center">
+        {/*
+          Above-fold zone.
+          Mobile: min-h-[100svh] fills the full viewport. flex-1 spacer pushes
+          the feature strip to the very bottom so the terminal appears below the fold.
+          Desktop: min-h is removed and the section behaves compactly.
+        */}
+        <div className="relative z-10 flex min-h-[100svh] w-full flex-col items-center pb-6 pt-20 sm:min-h-0 sm:pb-0 sm:pt-28">
 
-          {/* Badge */}
-          <MotionFade>
-            <div className="rt-ai-pill mb-8 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
-              <span className="rt-ai-pill-dot size-1.5 rounded-full bg-[#7C6DFA]" />
-              <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]">
-                RunTrim Agent
-              </span>
-            </div>
-          </MotionFade>
+          {/* Core content */}
+          <div className="flex w-full flex-col items-center px-6 text-center">
 
-          {/* Headline */}
-          <MotionFade delay={0.06}>
-            <h1 className="mx-auto max-w-[860px] text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:text-[3.4rem] lg:text-[4.5rem] xl:text-[5rem]">
-              Run AI coding tasks{" "}
-              <span className="brand-gradient-text">with guardrails</span>.
-            </h1>
-          </MotionFade>
-
-          {/* Sub */}
-          <MotionFade delay={0.12}>
-            {/* Mobile: punchy two-liner */}
-            <p className="mx-auto mt-6 max-w-[400px] text-[0.98rem] leading-[1.75] text-[#7F8CA3] sm:hidden">
-              Scoped contracts, reusable memory, and guarded execution for every AI coding run.
-            </p>
-            {/* Desktop: full version */}
-            <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
-              RunTrim turns prompts into controlled AI coding runs with scoped contracts, reusable memory, token control, risk checks, and clean continuation.
-            </p>
-          </MotionFade>
-
-          {/* CTAs */}
-          <MotionFade delay={0.17}>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/app/install"
-                data-rt-event="install_cta_clicked"
-                className="group inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
-                style={{
-                  boxShadow:
-                    "0 0 0 1px rgba(124,109,250,0.45), 0 8px 20px rgba(124,109,250,0.22), inset 0 1px 0 rgba(255,255,255,0.12)",
-                }}
-              >
-                Install Free CLI
-                <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
-              </Link>
-              <EarlyAccessModalTrigger
-                label="Join Agent Early Access"
-                variant="pro"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-6 py-3 text-[15px] text-[#A3AEBD] backdrop-blur-sm transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-              />
-            </div>
-          </MotionFade>
-
-          {/* Status line */}
-          <MotionFade delay={0.20}>
-            <p className="mt-5 font-mono text-[11px] text-[#4A5170]">
-              Free CLI is live. RunTrim Agent is entering early access.
-            </p>
-          </MotionFade>
-
-          {/* Trust line - desktop only */}
-          <MotionFade delay={0.22}>
-            <div className="mt-5 hidden flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#4A5170] sm:flex">
-              {["Local-first", "Agent-agnostic", "No code uploads", "Sync-ready"].map((t, i) => (
-                <span key={t} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="mr-2 text-[#1E2038]">·</span>}
-                  <Check className="size-3 text-[#7C6DFA]/70" />
-                  {t}
+            <MotionFade>
+              <div className="rt-ai-pill mb-8 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
+                <span className="rt-ai-pill-dot size-1.5 rounded-full bg-[#7C6DFA]" />
+                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]">
+                  RunTrim Agent
                 </span>
+              </div>
+            </MotionFade>
+
+            <MotionFade delay={0.06}>
+              <h1 className="mx-auto max-w-[860px] text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:text-[3.4rem] lg:text-[4.5rem] xl:text-[5rem]">
+                Run AI coding tasks{" "}
+                <span className="brand-gradient-text">with guardrails</span>.
+              </h1>
+            </MotionFade>
+
+            <MotionFade delay={0.12}>
+              <p className="mx-auto mt-6 max-w-[400px] text-[0.98rem] leading-[1.75] text-[#7F8CA3] sm:hidden">
+                Scoped contracts, reusable memory, and guarded execution for every AI coding run.
+              </p>
+              <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
+                RunTrim turns prompts into controlled AI coding runs with scoped contracts, reusable memory, token control, risk checks, and clean continuation.
+              </p>
+            </MotionFade>
+
+            <MotionFade delay={0.17}>
+              <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/app/install"
+                  data-rt-event="install_cta_clicked"
+                  className="group inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
+                  style={{
+                    boxShadow:
+                      "0 0 0 1px rgba(124,109,250,0.45), 0 8px 20px rgba(124,109,250,0.22), inset 0 1px 0 rgba(255,255,255,0.12)",
+                  }}
+                >
+                  Install Free CLI
+                  <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+                </Link>
+                <EarlyAccessModalTrigger
+                  label="Join Agent Early Access"
+                  variant="pro"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-6 py-3 text-[15px] text-[#A3AEBD] backdrop-blur-sm transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+                />
+              </div>
+            </MotionFade>
+
+            <MotionFade delay={0.20}>
+              <p className="mt-5 font-mono text-[11px] text-[#4A5170]">
+                Free CLI is live. RunTrim Agent is entering early access.
+              </p>
+            </MotionFade>
+
+            <MotionFade delay={0.22}>
+              <div className="mt-5 hidden flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#4A5170] sm:flex">
+                {["Local-first", "Agent-agnostic", "No code uploads", "Sync-ready"].map((t, i) => (
+                  <span key={t} className="flex items-center gap-1.5">
+                    {i > 0 && <span className="mr-2 text-[#1E2038]">·</span>}
+                    <Check className="size-3 text-[#7C6DFA]/70" />
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </MotionFade>
+          </div>
+
+          {/* Spacer: fills remaining viewport height on mobile, invisible on desktop */}
+          <div className="flex-1 sm:hidden" />
+
+          {/* Feature strip — anchored to bottom of viewport on mobile */}
+          <MotionFade delay={0.34} className="w-full max-w-4xl px-6 pb-2 sm:mt-6 sm:pb-0">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+              {[
+                { label: "Scope the task",   note: "Contract before execution" },
+                { label: "Load memory",      note: "Never start from zero" },
+                { label: "Control the run",  note: "Budgets, rules, drift checks" },
+                { label: "Continue cleanly", note: "Preserved across sessions" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-lg border border-white/8 bg-[#0D0C22]/70 px-4 py-3 backdrop-blur-sm"
+                >
+                  <p className="text-[12px] font-semibold text-[#C4C8EA]">{item.label}</p>
+                  <p className="mt-0.5 font-mono text-[10px] text-[#4A5068]">{item.note}</p>
+                </div>
               ))}
             </div>
           </MotionFade>
         </div>
 
-        {/* Product visual — visible on all sizes, just below fold on mobile */}
+        {/* Terminal — starts below the fold on mobile, flows after content on desktop */}
         <MotionFade
           delay={0.28}
-          className="relative z-10 mt-10 w-full max-w-4xl px-6 sm:mt-14"
+          className="relative z-10 mx-auto w-full max-w-4xl px-6 pb-16 pt-8 sm:pb-24 sm:pt-14"
         >
           <div
             className="pointer-events-none absolute inset-x-0 top-1/2 -z-10 h-64 -translate-y-1/2"
@@ -265,29 +289,6 @@ export default function Home() {
             }}
           >
             <HeroTerminal />
-          </div>
-        </MotionFade>
-
-        {/* Feature strip */}
-        <MotionFade
-          delay={0.34}
-          className="relative z-10 mt-8 w-full max-w-4xl px-6 sm:mt-6"
-        >
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            {[
-              { label: "Scope the task",   note: "Contract before execution" },
-              { label: "Load memory",      note: "Never start from zero" },
-              { label: "Control the run",  note: "Budgets, rules, drift checks" },
-              { label: "Continue cleanly", note: "Preserved across sessions" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-lg border border-white/8 bg-[#0D0C22]/70 px-4 py-3 backdrop-blur-sm"
-              >
-                <p className="text-[12px] font-semibold text-[#C4C8EA]">{item.label}</p>
-                <p className="mt-0.5 font-mono text-[10px] text-[#4A5068]">{item.note}</p>
-              </div>
-            ))}
           </div>
         </MotionFade>
       </section>
@@ -811,65 +812,31 @@ export default function Home() {
           style={{ background: "linear-gradient(90deg, transparent 0%, #7C6DFA 30%, #9966FF 60%, transparent 100%)" }}
         />
 
-        <div className="mx-auto max-w-6xl px-6 py-14">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto_auto]">
+        <div className="mx-auto max-w-6xl px-6 py-12">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto]">
 
             {/* Brand */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center gap-2.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
                 <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
               </div>
-              <p className="max-w-[220px] text-[13px] leading-[1.65] text-[#3E4260]">
+              <p className="max-w-[200px] text-[13px] leading-[1.6] text-[#3E4260]">
                 The guarded way to run AI coding agents. Free CLI is live. RunTrim Agent is entering early access.
               </p>
               <p className="font-mono text-[11px] text-[#2A2A45]">Local-first. Agent-agnostic. No code uploads.</p>
             </div>
 
             {/* Product */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Product</p>
-              <nav className="flex flex-col gap-3">
+              <nav className="flex flex-col gap-2.5">
                 {[
-                  { href: "/app/install", label: "Install"      },
-                  { href: "#how-it-works",label: "How it works" },
-                  { href: "#pricing",     label: "Pricing"      },
-                ].map((l) => (
-                  <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
-                    {l.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-
-            {/* Dashboard */}
-            <div className="space-y-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Dashboard</p>
-              <nav className="flex flex-col gap-3">
-                {[
-                  { href: "/app",          label: "Overview"  },
-                  { href: "/app/runs",     label: "Runs"      },
-                  { href: "/app/projects", label: "Projects"  },
-                  { href: "/app/settings", label: "Settings"  },
-                ].map((l) => (
-                  <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
-                    {l.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-
-            {/* Resources */}
-            <div className="space-y-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Resources</p>
-              <nav className="flex flex-col gap-3">
-                {[
-                  { href: "/claude-code-context-limit",          label: "Claude Code context limit"  },
-                  { href: "/ai-coding-continuation-prompts",     label: "Continuation prompts"       },
-                  { href: "/ai-coding-run-history",              label: "Run history"                },
-                  { href: "/local-first-ai-coding-tool",         label: "Local-first AI coding"      },
-                  { href: "/ai-coding-agent-guardrails",         label: "Agent guardrails"           },
+                  { href: "/app/install", label: "Install"        },
+                  { href: "/how-it-works",label: "How it works"   },
+                  { href: "#pricing",     label: "Pricing"        },
+                  { href: "/login",       label: "Dashboard"      },
                 ].map((l) => (
                   <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
                     {l.label}
@@ -879,9 +846,9 @@ export default function Home() {
             </div>
 
             {/* Legal */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Legal</p>
-              <nav className="flex flex-col gap-3">
+              <nav className="flex flex-col gap-2.5">
                 {[
                   { href: "/privacy",  label: "Privacy"  },
                   { href: "/terms",    label: "Terms"    },
@@ -890,13 +857,8 @@ export default function Home() {
                   { href: "mailto:hello@runtrim.com",                  label: "Contact", external: true },
                 ].map((l) =>
                   l.external ? (
-                    <a
-                      key={l.href}
-                      href={l.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]"
-                    >
+                    <a key={l.href} href={l.href} target="_blank" rel="noreferrer"
+                      className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
                       {l.label}
                     </a>
                   ) : (
@@ -909,7 +871,7 @@ export default function Home() {
             </div>
 
             {/* CTA callout */}
-            <div className="space-y-4 lg:justify-self-end">
+            <div className="space-y-3 lg:justify-self-end">
               <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Get started</p>
               <div className="rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 p-4">
                 <p className="text-[13px] font-semibold text-[#C4B8FF]">Free CLI is live</p>

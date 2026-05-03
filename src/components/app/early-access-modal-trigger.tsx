@@ -119,6 +119,19 @@ export function EarlyAccessModalTrigger({
           </DialogDescription>
         </DialogHeader>
 
+        {status === "success" ? (
+          <div className="mt-5 rounded-xl border border-[#4DE8B0]/18 bg-[#4DE8B0]/6 px-5 py-5">
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#4DE8B0]/70">
+              Request received
+            </p>
+            <p className="mt-2 text-[16px] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
+              You are on the list.
+            </p>
+            <p className="mt-2 text-[13px] leading-[1.7] text-[#5E6A88]">
+              Check your inbox for confirmation. We will reach out when your access is approved. Free CLI is available now without an account.
+            </p>
+          </div>
+        ) : (
         <form onSubmit={submit} className="mt-5 flex flex-col gap-3">
           {/* Email */}
           <input
@@ -176,29 +189,28 @@ export function EarlyAccessModalTrigger({
             className={inputCls}
           />
 
+          {/* Error */}
+          {status === "error" && message && (
+            <p className="text-[12px] text-[#F0BF72]">{message}</p>
+          )}
+
           {/* Submit */}
-          <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button
-              type="submit"
-              disabled={status === "loading"}
-              className="w-full rounded-lg bg-[#7C6DFA] px-5 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-60 sm:w-auto"
-              style={{
-                boxShadow: "0 0 0 1px rgba(124,109,250,0.4), 0 4px 16px rgba(124,109,250,0.20), inset 0 1px 0 rgba(255,255,255,0.1)",
-              }}
-            >
-              {status === "loading" ? "Submitting..." : "Request access"}
-            </button>
-            {message && (
-              <p className={`text-[12px] leading-snug ${status === "success" ? "text-[#4DE8B0]" : "text-[#F0BF72]"}`}>
-                {message}
-              </p>
-            )}
-          </div>
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="w-full rounded-lg bg-[#7C6DFA] px-5 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-60"
+            style={{
+              boxShadow: "0 0 0 1px rgba(124,109,250,0.4), 0 4px 16px rgba(124,109,250,0.20), inset 0 1px 0 rgba(255,255,255,0.1)",
+            }}
+          >
+            {status === "loading" ? "Submitting..." : "Request access"}
+          </button>
 
           <p className="text-[11px] text-[#3A4060]">
             Free CLI is public and local-first. No account required.
           </p>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );
