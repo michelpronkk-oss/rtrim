@@ -192,7 +192,12 @@ export default function Home() {
 
           {/* Sub */}
           <MotionFade delay={0.12}>
-            <p className="mx-auto mt-6 max-w-[600px] text-[0.98rem] leading-[1.8] text-[#7F8CA3] sm:text-[1.03rem]">
+            {/* Mobile: punchy two-liner */}
+            <p className="mx-auto mt-6 max-w-[400px] text-[0.98rem] leading-[1.75] text-[#7F8CA3] sm:hidden">
+              Scoped contracts, reusable memory, and guarded execution for every AI coding run.
+            </p>
+            {/* Desktop: full version */}
+            <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
               RunTrim turns prompts into controlled AI coding runs with scoped contracts, reusable memory, token control, risk checks, and clean continuation.
             </p>
           </MotionFade>
@@ -241,10 +246,10 @@ export default function Home() {
           </MotionFade>
         </div>
 
-        {/* Product visual - desktop only */}
+        {/* Product visual — visible on all sizes, just below fold on mobile */}
         <MotionFade
           delay={0.28}
-          className="relative z-10 mt-16 hidden w-full max-w-4xl px-6 sm:mt-14 sm:block"
+          className="relative z-10 mt-10 w-full max-w-4xl px-6 sm:mt-14"
         >
           <div
             className="pointer-events-none absolute inset-x-0 top-1/2 -z-10 h-64 -translate-y-1/2"

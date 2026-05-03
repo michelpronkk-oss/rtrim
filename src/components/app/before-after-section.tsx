@@ -210,7 +210,7 @@ export function BeforeAfterSection() {
           </motion.div>
         </div>
 
-        {/* Caption */}
+        {/* Caption — no directional labels, works stacked or side-by-side */}
         <motion.p
           className="mt-5 text-center font-mono text-[11px] text-[#2A2A45]"
           initial={{ opacity: 0 }}
@@ -218,7 +218,9 @@ export function BeforeAfterSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          Left: context wasted, scope drifted, no record. Right: contract-first, scoped, continues cleanly.
+          Unguarded: context wasted, 12 files changed out of scope, no record.
+          <span className="mx-1.5 opacity-50">·</span>
+          Guarded: contract-first, scoped, continues cleanly.
         </motion.p>
       </div>
     </section>
