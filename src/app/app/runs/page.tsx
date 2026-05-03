@@ -68,7 +68,7 @@ function Badge({ label, kind }: { label: string | null; kind: "status" | "risk" 
   const cls = map[label.toLowerCase()] ?? "border-white/10 text-[#9699BE]";
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2 py-1 font-mono text-[10px] uppercase leading-none tracking-[0.08em] ${cls}`}
+      className={`inline-flex shrink-0 whitespace-nowrap items-center rounded-md border px-2 py-1 font-mono text-[10px] uppercase leading-none tracking-[0.08em] ${cls}`}
     >
       {label}
     </span>
@@ -117,7 +117,7 @@ export default async function RunsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-[92rem] space-y-8 px-2 xl:px-4">
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Runs</p>
         <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">
@@ -153,7 +153,7 @@ export default async function RunsPage() {
             </p>
           </div>
 
-          <div className="hidden grid-cols-[minmax(0,3.4fr)_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-x-5 border-b border-white/8 bg-[#0C0E21] px-6 py-3 md:grid">
+          <div className="hidden grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto] items-center gap-x-6 border-b border-white/8 bg-[#0C0E21] px-6 py-3 md:grid">
             {["Task", "Project", "Status", "Risk", "Tokens saved", "Date", ""].map((h) => (
               <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4460]">
                 {h}
@@ -165,7 +165,7 @@ export default async function RunsPage() {
             <Link
               key={run.id}
               href={`/app/runs/${run.id}`}
-              className={`group block px-4 py-4 transition-colors hover:bg-white/[0.02] md:grid md:grid-cols-[minmax(0,3.4fr)_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)_auto] md:items-center md:gap-x-5 md:px-6 md:py-3.5 ${
+              className={`group block px-4 py-4 transition-colors hover:bg-white/[0.02] md:grid md:grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto] md:items-center md:gap-x-6 md:px-6 md:py-3 ${
                 i < runs.length - 1 ? "border-b border-white/6" : ""
               }`}
               style={{ background: i % 2 === 0 ? "#0B0C1F" : "#090A1B" }}
@@ -180,7 +180,7 @@ export default async function RunsPage() {
                   {run.project_id ? (projectMap[run.project_id] ?? "-") : "-"}
                 </p>
 
-                <div className="flex items-center gap-2 md:justify-start">
+                <div className="flex items-center gap-2 md:justify-start md:whitespace-nowrap">
                   <span className="text-[#3A4460] md:hidden">Status</span>
                   <Badge label={formatStatusLabel(run.status)} kind="status" />
                 </div>
