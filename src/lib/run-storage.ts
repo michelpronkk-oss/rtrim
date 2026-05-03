@@ -72,6 +72,7 @@ export interface RunRecord {
   memoryUsed?: boolean;
   reportSummary?: string;
   scopeDriftStatus?: string;
+  pendingSync?: boolean;
   /** Relative paths of files written/appended by RunTrim during this session. */
   bridgeManagedFiles?: string[];
 }

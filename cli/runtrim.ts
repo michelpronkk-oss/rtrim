@@ -2239,28 +2239,17 @@ program
     updateRun(run.id, { bridgeManagedFiles: bridgeManagedPaths }, cwd);
 
     // ── Cloud sync ────────────────────────────────────────────────────────
-    let synced = false;
+    let cloudSync: CloudSyncResult = { status: "skipped_no_token" };
     if (options.sync !== false) {
-      const globalAuth = loadGlobalAuth();
-      const rawToken = globalAuth?.token ?? config.syncToken ?? null;
-      if (rawToken?.startsWith("rt_live_")) {
-        try {
-          const freshRuns = loadAllRuns(cwd);
-          const payload = buildSyncPayload({
-            cwd, projectName, config,
-            projectAudit: projectAudit ?? null,
-            memoryMarkdown: memoryMarkdown ?? "",
-            runs: freshRuns,
-          });
-          const apiBase = resolveApiBase(config);
-          const r = await fetch(`${apiBase}/api/sync`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${rawToken}` },
-            body: JSON.stringify(payload),
-          });
-          synced = r.ok;
-        } catch { /* non-fatal */ }
-      }
+      cloudSync = await syncRunsToCloud({
+        cwd,
+        config,
+        projectName,
+        projectAudit: projectAudit ?? null,
+        memoryMarkdown: memoryMarkdown ?? "",
+        runs: loadAllRuns(cwd),
+        markPendingRunIds: [run.id],
+      });
     }
 
     // ── Output ────────────────────────────────────────────────────────────
@@ -2295,7 +2284,15 @@ program
     }
     if (options.sync !== false) {
       console.log(GO_ACCENT.bold("Cloud sync"));
-      console.log(DIM("  ") + (synced ? chalk.white("Synced.") : DIM("Skipped. Run runtrim login to connect your dashboard.")));
+      if (cloudSync.status === "synced") {
+        console.log(chalk.white("  Started run synced."));
+      } else if (cloudSync.status === "failed") {
+        console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
+      } else if (cloudSync.status === "skipped_no_token" || cloudSync.status === "skipped_invalid_token") {
+        console.log(DIM("  Skipped. Run runtrim login to connect your dashboard."));
+      } else {
+        console.log(DIM("  Skipped."));
+      }
       console.log("");
     }
     console.log(GO_ACCENT.bold("Prompt"));
@@ -3384,6 +3381,13 @@ interface GlobalAuth {
   email?: string;
 }
 
+type CloudSyncResult = {
+  status: "synced" | "skipped_no_token" | "skipped_invalid_token" | "skipped_no_runs" | "failed";
+  syncedRuns?: number;
+  error?: string;
+  details?: string;
+};
+
 function loadGlobalAuth(): GlobalAuth | null {
   if (!fs.existsSync(GLOBAL_AUTH_FILE)) return null;
   try {
@@ -3409,6 +3413,73 @@ function resolveApiBase(config: RunTrimConfig): string {
     return new URL(url).origin;
   } catch {
     return "https://www.runtrim.com";
+  }
+}
+
+async function syncRunsToCloud(input: {
+  cwd: string;
+  config: RunTrimConfig;
+  projectName: string;
+  projectAudit: ReturnType<typeof loadProjectAudit> | null;
+  memoryMarkdown: string;
+  runs: ReturnType<typeof loadAllRuns>;
+  markPendingRunIds?: string[];
+}): Promise<CloudSyncResult> {
+  const { cwd, config, projectName, projectAudit, memoryMarkdown, runs, markPendingRunIds } = input;
+  const globalAuth = loadGlobalAuth();
+  const rawToken = globalAuth?.token ?? config.syncToken ?? null;
+
+  if (!rawToken) return { status: "skipped_no_token" };
+  if (!rawToken.startsWith("rt_live_")) return { status: "skipped_invalid_token" };
+  if (runs.length === 0) return { status: "skipped_no_runs" };
+
+  try {
+    const payload = buildSyncPayload({
+      cwd,
+      projectName,
+      config,
+      projectAudit: projectAudit ?? null,
+      memoryMarkdown: memoryMarkdown ?? "",
+      runs,
+    });
+    const apiBase = resolveApiBase(config);
+    const res = await fetch(`${apiBase}/api/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${rawToken}` },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await res.json().catch(() => ({})) as {
+      ok?: boolean;
+      syncedRuns?: number;
+      error?: string;
+      details?: string;
+    };
+
+    if (!res.ok || !body.ok) {
+      if (markPendingRunIds && markPendingRunIds.length > 0) {
+        for (const id of markPendingRunIds) updateRun(id, { pendingSync: true }, cwd);
+      }
+      return {
+        status: "failed",
+        error: body.error,
+        details: body.details,
+      };
+    }
+
+    for (const run of runs) {
+      if (run.pendingSync) updateRun(run.id, { pendingSync: false }, cwd);
+    }
+
+    return {
+      status: "synced",
+      syncedRuns: body.syncedRuns ?? payload.runs.length,
+    };
+  } catch {
+    if (markPendingRunIds && markPendingRunIds.length > 0) {
+      for (const id of markPendingRunIds) updateRun(id, { pendingSync: true }, cwd);
+    }
+    return { status: "failed" };
   }
 }
 
@@ -3661,28 +3732,18 @@ program
     if (removeBridgeBlock(path.join(cwd, "AGENTS.md")))  bridgeRemovals.push("AGENTS.md");
 
     // ── Cloud sync ────────────────────────────────────────────────────────
-    let synced = false;
+    let cloudSync: CloudSyncResult = { status: "skipped_no_token" };
     if (options.sync !== false) {
-      const globalAuth = loadGlobalAuth();
-      const rawToken = globalAuth?.token ?? config.syncToken ?? null;
-      if (rawToken?.startsWith("rt_live_")) {
-        try {
-          const memoryMarkdown = (() => { try { return readMemory(cwd); } catch { return null; } })();
-          const payload = buildSyncPayload({
-            cwd, projectName, config,
-            projectAudit: projectAudit ?? null,
-            memoryMarkdown: memoryMarkdown ?? "",
-            runs: freshRuns,
-          });
-          const apiBase = resolveApiBase(config);
-          const r = await fetch(`${apiBase}/api/sync`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${rawToken}` },
-            body: JSON.stringify(payload),
-          });
-          synced = r.ok;
-        } catch { /* non-fatal */ }
-      }
+      const memoryMarkdown = (() => { try { return readMemory(cwd); } catch { return null; } })();
+      cloudSync = await syncRunsToCloud({
+        cwd,
+        config,
+        projectName,
+        projectAudit: projectAudit ?? null,
+        memoryMarkdown: memoryMarkdown ?? "",
+        runs: freshRuns,
+        markPendingRunIds: [activeRun.id],
+      });
     }
 
     // ── Output ────────────────────────────────────────────────────────────
@@ -3755,7 +3816,15 @@ program
 
     if (options.sync !== false) {
       console.log(GO_ACCENT.bold("Cloud sync"));
-      console.log(DIM("  ") + (synced ? chalk.white("Completed.") : DIM("Skipped. Run runtrim login to connect your dashboard.")));
+      if (cloudSync.status === "synced") {
+        console.log(chalk.white("  Completed run synced."));
+      } else if (cloudSync.status === "failed") {
+        console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
+      } else if (cloudSync.status === "skipped_no_token" || cloudSync.status === "skipped_invalid_token") {
+        console.log(DIM("  Skipped. Run runtrim login to connect your dashboard."));
+      } else {
+        console.log(DIM("  Skipped."));
+      }
       console.log("");
     }
 
@@ -3785,29 +3854,10 @@ program
     console.log(BOLD("RunTrim") + DIM("  cloud sync"));
     console.log("");
 
-    // Resolve token: global auth first, then per-project config fallback
-    const globalAuth = loadGlobalAuth();
     const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
-    const rawToken = globalAuth?.token ?? config.syncToken ?? null;
-
-    if (!rawToken) {
-      console.log(chalk.yellow("  No CLI token found."));
-      console.log(DIM("  Run ") + GO_ACCENT("runtrim login") + DIM(" to connect cloud sync."));
-      console.log(DIM("  Local CLI still works without a token."));
-      console.log("");
-      return;
-    }
-
-    if (!rawToken.startsWith("rt_live_")) {
-      console.log(chalk.yellow("  Stored token format is invalid. Re-run: runtrim login"));
-      console.log("");
-      return;
-    }
-
     const apiBase  = resolveApiBase(config);
     const syncUrl  = `${apiBase}/api/sync`;
 
-    // Load local data
     const runs = loadAllRuns(cwd);
     if (runs.length === 0) {
       console.log(DIM("  No local runs found in this directory."));
@@ -3817,13 +3867,14 @@ program
     }
 
     const projectAudit = loadProjectAudit(cwd);
+    const projectName = projectAudit?.projectName ?? path.basename(cwd);
     const memoryMarkdown = (() => {
       try { return readMemory(cwd); } catch { return ""; }
     })();
 
     const payload = buildSyncPayload({
       cwd,
-      projectName: projectAudit?.projectName ?? path.basename(cwd),
+      projectName,
       config,
       projectAudit: projectAudit ?? null,
       memoryMarkdown: memoryMarkdown ?? "",
@@ -3836,7 +3887,7 @@ program
     console.log("");
 
     if (opts.dryRun) {
-      console.log(ACCENT.bold("  Dry run — nothing uploaded."));
+      console.log(ACCENT.bold("  Dry run � nothing uploaded."));
       console.log("");
       return;
     }
@@ -3844,35 +3895,29 @@ program
     const spinner = oraFactory({ text: "  Syncing...", color: "blue" }).start();
 
     try {
-      const res = await fetch(syncUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${rawToken}`,
-        },
-        body: JSON.stringify(payload),
+      const result = await syncRunsToCloud({
+        cwd,
+        config,
+        projectName,
+        projectAudit: projectAudit ?? null,
+        memoryMarkdown: memoryMarkdown ?? "",
+        runs,
       });
 
-      const body = await res.json() as {
-        ok?: boolean;
-        syncedRuns?: number;
-        projectId?: string;
-        error?: string;
-        details?: string;
-        issues?: unknown;
-      };
-
-      if (!res.ok || !body.ok) {
+      if (result.status !== "synced") {
         spinner.fail("  Sync failed.");
         console.log("");
-        if (body.error) {
-          console.log(chalk.red("  Error: ") + chalk.white(body.error));
-          if (body.details) {
-            console.log(chalk.red("  Details: ") + chalk.white(body.details));
-          }
-          if (res.status === 401) {
-            console.log(DIM("  Token may be invalid or expired. Run: runtrim login"));
-          }
+        if (result.status === "skipped_no_token") {
+          console.log(chalk.yellow("  No CLI token found."));
+          console.log(DIM("  Run ") + GO_ACCENT("runtrim login") + DIM(" to connect cloud sync."));
+          console.log(DIM("  Local CLI still works without a token."));
+        } else if (result.status === "skipped_invalid_token") {
+          console.log(chalk.yellow("  Stored token format is invalid. Re-run: runtrim login"));
+        } else if (result.error) {
+          console.log(chalk.red("  Error: ") + chalk.white(result.error));
+          if (result.details) console.log(chalk.red("  Details: ") + chalk.white(result.details));
+        } else {
+          console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
         }
         console.log("");
         return;
@@ -3880,15 +3925,15 @@ program
 
       spinner.succeed("  Sync complete.");
       console.log("");
-      console.log(ACCENT.bold("  Synced") + chalk.white(`  ${body.syncedRuns ?? payload.runs.length} run${(body.syncedRuns ?? payload.runs.length) === 1 ? "" : "s"}`));
-      console.log(DIM("  Project ID ") + chalk.white(body.projectId ?? "—"));
+      const syncedRuns = result.syncedRuns ?? payload.runs.length;
+      console.log(ACCENT.bold("  Synced") + chalk.white(`  ${syncedRuns} run${syncedRuns === 1 ? "" : "s"}`));
       console.log("");
       console.log(DIM("  View at  ") + GO_ACCENT(`${apiBase}/app`));
       console.log("");
-    } catch (err) {
+    } catch {
       spinner.fail("  Network error. Check your connection.");
       console.log("");
     }
   });
-
 program.parse(process.argv);
+
