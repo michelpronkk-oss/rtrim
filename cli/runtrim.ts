@@ -3858,6 +3858,7 @@ program
         syncedRuns?: number;
         projectId?: string;
         error?: string;
+        details?: string;
         issues?: unknown;
       };
 
@@ -3866,6 +3867,9 @@ program
         console.log("");
         if (body.error) {
           console.log(chalk.red("  Error: ") + chalk.white(body.error));
+          if (body.details) {
+            console.log(chalk.red("  Details: ") + chalk.white(body.details));
+          }
           if (res.status === 401) {
             console.log(DIM("  Token may be invalid or expired. Run: runtrim login"));
           }
@@ -3888,4 +3892,3 @@ program
   });
 
 program.parse(process.argv);
-

@@ -7,6 +7,37 @@ import { getEntitlements, FREE_SYNC_RUN_LIMIT } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
+type SupabaseErrorShape = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+function hashProjectKey(input: string): string {
+  return createHash("sha256").update(input).digest("hex").slice(0, 24);
+}
+
+function pickNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function buildProjectKeyFallback(project: Record<string, unknown>): string {
+  const name = pickNonEmptyString(project.name) ?? "Untitled project";
+  const cwd = pickNonEmptyString(project.cwd);
+  const projectPath = pickNonEmptyString(project.path);
+  return hashProjectKey(`${name}::${cwd ?? projectPath ?? "unknown-path"}`);
+}
+
+function safeErrorDetails(error: unknown): string {
+  if (!error || typeof error !== "object") return "Unknown database error.";
+  const err = error as SupabaseErrorShape;
+  const parts = [err.code, err.message, err.details, err.hint].filter(
+    (part): part is string => typeof part === "string" && part.trim().length > 0
+  );
+  return parts.join(" | ") || "Unknown database error.";
+}
+
 function methodNotAllowed() {
   return NextResponse.json(
     { ok: false, error: "Method not allowed. Use POST for sync." },
@@ -42,6 +73,16 @@ export async function GET() {
 export async function POST(request: Request) {
   const env = validateSyncEnv();
 
+  if (!env.serviceRoleKey) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Server sync is not configured. Missing SUPABASE_SERVICE_ROLE_KEY.",
+      },
+      { status: 500 }
+    );
+  }
+
   if (!env.supabaseConfigured) {
     return NextResponse.json(
       { ok: false, error: "Supabase service configuration missing.", missing: env.missing },
@@ -51,10 +92,12 @@ export async function POST(request: Request) {
 
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
-    return NextResponse.json({ ok: false, error: "Supabase service configuration missing." }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: "Server sync is not configured. Missing SUPABASE_SERVICE_ROLE_KEY." },
+      { status: 500 }
+    );
   }
 
-  // ── Auth: accept Bearer token (user sync) or shared secret (legacy) ──────
   let userId: string | null = null;
 
   const authHeader = request.headers.get("authorization");
@@ -79,12 +122,10 @@ export async function POST(request: Request) {
 
     userId = profile.id as string;
 
-    // ── Plan gating for cloud sync ──────────────────────────────────────
     const plan = (profile.plan as string) || "free";
     const ents = getEntitlements(plan);
 
     if (ents.cloudSyncRunLimit !== null) {
-      // Free plan: count how many runs are already synced for this user
       const { count: existingCount } = await supabase
         .from("runtrim_runs")
         .select("id", { count: "exact", head: true })
@@ -103,14 +144,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fire-and-forget: update last used timestamp
     supabase
       .from("runtrim_profiles")
       .update({ cli_token_last_used_at: new Date().toISOString() })
       .eq("id", userId)
       .then(() => {});
   } else if (legacyToken) {
-    // Legacy shared-secret path (existing CLI before user tokens)
     const expected = env.syncSecret;
     if (!env.syncSecretConfigured || !expected) {
       return NextResponse.json({ ok: false, error: "Sync secret not configured." }, { status: 503 });
@@ -118,7 +157,6 @@ export async function POST(request: Request) {
     if (legacyToken !== expected) {
       return NextResponse.json({ ok: false, error: "Unauthorized sync token." }, { status: 401 });
     }
-    // userId stays null → runs stored without user association
   } else {
     return NextResponse.json(
       { ok: false, error: "Authorization required. Use Bearer token or x-runtrim-sync-token." },
@@ -126,7 +164,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // ── Parse payload ─────────────────────────────────────────────────────────
   const json = await request.json().catch(() => null);
   const parsed = SyncPayloadSchema.safeParse(json);
   if (!parsed.success) {
@@ -139,12 +176,26 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   const latestRun = payload.runs[0] ?? null;
   const totalTokens = payload.runs.reduce((sum, run) => sum + run.estimatedTokensTrimmed, 0);
-  const totalStd    = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsStandard, 0);
-  const totalExp    = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsExpensive, 0);
+  const totalStd = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsStandard, 0);
+  const totalExp = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsExpensive, 0);
+  const rawProject = (payload.project as unknown as Record<string, unknown>) ?? {};
+  const localProjectId =
+    pickNonEmptyString(rawProject.local_project_id) ??
+    pickNonEmptyString(rawProject.localProjectId) ??
+    pickNonEmptyString(rawProject.local_path_hash) ??
+    pickNonEmptyString(rawProject.localPathHash) ??
+    pickNonEmptyString(rawProject.id) ??
+    buildProjectKeyFallback(rawProject);
+  const localPathHash =
+    pickNonEmptyString(rawProject.local_path_hash) ??
+    pickNonEmptyString(rawProject.localPathHash) ??
+    localProjectId;
+  const projectName = pickNonEmptyString(rawProject.name) ?? "Untitled project";
+  const lastRunAt = latestRun?.evaluatedAt ?? latestRun?.createdAt ?? null;
 
-  const projectFields = {
-    local_project_id: payload.project.localProjectId,
-    name: payload.project.name,
+  const baseProjectFields: Record<string, unknown> = {
+    name: projectName,
+    local_path_hash: localPathHash,
     stack: payload.project.stack,
     package_manager: payload.project.packageManager,
     last_status: latestRun?.status ?? payload.memory.latestStatus,
@@ -154,57 +205,135 @@ export async function POST(request: Request) {
     estimated_tokens_trimmed: totalTokens,
     estimated_dollars_standard: Number(totalStd.toFixed(4)),
     estimated_dollars_expensive: Number(totalExp.toFixed(4)),
+    memory_enabled: rawProject.memory_enabled ?? rawProject.memoryEnabled,
+    last_run_at: lastRunAt,
     updated_at: new Date().toISOString(),
   };
+  const projectUpdateFields = Object.fromEntries(
+    Object.entries(baseProjectFields).filter(([, value]) => value !== undefined)
+  );
 
-  // ── Project upsert ────────────────────────────────────────────────────────
+  console.info("[/api/sync] project-create:start", {
+    userId,
+    projectPayloadKeys: Object.keys(rawProject),
+    localProjectId,
+    localPathHash,
+    projectUpdatePayloadKeys: Object.keys(projectUpdateFields),
+  });
+
   let projectId: string;
 
-  if (userId) {
-    // User-scoped: SELECT first, then INSERT or UPDATE
-    const { data: existing } = await supabase
-      .from("runtrim_projects")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("local_project_id", payload.project.localProjectId)
-      .maybeSingle();
-
-    if (existing?.id) {
-      await supabase.from("runtrim_projects").update(projectFields).eq("id", existing.id);
-      projectId = existing.id as string;
-    } else {
-      const { data: inserted, error: insertErr } = await supabase
+  const findExistingProject = async () => {
+    if (userId) {
+      const byId = await supabase
         .from("runtrim_projects")
-        .insert({ ...projectFields, user_id: userId })
         .select("id")
-        .single();
-
-      if (insertErr || !inserted?.id) {
-        return NextResponse.json(
-          { error: "Failed to create project.", detail: insertErr?.message },
-          { status: 500 }
-        );
-      }
-      projectId = inserted.id as string;
+        .eq("user_id", userId)
+        .eq("local_project_id", localProjectId)
+        .maybeSingle();
+      if (byId.error) return byId;
+      if (byId.data?.id) return byId;
+      return await supabase
+        .from("runtrim_projects")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("local_path_hash", localPathHash)
+        .maybeSingle();
     }
-  } else {
-    // Legacy: upsert by local_project_id only (no user isolation)
-    const { data: projectData, error: projectError } = await supabase
-      .from("runtrim_projects")
-      .upsert(projectFields, { onConflict: "local_project_id" })
-      .select("id")
-      .single();
 
-    if (projectError || !projectData?.id) {
+    const byId = await supabase
+      .from("runtrim_projects")
+      .select("id")
+      .eq("local_project_id", localProjectId)
+      .maybeSingle();
+    if (byId.error) return byId;
+    if (byId.data?.id) return byId;
+    return await supabase
+      .from("runtrim_projects")
+      .select("id")
+      .eq("local_path_hash", localPathHash)
+      .maybeSingle();
+  };
+
+  const existing = await findExistingProject();
+  if (existing.error) {
+    const err = existing.error as SupabaseErrorShape;
+    const details = safeErrorDetails(existing.error);
+    console.error("[/api/sync] project-create:find-error", {
+      userId,
+      localProjectId,
+      localPathHash,
+      code: err.code,
+      message: err.message,
+      details: err.details,
+      hint: err.hint,
+    });
+    return NextResponse.json(
+      { ok: false, error: "Failed to create project", details },
+      { status: 500 }
+    );
+  }
+
+  if (existing.data?.id) {
+    const { error: updateError } = await supabase
+      .from("runtrim_projects")
+      .update(projectUpdateFields)
+      .eq("id", existing.data.id);
+    if (updateError) {
+      const err = updateError as SupabaseErrorShape;
+      const details = safeErrorDetails(updateError);
+      console.error("[/api/sync] project-create:update-error", {
+        userId,
+        projectUpdatePayloadKeys: Object.keys(projectUpdateFields),
+        localProjectId,
+        localPathHash,
+        code: err.code,
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+      });
       return NextResponse.json(
-        { error: "Failed to upsert project.", detail: projectError?.message },
+        { ok: false, error: "Failed to create project", details },
         { status: 500 }
       );
     }
-    projectId = projectData.id as string;
+    projectId = existing.data.id as string;
+  } else {
+    const projectInsertFields = Object.fromEntries(
+      Object.entries({
+        user_id: userId,
+        local_project_id: localProjectId,
+        local_path_hash: localPathHash,
+        ...projectUpdateFields,
+      }).filter(([, value]) => value !== undefined && value !== null)
+    );
+    const { data: inserted, error: insertError } = await supabase
+      .from("runtrim_projects")
+      .insert(projectInsertFields)
+      .select("id")
+      .single();
+
+    if (insertError || !inserted?.id) {
+      const err = (insertError ?? {}) as SupabaseErrorShape;
+      const details = safeErrorDetails(insertError);
+      console.error("[/api/sync] project-create:insert-error", {
+        userId,
+        projectInsertPayloadKeys: Object.keys(projectInsertFields),
+        localProjectId,
+        localPathHash,
+        code: err.code,
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+      });
+      return NextResponse.json(
+        { ok: false, error: "Failed to create project", details },
+        { status: 500 }
+      );
+    }
+    projectId = inserted.id as string;
   }
 
-  // ── Memory upsert ─────────────────────────────────────────────────────────
   const { error: memoryError } = await supabase.from("runtrim_project_memory").upsert(
     {
       project_id: projectId,
@@ -226,7 +355,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // ── Runs upsert ───────────────────────────────────────────────────────────
   const runRows = payload.runs.map((run) => {
     const status = (run.status || "").toLowerCase();
     const resolvedNextSafePrompt =
@@ -260,16 +388,15 @@ export async function POST(request: Request) {
       latest_prompt: run.latestPrompt,
       continuation_prompt: run.continuationPrompt,
       synced_at: new Date().toISOString(),
-      // Bridge Mode fields (only set when present)
-      ...(run.goal                !== undefined ? { goal: run.goal } : {}),
-      ...(run.allowedScope        !== undefined ? { allowed_scope: run.allowedScope } : {}),
-      ...(run.forbiddenScope      !== undefined ? { forbidden_scope: run.forbiddenScope } : {}),
-      ...(run.stopConditions      !== undefined ? { stop_conditions: run.stopConditions } : {}),
-      ...(run.memoryUsed          !== undefined ? { memory_used: run.memoryUsed } : {}),
-      ...(run.memorySummary       !== undefined ? { memory_summary: run.memorySummary } : {}),
-      ...(run.tokenBudget         !== undefined ? { token_budget: run.tokenBudget } : {}),
-      ...(run.scopeDriftStatus    !== undefined ? { scope_drift_status: run.scopeDriftStatus } : {}),
-      ...(run.reportSummary       !== undefined ? { report_summary: run.reportSummary } : {}),
+      ...(run.goal !== undefined ? { goal: run.goal } : {}),
+      ...(run.allowedScope !== undefined ? { allowed_scope: run.allowedScope } : {}),
+      ...(run.forbiddenScope !== undefined ? { forbidden_scope: run.forbiddenScope } : {}),
+      ...(run.stopConditions !== undefined ? { stop_conditions: run.stopConditions } : {}),
+      ...(run.memoryUsed !== undefined ? { memory_used: run.memoryUsed } : {}),
+      ...(run.memorySummary !== undefined ? { memory_summary: run.memorySummary } : {}),
+      ...(run.tokenBudget !== undefined ? { token_budget: run.tokenBudget } : {}),
+      ...(run.scopeDriftStatus !== undefined ? { scope_drift_status: run.scopeDriftStatus } : {}),
+      ...(run.reportSummary !== undefined ? { report_summary: run.reportSummary } : {}),
       ...(userId ? { user_id: userId } : {}),
     };
   });
