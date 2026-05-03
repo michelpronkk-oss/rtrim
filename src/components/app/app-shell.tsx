@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   LayoutGrid,
   FolderKanban,
@@ -9,6 +10,8 @@ import {
   Download,
   Zap,
   Link2,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/app/sign-out-button";
@@ -29,6 +32,7 @@ interface AppShellProps {
 
 export function AppShell({ children, userEmail }: AppShellProps) {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#07071A]">
@@ -102,34 +106,65 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         {/* Main content */}
         <div className="min-w-0 flex-1 bg-[#0A0A1F]">
           {/* Mobile nav */}
-          <header className="flex items-center justify-between border-b border-white/8 bg-[#08081E]/90 px-5 py-3.5 backdrop-blur md:hidden">
-            <div className="flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.svg" alt="" className="size-5 rounded" />
-              <span className="text-sm font-bold text-[#EDEEFF]">RunTrim</span>
+          <header className="relative border-b border-white/8 bg-[#08081E]/90 backdrop-blur md:hidden">
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon.svg" alt="" className="size-5 shrink-0 rounded" />
+                <span className="text-sm font-bold text-[#EDEEFF]">RunTrim</span>
+                <span className="shrink-0 rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#7F84AE]">
+                  free
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-label="Toggle navigation menu"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-app-nav"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+                className="inline-flex size-8 items-center justify-center rounded-md border border-white/10 bg-[#0E1027] text-[#AAB0D2] transition-colors hover:text-[#EDEEFF]"
+              >
+                {mobileMenuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
+              </button>
             </div>
-            <nav className="flex items-center gap-0.5">
-              {NAV_ITEMS.map((item) => {
-                const isActive =
-                  item.href === "/app"
-                    ? pathname === "/app"
-                    : pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "rounded px-2.5 py-1.5 text-[12px] font-medium transition-colors",
-                      isActive
-                        ? "bg-[#7C6DFA]/12 text-[#C4B8FF]"
-                        : "text-[#4D5070] hover:text-[#9699BE]"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
+
+            {mobileMenuOpen && (
+              <div id="mobile-app-nav" className="border-t border-white/8 bg-[#090A20] px-3 pb-3 pt-2">
+                <nav className="space-y-1">
+                  {NAV_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    const isActive =
+                      item.href === "/app"
+                        ? pathname === "/app"
+                        : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
+                          isActive
+                            ? "border border-[#7C6DFA]/25 bg-[#7C6DFA]/12 text-[#D3CBFF]"
+                            : "border border-transparent text-[#8D92B6] hover:border-white/8 hover:bg-white/5 hover:text-[#C3C6E8]"
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "size-4 shrink-0",
+                            isActive ? "text-[#B2A7FF]" : "text-[#6A6F96]"
+                          )}
+                        />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+                <div className="mt-2 border-t border-white/8 pt-2">
+                  <SignOutButton />
+                </div>
+              </div>
+            )}
           </header>
 
           <main className="px-5 py-7 sm:px-8 sm:py-10 xl:px-10">{children}</main>
