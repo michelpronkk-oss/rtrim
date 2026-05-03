@@ -65,9 +65,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function DataRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-white/5 py-2.5 last:border-0">
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 border-b border-white/5 py-2.5 last:border-0 sm:flex-nowrap">
       <span className="shrink-0 text-[12px] text-[#5E6A88]">{label}</span>
-      <span className={`text-right text-[12px] text-[#C8D4DF] ${mono ? "font-mono" : ""}`}>
+      <span className={`min-w-0 break-words text-[12px] text-[#C8D4DF] sm:text-right ${mono ? "font-mono" : ""}`}>
         {value ?? <span className="text-[#2E3554]">—</span>}
       </span>
     </div>
@@ -156,7 +156,7 @@ export default async function RunDetailPage({
   });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5">
 
       {/* Back + header */}
       <div>
@@ -167,23 +167,23 @@ export default async function RunDetailPage({
           <ArrowLeft className="size-3.5" />
           Back to runs
         </Link>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
             <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Run report</p>
-            <h1 className="mt-1 max-w-[600px] text-[1.3rem] font-bold leading-[1.2] tracking-[-0.02em] text-[#EDEEFF]">
-              {r.task ?? "Untitled run"}
-            </h1>
-            {projectName && (
-              <p className="mt-1 font-mono text-[12px] text-[#4D5070]">{projectName}</p>
+            {riskLevel && (
+              <div className="flex items-center gap-1.5 rounded border border-white/10 bg-[#0C0C20] px-2.5 py-1">
+                <Shield className={`size-3 ${riskColor}`} />
+                <span className={`font-mono text-[11px] font-semibold uppercase tracking-[0.06em] ${riskColor}`}>
+                  {riskLevel} risk
+                </span>
+              </div>
             )}
           </div>
-          {riskLevel && (
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0C0C20] px-4 py-2">
-              <Shield className={`size-4 ${riskColor}`} />
-              <span className={`font-mono text-[13px] font-semibold uppercase tracking-[0.06em] ${riskColor}`}>
-                {riskLevel} risk
-              </span>
-            </div>
+          <h1 className="mt-1.5 text-[1.25rem] font-bold leading-[1.25] tracking-[-0.02em] text-[#EDEEFF] sm:text-[1.4rem]">
+            {r.task ?? "Untitled run"}
+          </h1>
+          {projectName && (
+            <p className="mt-1 font-mono text-[12px] text-[#4D5070]">{projectName}</p>
           )}
         </div>
       </div>

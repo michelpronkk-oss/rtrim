@@ -36,4 +36,4 @@ RunTrim checks changed files, detects drift, scores risk, and saves the run repo
 6. After editing, tell the user to run: `runtrim finish`
 
 ---
-Protocol: runtrim init. Updated: 2026-05-03T20:06:27.902Z
+Protocol: runtrim init. Updated: 2026-05-03T23:28:33.971Z

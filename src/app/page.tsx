@@ -141,7 +141,7 @@ export default function Home() {
           </div>
           <nav className="hidden items-center gap-8 md:flex">
             <Link href="/how-it-works" data-rt-event="how_it_works_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">How it works</Link>
-            <Link href="#pricing" data-rt-event="pricing_cta_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Pricing</Link>
+            <Link href="/plans" data-rt-event="plans_nav_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Plans</Link>
             <Link href="/app/install" data-rt-event="docs_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Docs</Link>
           </nav>
           <Link
@@ -233,24 +233,24 @@ export default function Home() {
               <div className="rt-ai-pill mb-8 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
                 <span className="rt-ai-pill-dot size-1.5 rounded-full bg-[#7C6DFA]" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]">
-                  RunTrim Agent
+                  Control layer for AI coding agents
                 </span>
               </div>
             </MotionFade>
 
             <MotionFade delay={0.06}>
               <h1 className="mx-auto max-w-[860px] text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:text-[3.4rem] lg:text-[4.5rem] xl:text-[5rem]">
-                Run AI coding tasks{" "}
-                <span className="brand-gradient-text">with guardrails</span>.
+                Run AI coding agents with{" "}
+                <span className="brand-gradient-text">memory, scope, and control.</span>
               </h1>
             </MotionFade>
 
             <MotionFade delay={0.12}>
               <p className="mx-auto mt-6 max-w-[400px] text-[0.98rem] leading-[1.75] text-[#7F8CA3] sm:hidden">
-                Scoped contracts, reusable memory, and guarded execution for every AI coding run.
+                Before any agent touches your code, RunTrim gives the run memory, boundaries, and a finish check.
               </p>
               <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
-                RunTrim turns prompts into controlled AI coding runs with scoped contracts, reusable memory, token control, risk checks, and clean continuation.
+                RunTrim installs a protocol into your repo, creates scoped contracts before Claude, Codex, or Cursor touches code, then checks drift, risk, changed files, and continuation after every run.
               </p>
             </MotionFade>
 
@@ -269,18 +269,24 @@ export default function Home() {
                   <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
                 </Link>
                 <SmartCta
-                  label="Join Agent Early Access"
+                  label="Request early access"
                   variant="pro"
                   className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-6 py-3 text-[15px] text-[#A3AEBD] backdrop-blur-sm transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
                   openAppLabel="Open app"
                   openAppClassName="inline-flex items-center gap-2 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-6 py-3 text-[15px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/18"
                 />
+                <Link
+                  href="/plans"
+                  className="text-[14px] text-[#4A5170] underline-offset-2 transition-colors hover:text-[#9699BE]"
+                >
+                  See plans
+                </Link>
               </div>
             </MotionFade>
 
             <MotionFade delay={0.20}>
               <p className="mt-5 font-mono text-[11px] text-[#4A5170]">
-                Free CLI is live. RunTrim Agent is entering early access.
+                Free local CLI is live. Pro, Builder, and Team are in early access.
               </p>
             </MotionFade>
 
@@ -340,7 +346,7 @@ export default function Home() {
           {/* Header — lean, no subheadline */}
           <div className="mb-12">
             <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">
-              01 / How it works
+              01 / The flow
             </p>
             <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
               Install the protocol.<br className="hidden sm:block" /> Run any agent through it.
@@ -416,14 +422,59 @@ export default function Home() {
 
       <BeforeAfterSection />
 
+      {/* Benefits */}
+      <section className="border-t border-white/8 bg-[#08081C]">
+        <div className="mx-auto max-w-6xl px-6 py-24">
+          <div className="mb-12">
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">02 / Why RunTrim</p>
+            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
+              Why run agents through RunTrim?
+            </h2>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                title: "Faster agent runs",
+                body: "Agents start with the task, memory, allowed scope, and stop rules. Less searching. Less guessing. Faster execution.",
+              },
+              {
+                title: "Lower token burn",
+                body: "RunTrim reduces repeated context, prevents irrelevant exploration, and keeps each run focused.",
+              },
+              {
+                title: "Stricter output",
+                body: "Every task gets a scoped contract, success criteria, forbidden areas, and a finish check.",
+              },
+              {
+                title: "Less breakage",
+                body: "Auth, billing, env files, database, middleware, and webhooks can be marked as protected before the agent edits.",
+              },
+              {
+                title: "Clean continuation",
+                body: "Every run ends with a report, changed files, proof gaps, and the next safe action.",
+              },
+              {
+                title: "Cloud run history",
+                body: "Connected users get synced runs, dashboard reports, project history, memory, and continuation context.",
+              },
+            ].map(({ title, body }) => (
+              <div key={title} className="rounded-xl border border-white/8 bg-[#0C0C20] px-5 py-5">
+                <p className="text-[14px] font-semibold text-[#EDEEFF]">{title}</p>
+                <p className="mt-2 text-[13px] leading-[1.65] text-[#5E6A88]">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Free CLI */}
-      <section id="free-cli" className="border-t border-white/8 bg-[#08081C]">
+      <section id="free-cli" className="border-t border-white/8 bg-[#07071A]">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:items-start">
 
             {/* Left */}
             <div>
-              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">02 / Free CLI</p>
+              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">03 / Free CLI</p>
               <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
                 Free CLI is live.
               </h2>
@@ -614,14 +665,22 @@ export default function Home() {
       {/* Pricing */}
       <section id="pricing" className="border-t border-white/8 bg-[#08081C]">
         <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mb-12">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">06 / Pricing</p>
-            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Start local. Scale when it matters.
-            </h2>
-            <p className="mt-4 max-w-lg text-[14px] leading-[1.75] text-[#5E6A88]">
-              Free CLI works without an account. Pro, Builder, and Team are entering early access with RunTrim Agent.
-            </p>
+          <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">06 / Plans</p>
+              <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
+                Start local. Scale when it matters.
+              </h2>
+              <p className="mt-4 max-w-lg text-[14px] leading-[1.75] text-[#5E6A88]">
+                Free CLI works without an account. Pro, Builder, and Team are request-access plans for cloud history, memory, reports, and team control.
+              </p>
+            </div>
+            <Link
+              href="/plans"
+              className="shrink-0 rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+            >
+              See full plans
+            </Link>
           </div>
 
           {/* Mobile pricing cards */}

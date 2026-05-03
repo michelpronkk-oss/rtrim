@@ -40,18 +40,34 @@ function runSortTime(run: RunRow): number {
   );
 }
 
+function runDate(run: RunRow): string {
+  const when =
+    toTimeMs(run.evaluated_at_local) ??
+    toTimeMs(run.created_at_local) ??
+    toTimeMs(run.created_at) ??
+    toTimeMs(run.synced_at);
+  if (!when) return "-";
+  return new Date(when).toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 const STATUS_BADGE: Record<string, string> = {
   guarded: "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
-  passed: "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
+  passed:  "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
   partial: "border-[#F0BF72]/22 bg-[#F0BF72]/8 text-[#F2C88D]",
-  failed: "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
-  split: "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
+  failed:  "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
+  split:   "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
 };
 
 const RISK_BADGE: Record<string, string> = {
-  low: "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
+  low:    "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
   medium: "border-[#F0BF72]/22 bg-[#F0BF72]/8 text-[#F2C88D]",
-  high: "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
+  high:   "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
 };
 
 function formatStatusLabel(value: string | null): string | null {
@@ -67,18 +83,16 @@ function Badge({ label, kind }: { label: string | null; kind: "status" | "risk" 
   const map = kind === "status" ? STATUS_BADGE : RISK_BADGE;
   const cls = map[label.toLowerCase()] ?? "border-white/10 text-[#9699BE]";
   return (
-    <span
-      className={`inline-flex shrink-0 whitespace-nowrap items-center rounded-md border px-2 py-1 font-mono text-[10px] uppercase leading-none tracking-[0.08em] ${cls}`}
-    >
+    <span className={`inline-flex shrink-0 items-center rounded border px-2 py-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.08em] ${cls}`}>
       {label}
     </span>
   );
 }
 
 function formatTokens(n: number | null) {
-  if (!n) return "-";
+  if (!n) return null;
   if (n >= 1_000_000) return `~${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `~${(n / 1_000).toFixed(0)}k`;
+  if (n >= 1_000)     return `~${(n / 1_000).toFixed(0)}k`;
   return String(n);
 }
 
@@ -117,29 +131,28 @@ export default async function RunsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[92rem] space-y-8 px-2 xl:px-4">
+    <div className="mx-auto max-w-[92rem] space-y-6">
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Runs</p>
-        <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">
+        <h1 className="mt-1 text-[1.5rem] font-bold tracking-[-0.03em] text-[#EDEEFF] sm:text-[1.6rem]">
           Run history
         </h1>
       </div>
 
       {runs.length === 0 ? (
-        <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-6 py-12 text-center">
-          <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
+        <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-5 py-10 text-center sm:px-6 sm:py-12">
+          <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
             <History className="size-5 text-[#9E91FF]/70" />
           </div>
           <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
             No synced runs yet.
           </h2>
-          <p className="mx-auto mt-2 max-w-[440px] text-[13px] leading-[1.7] text-[#5E6A88]">
-            Every synced run will include the prompt, scoped contract, memory used, risk score,
-            token savings, and continuation pack. Sync opens for early access plans.
+          <p className="mx-auto mt-2 max-w-[400px] text-[13px] leading-[1.7] text-[#5E6A88]">
+            Every synced run includes the prompt, contract, memory, risk score, token savings, and continuation pack. Sync opens for early access plans.
           </p>
           <Link
             href="/app/early-access"
-            className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
           >
             Join early access
             <ArrowRight className="size-3.5" />
@@ -147,80 +160,80 @@ export default async function RunsPage() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090A1A]">
-          <div className="border-b border-white/10 bg-[#0E1024]/90 px-6 py-3">
+          <div className="border-b border-white/10 bg-[#0E1024]/90 px-4 py-3 sm:px-6">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#3F4868]">
               Recent guarded runs
             </p>
           </div>
 
+          {/* Desktop table header — hidden on mobile */}
           <div className="hidden grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto] items-center gap-x-6 border-b border-white/8 bg-[#0C0E21] px-6 py-3 md:grid">
             {["Task", "Project", "Status", "Risk", "Tokens saved", "Date", ""].map((h) => (
-              <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4460]">
-                {h}
-              </p>
+              <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4460]">{h}</p>
             ))}
           </div>
 
-          {runs.map((run, i) => (
-            <Link
-              key={run.id}
-              href={`/app/runs/${run.id}`}
-              className={`group block px-4 py-4 transition-colors hover:bg-white/[0.02] md:grid md:grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto] md:items-center md:gap-x-6 md:px-6 md:py-3 ${
-                i < runs.length - 1 ? "border-b border-white/6" : ""
-              }`}
-              style={{ background: i % 2 === 0 ? "#0B0C1F" : "#090A1B" }}
-            >
-              <p className="truncate text-[13px] font-medium leading-6 text-[#EDEEFF] md:pr-2">
-                {run.task ?? "Untitled run"}
-              </p>
+          {runs.map((run, i) => {
+            const tokens       = formatTokens(run.estimated_tokens_trimmed);
+            const dateStr      = runDate(run);
+            const projectName  = run.project_id ? (projectMap[run.project_id] ?? null) : null;
+            const statusLabel  = formatStatusLabel(run.status);
+            const riskLabel    = run.risk_after ?? run.risk_before;
+            const borderClass  = i < runs.length - 1 ? "border-b border-white/6" : "";
+            const bgStyle      = { background: i % 2 === 0 ? "#0B0C1F" : "#090A1B" };
 
-              <div className="mt-2 grid grid-cols-2 gap-3 text-[11px] md:mt-0 md:contents">
-                <p className="font-mono text-[11px] text-[#4D5070] md:text-[12px]">
-                  <span className="mr-1 text-[#3A4460] md:hidden">Project</span>
-                  {run.project_id ? (projectMap[run.project_id] ?? "-") : "-"}
-                </p>
+            return (
+              <Link
+                key={run.id}
+                href={`/app/runs/${run.id}`}
+                className={`group block transition-colors hover:bg-white/[0.025] ${borderClass}`}
+                style={bgStyle}
+              >
+                {/* ── Mobile card (hidden md+) ─────────────────── */}
+                <div className="px-4 py-4 md:hidden">
+                  {/* Task title — 2 lines max */}
+                  <p className="line-clamp-2 text-[14px] font-medium leading-snug text-[#EDEEFF]">
+                    {run.task ?? "Untitled run"}
+                  </p>
 
-                <div className="flex items-center gap-2 md:justify-start md:whitespace-nowrap">
-                  <span className="text-[#3A4460] md:hidden">Status</span>
-                  <Badge label={formatStatusLabel(run.status)} kind="status" />
+                  {/* Badges + project */}
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    <Badge label={statusLabel} kind="status" />
+                    <Badge label={riskLabel}    kind="risk"   />
+                    {projectName && (
+                      <span className="font-mono text-[10px] text-[#4D5070]">{projectName}</span>
+                    )}
+                  </div>
+
+                  {/* Date + tokens + arrow */}
+                  <div className="mt-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="font-mono text-[11px] text-[#5B638A]">{dateStr}</p>
+                      {tokens && (
+                        <p className="font-mono text-[11px] text-[#7A80A0]">{tokens} tokens</p>
+                      )}
+                    </div>
+                    <ArrowRight className="size-4 shrink-0 text-[#4D5070] transition-colors group-hover:text-[#7680AA]" />
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 md:justify-start">
-                  <span className="text-[#3A4460] md:hidden">Risk</span>
-                  <Badge label={run.risk_after ?? run.risk_before} kind="risk" />
-                </div>
-
-                <p className="font-mono text-[11px] text-[#A5ABC6] md:text-[12px]">
-                  <span className="mr-1 text-[#3A4460] md:hidden">Tokens</span>
-                  {formatTokens(run.estimated_tokens_trimmed)}
-                </p>
-
-                <p className="font-mono text-[11px] text-[#5B638A] md:text-[11px]">
-                  <span className="mr-1 text-[#3A4460] md:hidden">Date</span>
-                  {(() => {
-                    const when =
-                      toTimeMs(run.evaluated_at_local) ??
-                      toTimeMs(run.created_at_local) ??
-                      toTimeMs(run.created_at) ??
-                      toTimeMs(run.synced_at);
-                    return when
-                      ? new Date(when).toLocaleString([], {
-                          month: "short",
-                          day: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "-";
-                  })()}
-                </p>
-
-                <div className="flex items-center justify-end md:justify-center">
+                {/* ── Desktop table row (hidden mobile) ───────── */}
+                <div className="hidden items-center gap-x-6 px-6 py-3 md:grid md:grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto]">
+                  <p className="truncate pr-2 text-[13px] font-medium text-[#EDEEFF]">
+                    {run.task ?? "Untitled run"}
+                  </p>
+                  <p className="font-mono text-[11px] text-[#4D5070]">
+                    {projectName ?? "-"}
+                  </p>
+                  <Badge label={statusLabel} kind="status" />
+                  <Badge label={riskLabel}   kind="risk"   />
+                  <p className="font-mono text-[12px] text-[#A5ABC6]">{tokens ?? "-"}</p>
+                  <p className="font-mono text-[11px] text-[#5B638A]">{dateStr}</p>
                   <ArrowRight className="size-3.5 text-[#4D5070] transition-colors group-hover:text-[#7680AA]" />
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
