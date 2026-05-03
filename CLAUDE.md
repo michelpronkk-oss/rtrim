@@ -7,3 +7,11 @@ Do not touch forbidden files or unrelated systems.
 If scope expands, stop and ask for a new RunTrim run.
 After editing, run: runtrim finish
 <!-- RUNTRIM_BRIDGE_END -->
+
+<!-- RUNTRIM_PROTOCOL_START -->
+This repo uses RunTrim as the guarded AI coding protocol.
+Before editing code, read RUNTRIM.md.
+Start every task with: runtrim go "<task>"
+Stay inside .runtrim/contracts/latest.md.
+After edits, ask the user to run: runtrim finish
+<!-- RUNTRIM_PROTOCOL_END -->

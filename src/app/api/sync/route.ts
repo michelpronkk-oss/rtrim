@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { SyncPayloadSchema } from "@/lib/runtrim-sync";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { validateSyncEnv } from "@/lib/sync-env";
+import { getEntitlements, FREE_SYNC_RUN_LIMIT } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
     const tokenHash = createHash("sha256").update(bearerToken).digest("hex");
     const { data: profile } = await supabase
       .from("runtrim_profiles")
-      .select("id")
+      .select("id, plan")
       .eq("cli_token_hash", tokenHash)
       .maybeSingle();
 
@@ -77,6 +78,30 @@ export async function POST(request: Request) {
     }
 
     userId = profile.id as string;
+
+    // ── Plan gating for cloud sync ──────────────────────────────────────
+    const plan = (profile.plan as string) || "free";
+    const ents = getEntitlements(plan);
+
+    if (ents.cloudSyncRunLimit !== null) {
+      // Free plan: count how many runs are already synced for this user
+      const { count: existingCount } = await supabase
+        .from("runtrim_runs")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      if ((existingCount ?? 0) >= FREE_SYNC_RUN_LIMIT) {
+        return NextResponse.json(
+          {
+            ok: false,
+            code: "sync_limit_reached",
+            error: `Upgrade to Pro to sync unlimited RunTrim Bridge sessions. Free plan includes ${FREE_SYNC_RUN_LIMIT} synced runs during beta.`,
+            upgradeUrl: "https://www.runtrim.com/pricing",
+          },
+          { status: 402 }
+        );
+      }
+    }
 
     // Fire-and-forget: update last used timestamp
     supabase

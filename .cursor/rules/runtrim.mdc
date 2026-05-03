@@ -1,0 +1,25 @@
+---
+description: RunTrim guarded AI coding protocol
+alwaysApply: true
+---
+
+# RunTrim Protocol
+
+This repo uses RunTrim as the guarded AI coding control layer.
+
+## Before editing any code
+
+1. Read `RUNTRIM.md` in the repo root.
+2. If `.runtrim/contracts/latest.md` exists, read the active contract.
+
+## Rules
+
+- Stay inside the allowed scope defined in the contract.
+- Do not touch forbidden files or unrelated systems.
+- Stop immediately if scope must expand.
+- Do not read or write `.env` files.
+- Do not refactor outside the task scope.
+
+## After editing
+
+Tell the user to run: `runtrim finish`

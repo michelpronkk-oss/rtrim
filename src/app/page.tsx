@@ -46,30 +46,41 @@ const AGENT_MODES = [
   { cmd: "runtrim agent set cursor",  note: "# Cursor" },
 ];
 
-const HOW_IT_WORKS = [
+const PROTOCOL_STEPS = [
   {
-    step: "01",
-    title: "Scope the task",
-    body: "Every prompt gets a scoped contract before the agent runs. Allowed files, forbidden systems, and stop conditions are defined before a single token is spent.",
-    color: "#7C6DFA",
+    n:      "00",
+    cmd:    "runtrim init",
+    label:  "Initialize",
+    note:   "Installs the project protocol, memory structure, and agent instruction files.",
+    accent: "#7C6DFA",
   },
   {
-    step: "02",
-    title: "Load memory",
-    body: "Reusable project memory gives the agent context without starting from zero. Project structure, rules, and past decisions load automatically.",
-    color: "#5B8BFF",
+    n:      "01",
+    cmd:    'runtrim go "fix checkout bug"',
+    label:  "Scope the run",
+    note:   "Creates a scoped contract, loads memory, and generates the guarded prompt.",
+    accent: "#5B8BFF",
   },
   {
-    step: "03",
-    title: "Control the run",
-    body: "Token budgets, allowed files, forbidden areas, and drift checks keep the run focused. Risk is scored before changes are applied.",
-    color: "#9966FF",
+    n:      "02",
+    cmd:    null,
+    label:  "Use your agent",
+    note:   "Paste the prompt into Claude Code, Codex, Cursor, or any coding agent.",
+    accent: "#9966FF",
   },
   {
-    step: "04",
-    title: "Continue cleanly",
-    body: "Run history and continuation packs preserve what worked, what changed, and what comes next. No more rebuilding context from scratch.",
-    color: "#0DDB9E",
+    n:      "03",
+    cmd:    "runtrim finish",
+    label:  "Close the loop",
+    note:   "Checks changed files, detects drift, scores risk, and saves the report.",
+    accent: "#0DDB9E",
+  },
+  {
+    n:      "04",
+    cmd:    null,
+    label:  "Continue cleanly",
+    note:   "Report, memory, and continuation pack saved locally and synced to dashboard.",
+    accent: "#4DE8B0",
   },
 ];
 
@@ -323,38 +334,79 @@ export default function Home() {
       </section>
 
       {/* How RunTrim works */}
-      <section className="border-t border-white/8 bg-[#07071A]">
+      <section id="how-it-works" className="border-t border-white/8 bg-[#07071A]">
         <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mb-14">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">01 / How it works</p>
-            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Every run is guarded.
-            </h2>
-            <p className="mt-4 max-w-[500px] text-[14px] leading-[1.75] text-[#5E6A88]">
-              Scope is set before execution. Memory loads automatically. Runs stay within their contract.
+
+          {/* Header — lean, no subheadline */}
+          <div className="mb-12">
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">
+              01 / How it works
             </p>
+            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
+              Install the protocol.<br className="hidden sm:block" /> Run any agent through it.
+            </h2>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {HOW_IT_WORKS.map(({ step, title, body, color }) => (
+
+          {/* Protocol table */}
+          <div className="overflow-hidden rounded-xl border border-white/7">
+            {PROTOCOL_STEPS.map(({ n, cmd, label, note, accent }, i) => (
               <div
-                key={step}
-                className="group rounded-xl border border-white/7 bg-[#0C0C20] p-6 transition-colors hover:border-white/12"
+                key={n}
+                className={`grid items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.018] sm:grid-cols-[2.5rem_1fr_1fr] sm:gap-8 sm:px-6 sm:py-5 ${
+                  i < PROTOCOL_STEPS.length - 1 ? "border-b border-white/6" : ""
+                }`}
+                style={{ background: i % 2 === 0 ? "#0C0C20" : "#0A0A1C" }}
               >
-                <div className="mb-5 flex items-center gap-3">
-                  <span className="font-mono text-[11px] font-bold" style={{ color: `${color}99` }}>
-                    {step}
+                {/* Step number */}
+                <span
+                  className="hidden font-mono text-[11px] font-bold sm:block"
+                  style={{ color: `${accent}60` }}
+                >
+                  {n}
+                </span>
+
+                {/* Command or label */}
+                <div className="flex items-center gap-3">
+                  <span
+                    className="flex-shrink-0 font-mono text-[11px] font-bold sm:hidden"
+                    style={{ color: `${accent}60` }}
+                  >
+                    {n}
                   </span>
-                  <div className="h-px flex-1 bg-white/6" />
+                  {cmd ? (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="font-mono text-[11px] text-[#3A4460]">$</span>
+                      <code
+                        className="truncate font-mono text-[13px] font-semibold"
+                        style={{ color: accent }}
+                      >
+                        {cmd}
+                      </code>
+                    </div>
+                  ) : (
+                    <span className="text-[14px] font-semibold text-[#DDE0F2]">{label}</span>
+                  )}
                 </div>
-                <p className="mb-2 text-[15px] font-semibold tracking-[-0.01em] text-[#DDE0F2]">{title}</p>
-                <p className="text-[13px] leading-[1.7] text-[#5E6A88]">{body}</p>
+
+                {/* One-liner note */}
+                <p className="pl-6 text-[13px] leading-[1.6] text-[#5E6A88] sm:pl-0">{note}</p>
               </div>
             ))}
           </div>
-          <div className="mt-8 flex justify-center">
+
+          {/* CTAs — clean, centered */}
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/app/install"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
+              style={{ boxShadow: "0 4px 14px rgba(124,109,250,0.28)" }}
+            >
+              Install CLI
+              <ArrowRight className="size-3.5" />
+            </Link>
             <Link
               href="/how-it-works"
-              className="inline-flex rounded-md border border-white/10 px-4 py-2 text-[12px] font-medium text-[#97A3BA] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-5 py-2.5 text-[13px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
             >
               See the full flow
             </Link>

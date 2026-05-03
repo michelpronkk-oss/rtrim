@@ -34,7 +34,12 @@
       "Bash(node dist-cli/runtrim.cjs go --help)",
       "Bash(node dist-cli/runtrim.cjs finish --help)",
       "Bash(node dist-cli/runtrim.cjs go \"test bridge mode\" --no-clipboard --print --no-sync)",
-      "Bash(node dist-cli/runtrim.cjs finish --no-sync)"
+      "Bash(node dist-cli/runtrim.cjs finish --no-sync)",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\api\\\\cli\" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
+      "Bash(node dist-cli/runtrim.cjs init)",
+      "Bash(node dist-cli/runtrim.cjs init --refresh)",
+      "Bash(node dist-cli/runtrim.cjs init --refresh --agent-files)",
+      "Bash(node dist-cli/runtrim.cjs init --refresh --cursor)"
     ]
   }
 }

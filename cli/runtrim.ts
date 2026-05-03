@@ -893,54 +893,394 @@ program
     }
   });
 
+// ── Protocol installer helpers ────────────────────────────────────────────────
+
+const PROTOCOL_BLOCK_START = "<!-- RUNTRIM_PROTOCOL_START -->";
+const PROTOCOL_BLOCK_END   = "<!-- RUNTRIM_PROTOCOL_END -->";
+
+const PROTOCOL_POINTER_BLOCK = `
+${PROTOCOL_BLOCK_START}
+This repo uses RunTrim as the guarded AI coding protocol.
+Before editing code, read RUNTRIM.md.
+Start every task with: runtrim go "<task>"
+Stay inside .runtrim/contracts/latest.md.
+After edits, ask the user to run: runtrim finish
+${PROTOCOL_BLOCK_END}
+`;
+
+function upsertProtocolBlock(filePath: string): "created" | "updated" | "unchanged" | "skipped" {
+  if (!fs.existsSync(filePath)) return "skipped";
+  const content = fs.readFileSync(filePath, "utf-8");
+  const startIdx = content.indexOf(PROTOCOL_BLOCK_START);
+  const endIdx   = content.indexOf(PROTOCOL_BLOCK_END);
+
+  if (startIdx !== -1 && endIdx !== -1) {
+    // Replace existing block
+    const before = content.slice(0, startIdx);
+    const after  = content.slice(endIdx + PROTOCOL_BLOCK_END.length);
+    const newContent = before + PROTOCOL_POINTER_BLOCK.trimStart() + after.replace(/^\n/, "");
+    if (newContent === content) return "unchanged";
+    fs.writeFileSync(filePath, newContent, "utf-8");
+    return "updated";
+  }
+
+  // Append block
+  fs.writeFileSync(filePath, content.trimEnd() + "\n" + PROTOCOL_POINTER_BLOCK, "utf-8");
+  return "updated";
+}
+
+function createMinimalAgentPointerFile(filePath: string, filename: string): void {
+  const label = filename === "CLAUDE.md" ? "Claude Code" : "AI agents";
+  const content = [
+    `# ${label} Instructions`,
+    "",
+    "This repo uses RunTrim as the guarded AI coding protocol.",
+    "Read RUNTRIM.md before editing any code.",
+    "",
+    PROTOCOL_POINTER_BLOCK.trim(),
+    "",
+  ].join("\n");
+  fs.writeFileSync(filePath, content, "utf-8");
+}
+
+interface ProtocolInstallResult {
+  runtrimMd:    "created" | "updated";
+  projectJson:  "created" | "updated";
+  policiesJson: "created" | "updated";
+  baselineMd:   "created" | "updated";
+  folders:      string[];
+  agentFiles:   Array<{ file: string; result: string }>;
+  cursorRules:  "created" | "updated" | "skipped";
+}
+
+function installProtocol(
+  cwd: string,
+  baseline: import("../src/lib/project-audit.ts").BaselineProjectAudit,
+  opts: { agentFiles?: boolean; cursor?: boolean } = {}
+): ProtocolInstallResult {
+  const configDir = getConfigDir(cwd);
+  const now = new Date().toISOString();
+
+  // ── Folders ────────────────────────────────────────────────────────────
+  const extraFolders = [
+    path.join(configDir, "contracts"),
+    path.join(configDir, "memory"),
+    path.join(configDir, "bridge"),
+    path.join(configDir, "reports"),
+  ];
+  const createdFolders: string[] = [];
+  for (const dir of extraFolders) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      createdFolders.push(dir.replace(cwd + path.sep, "").replace(/\\/g, "/"));
+    }
+  }
+
+  // ── Detect build/test commands ─────────────────────────────────────────
+  const scripts = baseline.scripts ?? {};
+  const buildCmd = scripts["build"] ?? scripts["build:web"] ?? scripts["build:all"] ?? null;
+  const testCmd  = scripts["test"] ?? scripts["test:run"] ?? null;
+
+  // ── RUNTRIM.md ─────────────────────────────────────────────────────────
+  const runtrimMdPath = path.join(cwd, "RUNTRIM.md");
+  const runtrimMdExists = fs.existsSync(runtrimMdPath);
+
+  const runtrimMd = [
+    "# RunTrim Protocol",
+    "",
+    "This repo uses RunTrim as the guarded AI coding control layer.",
+    "",
+    "## Starting an AI coding task",
+    "",
+    "Before any agent touches code, run:",
+    "",
+    "```",
+    'runtrim go "<describe the task>"',
+    "```",
+    "",
+    "This creates a scoped contract, loads project memory, and generates the guarded prompt for your agent.",
+    "",
+    "## Using your agent",
+    "",
+    "Paste the guarded prompt into Claude Code, Codex, Cursor, or any other AI coding agent.",
+    "The agent receives allowed scope, forbidden areas, stop rules, and verification requirements.",
+    "",
+    "## After edits",
+    "",
+    "Run:",
+    "",
+    "```",
+    "runtrim finish",
+    "```",
+    "",
+    "This checks changed files, detects drift, scores risk, and saves the run report.",
+    "",
+    "## If you are an AI coding agent",
+    "",
+    "1. Read `.runtrim/contracts/latest.md` before touching any file.",
+    "2. Stay inside the allowed scope defined in the contract.",
+    "3. Do not touch forbidden systems or unrelated files.",
+    "4. Stop immediately if scope must expand beyond the contract.",
+    "5. Do not read, write, or reference `.env` files or secrets.",
+    "6. Do not refactor code outside the direct task.",
+    "7. After editing, tell the user to run: `runtrim finish`",
+    "",
+    "## Active contract",
+    "",
+    "If `.runtrim/contracts/latest.md` exists, it contains the active task contract.",
+    "Follow it exactly.",
+    "",
+    "---",
+    `Generated by RunTrim. Updated: ${now}`,
+  ].join("\n");
+
+  fs.writeFileSync(runtrimMdPath, runtrimMd, "utf-8");
+
+  // ── .runtrim/project.json ──────────────────────────────────────────────
+  const projectJsonPath = path.join(configDir, "project.json");
+  const projectJsonExists = fs.existsSync(projectJsonPath);
+  const projectJson = {
+    name:           baseline.projectName,
+    stack:          baseline.detectedStack,
+    packageManager: baseline.packageManager,
+    buildCommand:   buildCmd,
+    testCommand:    testCmd,
+    detectedAt:     now,
+  };
+  fs.writeFileSync(projectJsonPath, JSON.stringify(projectJson, null, 2), "utf-8");
+
+  // ── .runtrim/policies.json ─────────────────────────────────────────────
+  const policiesPath = path.join(configDir, "policies.json");
+  const policiesJsonExists = fs.existsSync(policiesPath);
+
+  // Merge any additional sensitive areas found by baseline
+  const detectedSensitive = (baseline.riskSurfaces ?? []).map((s: { type: string }) => s.type.toLowerCase());
+  const policies = {
+    version: 1,
+    protected: [
+      ".env*",
+      "secrets",
+      "*.key",
+      "*.pem",
+      "auth/**",
+      "middleware.ts",
+      "prisma/schema.prisma",
+      "prisma/migrations/**",
+      "database/migrations/**",
+      "stripe/**",
+      "billing/**",
+      "payment/**",
+      "webhooks/**",
+      "package-lock.json",
+      "pnpm-lock.yaml",
+      "yarn.lock",
+      ".next/**",
+      "dist/**",
+      "build/**",
+      "node_modules/**",
+    ],
+    sensitive: [
+      "auth",
+      "billing",
+      "payment",
+      "middleware",
+      "database",
+      "schema",
+      "migrations",
+      "env",
+      "secrets",
+      "webhooks",
+      ...detectedSensitive.filter((s: string) => !["auth","billing","payment","middleware","database","env","secrets","webhooks"].includes(s)),
+    ],
+    note: "These areas require explicit task scope before any agent edits.",
+    updatedAt: now,
+  };
+  fs.writeFileSync(policiesPath, JSON.stringify(policies, null, 2), "utf-8");
+
+  // ── .runtrim/memory/baseline.md ────────────────────────────────────────
+  const baselineMdPath = path.join(configDir, "memory", "baseline.md");
+  const baselineMdExists = fs.existsSync(baselineMdPath);
+
+  const protectedList = policies.protected.slice(0, 10).map((p: string) => `- ${p}`).join("\n");
+  const stackLine     = baseline.detectedStack.join(", ") || "unknown";
+
+  const baselineMd = [
+    "# RunTrim Memory — Baseline",
+    "",
+    `Project: ${baseline.projectName}`,
+    `Stack: ${stackLine}`,
+    `Package manager: ${baseline.packageManager}`,
+    ...(buildCmd ? [`Build: ${buildCmd}`] : []),
+    ...(testCmd  ? [`Test: ${testCmd}`]   : []),
+    "",
+    "## Protected areas",
+    "",
+    protectedList,
+    "",
+    "## Project rules",
+    "",
+    "- Start every AI task with: runtrim go \"<task>\"",
+    "- Stay inside the scoped contract.",
+    "- Run runtrim finish after agent edits.",
+    "- No unrelated refactors during a task.",
+    "- Never touch .env files.",
+    "",
+    "## Prior agent decisions",
+    "",
+    "No prior runs recorded. This is the baseline for this project.",
+    "",
+    "---",
+    `Created by runtrim init. Updated: ${now}`,
+  ].join("\n");
+
+  fs.writeFileSync(baselineMdPath, baselineMd, "utf-8");
+
+  // ── Agent pointer files ────────────────────────────────────────────────
+  const agentResults: Array<{ file: string; result: string }> = [];
+  const agentTargets = ["CLAUDE.md", "AGENTS.md"];
+
+  for (const filename of agentTargets) {
+    const filePath = path.join(cwd, filename);
+    if (fs.existsSync(filePath)) {
+      const result = upsertProtocolBlock(filePath);
+      if (result !== "skipped") agentResults.push({ file: filename, result });
+    } else if (opts.agentFiles) {
+      createMinimalAgentPointerFile(filePath, filename);
+      agentResults.push({ file: filename, result: "created" });
+    } else {
+      agentResults.push({ file: filename, result: "skipped" });
+    }
+  }
+
+  // ── Cursor rules ───────────────────────────────────────────────────────
+  let cursorResult: "created" | "updated" | "skipped" = "skipped";
+  const cursorDir    = path.join(cwd, ".cursor");
+  const cursorExists = fs.existsSync(cursorDir);
+
+  if (opts.cursor || cursorExists) {
+    const rulesDir  = path.join(cursorDir, "rules");
+    const mdcPath   = path.join(rulesDir, "runtrim.mdc");
+    if (!fs.existsSync(rulesDir)) fs.mkdirSync(rulesDir, { recursive: true });
+    const existed = fs.existsSync(mdcPath);
+
+    const cursorMdc = [
+      "---",
+      "description: RunTrim guarded AI coding protocol",
+      "alwaysApply: true",
+      "---",
+      "",
+      "# RunTrim Protocol",
+      "",
+      "This repo uses RunTrim as the guarded AI coding control layer.",
+      "",
+      "## Before editing any code",
+      "",
+      "1. Read `RUNTRIM.md` in the repo root.",
+      "2. If `.runtrim/contracts/latest.md` exists, read the active contract.",
+      "",
+      "## Rules",
+      "",
+      "- Stay inside the allowed scope defined in the contract.",
+      "- Do not touch forbidden files or unrelated systems.",
+      "- Stop immediately if scope must expand.",
+      "- Do not read or write `.env` files.",
+      "- Do not refactor outside the task scope.",
+      "",
+      "## After editing",
+      "",
+      "Tell the user to run: `runtrim finish`",
+    ].join("\n");
+
+    fs.writeFileSync(mdcPath, cursorMdc, "utf-8");
+    cursorResult = existed ? "updated" : "created";
+  }
+
+  return {
+    runtrimMd:    runtrimMdExists ? "updated" : "created",
+    projectJson:  projectJsonExists ? "updated" : "created",
+    policiesJson: policiesJsonExists ? "updated" : "created",
+    baselineMd:   baselineMdExists  ? "updated" : "created",
+    folders:      createdFolders,
+    agentFiles:   agentResults,
+    cursorRules:  cursorResult,
+  };
+}
+
+// ── runtrim init ──────────────────────────────────────────────────────────────
+
 program
   .command("init")
-  .description("Initialize RunTrim in the current project")
-  .option("--refresh", "Refresh baseline audit/rules/memory without overwriting config")
-  .action(async (options: { refresh?: boolean }) => {
+  .description("Install the RunTrim protocol in the current project")
+  .option("--refresh",     "Refresh baseline audit, rules, and memory without overwriting config")
+  .option("--agent-files", "Create CLAUDE.md and AGENTS.md if missing, with RunTrim pointer")
+  .option("--cursor",      "Create .cursor/rules/runtrim.mdc Cursor agent instructions")
+  .action(async (options: { refresh?: boolean; agentFiles?: boolean; cursor?: boolean }) => {
     const cwd = process.cwd();
     const allowed = await ensureRepoAllowedForFree(cwd);
     if (!allowed) return;
 
     console.log("");
-    console.log(BOLD("RunTrim") + DIM("  init"));
+    console.log(GO_ACCENT.bold("RunTrim init"));
     console.log("");
 
+    // ── Existing baseline init (unchanged) ─────────────────────────────
     const initResult = await initializeRunTrim(cwd, {
       refresh: options.refresh,
       allowOverwritePrompt: true,
     });
     if (!initResult.ok) return;
 
+    // ── Protocol installer ─────────────────────────────────────────────
     const baseline = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
-    const scriptNames = Object.keys(baseline.scripts);
-    const starterCreated = fs.existsSync(path.join(getConfigDir(cwd), "latest-prompt.md"));
+    const protocol = installProtocol(cwd, baseline, {
+      agentFiles: options.agentFiles,
+      cursor: options.cursor,
+    });
 
-    console.log(ACCENT.bold("  RunTrim init"));
+    // ── Output ─────────────────────────────────────────────────────────
+    const stackLine = baseline.detectedStack.length
+      ? baseline.detectedStack.join(" + ")
+      : "unknown stack";
+
+    console.log(DIM("  Project"));
+    console.log(chalk.white("  " + baseline.projectName));
+    console.log(DIM("  " + stackLine));
     console.log("");
-    console.log(DIM("  Project detected"));
-    console.log(DIM("  Name        ") + chalk.white(baseline.projectName));
-    console.log(DIM("  Stack       ") + chalk.white(baseline.detectedStack.join(", ") || "unknown"));
-    console.log(DIM("  Package     ") + chalk.white(baseline.packageManager));
-    console.log("");
-    console.log(DIM("  Scripts found"));
-    console.log(DIM("  ") + chalk.white(scriptNames.length ? scriptNames.join(", ") : "none"));
-    console.log("");
-    console.log(DIM("  Risk surfaces"));
-    for (const s of baseline.riskSurfaces.slice(0, 8)) {
-      console.log(DIM("  - ") + chalk.white(s.type));
+
+    console.log(DIM("  Protocol"));
+    const protocolFiles: Array<[string, string]> = [
+      ["RUNTRIM.md",                    protocol.runtrimMd],
+      [".runtrim/project.json",         protocol.projectJson],
+      [".runtrim/policies.json",        protocol.policiesJson],
+      [".runtrim/memory/baseline.md",   protocol.baselineMd],
+    ];
+    for (const [file, result] of protocolFiles) {
+      console.log(DIM("  ") + chalk.white(file.padEnd(34)) + DIM(result));
     }
     console.log("");
-    console.log(DIM(options.refresh ? "  Files refreshed" : "  Files created"));
-    console.log(DIM("  .runtrim/config.json"));
-    console.log(DIM("  .runtrim/project-audit.json"));
-    console.log(DIM("  .runtrim/rules.md"));
-    console.log(DIM("  .runtrim/memory.md"));
-    console.log(DIM("  .runtrim/runs/"));
-    if (starterCreated) console.log(DIM("  .runtrim/latest-prompt.md"));
+
+    console.log(DIM("  Agent pointers"));
+    for (const { file, result } of protocol.agentFiles) {
+      const color = result === "skipped" ? DIM : chalk.white;
+      console.log(DIM("  ") + color(file.padEnd(34)) + DIM(result));
+    }
+    if (protocol.cursorRules !== "skipped") {
+      console.log(DIM("  ") + chalk.white(".cursor/rules/runtrim.mdc".padEnd(34)) + DIM(protocol.cursorRules));
+    } else if (options.cursor) {
+      console.log(DIM("  Cursor rules skipped (.cursor/ not found and --cursor not passed)"));
+    }
     console.log("");
+
+    if (protocol.folders.length > 0) {
+      console.log(DIM("  Folders created"));
+      for (const f of protocol.folders) {
+        console.log(DIM("  " + f + "/"));
+      }
+      console.log("");
+    }
+
     console.log(DIM("  Next"));
-    console.log(chalk.white('  runtrim prepare "describe your next AI coding task"'));
+    console.log(chalk.white('  runtrim go "your first task"'));
     console.log("");
   });
 
@@ -1793,6 +2133,49 @@ program
     }
 
     const config = loadConfig(cwd);
+
+    // ── Bridge run entitlement check ──────────────────────────────────────
+    const globalAuth = loadGlobalAuth();
+    const rawToken   = globalAuth?.token ?? config.syncToken ?? null;
+    const apiBase    = resolveApiBase(config);
+
+    if (rawToken?.startsWith("rt_live_")) {
+      // Connected: ask server to check + increment
+      let serverResult: { allowed: boolean; used: number; limit: number | null; plan: string } | null = null;
+      try {
+        const res = await fetch(`${apiBase}/api/cli/usage/bridge-run`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${rawToken}` },
+        });
+        if (res.ok) {
+          const body = await res.json() as {
+            allowed: boolean;
+            plan: string;
+            usage: { bridgeRunsUsed: number | null; bridgeRunsLimit: number | null };
+          };
+          serverResult = {
+            allowed: body.allowed,
+            plan:    body.plan,
+            used:    body.usage.bridgeRunsUsed ?? 0,
+            limit:   body.usage.bridgeRunsLimit,
+          };
+        }
+      } catch { /* network error — degrade gracefully below */ }
+
+      if (serverResult !== null && !serverResult.allowed) {
+        printBridgeLimitMessage(serverResult.used);
+        return;
+      }
+      // If serverResult is null (unreachable), fall through — allow the run
+      // so a network blip never blocks a paid user from working.
+    } else {
+      // Unconnected: local usage tracking
+      const check = checkAndIncrementLocalUsage();
+      if (!check.allowed) {
+        printBridgeLimitMessage(check.used);
+        return;
+      }
+    }
 
     // ── Audit + contract ─────────────────────────────────────────────────
     const auditSpinner = oraFactory({ text: "  Auditing task...", color: "blue" }).start();
@@ -2956,6 +3339,59 @@ const statusColors: Record<string, ChalkInstance> = {
   drift_detected: chalk.red,
   blocked: chalk.red,
 };
+
+// ── Local Bridge usage tracking (no-token mode) ───────────────────────────────
+
+const GLOBAL_USAGE_FILE = path.join(os.homedir(), ".runtrim", "usage.json");
+const FREE_BRIDGE_LIMIT_LOCAL = 5;
+
+function currentUsagePeriod(): string {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function loadLocalUsageRuns(): Record<string, number> {
+  try {
+    const raw = JSON.parse(fs.readFileSync(GLOBAL_USAGE_FILE, "utf-8")) as { bridgeRuns?: Record<string, number> };
+    return raw.bridgeRuns ?? {};
+  } catch { return {}; }
+}
+
+function saveLocalUsageRuns(bridgeRuns: Record<string, number>): void {
+  const dir = path.dirname(GLOBAL_USAGE_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(GLOBAL_USAGE_FILE, JSON.stringify({ bridgeRuns }, null, 2), "utf-8");
+}
+
+/** Check limit then increment. Returns { allowed, used }. */
+function checkAndIncrementLocalUsage(): { allowed: boolean; used: number } {
+  const period = currentUsagePeriod();
+  const runs   = loadLocalUsageRuns();
+  const used   = runs[period] ?? 0;
+  if (used >= FREE_BRIDGE_LIMIT_LOCAL) {
+    return { allowed: false, used };
+  }
+  runs[period] = used + 1;
+  saveLocalUsageRuns(runs);
+  return { allowed: true, used: used + 1 };
+}
+
+function localUsageThisMonth(): number {
+  const period = currentUsagePeriod();
+  return loadLocalUsageRuns()[period] ?? 0;
+}
+
+function printBridgeLimitMessage(used: number): void {
+  console.log("");
+  console.log(chalk.red.bold("  Free Bridge limit reached."));
+  console.log("");
+  console.log(chalk.white(`  You have used ${used} local guarded run${used === 1 ? "" : "s"} this month.`));
+  console.log(DIM("  Upgrade to Pro for unlimited Bridge Mode, cloud sync, project memory,"));
+  console.log(DIM("  reports, and continuation history."));
+  console.log("");
+  console.log(chalk.white("  https://www.runtrim.com/pricing"));
+  console.log("");
+}
 
 // ── Global auth helpers ───────────────────────────────────────────────────────
 
