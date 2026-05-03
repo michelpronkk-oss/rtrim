@@ -39,7 +39,9 @@
       "Bash(node dist-cli/runtrim.cjs init)",
       "Bash(node dist-cli/runtrim.cjs init --refresh)",
       "Bash(node dist-cli/runtrim.cjs init --refresh --agent-files)",
-      "Bash(node dist-cli/runtrim.cjs init --refresh --cursor)"
+      "Bash(node dist-cli/runtrim.cjs init --refresh --cursor)",
+      "Bash(node dist-cli/runtrim.cjs init --refresh --agent-files --cursor)",
+      "Bash(node dist-cli/runtrim.cjs go \"test resting state\" --no-clipboard --print --no-sync)"
     ]
   }
 }
