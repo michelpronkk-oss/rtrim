@@ -17,9 +17,28 @@ type RunRow = {
   risk_after: string | null;
   estimated_tokens_trimmed: number | null;
   estimated_dollars_standard: number | null;
+  created_at_local: string | null;
+  evaluated_at_local: string | null;
+  created_at: string | null;
   synced_at: string | null;
   project_id: string | null;
 };
+
+function toTimeMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function runSortTime(run: RunRow): number {
+  return (
+    toTimeMs(run.evaluated_at_local) ??
+    toTimeMs(run.created_at_local) ??
+    toTimeMs(run.created_at) ??
+    toTimeMs(run.synced_at) ??
+    0
+  );
+}
 
 const STATUS_BADGE: Record<string, string> = {
   guarded:  "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
@@ -64,12 +83,12 @@ export default async function RunsPage() {
   if (supabase) {
     const { data } = await supabase
       .from("runtrim_runs")
-      .select("id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_dollars_standard, synced_at, project_id")
+      .select("id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_dollars_standard, created_at_local, evaluated_at_local, created_at, synced_at, project_id")
       .eq("user_id", user.id)
-      .order("synced_at", { ascending: false })
       .limit(100);
 
     if (data) runs.push(...(data as RunRow[]));
+    runs.sort((a, b) => runSortTime(b) - runSortTime(a));
 
     const projectIds = [...new Set(runs.map((r) => r.project_id).filter(Boolean))] as string[];
     if (projectIds.length > 0) {
@@ -143,7 +162,7 @@ export default async function RunsPage() {
                 {formatTokens(run.estimated_tokens_trimmed)}
               </p>
               <p className="font-mono text-[11px] text-[#4D5070]">
-                {run.synced_at ? new Date(run.synced_at).toLocaleDateString() : "—"}
+                {(() => { const when = toTimeMs(run.evaluated_at_local) ?? toTimeMs(run.created_at_local) ?? toTimeMs(run.created_at) ?? toTimeMs(run.synced_at); return when ? new Date(when).toLocaleDateString() : "—"; })()}
               </p>
               <ArrowRight className="hidden size-3.5 text-[#4D5070] md:block" />
             </Link>
@@ -153,3 +172,4 @@ export default async function RunsPage() {
     </div>
   );
 }
+

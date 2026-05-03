@@ -25,10 +25,29 @@ type RunRow = {
   risk_after: string | null;
   estimated_tokens_trimmed: number | null;
   estimated_dollars_standard: number | null;
+  created_at_local: string | null;
+  evaluated_at_local: string | null;
+  created_at: string | null;
   synced_at: string | null;
 };
 
 type ProjectRow = { id: string; name: string | null };
+
+function toTimeMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function runSortTime(run: RunRow): number {
+  return (
+    toTimeMs(run.evaluated_at_local) ??
+    toTimeMs(run.created_at_local) ??
+    toTimeMs(run.created_at) ??
+    toTimeMs(run.synced_at) ??
+    0
+  );
+}
 
 async function getDashboardData(userId: string) {
   const supabase = getSupabaseServiceClient();
@@ -42,9 +61,8 @@ async function getDashboardData(userId: string) {
       .maybeSingle(),
     supabase
       .from("runtrim_runs")
-      .select("id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_dollars_standard, synced_at")
+      .select("id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_dollars_standard, created_at_local, evaluated_at_local, created_at, synced_at")
       .eq("user_id", userId)
-      .order("synced_at", { ascending: false })
       .limit(50),
     supabase
       .from("runtrim_projects")
@@ -64,11 +82,19 @@ async function getDashboardData(userId: string) {
     : 0;
   const runsLimit  = ents.bridgeRunsPerMonth; // null = unlimited
 
+  runs.sort((a, b) => runSortTime(b) - runSortTime(a));
+
   const totalRuns    = runs.length;
   const totalProjects = projects.length;
   const totalTokens  = runs.reduce((s, r) => s + (r.estimated_tokens_trimmed ?? 0), 0);
   const totalCost    = runs.reduce((s, r) => s + (r.estimated_dollars_standard ?? 0), 0);
-  const lastRun      = runs[0] ?? null;
+  const lastRun =
+    runs.find((r) => {
+      const status = (r.status ?? "").toLowerCase();
+      return status === "guarded" || status === "completed" || status === "passed";
+    }) ??
+    runs[0] ??
+    null;
 
   return {
     plan, runsUsed, runsLimit,
@@ -235,7 +261,7 @@ export default async function OverviewPage() {
                   {data.lastRun.task ?? "Untitled run"}
                 </p>
                 <p className="mt-1 font-mono text-[11px] text-[#4D5070]">
-                  {data.lastRun.synced_at ? new Date(data.lastRun.synced_at).toLocaleString() : "—"}
+                  {(() => { const when = toTimeMs(data.lastRun.evaluated_at_local) ?? toTimeMs(data.lastRun.created_at_local) ?? toTimeMs(data.lastRun.created_at) ?? toTimeMs(data.lastRun.synced_at); return when ? new Date(when).toLocaleString() : "—"; })()}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -269,3 +295,4 @@ export default async function OverviewPage() {
     </div>
   );
 }
+
