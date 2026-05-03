@@ -35,7 +35,7 @@ export function EarlyAccessModalTrigger({
   const [planInterest, setPlanInterest] = useState("");
   const [agent,        setAgent]        = useState("");
   const [useCase,      setUseCase]      = useState("");
-  const [status,       setStatus]       = useState<"idle" | "loading" | "success" | "error" | "approved">("idle");
+  const [status,       setStatus]       = useState<"idle" | "loading" | "success" | "error" | "approved" | "pending" | "rejected">("idle");
   const [message,      setMessage]      = useState("");
   const [open,         setOpen]         = useState(false);
 
@@ -67,7 +67,12 @@ export function EarlyAccessModalTrigger({
     };
 
     if (!response.ok || !body.ok) {
-      setStatus(body.code === "approved" ? "approved" : "error");
+      const code = body.code as string | undefined;
+      if (code === "approved" || code === "pending" || code === "rejected") {
+        setStatus(code);
+      } else {
+        setStatus("error");
+      }
       setMessage(body.error ?? "Could not submit your request.");
       return;
     }
@@ -151,6 +156,32 @@ export function EarlyAccessModalTrigger({
             >
               Sign in to RunTrim
             </a>
+          </div>
+        ) : status === "pending" ? (
+          /* Email already on the list */
+          <div className="mt-5 rounded-xl border border-[#F0BF72]/18 bg-[#F0BF72]/6 px-5 py-5">
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#F0BF72]/70">
+              Already registered
+            </p>
+            <p className="mt-2 text-[16px] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
+              You are already on the list.
+            </p>
+            <p className="mt-2 text-[13px] leading-[1.7] text-[#5E6A88]">
+              This email is pending review. You will hear from us when access opens.
+            </p>
+          </div>
+        ) : status === "rejected" ? (
+          /* Email reviewed and not approved */
+          <div className="mt-5 rounded-xl border border-white/8 bg-white/4 px-5 py-5">
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#4D5070]">
+              Already reviewed
+            </p>
+            <p className="mt-2 text-[16px] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
+              This email has been reviewed.
+            </p>
+            <p className="mt-2 text-[13px] leading-[1.7] text-[#5E6A88]">
+              Contact <a href="mailto:hello@runtrim.com" className="text-[#7C6DFA]">hello@runtrim.com</a> with questions.
+            </p>
           </div>
         ) : (
         <form onSubmit={submit} className="mt-5 flex flex-col gap-3">

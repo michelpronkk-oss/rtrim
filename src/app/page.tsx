@@ -213,7 +213,7 @@ export default function Home() {
           the feature strip to the very bottom so the terminal appears below the fold.
           Desktop: min-h is removed and the section behaves compactly.
         */}
-        <div className="relative z-10 flex min-h-[100svh] w-full flex-col items-center pb-6 pt-20 sm:min-h-0 sm:pb-0 sm:pt-28">
+        <div className="relative z-10 flex min-h-[100svh] w-full flex-col items-center pb-16 pt-20 sm:min-h-0 sm:pb-0 sm:pt-28">
 
           {/* Core content */}
           <div className="flex w-full flex-col items-center px-6 text-center">

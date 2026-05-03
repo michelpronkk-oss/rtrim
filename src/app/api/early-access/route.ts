@@ -56,12 +56,20 @@ export async function POST(request: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Check for existing record (case-insensitive via lowercase normalisation)
-  const { data: existing } = await supabase
+  // Check for existing record — also capture error so a failed query
+  // doesn't silently fall through and allow a duplicate insert.
+  const { data: existing, error: checkError } = await supabase
     .from("runtrim_early_access")
     .select("id, status")
     .eq("email", email)
     .maybeSingle();
+
+  if (checkError) {
+    return NextResponse.json(
+      { ok: false, error: "Could not verify email. Please try again." },
+      { status: 500 }
+    );
+  }
 
   let isNew = false;
 
@@ -115,6 +123,17 @@ export async function POST(request: Request) {
     });
 
     if (insertErr) {
+      // Postgres unique_violation — email was inserted between our SELECT and INSERT
+      if (insertErr.code === "23505") {
+        return NextResponse.json(
+          {
+            ok: false,
+            code: "pending",
+            error: "This email is already on the list. You will hear from us when access opens.",
+          },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { ok: false, error: "Could not save early access request." },
         { status: 500 }
