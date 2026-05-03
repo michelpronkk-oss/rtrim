@@ -38,6 +38,7 @@
     "build:all": "npm run build:cli && npm run build:web",
     "start": "next start",
     "lint": "eslint",
+    "prepublishOnly": "npm run build:cli",
     "runtrim": "tsx cli/runtrim.ts",
     "runtrim:build": "npm run build:cli"
   },

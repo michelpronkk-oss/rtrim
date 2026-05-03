@@ -29,7 +29,12 @@
       "Bash(Select-Object Name)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\admin\" -Recurse)",
       "Bash(node -e ' *)",
-      "Bash(node --input-type=module -e ' *)"
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(node dist-cli/runtrim.cjs --version)",
+      "Bash(node dist-cli/runtrim.cjs go --help)",
+      "Bash(node dist-cli/runtrim.cjs finish --help)",
+      "Bash(node dist-cli/runtrim.cjs go \"test bridge mode\" --no-clipboard --print --no-sync)",
+      "Bash(node dist-cli/runtrim.cjs finish --no-sync)"
     ]
   }
 }
