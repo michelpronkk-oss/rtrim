@@ -45,6 +45,7 @@ type FullRunRow = {
   token_budget: number | null;
   scope_drift_status: string | null;
   report_summary: string | null;
+  raw_report: string | null;
 };
 
 const RISK_COLOR: Record<string, string> = {
@@ -89,6 +90,13 @@ function StringList({ items, emptyLabel }: { items: string[] | null; emptyLabel?
   );
 }
 
+function hasSectionEvidence(text: string | null | undefined, sectionName: string): boolean {
+  if (!text) return false;
+  const escaped = sectionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rx = new RegExp(`(^|\\n)\\s*${escaped}\\s*:`, "i");
+  return rx.test(text);
+}
+
 export default async function RunDetailPage({
   params,
 }: {
@@ -125,6 +133,27 @@ export default async function RunDetailPage({
 
   const riskLevel = r.risk_after ?? r.risk_before;
   const riskColor = RISK_COLOR[riskLevel?.toLowerCase() ?? ""] ?? "text-[#9699BE]";
+  const proofSourceText = [r.report_summary, r.raw_report, r.continuation_prompt, r.next_safe_prompt]
+    .filter(Boolean)
+    .join("\n");
+  const hasChangedFiles = !!(r.changed_files && r.changed_files.length > 0);
+  const hasFilesChangedSection = hasSectionEvidence(proofSourceText, "FILES CHANGED");
+  const hasRootCauseSection = hasSectionEvidence(proofSourceText, "ROOT CAUSE");
+  const hasHowToVerifySection = hasSectionEvidence(proofSourceText, "HOW TO VERIFY");
+  const hasNextSafeActionSection = hasSectionEvidence(proofSourceText, "NEXT SAFE ACTION");
+  const filteredProofGaps = (r.missing_proof_items ?? []).filter((item) => {
+    const normalized = item.trim().toLowerCase();
+    if (
+      normalized.includes("no list of changed files provided") &&
+      (hasChangedFiles || hasFilesChangedSection)
+    ) {
+      return false;
+    }
+    if (normalized.includes("root cause") && hasRootCauseSection) return false;
+    if (normalized.includes("how to verify") && hasHowToVerifySection) return false;
+    if (normalized.includes("next safe action") && hasNextSafeActionSection) return false;
+    return true;
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -303,11 +332,11 @@ export default async function RunDetailPage({
       </div>
 
       {/* Proof gaps */}
-      {r.missing_proof_items && r.missing_proof_items.length > 0 && (
+      {filteredProofGaps.length > 0 && (
         <Section title="Proof gaps">
           <div className="flex items-start gap-2.5 rounded-lg border border-[#F0BF72]/15 bg-[#F0BF72]/5 p-3">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#F0BF72]/70" />
-            <StringList items={r.missing_proof_items} />
+            <StringList items={filteredProofGaps} />
           </div>
         </Section>
       )}
