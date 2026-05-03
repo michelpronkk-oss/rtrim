@@ -10,12 +10,23 @@ type EventRow = {
 };
 
 type EarlyAccessRow = {
+  id: string;
   email: string | null;
   role: string | null;
   agent: string | null;
   use_case: string | null;
+  plan_interest: string | null;
+  workflow: string | null;
+  biggest_pain: string | null;
+  notes: string | null;
   status: string | null;
   created_at: string;
+  approved_at: string | null;
+  rejected_at: string | null;
+  reviewed_by: string | null;
+  decision_note: string | null;
+  approval_email_sent_at: string | null;
+  rejection_email_sent_at: string | null;
 };
 
 function startOfDaysAgo(days: number): string {
@@ -193,9 +204,9 @@ export async function getAdminMetrics() {
   let earlyAccessTableFound = true;
   const earlyAccessQuery = await supabase
     .from("runtrim_early_access")
-    .select("email,role,agent,use_case,status,created_at")
+    .select("id,email,role,agent,use_case,plan_interest,workflow,biggest_pain,notes,status,created_at,approved_at,rejected_at,reviewed_by,decision_note,approval_email_sent_at,rejection_email_sent_at")
     .order("created_at", { ascending: false })
-    .limit(40);
+    .limit(100);
   if (earlyAccessQuery.error) {
     if (earlyAccessQuery.error.code === "42P01") {
       earlyAccessTableFound = false;

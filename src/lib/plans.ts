@@ -50,7 +50,7 @@ export const plans: Record<PlanId, Plan> = {
     name: "Pro",
     priceLabel: "$12/month",
     summary: "Cloud memory, reports, continuation packs, and Agent early access.",
-    ctaLabel: "Join Pro early access",
+    ctaLabel: "Request access",
     features: ["cloudSync", "cloudHistory", "shareCards", "weeklyReport", "agentEarlyAccess"],
     bullets: [
       "Cloud run history",
@@ -66,7 +66,7 @@ export const plans: Record<PlanId, Plan> = {
     name: "Builder",
     priceLabel: "$29/month",
     summary: "Project guardrails, risk scores, scope drift detection, and timelines.",
-    ctaLabel: "Join early access",
+    ctaLabel: "Request access",
     badge: "Recommended",
     features: [
       "cloudSync",
@@ -94,7 +94,7 @@ export const plans: Record<PlanId, Plan> = {
     name: "Team",
     priceLabel: "from $99/month",
     summary: "Shared workspaces, policies, GitHub checks, audit logs, and team control.",
-    ctaLabel: "Coming soon",
+    ctaLabel: "Join waitlist",
     features: [
       "cloudSync",
       "cloudHistory",

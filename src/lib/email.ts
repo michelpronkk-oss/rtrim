@@ -325,7 +325,173 @@ function buildNotificationText(input: EarlyAccessEmailInput): string {
   ].join("\n");
 }
 
+// ─── Approval email ───────────────────────────────────────────────────────────
+function buildApprovalHtml(): string {
+  const loginUrl = `${getSiteUrl()}/login`;
+  const content = `
+    <tr><td style="height:3px;background:linear-gradient(90deg,${C.accent},#9966FF,#5B8BFF);border-radius:12px 12px 0 0;"></td></tr>
+    <tr>
+      <td style="padding:36px 36px 0;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+          <tr>
+            <td style="background-color:${C.ok}15;border:1px solid ${C.ok}33;border-radius:20px;padding:5px 12px;">
+              <span style="font-family:${C.fontMono};font-size:10px;font-weight:600;color:${C.ok};letter-spacing:0.12em;text-transform:uppercase;">Access Approved</span>
+            </td>
+          </tr>
+        </table>
+        <h1 style="margin:0 0 12px;font-family:${C.fontSans};font-size:28px;font-weight:700;color:${C.text};letter-spacing:-0.04em;line-height:1.1;">
+          You're in.
+        </h1>
+        <p style="margin:0 0 20px;font-family:${C.fontSans};font-size:15px;color:${C.muted};line-height:1.7;">
+          You've been approved for RunTrim early access. Your cloud dashboard is now available.
+        </p>
+        <div style="height:1px;background-color:${C.divider};margin-bottom:20px;"></div>
+        <p style="margin:0 0 8px;font-family:${C.fontSans};font-size:14px;color:${C.text};line-height:1.7;">
+          Sign in here to open your dashboard:
+        </p>
+        <p style="margin:0 0 20px;font-family:${C.fontMono};font-size:13px;color:${C.accent};">
+          <a href="${loginUrl}" style="color:${C.accent};text-decoration:none;">${loginUrl}</a>
+        </p>
+        <div style="height:1px;background-color:${C.divider};margin-bottom:20px;"></div>
+        <p style="margin:0 0 12px;font-family:${C.fontSans};font-size:13px;color:${C.muted};line-height:1.7;">
+          The free CLI stays local-first, but your approved access unlocks the next layer: synced run history, cloud memory, reports, and RunTrim Agent early access as it rolls out.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:24px 36px 36px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background-color:${C.accent};border-radius:8px;">
+              <a href="${loginUrl}" target="_blank"
+                 style="display:inline-block;font-family:${C.fontSans};font-size:13px;font-weight:700;color:${C.bg};text-decoration:none;padding:11px 22px;border-radius:8px;">
+                Open RunTrim &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:16px 0 0;font-family:${C.fontSans};font-size:12px;color:${C.dimmer};">
+          Questions? Reply or email <a href="mailto:hello@runtrim.com" style="color:${C.muted};text-decoration:underline;">hello@runtrim.com</a>
+        </p>
+      </td>
+    </tr>
+  `;
+  return emailShell(content);
+}
+
+function buildApprovalText(loginUrl: string): string {
+  return [
+    "You're in. RunTrim dashboard access is open.",
+    "",
+    "You've been approved for RunTrim early access.",
+    "Your cloud dashboard is now available.",
+    "",
+    "Sign in here:",
+    loginUrl,
+    "",
+    "The free CLI stays local-first, but your approved access unlocks the next layer:",
+    "synced run history, cloud memory, reports, and RunTrim Agent early access.",
+    "",
+    "Questions? hello@runtrim.com",
+    "",
+    "— RunTrim",
+  ].join("\n");
+}
+
+// ─── Rejection email ──────────────────────────────────────────────────────────
+function buildRejectionHtml(): string {
+  const installUrl = `${getSiteUrl()}/app/install`;
+  const content = `
+    <tr><td style="height:3px;background:linear-gradient(90deg,${C.accent},#9966FF,#5B8BFF);border-radius:12px 12px 0 0;"></td></tr>
+    <tr>
+      <td style="padding:36px 36px 28px;">
+        <p style="margin:0 0 6px;font-family:${C.fontMono};font-size:10px;font-weight:600;color:${C.dimmer};letter-spacing:0.14em;text-transform:uppercase;">RunTrim access update</p>
+        <h1 style="margin:0 0 16px;font-family:${C.fontSans};font-size:24px;font-weight:700;color:${C.text};letter-spacing:-0.03em;line-height:1.1;">
+          Thanks for requesting access.
+        </h1>
+        <p style="margin:0 0 14px;font-family:${C.fontSans};font-size:14px;color:${C.muted};line-height:1.7;">
+          We are keeping cloud dashboard and Agent access limited while we roll out the next layer carefully.
+        </p>
+        <p style="margin:0 0 14px;font-family:${C.fontSans};font-size:14px;color:${C.muted};line-height:1.7;">
+          We cannot open dashboard access for this request yet.
+        </p>
+        <div style="height:1px;background-color:${C.divider};margin:20px 0;"></div>
+        <p style="margin:0 0 10px;font-family:${C.fontSans};font-size:13px;color:${C.text};">
+          You can still use the free local CLI:
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:20px;">
+          <tr>
+            <td style="background-color:${C.code};border:1px solid ${C.codeBorder};border-radius:8px;padding:10px 14px;">
+              <span style="font-family:${C.fontMono};font-size:13px;color:rgba(124,109,250,0.55);">$&nbsp;</span>
+              <span style="font-family:${C.fontMono};font-size:13px;color:#C4B8FF;">npm install -g runtrim</span>
+            </td>
+          </tr>
+        </table>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background-color:${C.accentDim};border:1px solid rgba(124,109,250,0.22);border-radius:8px;">
+              <a href="${installUrl}" target="_blank"
+                 style="display:inline-block;font-family:${C.fontSans};font-size:13px;font-weight:600;color:${C.accent};text-decoration:none;padding:10px 20px;border-radius:8px;">
+                Install free CLI &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return emailShell(content);
+}
+
+function buildRejectionText(): string {
+  return [
+    "RunTrim access update.",
+    "",
+    "Thanks for requesting access to RunTrim.",
+    "",
+    "We are keeping cloud dashboard and Agent access limited while we roll out the next layer carefully.",
+    "We cannot open dashboard access for this request yet.",
+    "",
+    "You can still use the free local CLI:",
+    "  npm install -g runtrim",
+    "",
+    "Install guide: https://www.runtrim.com/app/install",
+    "",
+    "— RunTrim",
+  ].join("\n");
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
+export async function sendApprovalEmail(email: string): Promise<boolean> {
+  const resend = getResendClient();
+  if (!resend) return false;
+
+  const { error } = await resend.emails.send({
+    from:    getFromEmail(),
+    to:      email,
+    subject: "You're in. RunTrim dashboard access is open.",
+    html:    buildApprovalHtml(),
+    text:    buildApprovalText(`${getSiteUrl()}/login`),
+  });
+
+  return !error;
+}
+
+export async function sendRejectionEmail(email: string): Promise<boolean> {
+  const resend = getResendClient();
+  if (!resend) return false;
+
+  const { error } = await resend.emails.send({
+    from:    getFromEmail(),
+    to:      email,
+    subject: "RunTrim access update",
+    html:    buildRejectionHtml(),
+    text:    buildRejectionText(),
+  });
+
+  return !error;
+}
+
 export async function sendEarlyAccessConfirmation(email: string): Promise<boolean> {
   const resend = getResendClient();
   if (!resend) return false;

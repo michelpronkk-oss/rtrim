@@ -1,6 +1,30 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+async function getEaStatusForEmail(email: string | null): Promise<string> {
+  if (!email) return "none";
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.RUNTRIM_DISABLE_EA_GATE === "true"
+  ) {
+    return "approved";
+  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return "approved";
+
+  const db = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data } = await db
+    .from("runtrim_early_access")
+    .select("status")
+    .eq("email", email.toLowerCase())
+    .maybeSingle();
+  return (data?.status as string) ?? "none";
+}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -25,9 +49,25 @@ export async function GET(request: Request) {
         },
       }
     );
+
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const status = await getEaStatusForEmail(user?.email ?? null);
+
+      if (status === "approved") {
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+      if (status === "pending") {
+        return NextResponse.redirect(`${origin}/access/pending`);
+      }
+      if (status === "rejected") {
+        return NextResponse.redirect(`${origin}/access/rejected`);
+      }
+      return NextResponse.redirect(`${origin}/access/request`);
     }
   }
 

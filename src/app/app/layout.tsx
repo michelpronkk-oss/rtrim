@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
+import { getEarlyAccessStatus, eaStatusToPath } from "@/lib/early-access-gate";
 import { AppShell } from "@/components/app/app-shell";
 
 export default async function AppLayout({
@@ -20,8 +21,15 @@ export default async function AppLayout({
     return <>{children}</>;
   }
 
+  // Auth check
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  // Early access gate (defense in depth — middleware is the primary guard)
+  const eaStatus = await getEarlyAccessStatus(user.email);
+  if (eaStatus !== "approved") {
+    redirect(eaStatusToPath(eaStatus));
+  }
 
   return <AppShell userEmail={user.email ?? undefined}>{children}</AppShell>;
 }

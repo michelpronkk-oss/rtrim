@@ -14,7 +14,6 @@ type Payload = {
   agent?: string;
   useCase?: string;
   source?: string;
-  // Extended fields (dashboard early access form)
   planInterest?: string;
   workflow?: string;
   biggestPain?: string;
@@ -27,15 +26,15 @@ function isValidEmail(email: string): boolean {
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => ({}))) as Payload;
-  const email = (payload.email ?? "").trim().toLowerCase();
-  const role = (payload.role ?? "").trim();
-  const agent = (payload.agent ?? "").trim();
-  const useCase = (payload.useCase ?? "").trim();
-  const source = (payload.source ?? "homepage").trim() || "homepage";
+  const email       = (payload.email       ?? "").trim().toLowerCase();
+  const role        = (payload.role        ?? "").trim();
+  const agent       = (payload.agent       ?? "").trim();
+  const useCase     = (payload.useCase     ?? "").trim();
+  const source      = (payload.source      ?? "homepage").trim() || "homepage";
   const planInterest = (payload.planInterest ?? "").trim() || null;
-  const workflow = (payload.workflow ?? "").trim() || null;
+  const workflow    = (payload.workflow    ?? "").trim() || null;
   const biggestPain = (payload.biggestPain ?? "").trim() || null;
-  const notes = (payload.notes ?? "").trim() || null;
+  const notes       = (payload.notes       ?? "").trim() || null;
 
   if (!email || !isValidEmail(email)) {
     return NextResponse.json(
@@ -48,10 +47,7 @@ export async function POST(request: Request) {
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !serviceRole || !/^https?:\/\//i.test(url)) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Early access is unavailable right now. Please try again later.",
-      },
+      { ok: false, error: "Early access is unavailable right now. Please try again later." },
       { status: 503 }
     );
   }
@@ -60,65 +56,89 @@ export async function POST(request: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { error } = await supabase.from("runtrim_early_access").insert({
-    email,
-    role: role || null,
-    agent: agent || null,
-    use_case: useCase || null,
-    source,
-    plan_interest: planInterest,
-    workflow,
-    biggest_pain: biggestPain,
-    notes,
-  });
+  // Check for existing record (case-insensitive via lowercase normalisation)
+  const { data: existing } = await supabase
+    .from("runtrim_early_access")
+    .select("id, status")
+    .eq("email", email)
+    .maybeSingle();
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: "Could not save early access request." },
-      { status: 500 }
-    );
+  let isNew = false;
+
+  if (existing) {
+    // Already approved or rejected — only update editable fields, keep status
+    const protectedStatus =
+      existing.status === "approved" || existing.status === "rejected";
+
+    await supabase
+      .from("runtrim_early_access")
+      .update({
+        plan_interest: planInterest,
+        workflow,
+        biggest_pain: biggestPain,
+        notes,
+        // Only update role/agent/use_case if not already decided
+        ...(!protectedStatus && {
+          role: role || null,
+          agent: agent || null,
+          use_case: useCase || null,
+        }),
+      })
+      .eq("id", existing.id);
+  } else {
+    // New submission
+    isNew = true;
+    const { error: insertErr } = await supabase.from("runtrim_early_access").insert({
+      email,
+      role:         role         || null,
+      agent:        agent        || null,
+      use_case:     useCase      || null,
+      source,
+      plan_interest: planInterest,
+      workflow,
+      biggest_pain: biggestPain,
+      notes,
+    });
+
+    if (insertErr) {
+      return NextResponse.json(
+        { ok: false, error: "Could not save early access request." },
+        { status: 500 }
+      );
+    }
   }
 
-  await recordEvent({
-    eventName: "early_access_submitted",
-    source: "web",
-    pagePath: "/",
-    metadata: {
-      agent: agent || "",
-      role: role || "",
-      hasUseCase: Boolean(useCase),
-    },
-  });
+  // Analytics + emails only for new submissions
+  if (isNew) {
+    await recordEvent({
+      eventName: "early_access_submitted",
+      source: "web",
+      pagePath: "/",
+      metadata: {
+        agent: agent || "",
+        role: role || "",
+        hasUseCase: Boolean(useCase),
+      },
+    });
 
-  const createdAtIso = new Date().toISOString();
-  const [confirmationSent, notificationSent] = await Promise.all([
-    sendEarlyAccessConfirmation(email).catch(() => false),
-    sendEarlyAccessNotification({
-      email,
-      role,
-      agent,
-      useCase,
-      source,
-      createdAtIso,
-    }).catch(() => false),
-  ]);
+    const createdAtIso = new Date().toISOString();
+    const [confirmationSent, notificationSent] = await Promise.all([
+      sendEarlyAccessConfirmation(email).catch(() => false),
+      sendEarlyAccessNotification({
+        email,
+        role,
+        agent,
+        useCase,
+        source,
+        createdAtIso,
+      }).catch(() => false),
+    ]);
 
-  if (!confirmationSent) {
     return NextResponse.json({
       ok: true,
-      message: "Joined early access. Confirmation email may be delayed.",
-      emailStatus: {
-        confirmationSent: false,
-        notificationSent,
-      },
+      emailStatus: { confirmationSent, notificationSent },
     });
   }
 
-  return NextResponse.json({
-    ok: true,
-    emailStatus: {
-      confirmationSent: true,
-      notificationSent,
-    },
-  });
+  return NextResponse.json({ ok: true, updated: true });
 }

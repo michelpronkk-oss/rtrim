@@ -574,16 +574,16 @@ export default function Home() {
                       >
                         {plan.ctaLabel}
                       </Link>
-                    ) : isProOrBuilder ? (
+                    ) : (
                       <EarlyAccessModalTrigger
                         label={plan.ctaLabel}
                         variant={isBuilder ? "builder" : "pro"}
-                        className={`${isBuilder ? "inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85" : "inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"}`}
+                        className={
+                          isBuilder
+                            ? "inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
+                            : "inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
+                        }
                       />
-                    ) : (
-                      <span className="inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] text-[#2E2E50]">
-                        {plan.ctaLabel}
-                      </span>
                     )}
                   </div>
                 </div>
@@ -658,8 +658,6 @@ export default function Home() {
                   const plan = plans[id];
                   const isFree    = id === "free";
                   const isBuilder = id === "builder";
-                  const isSoon    = id === "team";
-                  const isProOrBuilder = id === "pro" || id === "builder";
                   return (
                     <div key={id} className={`flex items-center px-5 py-5 ${isBuilder ? "bg-[#0D0C22]" : ""}`}>
                       {isFree ? (
@@ -669,23 +667,16 @@ export default function Home() {
                         >
                           {plan.ctaLabel}
                         </Link>
-                      ) : isProOrBuilder ? (
+                      ) : (
                         <EarlyAccessModalTrigger
                           label={plan.ctaLabel}
                           variant={isBuilder ? "builder" : "pro"}
-                          className={`${isBuilder ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85" : "rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"}`}
+                          className={
+                            isBuilder
+                              ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
+                              : "rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
+                          }
                         />
-                      ) : isSoon ? (
-                        <span className="rounded-md border border-white/8 px-3.5 py-2 text-[12px] text-[#2E2E50]">
-                          {plan.ctaLabel}
-                        </span>
-                      ) : (
-                        <Link
-                          href="/app/install"
-                          className="rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
-                        >
-                          {plan.ctaLabel}
-                        </Link>
                       )}
                     </div>
                   );
