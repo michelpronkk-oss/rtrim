@@ -222,6 +222,22 @@
   }
 }
 
+/* Floating ambient orbs — extremely slow drift */
+@keyframes rt-orb-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1);    opacity: 0.8; }
+  25%       { transform: translate(50px, -35px) scale(1.08); opacity: 1;   }
+  60%       { transform: translate(-30px, 25px) scale(0.94); opacity: 0.6; }
+}
+@keyframes rt-orb-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1);    opacity: 0.6; }
+  40%       { transform: translate(-55px, 40px) scale(1.12); opacity: 0.9; }
+  75%       { transform: translate(35px, -20px) scale(0.9);  opacity: 0.4; }
+}
+@keyframes rt-orb-3 {
+  0%, 100% { transform: translate(0px, 0px) scale(1);    opacity: 0.5; }
+  50%       { transform: translate(25px, -50px) scale(1.15); opacity: 0.8; }
+}
+
 /* Particle twinkle */
 @keyframes rt-twinkle {
   0%, 100% { opacity: 0.02; transform: scale(0.9); }
@@ -301,8 +317,9 @@
     transform: none !important;
   }
 
-  /* Stop film grain on reduced-motion */
-  [style*="rt-grain"] {
+  /* Stop all ambient animations */
+  [style*="rt-grain"],
+  [style*="rt-orb-"] {
     animation: none !important;
   }
 }

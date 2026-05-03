@@ -35,7 +35,7 @@ export function EarlyAccessModalTrigger({
   const [planInterest, setPlanInterest] = useState("");
   const [agent,        setAgent]        = useState("");
   const [useCase,      setUseCase]      = useState("");
-  const [status,       setStatus]       = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status,       setStatus]       = useState<"idle" | "loading" | "success" | "error" | "approved">("idle");
   const [message,      setMessage]      = useState("");
   const [open,         setOpen]         = useState(false);
 
@@ -63,11 +63,11 @@ export function EarlyAccessModalTrigger({
     }
 
     const body = (await response.json().catch(() => ({}))) as {
-      ok?: boolean; error?: string; message?: string;
+      ok?: boolean; error?: string; message?: string; code?: string;
     };
 
     if (!response.ok || !body.ok) {
-      setStatus("error");
+      setStatus(body.code === "approved" ? "approved" : "error");
       setMessage(body.error ?? "Could not submit your request.");
       return;
     }
@@ -120,6 +120,7 @@ export function EarlyAccessModalTrigger({
         </DialogHeader>
 
         {status === "success" ? (
+          /* New submission — on the list */
           <div className="mt-5 rounded-xl border border-[#4DE8B0]/18 bg-[#4DE8B0]/6 px-5 py-5">
             <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#4DE8B0]/70">
               Request received
@@ -130,6 +131,26 @@ export function EarlyAccessModalTrigger({
             <p className="mt-2 text-[13px] leading-[1.7] text-[#5E6A88]">
               Check your inbox for confirmation. We will reach out when your access is approved. Free CLI is available now without an account.
             </p>
+          </div>
+        ) : status === "approved" ? (
+          /* Email already approved — direct to sign in */
+          <div className="mt-5 rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-5 py-5">
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]/70">
+              Access approved
+            </p>
+            <p className="mt-2 text-[16px] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
+              Your access is already approved.
+            </p>
+            <p className="mt-2 text-[13px] leading-[1.7] text-[#5E6A88]">
+              Sign in to open your RunTrim dashboard.
+            </p>
+            <a
+              href="/login"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
+              style={{ boxShadow: "0 4px 14px rgba(124,109,250,0.28)" }}
+            >
+              Sign in to RunTrim
+            </a>
           </div>
         ) : (
         <form onSubmit={submit} className="mt-5 flex flex-col gap-3">

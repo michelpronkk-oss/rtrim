@@ -66,25 +66,39 @@ export async function POST(request: Request) {
   let isNew = false;
 
   if (existing) {
-    // Already approved or rejected — only update editable fields, keep status
-    const protectedStatus =
-      existing.status === "approved" || existing.status === "rejected";
+    const s = (existing.status ?? "pending") as string;
 
-    await supabase
-      .from("runtrim_early_access")
-      .update({
-        plan_interest: planInterest,
-        workflow,
-        biggest_pain: biggestPain,
-        notes,
-        // Only update role/agent/use_case if not already decided
-        ...(!protectedStatus && {
-          role: role || null,
-          agent: agent || null,
-          use_case: useCase || null,
-        }),
-      })
-      .eq("id", existing.id);
+    if (s === "approved") {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "approved",
+          error: "This email is already approved. Sign in to access your dashboard.",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (s === "rejected") {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "rejected",
+          error: "This email has already been reviewed. Contact hello@runtrim.com with questions.",
+        },
+        { status: 409 }
+      );
+    }
+
+    // status === "pending" — already on the list, no duplicate insert
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "pending",
+        error: "This email is already on the list. You will hear from us when access opens.",
+      },
+      { status: 409 }
+    );
   } else {
     // New submission
     isNew = true;

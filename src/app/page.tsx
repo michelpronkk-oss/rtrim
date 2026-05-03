@@ -6,6 +6,7 @@ import { HeroTerminal } from "@/components/app/hero-terminal";
 import { TerminalCard } from "@/components/app/terminal-card";
 import { CopyButton } from "@/components/app/copy-button";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
+import { SmartCta } from "@/components/app/smart-cta";
 import { BeforeAfterSection } from "@/components/app/before-after-section";
 import { AnimatedRunContract } from "@/components/app/animated-run-contract";
 import { planOrder, plans } from "@/lib/plans";
@@ -146,19 +147,56 @@ export default function Home() {
       <section className="relative overflow-hidden border-b border-white/8">
 
         {/* Background */}
+
+        {/* Line grid — replaces dot grid, fades radially from center */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.08) 1.5px, transparent 1.5px)",
-            backgroundSize: "30px 30px",
+            backgroundImage: [
+              "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)",
+              "linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+            ].join(","),
+            backgroundSize: "44px 44px",
+            maskImage: "radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%)",
           }}
         />
+
+        {/* Orb 1 — large violet, drifts slowly left side */}
+        <div
+          className="pointer-events-none absolute -left-[180px] -top-[80px] h-[640px] w-[640px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(124,109,250,0.18) 0%, rgba(124,109,250,0.06) 45%, transparent 70%)",
+            animation: "rt-orb-1 26s ease-in-out infinite",
+          }}
+        />
+
+        {/* Orb 2 — blue-indigo, drifts right side */}
+        <div
+          className="pointer-events-none absolute -right-[120px] top-[80px] h-[520px] w-[520px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(91,139,255,0.13) 0%, rgba(91,139,255,0.04) 50%, transparent 70%)",
+            animation: "rt-orb-2 34s ease-in-out infinite",
+          }}
+        />
+
+        {/* Orb 3 — purple accent, bottom center */}
+        <div
+          className="pointer-events-none absolute -bottom-[60px] left-1/2 h-[380px] w-[700px] -translate-x-1/2 rounded-full"
+          style={{
+            background: "radial-gradient(ellipse, rgba(153,102,255,0.14) 0%, rgba(153,102,255,0.04) 50%, transparent 70%)",
+            animation: "rt-orb-3 20s ease-in-out infinite",
+          }}
+        />
+
+        {/* Edge vignette — darkens corners, keeps centre readable */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             background: "radial-gradient(ellipse 75% 75% at 50% 45%, transparent 45%, #07071A 88%)",
           }}
         />
+
         <div className="pointer-events-none absolute inset-0 hero-glow hero-glow-animate" />
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-28"
@@ -219,10 +257,12 @@ export default function Home() {
                   Install Free CLI
                   <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
                 </Link>
-                <EarlyAccessModalTrigger
+                <SmartCta
                   label="Join Agent Early Access"
                   variant="pro"
                   className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-6 py-3 text-[15px] text-[#A3AEBD] backdrop-blur-sm transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+                  openAppLabel="Open app"
+                  openAppClassName="inline-flex items-center gap-2 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-6 py-3 text-[15px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/18"
                 />
               </div>
             </MotionFade>
@@ -233,17 +273,6 @@ export default function Home() {
               </p>
             </MotionFade>
 
-            <MotionFade delay={0.22}>
-              <div className="mt-5 hidden flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#4A5170] sm:flex">
-                {["Local-first", "Agent-agnostic", "No code uploads", "Sync-ready"].map((t, i) => (
-                  <span key={t} className="flex items-center gap-1.5">
-                    {i > 0 && <span className="mr-2 text-[#1E2038]">·</span>}
-                    <Check className="size-3 text-[#7C6DFA]/70" />
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </MotionFade>
           </div>
 
           {/* Spacer: fills remaining viewport height on mobile, invisible on desktop */}
@@ -484,10 +513,12 @@ export default function Home() {
                 Agent early access is opening for Pro, Builder, and Team.
               </p>
               <div className="mt-8">
-                <EarlyAccessModalTrigger
+                <SmartCta
                   label="Join Agent Early Access"
                   variant="pro"
                   className="inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-5 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-85"
+                  openAppLabel="Open app"
+                  openAppClassName="inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-5 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-85"
                 />
               </div>
             </div>
@@ -581,13 +612,19 @@ export default function Home() {
                         {plan.ctaLabel}
                       </Link>
                     ) : (
-                      <EarlyAccessModalTrigger
+                      <SmartCta
                         label={plan.ctaLabel}
                         variant={isBuilder ? "builder" : "pro"}
                         className={
                           isBuilder
                             ? "inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
                             : "inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
+                        }
+                        openAppLabel="Open app"
+                        openAppClassName={
+                          isBuilder
+                            ? "inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
+                            : "inline-flex rounded-md border border-[#7C6DFA]/25 bg-[#7C6DFA]/8 px-3.5 py-2 text-[12px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/14"
                         }
                       />
                     )}
@@ -674,13 +711,19 @@ export default function Home() {
                           {plan.ctaLabel}
                         </Link>
                       ) : (
-                        <EarlyAccessModalTrigger
+                        <SmartCta
                           label={plan.ctaLabel}
                           variant={isBuilder ? "builder" : "pro"}
                           className={
                             isBuilder
                               ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
                               : "rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
+                          }
+                          openAppLabel="Open app"
+                          openAppClassName={
+                            isBuilder
+                              ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
+                              : "rounded-md border border-[#7C6DFA]/25 bg-[#7C6DFA]/8 px-3.5 py-2 text-[12px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/14"
                           }
                         />
                       )}
@@ -772,10 +815,12 @@ export default function Home() {
               <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
             </Link>
 
-            <EarlyAccessModalTrigger
+            <SmartCta
               label="Join Agent Early Access"
               variant="pro"
               className="text-[13px] text-[#3E4462] transition-colors hover:text-[#9E91FF]"
+              openAppLabel="Open app"
+              openAppClassName="text-[13px] text-[#7C6DFA] transition-colors hover:text-[#B2A7FF]"
             />
           </div>
 
