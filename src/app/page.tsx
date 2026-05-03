@@ -224,13 +224,14 @@ export default function Home() {
           the feature strip to the very bottom so the terminal appears below the fold.
           Desktop: min-h is removed and the section behaves compactly.
         */}
-        <div className="relative z-10 flex min-h-[100svh] w-full flex-col items-center pb-16 pt-20 sm:min-h-0 sm:pb-0 sm:pt-28">
+        <div className="relative z-10 flex min-h-[100svh] w-full flex-col items-center pb-14 pt-16 sm:min-h-0 sm:pb-0 sm:pt-28">
 
           {/* Core content */}
           <div className="flex w-full flex-col items-center px-6 text-center">
 
+            {/* Pill — desktop only; mobile headline speaks for itself */}
             <MotionFade>
-              <div className="rt-ai-pill mb-8 inline-flex items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm">
+              <div className="rt-ai-pill mb-8 hidden items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm sm:inline-flex">
                 <span className="rt-ai-pill-dot size-1.5 rounded-full bg-[#7C6DFA]" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]">
                   Control layer for AI coding agents
@@ -239,31 +240,58 @@ export default function Home() {
             </MotionFade>
 
             <MotionFade delay={0.06}>
-              <h1 className="mx-auto max-w-[860px] text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:text-[3.4rem] lg:text-[4.5rem] xl:text-[5rem]">
+              {/*
+                Mobile headline — shorter, bolder, 2 exact lines at 3rem.
+                "Run AI agents" + "with control." = max visual punch, zero waste.
+              */}
+              <h1 className="mx-auto max-w-[320px] text-[3rem] font-black leading-[1.03] tracking-[-0.055em] text-[#EDEEFF] sm:hidden">
+                Run AI agents<br />
+                with{" "}
+                <span className="brand-gradient-text">control.</span>
+              </h1>
+
+              {/* Desktop headline — full message */}
+              <h1 className="mx-auto hidden max-w-[860px] text-[3.4rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:block lg:text-[4.5rem] xl:text-[5rem]">
                 Run AI coding agents with{" "}
                 <span className="brand-gradient-text">memory, scope, and control.</span>
               </h1>
             </MotionFade>
 
+            {/* Sub — desktop only; mobile headline is self-contained */}
             <MotionFade delay={0.12}>
-              <p className="mx-auto mt-6 max-w-[400px] text-[0.98rem] leading-[1.75] text-[#7F8CA3] sm:hidden">
-                Before any agent touches your code, RunTrim gives the run memory, boundaries, and a finish check.
-              </p>
               <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
                 RunTrim installs a protocol into your repo, creates scoped contracts before Claude, Codex, or Cursor touches code, then checks drift, risk, changed files, and continuation after every run.
               </p>
             </MotionFade>
 
             <MotionFade delay={0.17}>
-              <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              {/* Mobile CTAs — single primary, text secondary below */}
+              <div className="mt-9 flex flex-col items-center gap-3 sm:hidden">
+                <Link
+                  href="/app/install"
+                  data-rt-event="install_cta_clicked"
+                  className="inline-flex w-full max-w-[300px] items-center justify-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3.5 text-[16px] font-semibold text-white"
+                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 8px 24px rgba(124,109,250,0.28), inset 0 1px 0 rgba(255,255,255,0.12)" }}
+                >
+                  Install Free CLI
+                  <ArrowRight className="size-4" />
+                </Link>
+                <SmartCta
+                  label="Request access"
+                  variant="pro"
+                  className="text-[14px] text-[#6870A0] transition-colors hover:text-[#9699BE]"
+                  openAppLabel="Open app"
+                  openAppClassName="text-[14px] text-[#9E91FF]"
+                />
+              </div>
+
+              {/* Desktop CTAs — horizontal row */}
+              <div className="mt-10 hidden flex-wrap items-center justify-center gap-3 sm:flex">
                 <Link
                   href="/app/install"
                   data-rt-event="install_cta_clicked"
                   className="group inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
-                  style={{
-                    boxShadow:
-                      "0 0 0 1px rgba(124,109,250,0.45), 0 8px 20px rgba(124,109,250,0.22), inset 0 1px 0 rgba(255,255,255,0.12)",
-                  }}
+                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 8px 20px rgba(124,109,250,0.22), inset 0 1px 0 rgba(255,255,255,0.12)" }}
                 >
                   Install Free CLI
                   <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
@@ -275,28 +303,29 @@ export default function Home() {
                   openAppLabel="Open app"
                   openAppClassName="inline-flex items-center gap-2 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-6 py-3 text-[15px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/18"
                 />
-                <Link
-                  href="/plans"
-                  className="text-[14px] text-[#4A5170] underline-offset-2 transition-colors hover:text-[#9699BE]"
-                >
+                <Link href="/plans" className="text-[14px] text-[#4A5170] underline-offset-2 transition-colors hover:text-[#9699BE]">
                   See plans
                 </Link>
               </div>
             </MotionFade>
 
+            {/* Status line — desktop only */}
             <MotionFade delay={0.20}>
-              <p className="mt-5 font-mono text-[11px] text-[#4A5170]">
+              <p className="mt-5 hidden font-mono text-[11px] text-[#4A5170] sm:block">
                 Free local CLI is live. Pro, Builder, and Team are in early access.
               </p>
             </MotionFade>
 
           </div>
 
-          {/* Spacer: fills remaining viewport height on mobile, invisible on desktop */}
+          {/* Spacer: pushes feature strip to viewport bottom on mobile */}
           <div className="flex-1 sm:hidden" />
 
-          {/* Feature strip — anchored to bottom of viewport on mobile */}
-          <MotionFade delay={0.34} className="w-full max-w-4xl px-6 pb-2 sm:mt-6 sm:pb-0">
+          {/* Feature strip
+              Mobile: compact cards — label only, no note, 2×2 pinned to bottom.
+              Desktop: label + note, 4-col row, flows naturally below content.
+          */}
+          <MotionFade delay={0.34} className="w-full max-w-4xl px-6 pb-2 sm:mt-8 sm:pb-0">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {[
                 { label: "Scope the task",   note: "Contract before execution" },
@@ -306,10 +335,16 @@ export default function Home() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-lg border border-white/8 bg-[#0D0C22]/70 px-4 py-3 backdrop-blur-sm"
+                  className="rounded-lg border border-white/8 bg-[#0D0C22]/70 px-3 py-2.5 backdrop-blur-sm sm:px-4 sm:py-3"
                 >
-                  <p className="text-[12px] font-semibold text-[#C4C8EA]">{item.label}</p>
-                  <p className="mt-0.5 font-mono text-[10px] text-[#4A5068]">{item.note}</p>
+                  {/* Mobile: label only — single dense line */}
+                  <p className="text-[12px] font-semibold leading-none text-[#C4C8EA] sm:leading-normal">
+                    {item.label}
+                  </p>
+                  {/* Note hidden on mobile — cards stay razor-thin */}
+                  <p className="mt-1 hidden font-mono text-[10px] text-[#4A5068] sm:block">
+                    {item.note}
+                  </p>
                 </div>
               ))}
             </div>
