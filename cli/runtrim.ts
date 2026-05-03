@@ -2907,5 +2907,247 @@ const statusColors: Record<string, ChalkInstance> = {
   blocked: chalk.red,
 };
 
+// ── Global auth helpers ───────────────────────────────────────────────────────
+
+const GLOBAL_AUTH_DIR  = path.join(os.homedir(), ".runtrim");
+const GLOBAL_AUTH_FILE = path.join(GLOBAL_AUTH_DIR, "auth.json");
+
+interface GlobalAuth {
+  token: string;
+  storedAt: string;
+  email?: string;
+}
+
+function loadGlobalAuth(): GlobalAuth | null {
+  if (!fs.existsSync(GLOBAL_AUTH_FILE)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(GLOBAL_AUTH_FILE, "utf-8")) as GlobalAuth;
+  } catch {
+    return null;
+  }
+}
+
+function saveGlobalAuth(auth: GlobalAuth): void {
+  if (!fs.existsSync(GLOBAL_AUTH_DIR)) {
+    fs.mkdirSync(GLOBAL_AUTH_DIR, { recursive: true });
+  }
+  fs.writeFileSync(GLOBAL_AUTH_FILE, JSON.stringify(auth, null, 2));
+}
+
+function resolveApiBase(config: RunTrimConfig): string {
+  const url = config.dashboardUrl?.trim();
+  if (!url || url.startsWith("http://localhost")) {
+    return "https://www.runtrim.com";
+  }
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "https://www.runtrim.com";
+  }
+}
+
+// ── runtrim login ─────────────────────────────────────────────────────────────
+
+program
+  .command("login")
+  .description("Connect this machine to your RunTrim cloud account")
+  .option("--token <token>", "CLI token (skip interactive prompt)")
+  .action(async (opts: { token?: string }) => {
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  connect to cloud"));
+    console.log("");
+
+    const cwd = process.cwd();
+
+    // Check existing auth
+    const existing = loadGlobalAuth();
+    if (existing && !opts.token) {
+      console.log(DIM("  Already connected."));
+      if (existing.email) {
+        console.log(DIM("  Account   ") + chalk.white(existing.email));
+      }
+      console.log(DIM("  Token     ") + chalk.white("rt_live_..."));
+      console.log("");
+      console.log(DIM("  To reconnect, run: ") + GO_ACCENT("runtrim login --token <new-token>"));
+      console.log("");
+      return;
+    }
+
+    console.log(DIM("  Get your CLI token from:"));
+    console.log("  " + GO_ACCENT("https://www.runtrim.com/app/connect"));
+    console.log("");
+
+    let rawToken = opts.token?.trim() ?? "";
+
+    if (!rawToken) {
+      const answer = await prompts({
+        type: "text",
+        name: "token",
+        message: "Paste your CLI token",
+      });
+      rawToken = (answer.token as string | undefined)?.trim() ?? "";
+    }
+
+    if (!rawToken || !rawToken.startsWith("rt_live_")) {
+      console.log(chalk.yellow("  Invalid token. Tokens start with rt_live_"));
+      console.log("");
+      return;
+    }
+
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const apiBase = resolveApiBase(config);
+    const verifyUrl = `${apiBase}/api/cli-token/verify`;
+
+    const spinner = oraFactory({ text: "  Verifying token...", color: "blue" }).start();
+
+    let email: string | undefined;
+    try {
+      const res = await fetch(verifyUrl, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${rawToken}` },
+      });
+      const body = await res.json() as { ok?: boolean; email?: string; error?: string };
+      if (!res.ok || !body.ok) {
+        spinner.fail("  Invalid token. " + (body.error ?? ""));
+        console.log("");
+        return;
+      }
+      email = body.email as string | undefined;
+      spinner.succeed("  Token verified.");
+    } catch {
+      spinner.fail("  Could not reach RunTrim server. Check your connection.");
+      console.log("");
+      return;
+    }
+
+    saveGlobalAuth({ token: rawToken, storedAt: new Date().toISOString(), email });
+
+    console.log("");
+    if (email) {
+      console.log(ACCENT.bold("  Connected as ") + chalk.white(email));
+    } else {
+      console.log(ACCENT.bold("  Connected to RunTrim cloud."));
+    }
+    console.log(DIM("  Token stored in ") + chalk.white("~/.runtrim/auth.json"));
+    console.log("");
+    console.log(DIM("  Next: navigate to a project and run ") + GO_ACCENT("runtrim sync"));
+    console.log("");
+  });
+
+// ── runtrim sync ──────────────────────────────────────────────────────────────
+
+program
+  .command("sync")
+  .description("Sync local run history and project memory to your RunTrim dashboard")
+  .option("--dry-run", "Show what would be synced without uploading")
+  .action(async (opts: { dryRun?: boolean }) => {
+    const cwd = process.cwd();
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  cloud sync"));
+    console.log("");
+
+    // Resolve token: global auth first, then per-project config fallback
+    const globalAuth = loadGlobalAuth();
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const rawToken = globalAuth?.token ?? config.syncToken ?? null;
+
+    if (!rawToken) {
+      console.log(chalk.yellow("  No CLI token found."));
+      console.log(DIM("  Run ") + GO_ACCENT("runtrim login") + DIM(" to connect cloud sync."));
+      console.log(DIM("  Local CLI still works without a token."));
+      console.log("");
+      return;
+    }
+
+    if (!rawToken.startsWith("rt_live_")) {
+      console.log(chalk.yellow("  Stored token format is invalid. Re-run: runtrim login"));
+      console.log("");
+      return;
+    }
+
+    const apiBase  = resolveApiBase(config);
+    const syncUrl  = `${apiBase}/api/sync`;
+
+    // Load local data
+    const runs = loadAllRuns(cwd);
+    if (runs.length === 0) {
+      console.log(DIM("  No local runs found in this directory."));
+      console.log(DIM("  Run ") + GO_ACCENT('runtrim go "your task"') + DIM(" first to create runs."));
+      console.log("");
+      return;
+    }
+
+    const projectAudit = loadProjectAudit(cwd);
+    const memoryMarkdown = (() => {
+      try { return readMemory(cwd); } catch { return ""; }
+    })();
+
+    const payload = buildSyncPayload({
+      cwd,
+      projectName: projectAudit?.projectName ?? path.basename(cwd),
+      config,
+      projectAudit: projectAudit ?? null,
+      memoryMarkdown: memoryMarkdown ?? "",
+      runs,
+    });
+
+    console.log(DIM("  Project    ") + chalk.white(payload.project.name));
+    console.log(DIM("  Runs       ") + chalk.white(String(payload.runs.length)));
+    console.log(DIM("  API        ") + chalk.white(syncUrl));
+    console.log("");
+
+    if (opts.dryRun) {
+      console.log(ACCENT.bold("  Dry run — nothing uploaded."));
+      console.log("");
+      return;
+    }
+
+    const spinner = oraFactory({ text: "  Syncing...", color: "blue" }).start();
+
+    try {
+      const res = await fetch(syncUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${rawToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json() as {
+        ok?: boolean;
+        syncedRuns?: number;
+        projectId?: string;
+        error?: string;
+        issues?: unknown;
+      };
+
+      if (!res.ok || !body.ok) {
+        spinner.fail("  Sync failed.");
+        console.log("");
+        if (body.error) {
+          console.log(chalk.red("  Error: ") + chalk.white(body.error));
+          if (res.status === 401) {
+            console.log(DIM("  Token may be invalid or expired. Run: runtrim login"));
+          }
+        }
+        console.log("");
+        return;
+      }
+
+      spinner.succeed("  Sync complete.");
+      console.log("");
+      console.log(ACCENT.bold("  Synced") + chalk.white(`  ${body.syncedRuns ?? payload.runs.length} run${(body.syncedRuns ?? payload.runs.length) === 1 ? "" : "s"}`));
+      console.log(DIM("  Project ID ") + chalk.white(body.projectId ?? "—"));
+      console.log("");
+      console.log(DIM("  View at  ") + GO_ACCENT(`${apiBase}/app`));
+      console.log("");
+    } catch (err) {
+      spinner.fail("  Network error. Check your connection.");
+      console.log("");
+    }
+  });
+
 program.parse(process.argv);
 

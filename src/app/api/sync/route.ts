@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { SyncPayloadSchema } from "@/lib/runtrim-sync";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { validateSyncEnv } from "@/lib/sync-env";
@@ -39,51 +40,68 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const env = validateSyncEnv();
-  const expected = env.syncSecret;
-  const provided = request.headers.get("x-runtrim-sync-token");
-
-  if (!env.syncSecretConfigured || !expected) {
-    const missing = env.missing.filter((name) => name === "RUNTRIM_SYNC_SECRET");
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "Sync secret configuration missing.",
-        missing,
-      },
-      { status: 503 }
-    );
-  }
-
-  if (!provided || provided !== expected) {
-    return NextResponse.json({ error: "Unauthorized sync token." }, { status: 401 });
-  }
 
   if (!env.supabaseConfigured) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Supabase service configuration missing.",
-        missing: env.missing.filter(
-          (name) =>
-            name === "NEXT_PUBLIC_SUPABASE_URL" || name === "SUPABASE_SERVICE_ROLE_KEY"
-        ),
-      },
+      { ok: false, error: "Supabase service configuration missing.", missing: env.missing },
       { status: 503 }
     );
   }
 
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
+    return NextResponse.json({ ok: false, error: "Supabase service configuration missing." }, { status: 503 });
+  }
+
+  // ── Auth: accept Bearer token (user sync) or shared secret (legacy) ──────
+  let userId: string | null = null;
+
+  const authHeader = request.headers.get("authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  const legacyToken = request.headers.get("x-runtrim-sync-token");
+
+  if (bearerToken) {
+    if (!bearerToken.startsWith("rt_live_")) {
+      return NextResponse.json({ ok: false, error: "Invalid token format." }, { status: 401 });
+    }
+
+    const tokenHash = createHash("sha256").update(bearerToken).digest("hex");
+    const { data: profile } = await supabase
+      .from("runtrim_profiles")
+      .select("id")
+      .eq("cli_token_hash", tokenHash)
+      .maybeSingle();
+
+    if (!profile) {
+      return NextResponse.json({ ok: false, error: "Invalid or expired CLI token." }, { status: 401 });
+    }
+
+    userId = profile.id as string;
+
+    // Fire-and-forget: update last used timestamp
+    supabase
+      .from("runtrim_profiles")
+      .update({ cli_token_last_used_at: new Date().toISOString() })
+      .eq("id", userId)
+      .then(() => {});
+  } else if (legacyToken) {
+    // Legacy shared-secret path (existing CLI before user tokens)
+    const expected = env.syncSecret;
+    if (!env.syncSecretConfigured || !expected) {
+      return NextResponse.json({ ok: false, error: "Sync secret not configured." }, { status: 503 });
+    }
+    if (legacyToken !== expected) {
+      return NextResponse.json({ ok: false, error: "Unauthorized sync token." }, { status: 401 });
+    }
+    // userId stays null → runs stored without user association
+  } else {
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Supabase service configuration missing.",
-        missing: ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
-      },
-      { status: 503 }
+      { ok: false, error: "Authorization required. Use Bearer token or x-runtrim-sync-token." },
+      { status: 401 }
     );
   }
 
+  // ── Parse payload ─────────────────────────────────────────────────────────
   const json = await request.json().catch(() => null);
   const parsed = SyncPayloadSchema.safeParse(json);
   if (!parsed.success) {
@@ -96,40 +114,72 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   const latestRun = payload.runs[0] ?? null;
   const totalTokens = payload.runs.reduce((sum, run) => sum + run.estimatedTokensTrimmed, 0);
-  const totalStd = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsStandard, 0);
-  const totalExp = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsExpensive, 0);
+  const totalStd    = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsStandard, 0);
+  const totalExp    = payload.runs.reduce((sum, run) => sum + run.estimatedDollarsExpensive, 0);
 
-  const { data: projectData, error: projectError } = await supabase
-    .from("runtrim_projects")
-    .upsert(
-      {
-        local_project_id: payload.project.localProjectId,
-        name: payload.project.name,
-        stack: payload.project.stack,
-        package_manager: payload.project.packageManager,
-        last_status: latestRun?.status ?? payload.memory.latestStatus,
-        last_task: latestRun?.task ?? payload.memory.previousTask,
-        next_safe_action: payload.memory.nextSafeAction,
-        next_safe_prompt: payload.memory.nextSafePrompt,
-        estimated_tokens_trimmed: totalTokens,
-        estimated_dollars_standard: Number(totalStd.toFixed(4)),
-        estimated_dollars_expensive: Number(totalExp.toFixed(4)),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "local_project_id" }
-    )
-    .select("id")
-    .single();
+  const projectFields = {
+    local_project_id: payload.project.localProjectId,
+    name: payload.project.name,
+    stack: payload.project.stack,
+    package_manager: payload.project.packageManager,
+    last_status: latestRun?.status ?? payload.memory.latestStatus,
+    last_task: latestRun?.task ?? payload.memory.previousTask,
+    next_safe_action: payload.memory.nextSafeAction,
+    next_safe_prompt: payload.memory.nextSafePrompt,
+    estimated_tokens_trimmed: totalTokens,
+    estimated_dollars_standard: Number(totalStd.toFixed(4)),
+    estimated_dollars_expensive: Number(totalExp.toFixed(4)),
+    updated_at: new Date().toISOString(),
+  };
 
-  if (projectError || !projectData?.id) {
-    return NextResponse.json(
-      { error: "Failed to upsert project.", detail: projectError?.message },
-      { status: 500 }
-    );
+  // ── Project upsert ────────────────────────────────────────────────────────
+  let projectId: string;
+
+  if (userId) {
+    // User-scoped: SELECT first, then INSERT or UPDATE
+    const { data: existing } = await supabase
+      .from("runtrim_projects")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("local_project_id", payload.project.localProjectId)
+      .maybeSingle();
+
+    if (existing?.id) {
+      await supabase.from("runtrim_projects").update(projectFields).eq("id", existing.id);
+      projectId = existing.id as string;
+    } else {
+      const { data: inserted, error: insertErr } = await supabase
+        .from("runtrim_projects")
+        .insert({ ...projectFields, user_id: userId })
+        .select("id")
+        .single();
+
+      if (insertErr || !inserted?.id) {
+        return NextResponse.json(
+          { error: "Failed to create project.", detail: insertErr?.message },
+          { status: 500 }
+        );
+      }
+      projectId = inserted.id as string;
+    }
+  } else {
+    // Legacy: upsert by local_project_id only (no user isolation)
+    const { data: projectData, error: projectError } = await supabase
+      .from("runtrim_projects")
+      .upsert(projectFields, { onConflict: "local_project_id" })
+      .select("id")
+      .single();
+
+    if (projectError || !projectData?.id) {
+      return NextResponse.json(
+        { error: "Failed to upsert project.", detail: projectError?.message },
+        { status: 500 }
+      );
+    }
+    projectId = projectData.id as string;
   }
 
-  const projectId = projectData.id as string;
-
+  // ── Memory upsert ─────────────────────────────────────────────────────────
   const { error: memoryError } = await supabase.from("runtrim_project_memory").upsert(
     {
       project_id: projectId,
@@ -151,6 +201,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // ── Runs upsert ───────────────────────────────────────────────────────────
   const runRows = payload.runs.map((run) => {
     const status = (run.status || "").toLowerCase();
     const resolvedNextSafePrompt =
@@ -184,6 +235,7 @@ export async function POST(request: Request) {
       latest_prompt: run.latestPrompt,
       continuation_prompt: run.continuationPrompt,
       synced_at: new Date().toISOString(),
+      ...(userId ? { user_id: userId } : {}),
     };
   });
 
@@ -203,25 +255,12 @@ export async function POST(request: Request) {
     ok: true,
     syncedRuns: runRows.length,
     projectId,
+    userId: userId ?? undefined,
   });
 }
 
-export async function PUT() {
-  return methodNotAllowed();
-}
-
-export async function PATCH() {
-  return methodNotAllowed();
-}
-
-export async function DELETE() {
-  return methodNotAllowed();
-}
-
-export async function HEAD() {
-  return methodNotAllowed();
-}
-
-export async function OPTIONS() {
-  return methodNotAllowed();
-}
+export async function PUT()    { return methodNotAllowed(); }
+export async function PATCH()  { return methodNotAllowed(); }
+export async function DELETE() { return methodNotAllowed(); }
+export async function HEAD()   { return methodNotAllowed(); }
+export async function OPTIONS(){ return methodNotAllowed(); }

@@ -34,7 +34,14 @@ function LoginForm() {
     });
 
     if (authError) {
-      setError(authError.message);
+      const msg = authError.message.toLowerCase();
+      if (msg.includes("rate limit") || msg.includes("too many")) {
+        setError("Too many sign-in attempts. Wait a few minutes and try again.");
+      } else if (msg.includes("invalid email") || msg.includes("unable to validate")) {
+        setError("Enter a valid email address.");
+      } else {
+        setError("Could not send sign-in link. Try again in a moment.");
+      }
       setLoading(false);
     } else {
       setSent(true);

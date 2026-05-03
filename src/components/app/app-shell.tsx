@@ -8,12 +8,14 @@ import {
   History,
   Download,
   Zap,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/app/sign-out-button";
 
 const NAV_ITEMS = [
   { href: "/app",               label: "Overview",      icon: LayoutGrid   },
+  { href: "/app/connect",       label: "Connect CLI",   icon: Link2        },
   { href: "/app/projects",      label: "Projects",      icon: FolderKanban },
   { href: "/app/runs",          label: "Runs",          icon: History      },
   { href: "/app/early-access",  label: "Early Access",  icon: Zap          },

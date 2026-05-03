@@ -27,7 +27,8 @@
       "Bash(node -e \"console.log\\(require\\('./node_modules/@supabase/ssr/package.json'\\).version\\)\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\access\" -ErrorAction SilentlyContinue)",
       "Bash(Select-Object Name)",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\admin\" -Recurse)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\admin\" -Recurse)",
+      "Bash(node -e ' *)"
     ]
   }
 }
