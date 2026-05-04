@@ -34,9 +34,9 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 function StatusBadge({ status }: { status: string | null }) {
-  if (!status) return <span className="font-mono text-[11px] text-[#2E3554]">—</span>;
+  if (!status) return <span className="font-mono text-[11px] text-[#3a3e46]">—</span>;
   const key = status.toLowerCase();
-  const cls = STATUS_BADGE[key] ?? "border-white/10 text-[#9699BE]";
+  const cls = STATUS_BADGE[key] ?? "border-white/10 text-[#8a8f98]";
   return (
     <span className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${cls}`}>
       {status}
@@ -83,30 +83,30 @@ export default async function ProjectsPage() {
 
       {/* Header */}
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Projects</p>
-        <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Projects</p>
+        <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">
           Your projects
         </h1>
       </div>
 
       {projects.length === 0 ? (
         /* Empty state */
-        <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-6 py-12 text-center">
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-12 text-center">
           <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
-            <FolderKanban className="size-5 text-[#9E91FF]/70" />
+            <FolderKanban className="size-5 text-[#a78bfa]/70" />
           </div>
-          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
+          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
             No projects synced yet.
           </h2>
-          <p className="mx-auto mt-2 max-w-[420px] text-[13px] leading-[1.7] text-[#5E6A88]">
+          <p className="mx-auto mt-2 max-w-[420px] text-[13px] leading-[1.7] text-[#8a8f98]">
             Projects appear here once your CLI starts syncing run reports. Each project tracks its own memory, run history, risk levels, and savings.
           </p>
-          <div className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 font-mono text-[12px] text-[#4D5070]">
+          <div className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 font-mono text-[12px] text-[#5a5f68]">
             runtrim go &quot;your task&quot;
           </div>
-          <p className="mt-3 text-[12px] text-[#3A3F5A]">
+          <p className="mt-3 text-[12px] text-[#3a3e46]">
             Run this in your project directory after{" "}
-            <Link href="/app/install" className="text-[#6870A0] transition-colors hover:text-[#9E91FF]">
+            <Link href="/app/install" className="text-[#5a5f68] transition-colors hover:text-[#a78bfa]">
               installing the CLI
             </Link>
             .
@@ -114,11 +114,11 @@ export default async function ProjectsPage() {
         </div>
       ) : (
         /* Project list */
-        <div className="overflow-hidden rounded-xl border border-white/7">
+        <div className="overflow-hidden rounded-xl border border-white/6">
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] border-b border-white/7 bg-[#0C0C20] px-5 py-3">
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] border-b border-white/6 bg-[#0c0e11] px-5 py-3">
             {["Project", "Runs", "Last run", "Status", ""].map((h) => (
-              <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4460]">{h}</p>
+              <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3a3e46]">{h}</p>
             ))}
           </div>
 
@@ -126,26 +126,26 @@ export default async function ProjectsPage() {
             <div
               key={project.id}
               className={`grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.02] ${i < projects.length - 1 ? "border-b border-white/6" : ""}`}
-              style={{ background: i % 2 === 0 ? "#0C0C20" : "#0A0A1C" }}
+              style={{ background: i % 2 === 0 ? "#0c0e11" : "#08090b" }}
             >
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-semibold text-[#EDEEFF]">
+                <p className="truncate text-[13px] font-semibold text-[#f4f5f7]">
                   {project.name ?? "Unnamed project"}
                 </p>
                 {project.stack && project.stack.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {project.stack.slice(0, 3).map((s) => (
-                      <span key={s} className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-[#4D5070]">
+                      <span key={s} className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-[#5a5f68]">
                         {s}
                       </span>
                     ))}
                   </div>
                 )}
               </div>
-              <p className="font-mono text-[13px] text-[#9699BE]">
+              <p className="font-mono text-[13px] text-[#8a8f98]">
                 {runCounts[project.id] ?? 0}
               </p>
-              <p className="font-mono text-[11px] text-[#4D5070]">
+              <p className="font-mono text-[11px] text-[#5a5f68]">
                 {project.updated_at
                   ? new Date(project.updated_at).toLocaleDateString()
                   : "—"}
@@ -153,7 +153,7 @@ export default async function ProjectsPage() {
               <StatusBadge status={project.last_status} />
               <Link
                 href={`/app/runs?project=${project.id}`}
-                className="text-[12px] text-[#4D5070] transition-colors hover:text-[#9E91FF]"
+                className="text-[12px] text-[#5a5f68] transition-colors hover:text-[#a78bfa]"
               >
                 <ArrowRight className="size-3.5" />
               </Link>

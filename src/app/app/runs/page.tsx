@@ -79,9 +79,9 @@ function formatStatusLabel(value: string | null): string | null {
 }
 
 function Badge({ label, kind }: { label: string | null; kind: "status" | "risk" }) {
-  if (!label) return <span className="font-mono text-[11px] text-[#2E3554]">-</span>;
+  if (!label) return <span className="font-mono text-[11px] text-[#3a3e46]">-</span>;
   const map = kind === "status" ? STATUS_BADGE : RISK_BADGE;
-  const cls = map[label.toLowerCase()] ?? "border-white/10 text-[#9699BE]";
+  const cls = map[label.toLowerCase()] ?? "border-white/10 text-[#8a8f98]";
   return (
     <span className={`inline-flex shrink-0 items-center rounded border px-2 py-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.08em] ${cls}`}>
       {label}
@@ -133,26 +133,26 @@ export default async function RunsPage() {
   return (
     <div className="mx-auto max-w-[92rem] space-y-6">
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Runs</p>
-        <h1 className="mt-1 text-[1.5rem] font-bold tracking-[-0.03em] text-[#EDEEFF] sm:text-[1.6rem]">
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Runs</p>
+        <h1 className="mt-1 text-[1.5rem] font-bold tracking-[-0.03em] text-[#f4f5f7] sm:text-[1.6rem]">
           Run history
         </h1>
       </div>
 
       {runs.length === 0 ? (
-        <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-5 py-10 text-center sm:px-6 sm:py-12">
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-10 text-center sm:px-6 sm:py-12">
           <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
-            <History className="size-5 text-[#9E91FF]/70" />
+            <History className="size-5 text-[#a78bfa]/70" />
           </div>
-          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
+          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
             No synced runs yet.
           </h2>
-          <p className="mx-auto mt-2 max-w-[400px] text-[13px] leading-[1.7] text-[#5E6A88]">
+          <p className="mx-auto mt-2 max-w-[400px] text-[13px] leading-[1.7] text-[#8a8f98]">
             Every synced run includes the prompt, contract, memory, risk score, token savings, and continuation pack. Sync opens for early access plans.
           </p>
           <Link
             href="/app/early-access"
-            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
           >
             Join early access
             <ArrowRight className="size-3.5" />
@@ -160,16 +160,16 @@ export default async function RunsPage() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090A1A]">
-          <div className="border-b border-white/10 bg-[#0E1024]/90 px-4 py-3 sm:px-6">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#3F4868]">
+          <div className="border-b border-white/10 bg-[#111317]/90 px-4 py-3 sm:px-6">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">
               Recent guarded runs
             </p>
           </div>
 
           {/* Desktop table header — hidden on mobile */}
-          <div className="hidden grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto] items-center gap-x-6 border-b border-white/8 bg-[#0C0E21] px-6 py-3 md:grid">
+          <div className="hidden grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto] items-center gap-x-6 border-b border-white/8 bg-[#111317] px-6 py-3 md:grid">
             {["Task", "Project", "Status", "Risk", "Tokens saved", "Date", ""].map((h) => (
-              <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4460]">{h}</p>
+              <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3a3e46]">{h}</p>
             ))}
           </div>
 
@@ -192,7 +192,7 @@ export default async function RunsPage() {
                 {/* ── Mobile card (hidden md+) ─────────────────── */}
                 <div className="px-4 py-4 md:hidden">
                   {/* Task title — 2 lines max */}
-                  <p className="line-clamp-2 text-[14px] font-medium leading-snug text-[#EDEEFF]">
+                  <p className="line-clamp-2 text-[14px] font-medium leading-snug text-[#f4f5f7]">
                     {run.task ?? "Untitled run"}
                   </p>
 
@@ -201,35 +201,35 @@ export default async function RunsPage() {
                     <Badge label={statusLabel} kind="status" />
                     <Badge label={riskLabel}    kind="risk"   />
                     {projectName && (
-                      <span className="font-mono text-[10px] text-[#4D5070]">{projectName}</span>
+                      <span className="font-mono text-[10px] text-[#5a5f68]">{projectName}</span>
                     )}
                   </div>
 
                   {/* Date + tokens + arrow */}
                   <div className="mt-2.5 flex items-center justify-between gap-3">
                     <div className="min-w-0 space-y-0.5">
-                      <p className="font-mono text-[11px] text-[#5B638A]">{dateStr}</p>
+                      <p className="font-mono text-[11px] text-[#5a5f68]">{dateStr}</p>
                       {tokens && (
-                        <p className="font-mono text-[11px] text-[#7A80A0]">{tokens} tokens</p>
+                        <p className="font-mono text-[11px] text-[#5a5f68]">{tokens} tokens</p>
                       )}
                     </div>
-                    <ArrowRight className="size-4 shrink-0 text-[#4D5070] transition-colors group-hover:text-[#7680AA]" />
+                    <ArrowRight className="size-4 shrink-0 text-[#5a5f68] transition-colors group-hover:text-[#7680AA]" />
                   </div>
                 </div>
 
                 {/* ── Desktop table row (hidden mobile) ───────── */}
                 <div className="hidden items-center gap-x-6 px-6 py-3 md:grid md:grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto]">
-                  <p className="truncate pr-2 text-[13px] font-medium text-[#EDEEFF]">
+                  <p className="truncate pr-2 text-[13px] font-medium text-[#f4f5f7]">
                     {run.task ?? "Untitled run"}
                   </p>
-                  <p className="font-mono text-[11px] text-[#4D5070]">
+                  <p className="font-mono text-[11px] text-[#5a5f68]">
                     {projectName ?? "-"}
                   </p>
                   <Badge label={statusLabel} kind="status" />
                   <Badge label={riskLabel}   kind="risk"   />
-                  <p className="font-mono text-[12px] text-[#A5ABC6]">{tokens ?? "-"}</p>
-                  <p className="font-mono text-[11px] text-[#5B638A]">{dateStr}</p>
-                  <ArrowRight className="size-3.5 text-[#4D5070] transition-colors group-hover:text-[#7680AA]" />
+                  <p className="font-mono text-[12px] text-[#8a8f98]">{tokens ?? "-"}</p>
+                  <p className="font-mono text-[11px] text-[#5a5f68]">{dateStr}</p>
+                  <ArrowRight className="size-3.5 text-[#5a5f68] transition-colors group-hover:text-[#7680AA]" />
                 </div>
               </Link>
             );

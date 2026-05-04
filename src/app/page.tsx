@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { MotionFade } from "@/components/app/motion-section";
 import { CopyButton } from "@/components/app/copy-button";
 import { SmartCta } from "@/components/app/smart-cta";
-import { HeroRunContract } from "@/components/app/hero-run-contract";
+import { HeroRunContract, MobileContractCard } from "@/components/app/hero-run-contract";
 import { planOrder, plans } from "@/lib/plans";
 
 export const metadata: Metadata = {
@@ -165,9 +165,10 @@ export default function Home() {
 
           <div style={{ flex: 1 }} />
 
-          {/* Status badge */}
-          <div
-            className="hidden sm:inline-flex items-center gap-2"
+          {/* Status badge — links to /status */}
+          <Link
+            href="/status"
+            className="hidden sm:inline-flex items-center gap-2 transition-colors hover:border-white/18"
             style={{
               fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8a8f98",
               padding: "5px 10px", border: "1px solid rgba(255,255,255,0.09)",
@@ -183,7 +184,7 @@ export default function Home() {
               }}
             />
             v0.7 · all systems normal
-          </div>
+          </Link>
 
           <Link
             href="/app/install"
@@ -204,9 +205,9 @@ export default function Home() {
 
       {/* ── HERO ── */}
       <section
+        className="pt-10 pb-12 sm:pt-14 sm:pb-16 lg:pt-24 lg:pb-28"
         style={{
           position: "relative",
-          padding: "clamp(56px,8vw,96px) 0 clamp(72px,10vw,120px)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           overflow: "hidden",
         }}
@@ -271,10 +272,10 @@ export default function Home() {
 
               <MotionFade delay={0.06}>
                 <h1
+                  className="mt-4 sm:mt-5 mb-0"
                   style={{
-                    marginTop: 22, marginBottom: 0,
-                    fontSize: "clamp(40px, 5.6vw, 68px)",
-                    lineHeight: 1.02, letterSpacing: "-0.035em",
+                    fontSize: "clamp(36px, 5.6vw, 68px)",
+                    lineHeight: 1.03, letterSpacing: "-0.033em",
                     fontWeight: 500, color: "#f4f5f7",
                   }}
                 >
@@ -286,7 +287,11 @@ export default function Home() {
               </MotionFade>
 
               <MotionFade delay={0.12}>
-                <p style={{ marginTop: 22, fontSize: 17, lineHeight: 1.55, color: "#c9ccd2", maxWidth: 540 }}>
+                {/* Short mobile sub / full desktop sub */}
+                <p className="sm:hidden" style={{ marginTop: 14, fontSize: 14, lineHeight: 1.6, color: "#8a8f98", maxWidth: 400 }}>
+                  Memory, scope, forbidden files, and finish checks for every AI coding run.
+                </p>
+                <p className="hidden sm:block" style={{ marginTop: 20, fontSize: 17, lineHeight: 1.55, color: "#c9ccd2", maxWidth: 540 }}>
                   RunTrim installs a protocol into your repo, gives every AI coding task memory, scope,
                   forbidden files, and a finish check, then syncs the run to your dashboard. Fewer drifts,
                   lower token burn, cleaner diffs.
@@ -294,7 +299,7 @@ export default function Home() {
               </MotionFade>
 
               <MotionFade delay={0.17}>
-                <div className="mt-8 flex flex-wrap gap-3 items-center">
+                <div className="mt-5 sm:mt-8 flex flex-wrap gap-3 items-center">
                   <Link
                     href="/app/install"
                     style={{
@@ -322,8 +327,8 @@ export default function Home() {
 
               <MotionFade delay={0.22}>
                 <div
-                  className="mt-6 flex flex-wrap gap-x-5 gap-y-2"
-                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#5a5f68" }}
+                  className="mt-4 sm:mt-6 flex flex-wrap gap-x-4 sm:gap-x-5 gap-y-2"
+                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68" }}
                 >
                   {[
                     "Works with Claude, Codex, Cursor",
@@ -353,9 +358,14 @@ export default function Home() {
               </MotionFade>
             </div>
 
-            {/* Right: Run contract panel */}
-            <MotionFade delay={0.25} className="pt-6 lg:pt-2">
-              <HeroRunContract />
+            {/* Right: Run contract — compact card on mobile, full panel on desktop */}
+            <MotionFade delay={0.25} className="pt-2 sm:pt-4 lg:pt-2">
+              <div className="sm:hidden">
+                <MobileContractCard />
+              </div>
+              <div className="hidden sm:block">
+                <HeroRunContract />
+              </div>
             </MotionFade>
           </div>
         </div>
@@ -364,8 +374,8 @@ export default function Home() {
       {/* ── PROBLEM — The drift problem ── */}
       <section
         id="problem"
+        className="py-14 sm:py-16 lg:py-24"
         style={{
-          padding: "clamp(72px,10vw,120px) 0",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           position: "relative",
         }}
@@ -373,7 +383,7 @@ export default function Home() {
         <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
           <MotionFade>
             <div
-              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-14 mb-8 sm:mb-10 lg:mb-14 items-end"
             >
               <div
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
@@ -408,10 +418,10 @@ export default function Home() {
             {DRIFT_ITEMS.map(({ tag, title, body, glyph, code }, i) => (
               <MotionFade key={tag} delay={0.05 * i}>
                 <div
+                  className="p-5 sm:p-7"
                   style={{
                     background: "#0c0e11",
-                    padding: "28px 26px",
-                    minHeight: 200,
+                    minHeight: "auto",
                     display: "flex", flexDirection: "column",
                   }}
                 >
@@ -419,7 +429,7 @@ export default function Home() {
                     style={{
                       fontFamily: "var(--font-geist-mono)", fontSize: 10.5,
                       color: "#f87171", textTransform: "uppercase", letterSpacing: "0.08em",
-                      marginBottom: 14,
+                      marginBottom: 10,
                       display: "inline-flex", alignItems: "center", gap: 8, alignSelf: "flex-start",
                     }}
                   >
@@ -441,7 +451,7 @@ export default function Home() {
                   </p>
                   <div
                     style={{
-                      marginTop: "auto", paddingTop: 22,
+                      marginTop: "auto", paddingTop: 14,
                       fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68",
                     }}
                   >
@@ -466,8 +476,8 @@ export default function Home() {
       {/* ── SOLUTION — The RunTrim protocol ── */}
       <section
         id="protocol"
+        className="py-14 sm:py-16 lg:py-24"
         style={{
-          padding: "clamp(72px,10vw,120px) 0",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           position: "relative",
         }}
@@ -475,7 +485,7 @@ export default function Home() {
         <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
           <MotionFade>
             <div
-              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-14 mb-8 sm:mb-10 lg:mb-14 items-end"
             >
               <div
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
@@ -496,8 +506,34 @@ export default function Home() {
             </div>
           </MotionFade>
 
-          {/* Pipeline */}
-          <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
+          {/* Mobile: stacked step list */}
+          <div className="sm:hidden overflow-hidden rounded-[10px]" style={{ border: "1px solid rgba(255,255,255,0.09)", background: "linear-gradient(180deg, #0e1116, #0a0c10)" }}>
+            {PIPELINE_STAGES.map(({ n, cmd, desc, active }, i) => (
+              <div
+                key={n}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 14,
+                  padding: "14px 16px",
+                  borderBottom: i < PIPELINE_STAGES.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                }}
+              >
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "#5a5f68", letterSpacing: "0.06em", flexShrink: 0, marginTop: 2 }}>
+                  {n.split(" / ")[0]}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: "#f4f5f7", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
+                    {active && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />}
+                    <span style={{ color: "#a78bfa" }}>$</span>
+                    {cmd}
+                  </span>
+                  <p style={{ margin: "4px 0 0", color: "#5a5f68", fontSize: 12, lineHeight: 1.5 }}>{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: horizontal scrollable pipeline */}
+          <div className="hidden sm:block overflow-x-auto sm:mx-0 sm:px-0">
           <div
             className="min-w-[640px] overflow-hidden rounded-[10px]"
             style={{
@@ -587,8 +623,8 @@ export default function Home() {
       {/* ── BENEFITS ── */}
       <section
         id="benefits"
+        className="py-14 sm:py-16 lg:py-24"
         style={{
-          padding: "clamp(72px,10vw,120px) 0",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           position: "relative",
         }}
@@ -596,7 +632,7 @@ export default function Home() {
         <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
           <MotionFade>
             <div
-              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-14 mb-8 sm:mb-10 lg:mb-14 items-end"
             >
               <div
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
@@ -626,11 +662,10 @@ export default function Home() {
             {BENEFITS.map(({ n, title, body, stat, delta }, i) => (
               <MotionFade key={n} delay={0.05 * i}>
                 <div
+                  className="p-5 sm:p-7"
                   style={{
                     background: "#0c0e11",
-                    padding: "28px 26px 30px",
                     display: "flex", flexDirection: "column", gap: 10,
-                    minHeight: 180,
                   }}
                 >
                   <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.08em" }}>
@@ -662,8 +697,8 @@ export default function Home() {
       {/* ── AGENTS ── */}
       <section
         id="agents"
+        className="py-14 sm:py-16 lg:py-24"
         style={{
-          padding: "clamp(72px,10vw,120px) 0",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           position: "relative",
         }}
@@ -671,7 +706,7 @@ export default function Home() {
         <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
           <MotionFade>
             <div
-              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-14 mb-8 sm:mb-10 lg:mb-14 items-end"
             >
               <div
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
@@ -730,11 +765,10 @@ export default function Home() {
               {AGENT_LIST.map(({ icon, name, status, beta }, i) => (
                 <div
                   key={name}
+                  className="p-4 sm:p-6"
                   style={{
-                    padding: "26px 22px",
                     background: "linear-gradient(180deg, #0e1116, #0a0c10)",
-                    display: "flex", flexDirection: "column", gap: 12,
-                    minHeight: 156,
+                    display: "flex", flexDirection: "column", gap: 10,
                   }}
                 >
                   <div
@@ -792,8 +826,8 @@ export default function Home() {
       {/* ── PLANS ── */}
       <section
         id="plans"
+        className="py-14 sm:py-16 lg:py-24"
         style={{
-          padding: "clamp(72px,10vw,120px) 0",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           position: "relative",
         }}
@@ -801,7 +835,7 @@ export default function Home() {
         <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
           <MotionFade>
             <div
-              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-14 mb-8 sm:mb-10 lg:mb-14 items-end"
             >
               <div
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
@@ -821,7 +855,8 @@ export default function Home() {
             </div>
           </MotionFade>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          {/* Cards — items-stretch (default) + h-full on wrapper+card = equal heights */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 items-stretch">
             {[
               {
                 id: "free",
@@ -860,19 +895,20 @@ export default function Home() {
                 featured: false,
               },
             ].map(({ id, name, price, per, desc, features, featured }) => (
-              <MotionFade key={id} delay={0.06}>
+              <MotionFade key={id} delay={0.06} className="h-full">
                 <div
                   style={{
+                    height: "100%",
                     background: featured
                       ? "radial-gradient(160% 80% at 0% 0%, rgba(167,139,250,0.08), transparent 60%), #0c0e11"
                       : "#0c0e11",
                     border: `1px solid ${featured ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.09)"}`,
                     borderRadius: 10,
-                    padding: "24px 22px 26px",
+                    padding: "20px 18px 22px",
                     display: "flex", flexDirection: "column",
-                    minHeight: 280,
                   }}
                 >
+                  {/* Plan label */}
                   <span
                     style={{
                       fontFamily: "var(--font-geist-mono)", fontSize: 11,
@@ -882,14 +918,22 @@ export default function Home() {
                   >
                     {name}
                   </span>
-                  <span style={{ marginTop: 10, fontSize: 26, color: "#f4f5f7", letterSpacing: "-0.02em", fontWeight: 500 }}>
-                    {price}
+
+                  {/* Price */}
+                  <div style={{ marginTop: 10 }}>
+                    <span style={{ fontSize: 26, color: "#f4f5f7", letterSpacing: "-0.02em", fontWeight: 500 }}>
+                      {price}
+                    </span>
                     <span style={{ fontSize: 13, color: "#5a5f68", fontWeight: 400, marginLeft: 4 }}>{per}</span>
-                  </span>
-                  <p style={{ marginTop: 6, color: "#8a8f98", fontSize: 13.5 }}>
+                  </div>
+
+                  {/* Description — fixed height keeps cards aligned below price */}
+                  <p style={{ marginTop: 8, marginBottom: 0, color: "#8a8f98", fontSize: 13, lineHeight: 1.55, minHeight: "3.2em" }}>
                     {desc}
                   </p>
-                  <ul style={{ listStyle: "none", padding: 0, margin: "18px 0 24px", display: "flex", flexDirection: "column", gap: 9 }}>
+
+                  {/* Feature list */}
+                  <ul style={{ listStyle: "none", padding: 0, margin: "16px 0 0", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                     {features.map((f) => (
                       <li
                         key={f}
@@ -900,25 +944,28 @@ export default function Home() {
                       >
                         <span
                           style={{
-                            marginTop: 6, width: 6, height: 6,
+                            marginTop: 5, width: 6, height: 6,
                             background: featured ? "#a78bfa" : "#5a5f68",
                             borderRadius: 1, display: "block",
+                            flexShrink: 0,
                           }}
                         />
                         {f}
                       </li>
                     ))}
                   </ul>
-                  <div style={{ marginTop: "auto" }}>
+
+                  {/* CTA — pushed to bottom by flex-1 on the list above */}
+                  <div style={{ marginTop: 20 }}>
                     {id === "free" ? (
                       <Link
                         href="/app/install"
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          height: 36, borderRadius: 6,
+                          height: 36, borderRadius: 6, width: "100%",
                           border: "1px solid rgba(255,255,255,0.14)",
                           background: "transparent", color: "#f4f5f7",
-                          fontSize: 13, cursor: "pointer", transition: "background 0.15s",
+                          fontSize: 13, transition: "background 0.15s",
                           textDecoration: "none",
                         }}
                         className="hover:bg-[#16191e]"
@@ -943,15 +990,42 @@ export default function Home() {
               </MotionFade>
             ))}
           </div>
+
+          {/* View all plans */}
+          <div className="mt-8 sm:mt-10 flex flex-col items-center gap-3">
+            <p
+              style={{
+                fontFamily: "var(--font-geist-mono)", fontSize: 11.5,
+                color: "#5a5f68", letterSpacing: "0.04em", textAlign: "center",
+              }}
+            >
+              Compare limits, cloud sync, memory, and team controls.
+            </p>
+            <Link
+              href="/plans"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                height: 36, padding: "0 16px", borderRadius: 6,
+                border: "1px solid rgba(255,255,255,0.09)",
+                background: "transparent", color: "#8a8f98",
+                fontSize: 13, transition: "color 0.15s, border-color 0.15s, background 0.15s",
+                textDecoration: "none",
+              }}
+              className="hover:text-[#f4f5f7] hover:border-white/20 hover:bg-[#0c0e11]"
+            >
+              View all plans
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ── FINAL CTA ── */}
       <section
         id="install"
+        className="py-16 sm:py-20 lg:py-32"
         style={{
           position: "relative",
-          padding: "clamp(80px,12vw,140px) 0",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           background: "radial-gradient(1000px 500px at 50% 0%, rgba(109,76,242,0.1), transparent 60%)",
           overflow: "hidden",
@@ -1043,9 +1117,9 @@ export default function Home() {
           <div className="flex gap-[18px]">
             {[
               { href: "/app/install", label: "Docs"      },
-              { href: "#",            label: "Changelog" },
+              { href: "/changelog",   label: "Changelog" },
               { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub",  ext: true },
-              { href: "#",            label: "Status"    },
+              { href: "/status",      label: "Status"    },
               { href: "/privacy",     label: "Privacy"   },
             ].map(({ href, label, ext }) =>
               ext ? (

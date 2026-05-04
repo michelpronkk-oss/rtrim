@@ -48,49 +48,49 @@
 
 :root,
 .dark {
-  /* Deep violet-black — matches the logo */
-  --background:          #07071A;
-  --foreground:          #EDEEFF;
-  --card:                #0D0C22;
-  --card-foreground:     #EDEEFF;
-  --popover:             #0D0C22;
-  --popover-foreground:  #EDEEFF;
+  /* Graphite base — matches new homepage design language */
+  --background:          #08090b;
+  --foreground:          #f4f5f7;
+  --card:                #0c0e11;
+  --card-foreground:     #f4f5f7;
+  --popover:             #0c0e11;
+  --popover-foreground:  #f4f5f7;
 
-  /* Brand violet — mid-point of the logo gradient */
+  /* Brand violet */
   --primary:             #7C6DFA;
-  --primary-foreground:  #02020E;
+  --primary-foreground:  #f4f5f7;
 
-  --secondary:           #131230;
-  --secondary-foreground:#A8AACC;
+  --secondary:           #111317;
+  --secondary-foreground:#c9ccd2;
 
-  --muted:               #090918;
-  --muted-foreground:    #4D5070;
+  --muted:               #0c0e11;
+  --muted-foreground:    #5a5f68;
 
-  --accent:              #7C6DFA;
-  --accent-foreground:   #02020E;
+  --accent:              #a78bfa;
+  --accent-foreground:   #08090b;
 
-  --destructive:         #FF5C5C;
+  --destructive:         #f87171;
 
-  --border:              rgba(255, 255, 255, 0.08);
-  --input:               rgba(255, 255, 255, 0.08);
-  --ring:                rgba(124, 109, 250, 0.30);
+  --border:              rgba(255, 255, 255, 0.07);
+  --input:               rgba(255, 255, 255, 0.07);
+  --ring:                rgba(167, 139, 250, 0.25);
 
-  --chart-1: #7C6DFA;
-  --chart-2: #5B8BFF;
-  --chart-3: #F0BF72;
-  --chart-4: #FF7B5C;
-  --chart-5: #3C3E60;
+  --chart-1: #a78bfa;
+  --chart-2: #6ee7b7;
+  --chart-3: #f5a524;
+  --chart-4: #f87171;
+  --chart-5: #3a3e46;
 
   --radius: 0.5rem;
 
-  --sidebar:                    #08081E;
-  --sidebar-foreground:         #A8AACC;
-  --sidebar-primary:            #7C6DFA;
-  --sidebar-primary-foreground: #02020E;
-  --sidebar-accent:             #131230;
-  --sidebar-accent-foreground:  #EDEEFF;
-  --sidebar-border:             rgba(255, 255, 255, 0.08);
-  --sidebar-ring:               rgba(124, 109, 250, 0.30);
+  --sidebar:                    #0c0e11;
+  --sidebar-foreground:         #c9ccd2;
+  --sidebar-primary:            #a78bfa;
+  --sidebar-primary-foreground: #08090b;
+  --sidebar-accent:             #111317;
+  --sidebar-accent-foreground:  #f4f5f7;
+  --sidebar-border:             rgba(255, 255, 255, 0.06);
+  --sidebar-ring:               rgba(167, 139, 250, 0.25);
 }
 
 @layer base {

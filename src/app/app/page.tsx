@@ -140,8 +140,8 @@ const RISK_BADGE: Record<string, string> = {
 };
 
 function RiskBadge({ level }: { level: string | null }) {
-  if (!level) return <span className="font-mono text-[11px] text-[#2E3554]">—</span>;
-  const cls = RISK_BADGE[level.toLowerCase()] ?? "border-white/10 text-[#9699BE]";
+  if (!level) return <span className="font-mono text-[11px] text-[#3a3e46]">—</span>;
+  const cls = RISK_BADGE[level.toLowerCase()] ?? "border-white/10 text-[#8a8f98]";
   return (
     <span className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${cls}`}>
       {level}
@@ -153,13 +153,13 @@ function StatCard({ label, value, sub, icon: Icon }: {
   label: string; value: string; sub?: string; icon: React.ElementType;
 }) {
   return (
-    <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-5 py-5">
+    <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
       <div className="mb-3 flex items-center gap-2">
         <Icon className="size-3.5 text-[#7C6DFA]/60" />
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4D5070]">{label}</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">{label}</p>
       </div>
-      <p className="text-[2rem] font-bold tabular-nums tracking-tight text-[#EDEEFF]">{value}</p>
-      {sub && <p className="mt-1 font-mono text-[11px] text-[#2E2E50]">{sub}</p>}
+      <p className="text-[2rem] font-bold tabular-nums tracking-tight text-[#f4f5f7]">{value}</p>
+      {sub && <p className="mt-1 font-mono text-[11px] text-[#3a3e46]">{sub}</p>}
     </div>
   );
 }
@@ -190,7 +190,7 @@ export default async function OverviewPage() {
 
   const PLAN_BADGE: Record<string, string> = {
     free:    "border-white/12 text-[#6A7398]",
-    pro:     "border-[#7C6DFA]/30 bg-[#7C6DFA]/10 text-[#9E91FF]",
+    pro:     "border-[#7C6DFA]/30 bg-[#7C6DFA]/10 text-[#a78bfa]",
     builder: "border-[#4DE8B0]/25 bg-[#4DE8B0]/8 text-[#4DE8B0]",
     team:    "border-[#F0BF72]/25 bg-[#F0BF72]/8 text-[#F0BF72]",
   };
@@ -201,8 +201,8 @@ export default async function OverviewPage() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Overview</p>
-          <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">Dashboard</h1>
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Overview</p>
+          <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">Dashboard</h1>
         </div>
         <span className={`rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] ${PLAN_BADGE[plan] ?? PLAN_BADGE.free}`}>
           {plan}
@@ -211,32 +211,32 @@ export default async function OverviewPage() {
 
       {/* Plan / usage card */}
       {plan === "free" ? (
-        <div className={`rounded-xl border px-5 py-4 ${isAtLimit ? "border-[#FF7B5C]/20 bg-[#FF7B5C]/5" : isNearLimit ? "border-[#F0BF72]/18 bg-[#F0BF72]/5" : "border-white/7 bg-[#0C0C20]"}`}>
+        <div className={`rounded-xl border px-5 py-4 ${isAtLimit ? "border-[#FF7B5C]/20 bg-[#FF7B5C]/5" : isNearLimit ? "border-[#F0BF72]/18 bg-[#F0BF72]/5" : "border-white/6 bg-[#0c0e11]"}`}>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <Zap className={`size-3.5 ${isAtLimit ? "text-[#FF7B5C]" : isNearLimit ? "text-[#F0BF72]" : "text-[#7C6DFA]/60"}`} />
-                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4D5070]">
+                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">
                   Bridge Mode usage
                 </p>
               </div>
-              <p className={`mt-1.5 text-[14px] font-semibold ${isAtLimit ? "text-[#FF8F8F]" : isNearLimit ? "text-[#F0BF72]" : "text-[#EDEEFF]"}`}>
+              <p className={`mt-1.5 text-[14px] font-semibold ${isAtLimit ? "text-[#FF8F8F]" : isNearLimit ? "text-[#F0BF72]" : "text-[#f4f5f7]"}`}>
                 {runsUsed} / {runsLimit} runs this month
               </p>
               {isAtLimit && (
-                <p className="mt-0.5 text-[12px] text-[#5E6A88]">
+                <p className="mt-0.5 text-[12px] text-[#8a8f98]">
                   Free Bridge limit reached. Upgrade for unlimited runs.
                 </p>
               )}
               {isNearLimit && !isAtLimit && (
-                <p className="mt-0.5 text-[12px] text-[#5E6A88]">
+                <p className="mt-0.5 text-[12px] text-[#8a8f98]">
                   {runsLimit - runsUsed} run{runsLimit - runsUsed === 1 ? "" : "s"} remaining this month.
                 </p>
               )}
             </div>
             <Link
               href="/pricing"
-              className={`shrink-0 rounded-lg px-3.5 py-2 text-[12px] font-medium transition-colors ${isAtLimit ? "bg-[#7C6DFA] text-white hover:opacity-85" : "border border-white/10 text-[#9699BE] hover:border-white/20 hover:text-[#EDEEFF]"}`}
+              className={`shrink-0 rounded-lg px-3.5 py-2 text-[12px] font-medium transition-colors ${isAtLimit ? "bg-[#7C6DFA] text-white hover:opacity-85" : "border border-white/10 text-[#8a8f98] hover:border-white/20 hover:text-[#f4f5f7]"}`}
               style={isAtLimit ? { boxShadow: "0 4px 14px rgba(124,109,250,0.28)" } : undefined}
             >
               {isAtLimit ? "Upgrade to Pro" : "View plans"}
@@ -244,11 +244,11 @@ export default async function OverviewPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-5 py-4">
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-4">
           <div className="flex items-center gap-3">
             <Zap className="size-3.5 text-[#4DE8B0]/60" />
-            <p className="text-[13px] font-semibold text-[#EDEEFF]">Bridge Mode: Unlimited</p>
-            <span className="font-mono text-[11px] text-[#4D5070]">
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">Bridge Mode: Unlimited</p>
+            <span className="font-mono text-[11px] text-[#5a5f68]">
               {plan === "pro" ? "Pro" : plan === "builder" ? "Builder" : "Team"} plan active
             </span>
           </div>
@@ -284,15 +284,15 @@ export default async function OverviewPage() {
       </div>
 
       {isEmpty ? (
-        <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-6 py-10 text-center">
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 text-center">
           <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8"
                style={{ boxShadow: "0 0 24px rgba(124,109,250,0.08)" }}>
-            <Shield className="size-5 text-[#9E91FF]/70" />
+            <Shield className="size-5 text-[#a78bfa]/70" />
           </div>
-          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#EDEEFF]">
+          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
             Connect your first guarded run.
           </h2>
-          <p className="mx-auto mt-2 max-w-[400px] text-[13px] leading-[1.7] text-[#5E6A88]">
+          <p className="mx-auto mt-2 max-w-[400px] text-[13px] leading-[1.7] text-[#8a8f98]">
             Free CLI works locally. Cloud sync is opening for Pro, Builder, and Team. Once connected, every guarded run will appear here with its contract, memory, risk, and savings.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -300,23 +300,23 @@ export default async function OverviewPage() {
                   style={{ boxShadow: "0 4px 16px rgba(124,109,250,0.28)" }}>
               Install CLI <ArrowRight className="size-3.5" />
             </Link>
-            <Link href="/app/connect" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#EDEEFF]">
+            <Link href="/app/connect" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]">
               Connect CLI
             </Link>
           </div>
         </div>
       ) : (
         data?.lastRun && (
-          <div className="rounded-xl border border-white/7 bg-[#0C0C20] px-5 py-5">
-            <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">
+          <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+            <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">
               Last guarded run
             </p>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold text-[#EDEEFF]">
+                <p className="truncate text-[14px] font-semibold text-[#f4f5f7]">
                   {data.lastRun.task ?? "Untitled run"}
                 </p>
-                <p className="mt-1 font-mono text-[11px] text-[#4D5070]">
+                <p className="mt-1 font-mono text-[11px] text-[#5a5f68]">
                   {(() => {
                     const when =
                       toTimeMs(data.lastRun.evaluated_at_local) ??
@@ -331,7 +331,7 @@ export default async function OverviewPage() {
                 <RiskBadge level={data.lastRun.risk_after ?? data.lastRun.risk_before} />
                 <Link
                   href={`/app/runs/${data.lastRun.id}`}
-                  className="font-mono text-[11px] text-[#7C6DFA] transition-colors hover:text-[#B2A7FF]"
+                  className="font-mono text-[11px] text-[#a78bfa] transition-colors hover:text-[#c9ccd2]"
                 >
                   View report
                 </Link>
@@ -342,18 +342,18 @@ export default async function OverviewPage() {
       )}
 
       {/* Sync banner */}
-      <div className="rounded-xl border border-white/6 bg-[#08081C] px-5 py-4">
+      <div className="rounded-xl border border-white/6 bg-[#0e1116] px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-semibold text-[#EDEEFF]">CLI cloud sync is live.</p>
-            <p className="mt-0.5 text-[12px] leading-5 text-[#4D5070]">
-              Connect your CLI with <code className="font-mono text-[#9E91FF]">runtrim login</code> then run{" "}
-              <code className="font-mono text-[#9E91FF]">runtrim sync</code> from any project.
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">CLI cloud sync is live.</p>
+            <p className="mt-0.5 text-[12px] leading-5 text-[#5a5f68]">
+              Connect your CLI with <code className="font-mono text-[#a78bfa]">runtrim login</code> then run{" "}
+              <code className="font-mono text-[#a78bfa]">runtrim sync</code> from any project.
             </p>
           </div>
           <Link
             href="/app/connect"
-            className="shrink-0 rounded-lg border border-white/10 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+            className="shrink-0 rounded-lg border border-white/10 px-3.5 py-2 text-[12px] font-medium text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
           >
             Connect CLI
           </Link>

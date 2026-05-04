@@ -25,6 +25,10 @@ const NAV_ITEMS = [
   { href: "/app/install",      label: "Install",      icon: Download     },
 ];
 
+const MONO: React.CSSProperties = {
+  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+};
+
 interface AppShellProps {
   children: React.ReactNode;
   userEmail?: string;
@@ -39,29 +43,37 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#07071A]">
+    <div style={{ minHeight: "100vh", background: "#08090b" }}>
       <div className="flex min-h-screen">
 
-        {/* ── Desktop sidebar ─────────────────────────────────── */}
-        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-white/8 bg-[#08081E] md:flex">
-          <div className="flex items-center gap-2.5 border-b border-white/8 px-5 py-5">
+        {/* ── Desktop sidebar ── */}
+        <aside
+          className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col md:flex"
+          style={{ background: "#0c0e11", borderRight: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded-md" />
-            <span className="text-[14px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
+            <span style={{ ...MONO, fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
+              runtrim
+            </span>
           </div>
 
-          <div className="border-b border-white/8 px-4 py-3">
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0E1027] px-3 py-2.5">
-              <div className="size-1.5 rounded-full bg-[#7C6DFA]" />
-              <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-[#9699BE]">
+          {/* User row */}
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-2 rounded-lg px-3 py-2.5" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#111317" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 0 2px rgba(167,139,250,0.15)", display: "inline-block", flexShrink: 0 }} />
+              <span className="min-w-0 flex-1 truncate" style={{ ...MONO, fontSize: 11.5, color: "#8a8f98" }}>
                 {userEmail ?? "Dashboard"}
               </span>
-              <span className="shrink-0 rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#7F84AE]">
+              <span className="shrink-0 rounded px-1.5 py-0.5" style={{ ...MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5a5f68", border: "1px solid rgba(255,255,255,0.07)" }}>
                 free
               </span>
             </div>
           </div>
 
+          {/* Nav items */}
           <nav className="flex-1 space-y-0.5 px-3 py-3">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
@@ -70,40 +82,47 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors duration-100",
-                    active
-                      ? "border border-[#7C6DFA]/25 bg-[#7C6DFA]/12 text-[#D3CBFF]"
-                      : "border border-transparent text-[#7F84AE] hover:border-white/8 hover:bg-white/5 hover:text-[#C3C6E8]"
-                  )}
+                  className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-100", !active && "hover:bg-white/[0.04]")}
+                  style={active ? {
+                    border: "1px solid rgba(167,139,250,0.22)",
+                    background: "rgba(167,139,250,0.08)",
+                    color: "#c9ccd2", fontSize: 13, fontWeight: 500,
+                  } : {
+                    border: "1px solid transparent",
+                    color: "#5a5f68", fontSize: 13, fontWeight: 500,
+                  }}
                 >
-                  <Icon className={cn("size-4 shrink-0", active ? "text-[#B2A7FF]" : "text-[#6A6F96]")} />
+                  <Icon className="size-4 shrink-0" style={{ color: active ? "#a78bfa" : "#3a3e46" }} />
                   {item.label}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="border-t border-white/8 px-4 py-4">
+          {/* Footer */}
+          <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <SignOutButton />
-            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 px-2 text-[11px] text-[#626A94]">
-              <Link href="/privacy" className="transition-colors hover:text-[#B9B2FF]">Privacy</Link>
-              <Link href="/terms"   className="transition-colors hover:text-[#B9B2FF]">Terms</Link>
-              <Link href="/security" className="transition-colors hover:text-[#B9B2FF]">Security</Link>
+            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 px-2" style={{ ...MONO, fontSize: 11, color: "#3a3e46" }}>
+              <Link href="/privacy"  className="transition-colors hover:text-[#8a8f98]">Privacy</Link>
+              <Link href="/terms"    className="transition-colors hover:text-[#8a8f98]">Terms</Link>
+              <Link href="/security" className="transition-colors hover:text-[#8a8f98]">Security</Link>
             </div>
           </div>
         </aside>
 
-        {/* ── Main content ─────────────────────────────────────── */}
-        <div className="min-w-0 flex-1 bg-[#0A0A1F]">
+        {/* ── Main content ── */}
+        <div className="min-w-0 flex-1" style={{ background: "#08090b" }}>
 
-          {/* Mobile header — compact: logo + wordmark + hamburger only */}
-          <header className="relative z-40 border-b border-white/8 bg-[#08081E]/95 backdrop-blur md:hidden">
+          {/* Mobile header */}
+          <header
+            className="relative z-40 md:hidden"
+            style={{ background: "rgba(12,14,17,0.95)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          >
             <div className="flex items-center justify-between px-4 py-3">
               <Link href="/app" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded-md" />
-                <span className="text-[14px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+                <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
+                <span style={{ ...MONO, fontSize: 13, fontWeight: 600, color: "#f4f5f7" }}>runtrim</span>
               </Link>
 
               <button
@@ -112,26 +131,25 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 aria-expanded={mobileMenuOpen}
                 aria-controls="mobile-app-nav"
                 onClick={() => setMobileMenuOpen((o) => !o)}
-                className="inline-flex size-9 items-center justify-center rounded-lg border border-white/10 bg-[#0E1027] text-[#AAB0D2] transition-colors hover:border-white/18 hover:text-[#EDEEFF]"
+                className="inline-flex size-9 items-center justify-center rounded-lg transition-colors"
+                style={{ border: "1px solid rgba(255,255,255,0.09)", background: "#111317", color: "#8a8f98" }}
               >
                 {mobileMenuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
               </button>
             </div>
 
-            {/* Slide-down drawer */}
+            {/* Mobile drawer */}
             {mobileMenuOpen && (
               <div
                 id="mobile-app-nav"
-                className="border-t border-white/8 bg-[#080919] px-3 pb-4 pt-3"
+                className="px-3 pb-4 pt-3"
+                style={{ background: "#0c0e11", borderTop: "1px solid rgba(255,255,255,0.06)" }}
               >
-                {/* Account row inside drawer — keeps header clean */}
                 {userEmail && (
-                  <div className="mb-3 flex items-center gap-2 rounded-lg border border-white/8 bg-[#0E1027] px-3 py-2.5">
-                    <div className="size-1.5 shrink-0 rounded-full bg-[#7C6DFA]" />
-                    <span className="min-w-0 flex-1 truncate text-[12px] text-[#9699BE]">{userEmail}</span>
-                    <span className="shrink-0 rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-[#7F84AE]">
-                      free
-                    </span>
+                  <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2.5" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#111317" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa", display: "inline-block", flexShrink: 0 }} />
+                    <span className="min-w-0 flex-1 truncate" style={{ ...MONO, fontSize: 11.5, color: "#8a8f98" }}>{userEmail}</span>
+                    <span style={{ ...MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "#5a5f68", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 3, padding: "1px 5px" }}>free</span>
                   </div>
                 )}
 
@@ -144,28 +162,30 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-3 text-[14px] font-medium transition-colors",
-                          active
-                            ? "border border-[#7C6DFA]/25 bg-[#7C6DFA]/12 text-[#D3CBFF]"
-                            : "border border-transparent text-[#8D92B6] hover:border-white/8 hover:bg-white/4 hover:text-[#C3C6E8]"
-                        )}
+                        className={cn("flex items-center gap-3 rounded-lg px-3 py-3 transition-colors", !active && "hover:bg-white/[0.04]")}
+                        style={active ? {
+                          border: "1px solid rgba(167,139,250,0.22)",
+                          background: "rgba(167,139,250,0.08)",
+                          color: "#c9ccd2", fontSize: 14, fontWeight: 500,
+                        } : {
+                          border: "1px solid transparent",
+                          color: "#5a5f68", fontSize: 14, fontWeight: 500,
+                        }}
                       >
-                        <Icon className={cn("size-4 shrink-0", active ? "text-[#B2A7FF]" : "text-[#6A6F96]")} />
+                        <Icon className="size-4 shrink-0" style={{ color: active ? "#a78bfa" : "#3a3e46" }} />
                         {item.label}
                       </Link>
                     );
                   })}
                 </nav>
 
-                <div className="mt-3 border-t border-white/8 pt-3">
+                <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <SignOutButton />
                 </div>
               </div>
             )}
           </header>
 
-          {/* Page content */}
           <main className="px-4 py-6 sm:px-8 sm:py-10 xl:px-10">{children}</main>
         </div>
       </div>

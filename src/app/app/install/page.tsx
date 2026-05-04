@@ -26,8 +26,11 @@ function CommandRow({ command }: { command: string }) {
       ? "runtrim_go"
       : undefined;
   return (
-    <div className="flex max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/8 bg-[#0E151E] px-3 py-2.5">
-      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[11px] text-[#D7DEE7] sm:text-[12px]">
+    <div
+      className="flex max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg px-3 py-2.5"
+      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)" }}
+    >
+      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[11px] text-[#a78bfa] sm:text-[12px]">
         {command}
       </code>
       <CopyButton text={command} className="shrink-0" trackCommandKey={copyKey} />
@@ -56,25 +59,56 @@ export default function InstallPage() {
   ];
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#07071A] text-[#EDEEFF]">
-      <header className="border-b border-white/10 bg-[#090A1D]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
-          <Link href="/" className="min-w-0 flex items-center gap-2.5">
+    <div className="min-h-screen overflow-x-hidden bg-[#08090b] text-[#f4f5f7]">
+      <header
+        style={{
+          position: "sticky", top: 0, zIndex: 50,
+          background: "rgba(8,9,11,0.72)",
+          backdropFilter: "saturate(140%) blur(12px)",
+          WebkitBackdropFilter: "saturate(140%) blur(12px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <div
+          className="mx-auto flex items-center gap-7"
+          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
+        >
+          <Link href="/" className="flex items-center gap-2.5 no-underline">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
+              runtrim
+            </span>
           </Link>
-          <nav className="hidden items-center gap-6 md:flex">
-            <Link href="/#how-it-works" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">How it works</Link>
-            <Link href="/#pricing" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">Pricing</Link>
-            <Link href="/privacy" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">Privacy</Link>
-            <Link href="/terms" className="text-sm text-[#7380A3] transition-colors hover:text-[#EDEEFF]">Terms</Link>
+          <nav className="hidden md:flex items-center gap-1 ml-3">
+            {[
+              { href: "/",          label: "Home"       },
+              { href: "/#protocol", label: "Protocol"   },
+              { href: "/plans",     label: "Plans"      },
+            ].map(({ href, label }) => (
+              <Link
+                key={label}
+                href={href}
+                style={{ fontSize: 13, color: "#8a8f98", padding: "7px 10px", borderRadius: 5, transition: "color 0.15s, background 0.15s" }}
+                className="hover:text-[#f4f5f7] hover:bg-white/6"
+              >
+                {label}
+              </Link>
+            ))}
           </nav>
+          <div style={{ flex: 1 }} />
           <Link
             href="/"
-            className="shrink-0 rounded-md border border-white/12 px-2.5 py-1.5 text-[11px] text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF] sm:px-3 sm:text-[12px]"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              height: 32, padding: "0 14px", borderRadius: 6,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "transparent", color: "#8a8f98",
+              fontSize: 13, transition: "color 0.15s, border-color 0.15s, background 0.15s",
+            }}
+            className="hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
           >
-            Back to homepage
+            Homepage
           </Link>
         </div>
       </header>
@@ -82,17 +116,17 @@ export default function InstallPage() {
       <main className="mx-auto w-full max-w-[1120px] px-4 py-8 sm:px-6 sm:py-10">
         <div className="space-y-7 min-w-0">
         <header>
-          <h1 className="text-[24px] font-bold tracking-[-0.03em] text-[#EDEEFF]">Install RunTrim</h1>
-          <p className="mt-1 text-[13px] text-[#9AA7B6]">RunTrim runs locally in your repo. Source code is not uploaded in V1.</p>
-          <p className="mt-1 text-[12px] text-[#6870A0]">No account required for local CLI.</p>
-          <p className="mt-1 text-[12px] text-[#6870A0]">Free includes 1 tracked local repo. A tracked repo is one codebase with its own .runtrim workspace.</p>
+          <h1 className="text-[24px] font-bold tracking-[-0.03em] text-[#f4f5f7]">Install RunTrim</h1>
+          <p className="mt-1 text-[13px] text-[#8a8f98]">RunTrim runs locally in your repo. Source code is not uploaded in V1.</p>
+          <p className="mt-1 text-[12px] text-[#5a5f68]">No account required for local CLI.</p>
+          <p className="mt-1 text-[12px] text-[#5a5f68]">Free includes 1 tracked local repo. A tracked repo is one codebase with its own .runtrim workspace.</p>
         </header>
 
-        <section className="surface-panel overflow-hidden rounded-xl border border-white/10">
-          <div className="border-b border-white/8 px-6 py-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Primary quick start</p>
-            <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">Install once. Start in any repo.</h2>
-            <p className="mt-1 text-[12px] text-[#9AA7B6]">Use one daily command to prepare a guarded prompt and start the run.</p>
+        <section className=" overflow-hidden rounded-xl border border-white/6">
+          <div className="border-b border-white/6 px-6 py-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Primary quick start</p>
+            <h2 className="mt-1 text-[16px] font-semibold text-[#f4f5f7]">Install once. Start in any repo.</h2>
+            <p className="mt-1 text-[12px] text-[#8a8f98]">Use one daily command to prepare a guarded prompt and start the run.</p>
           </div>
           <div className="grid min-w-0 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.1fr_1fr]">
             <div className="min-w-0 space-y-2.5">
@@ -100,55 +134,55 @@ export default function InstallPage() {
                 <CommandRow key={command} command={command} />
               ))}
               <div className="pt-1">
-                <p className="text-[11px] text-[#6870A0]">go prepares a guarded prompt, copies it for your agent, records the run locally, and tells you what to do next.</p>
+                <p className="text-[11px] text-[#5a5f68]">go prepares a guarded prompt, copies it for your agent, records the run locally, and tells you what to do next.</p>
                 <Link
                   href="/how-it-works"
                   data-rt-event="how_it_works_clicked"
-                  className="mt-1 inline-flex text-[12px] font-medium text-[#97A3BA] transition-colors hover:text-[#EDEEFF]"
+                  className="mt-1 inline-flex text-[12px] font-medium text-[#97A3BA] transition-colors hover:text-[#f4f5f7]"
                 >
                   See the operator flow
                 </Link>
               </div>
             </div>
-            <div className="min-w-0 rounded-lg border border-white/8 bg-[#090F18] p-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5D638D]">What each command does</p>
-              <ul className="mt-3 space-y-2 text-[12px] leading-5 text-[#C0C2E8]">
-                <li><span className="text-[#EDEEFF]">runtrim go &quot;your task&quot;</span> is the fastest daily path for guarded prompt creation and local run tracking.</li>
-                <li><span className="text-[#EDEEFF]">runtrim start</span> is the guided menu when you want RunTrim to choose the next safe command.</li>
+            <div className="min-w-0 rounded-lg border border-white/6 bg-[#0c0e11] p-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">What each command does</p>
+              <ul className="mt-3 space-y-2 text-[12px] leading-5 text-[#c9ccd2]">
+                <li><span className="text-[#f4f5f7]">runtrim go &quot;your task&quot;</span> is the fastest daily path for guarded prompt creation and local run tracking.</li>
+                <li><span className="text-[#f4f5f7]">runtrim start</span> is the guided menu when you want RunTrim to choose the next safe command.</li>
               </ul>
             </div>
           </div>
         </section>
 
-        <section className="surface-panel rounded-xl p-5">
-          <h2 className="text-[16px] font-semibold text-[#EDEEFF]">Choose your agent mode</h2>
-          <p className="mt-1 text-[12px] leading-5 text-[#9AA7B6]">
+        <section className=" rounded-xl p-5">
+          <h2 className="text-[16px] font-semibold text-[#f4f5f7]">Choose your agent mode</h2>
+          <p className="mt-1 text-[12px] leading-5 text-[#8a8f98]">
             Start with copy mode. It works with Claude, Codex, Cursor, ChatGPT, and any agent UI. Command mode is optional if you have a local agent CLI.
           </p>
           <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
-            <div className="min-w-0 rounded-lg border border-[#7C6DFA]/30 bg-[#0E151E] p-4">
+            <div className="min-w-0 rounded-lg border border-[#7C6DFA]/30 bg-[#0c0e11] p-4">
               <div className="flex items-center gap-2.5">
-                <p className="text-[14px] font-semibold text-[#EDEEFF]">Copy mode</p>
-                <span className="rounded border border-[#7C6DFA]/35 bg-[#7C6DFA]/12 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#C4B8FF]">
+                <p className="text-[14px] font-semibold text-[#f4f5f7]">Copy mode</p>
+                <span className="rounded border border-[#7C6DFA]/35 bg-[#7C6DFA]/12 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#a78bfa]">
                   Recommended
                 </span>
               </div>
-              <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">RunTrim prepares the contract and copies it for your agent.</p>
+              <p className="mt-2 text-[12px] leading-5 text-[#8a8f98]">RunTrim prepares the contract and copies it for your agent.</p>
               <div className="mt-3 space-y-2.5">
                 <CommandRow command='runtrim go "your task"' />
               </div>
-              <p className="mt-2 text-[11px] leading-5 text-[#6870A0]">
-                Copy mode is the default. Use <code className="font-mono text-[#9AA7B6]">runtrim agent set copy</code> if you changed modes before.
+              <p className="mt-2 text-[11px] leading-5 text-[#5a5f68]">
+                Copy mode is the default. Use <code className="font-mono text-[#8a8f98]">runtrim agent set copy</code> if you changed modes before.
               </p>
             </div>
-            <div className="min-w-0 rounded-lg border border-white/8 bg-[#0E151E] p-4">
+            <div className="min-w-0 rounded-lg border border-white/6 bg-[#0c0e11] p-4">
               <div className="flex items-center gap-2.5">
-                <p className="text-[14px] font-semibold text-[#EDEEFF]">Command mode</p>
+                <p className="text-[14px] font-semibold text-[#f4f5f7]">Command mode</p>
                 <span className="rounded border border-white/12 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#8C93BE]">
                   Optional
                 </span>
               </div>
-              <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">
+              <p className="mt-2 text-[12px] leading-5 text-[#8a8f98]">
                 RunTrim can wrap a configured local agent command and record run metadata. Use this only if you have a local agent CLI configured.
               </p>
               <div className="mt-3 space-y-2.5">
@@ -156,51 +190,51 @@ export default function InstallPage() {
                   <CommandRow key={command} command={command} />
                 ))}
               </div>
-              <p className="mt-2 text-[11px] leading-5 text-[#6870A0]">
-                Examples: <code className="font-mono text-[#9AA7B6]">claude</code>, <code className="font-mono text-[#9AA7B6]">codex</code>, or{" "}
-                <code className="font-mono text-[#9AA7B6]">custom &quot;&lt;command&gt;&quot;</code>.
+              <p className="mt-2 text-[11px] leading-5 text-[#5a5f68]">
+                Examples: <code className="font-mono text-[#8a8f98]">claude</code>, <code className="font-mono text-[#8a8f98]">codex</code>, or{" "}
+                <code className="font-mono text-[#8a8f98]">custom &quot;&lt;command&gt;&quot;</code>.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="surface-panel rounded-xl p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Daily shortcut</p>
-          <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">runtrim go prepares a guarded prompt, copies it for your agent, records the run locally, and prints next steps.</p>
+        <section className=" rounded-xl p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Daily shortcut</p>
+          <p className="mt-2 text-[12px] leading-5 text-[#8a8f98]">runtrim go prepares a guarded prompt, copies it for your agent, records the run locally, and prints next steps.</p>
           <div className="mt-3">
             <CommandRow command='runtrim go "your task"' />
           </div>
         </section>
 
-        <section className="surface-panel rounded-xl p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Direct commands</p>
-          <p className="mt-1 text-[12px] text-[#9AA7B6]">Manual controls when you want explicit command-by-command operation.</p>
-          <div className="mt-4 overflow-hidden rounded-lg border border-white/8 bg-[#0E151E]">
+        <section className=" rounded-xl p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Direct commands</p>
+          <p className="mt-1 text-[12px] text-[#8a8f98]">Manual controls when you want explicit command-by-command operation.</p>
+          <div className="mt-4 overflow-hidden rounded-lg border border-white/6 bg-[#0c0e11]">
             {directCommands.map((item, index) => (
               <div
                 key={item.step}
-                className={`flex min-w-0 gap-3 px-4 py-3.5 ${index < directCommands.length - 1 ? "border-b border-white/8" : ""}`}
+                className={`flex min-w-0 gap-3 px-4 py-3.5 ${index < directCommands.length - 1 ? "border-b border-white/6" : ""}`}
               >
-                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-white/10 bg-[#090918] font-mono text-[10px] text-[#7C6DFA]">
+                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-white/6 bg-[#090918] font-mono text-[10px] text-[#7C6DFA]">
                   {item.step}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-[#EDEEFF]">{item.title}</p>
+                  <p className="text-[13px] font-semibold text-[#f4f5f7]">{item.title}</p>
                   <div className="mt-2">
                     <CommandRow command={item.command} />
                   </div>
-                  <p className="mt-2 text-[12px] leading-5 text-[#9AA7B6]">{item.note}</p>
+                  <p className="mt-2 text-[12px] leading-5 text-[#8a8f98]">{item.note}</p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="surface-panel rounded-xl p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5D638D]">Dashboard sync private beta</p>
-          <div className="mt-3 rounded-lg border border-white/8 bg-[#090F18] p-4">
-            <p className="text-[14px] font-semibold text-[#EDEEFF]">Cloud sync is in private beta</p>
-            <p className="mt-2 text-[13px] leading-6 text-[#9AA7B6]">
+        <section className=" rounded-xl p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Dashboard sync private beta</p>
+          <div className="mt-3 rounded-lg border border-white/6 bg-[#0c0e11] p-4">
+            <p className="text-[14px] font-semibold text-[#f4f5f7]">Cloud sync is in private beta</p>
+            <p className="mt-2 text-[13px] leading-6 text-[#8a8f98]">
               RunTrim Free works locally without an account. Cloud sync and hosted run history are rolling out to approved early access users.
             </p>
             <p className="mt-2 text-[12px] leading-6 text-[#7F8BA3]">
@@ -213,7 +247,7 @@ export default function InstallPage() {
                 className="inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
               />
             </div>
-            <p className="mt-3 text-[11px] text-[#6870A0]">Approved testers receive their sync setup instructions by email.</p>
+            <p className="mt-3 text-[11px] text-[#5a5f68]">Approved testers receive their sync setup instructions by email.</p>
           </div>
         </section>
 

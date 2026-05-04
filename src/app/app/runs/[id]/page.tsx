@@ -56,8 +56,8 @@ const RISK_COLOR: Record<string, string> = {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-white/7 bg-[#0C0C20] p-5">
-      <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">{title}</p>
+    <div className="rounded-xl border border-white/6 bg-[#0c0e11] p-5">
+      <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">{title}</p>
       {children}
     </div>
   );
@@ -66,9 +66,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function DataRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 border-b border-white/5 py-2.5 last:border-0 sm:flex-nowrap">
-      <span className="shrink-0 text-[12px] text-[#5E6A88]">{label}</span>
+      <span className="shrink-0 text-[12px] text-[#8a8f98]">{label}</span>
       <span className={`min-w-0 break-words text-[12px] text-[#C8D4DF] sm:text-right ${mono ? "font-mono" : ""}`}>
-        {value ?? <span className="text-[#2E3554]">—</span>}
+        {value ?? <span className="text-[#3a3e46]">—</span>}
       </span>
     </div>
   );
@@ -76,12 +76,12 @@ function DataRow({ label, value, mono }: { label: string; value: React.ReactNode
 
 function StringList({ items, emptyLabel }: { items: string[] | null; emptyLabel?: string }) {
   if (!items || items.length === 0) {
-    return <p className="text-[12px] text-[#2E3554]">{emptyLabel ?? "None recorded"}</p>;
+    return <p className="text-[12px] text-[#3a3e46]">{emptyLabel ?? "None recorded"}</p>;
   }
   return (
     <ul className="space-y-1.5">
       {items.map((item, i) => (
-        <li key={i} className="flex items-start gap-2 text-[12px] text-[#9699BE]">
+        <li key={i} className="flex items-start gap-2 text-[12px] text-[#8a8f98]">
           <span className="mt-1 size-1 shrink-0 rounded-full bg-white/20" />
           <span className="font-mono">{item}</span>
         </li>
@@ -132,7 +132,7 @@ export default async function RunDetailPage({
   }
 
   const riskLevel = r.risk_after ?? r.risk_before;
-  const riskColor = RISK_COLOR[riskLevel?.toLowerCase() ?? ""] ?? "text-[#9699BE]";
+  const riskColor = RISK_COLOR[riskLevel?.toLowerCase() ?? ""] ?? "text-[#8a8f98]";
   const proofSourceText = [r.report_summary, r.raw_report, r.continuation_prompt, r.next_safe_prompt]
     .filter(Boolean)
     .join("\n");
@@ -162,16 +162,16 @@ export default async function RunDetailPage({
       <div>
         <Link
           href="/app/runs"
-          className="mb-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-[#4D5070] transition-colors hover:text-[#9E91FF]"
+          className="mb-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-[#5a5f68] transition-colors hover:text-[#a78bfa]"
         >
           <ArrowLeft className="size-3.5" />
           Back to runs
         </Link>
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Run report</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Run report</p>
             {riskLevel && (
-              <div className="flex items-center gap-1.5 rounded border border-white/10 bg-[#0C0C20] px-2.5 py-1">
+              <div className="flex items-center gap-1.5 rounded border border-white/10 bg-[#0c0e11] px-2.5 py-1">
                 <Shield className={`size-3 ${riskColor}`} />
                 <span className={`font-mono text-[11px] font-semibold uppercase tracking-[0.06em] ${riskColor}`}>
                   {riskLevel} risk
@@ -179,11 +179,11 @@ export default async function RunDetailPage({
               </div>
             )}
           </div>
-          <h1 className="mt-1.5 text-[1.25rem] font-bold leading-[1.25] tracking-[-0.02em] text-[#EDEEFF] sm:text-[1.4rem]">
+          <h1 className="mt-1.5 text-[1.25rem] font-bold leading-[1.25] tracking-[-0.02em] text-[#f4f5f7] sm:text-[1.4rem]">
             {r.task ?? "Untitled run"}
           </h1>
           {projectName && (
-            <p className="mt-1 font-mono text-[12px] text-[#4D5070]">{projectName}</p>
+            <p className="mt-1 font-mono text-[12px] text-[#5a5f68]">{projectName}</p>
           )}
         </div>
       </div>
@@ -196,9 +196,9 @@ export default async function RunDetailPage({
           { label: "Risk after",    value: r.risk_after ?? "—" },
           { label: "Token budget",  value: r.token_budget != null ? `~${r.token_budget.toLocaleString()}` : "—" },
         ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-white/7 bg-[#0C0C20] px-4 py-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#4D5070]">{label}</p>
-            <p className="mt-1.5 font-mono text-[14px] font-semibold text-[#EDEEFF]">{value}</p>
+          <div key={label} className="rounded-lg border border-white/6 bg-[#0c0e11] px-4 py-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">{label}</p>
+            <p className="mt-1.5 font-mono text-[14px] font-semibold text-[#f4f5f7]">{value}</p>
           </div>
         ))}
       </div>
@@ -248,9 +248,9 @@ export default async function RunDetailPage({
 
           {r.report_summary && (
             <Section title="Report summary">
-              <p className="text-[13px] leading-[1.7] text-[#9699BE]">{r.report_summary}</p>
+              <p className="text-[13px] leading-[1.7] text-[#8a8f98]">{r.report_summary}</p>
               {r.memory_summary && (
-                <p className="mt-2 text-[12px] leading-[1.6] text-[#4D5070]">{r.memory_summary}</p>
+                <p className="mt-2 text-[12px] leading-[1.6] text-[#5a5f68]">{r.memory_summary}</p>
               )}
             </Section>
           )}
@@ -285,7 +285,7 @@ export default async function RunDetailPage({
       {/* Prompt */}
       {r.latest_prompt && (
         <Section title="Original prompt">
-          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-white/6 bg-[#07071A] p-4 font-mono text-[12px] leading-[1.75] text-[#9699BE]">
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-white/6 bg-[#08090b] p-4 font-mono text-[12px] leading-[1.75] text-[#8a8f98]">
             {r.latest_prompt}
           </pre>
         </Section>
@@ -294,10 +294,10 @@ export default async function RunDetailPage({
       {/* Continuation prompt */}
       {r.continuation_prompt && (
         <Section title="Continuation pack">
-          <p className="mb-3 text-[12px] text-[#5E6A88]">
+          <p className="mb-3 text-[12px] text-[#8a8f98]">
             Paste this into the next agent session to resume cleanly.
           </p>
-          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-white/6 bg-[#07071A] p-4 font-mono text-[12px] leading-[1.75] text-[#9699BE]">
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-white/6 bg-[#08090b] p-4 font-mono text-[12px] leading-[1.75] text-[#8a8f98]">
             {r.continuation_prompt}
           </pre>
         </Section>
@@ -317,7 +317,7 @@ export default async function RunDetailPage({
         {r.changed_files && r.changed_files.length > 0 ? (
           <StringList items={r.changed_files} />
         ) : (
-          <p className="text-[12px] text-[#2E3554]">No changed files recorded.</p>
+          <p className="text-[12px] text-[#3a3e46]">No changed files recorded.</p>
         )}
       </Section>
 
@@ -344,7 +344,7 @@ export default async function RunDetailPage({
       {/* Watch */}
       {r.watch_warnings && r.watch_warnings.length > 0 && (
         <Section title="Watch warnings">
-          <p className="mb-2 font-mono text-[11px] text-[#4D5070]">
+          <p className="mb-2 font-mono text-[11px] text-[#5a5f68]">
             status: {r.watch_status ?? "—"}
           </p>
           <StringList items={r.watch_warnings} />
@@ -352,19 +352,19 @@ export default async function RunDetailPage({
       )}
 
       {/* Placeholder for Builder+ fields */}
-      <div className="rounded-xl border border-white/6 bg-[#08081C] px-5 py-4">
+      <div className="rounded-xl border border-white/6 bg-[#0e1116] px-5 py-4">
         <div className="flex items-start gap-3">
           <CheckCircle className="mt-0.5 size-4 shrink-0 text-[#7C6DFA]/50" />
           <div>
-            <p className="text-[13px] font-semibold text-[#EDEEFF]">
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">
               Full contract view requires Builder or higher.
             </p>
-            <p className="mt-0.5 text-[12px] text-[#4D5070]">
+            <p className="mt-0.5 text-[12px] text-[#5a5f68]">
               Allowed scope, forbidden scope, stop conditions, and scope drift detection are Builder-tier fields. Early access is open.
             </p>
             <Link
               href="/app/early-access"
-              className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#7C6DFA] transition-colors hover:text-[#B2A7FF]"
+              className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#a78bfa] transition-colors hover:text-[#c9ccd2]"
             >
               Join early access
               <ArrowLeft className="size-3 rotate-180" />

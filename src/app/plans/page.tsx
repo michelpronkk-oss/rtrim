@@ -135,23 +135,57 @@ const TABLE_ROWS = [
 
 export default function PlansPage() {
   return (
-    <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
+    <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/8 bg-[#07071A]/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5">
+      {/* Header — matches homepage nav */}
+      <header
+        style={{
+          position: "sticky", top: 0, zIndex: 50,
+          background: "rgba(8,9,11,0.72)",
+          backdropFilter: "saturate(140%) blur(12px)",
+          WebkitBackdropFilter: "saturate(140%) blur(12px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <div
+          className="mx-auto flex items-center gap-7"
+          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
+        >
+          <Link href="/" className="flex items-center gap-2.5 no-underline">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
+              runtrim
+            </span>
           </Link>
-          <nav className="hidden items-center gap-6 md:flex">
-            <Link href="/" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Home</Link>
-            <Link href="/app/install" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Docs</Link>
+          <nav className="hidden md:flex items-center gap-1 ml-3">
+            {[
+              { href: "/",            label: "Home"       },
+              { href: "/#protocol",   label: "Protocol"   },
+              { href: "/#plans",      label: "Plans"      },
+              { href: "/app/install", label: "Docs"       },
+            ].map(({ href, label }) => (
+              <Link
+                key={label}
+                href={href}
+                style={{ fontSize: 13, color: "#8a8f98", padding: "7px 10px", borderRadius: 5, transition: "color 0.15s, background 0.15s" }}
+                className="hover:text-[#f4f5f7] hover:bg-white/6"
+              >
+                {label}
+              </Link>
+            ))}
           </nav>
+          <div style={{ flex: 1 }} />
           <Link
             href="/app/install"
-            className="rounded-md bg-[#7C6DFA] px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              height: 32, padding: "0 14px", borderRadius: 6,
+              background: "#f4f5f7", color: "#0b0d10",
+              fontSize: 13, fontWeight: 500, border: "1px solid #fff",
+              transition: "background 0.15s",
+            }}
+            className="hover:bg-white"
           >
             Install CLI
           </Link>
@@ -159,18 +193,34 @@ export default function PlansPage() {
       </header>
 
       {/* Page header */}
-      <div className="border-b border-white/8 bg-[#07071A]">
-        <div className="mx-auto max-w-6xl px-6 py-16 text-center">
-          <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">Plans</p>
-          <h1 className="text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:text-[3rem]">
-            Start local. Scale when it matters.
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="mx-auto max-w-6xl px-6 pt-16 pb-12 text-center">
+          <span
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              fontFamily: "var(--font-geist-mono)", fontSize: 11,
+              color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em",
+            }}
+          >
+            <span style={{ color: "#a78bfa", fontWeight: 500 }}>05</span>
+            Plans
+          </span>
+          <h1
+            className="mt-5"
+            style={{ fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}
+          >
+            Start local.{" "}
+            <em style={{ fontStyle: "normal", color: "#8a8f98" }}>Scale to a team.</em>
           </h1>
-          <p className="mx-auto mt-5 max-w-[520px] text-[15px] leading-[1.75] text-[#5E6A88]">
+          <p className="mx-auto mt-4 max-w-[520px]" style={{ fontSize: 16, lineHeight: 1.7, color: "#8a8f98" }}>
             Free CLI works without an account. Pro, Builder, and Team are request-access plans for cloud history, auto-sync, memory, reports, and team control.
           </p>
-          <div className="mx-auto mt-6 max-w-fit rounded-lg border border-[#F0BF72]/20 bg-[#F0BF72]/5 px-4 py-2.5">
-            <p className="text-[12px] text-[#A8916A]">
-              Payments are not self-serve yet. Pro, Builder, and Team access are reviewed manually during early access.
+          <div
+            className="mx-auto mt-5 max-w-fit rounded-lg px-4 py-2.5"
+            style={{ border: "1px solid rgba(245,165,36,0.2)", background: "rgba(245,165,36,0.04)" }}
+          >
+            <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#a8916a" }}>
+              Payments are not self-serve yet. Access is reviewed manually during early access.
             </p>
           </div>
         </div>
@@ -185,53 +235,56 @@ export default function PlansPage() {
             return (
               <div
                 key={plan.id}
-                className="relative flex flex-col overflow-hidden rounded-xl border bg-[#0C0C20]"
+                className="relative flex flex-col overflow-hidden rounded-[10px]"
                 style={{
-                  borderColor: isPro
-                    ? "rgba(124,109,250,0.40)"
-                    : "rgba(255,255,255,0.08)",
-                  boxShadow: isPro
-                    ? "0 0 0 1px rgba(124,109,250,0.18), 0 8px 32px rgba(124,109,250,0.10)"
-                    : undefined,
+                  background: isPro
+                    ? "radial-gradient(160% 80% at 0% 0%, rgba(167,139,250,0.08), transparent 60%), #0c0e11"
+                    : "#0c0e11",
+                  border: `1px solid ${isPro ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.09)"}`,
                 }}
               >
-                {/* Gradient top line on Pro */}
-                {isPro && (
-                  <div className="absolute inset-x-0 top-0 h-px brand-gradient" />
-                )}
-
                 {/* Card header */}
-                <div className="border-b border-white/8 px-5 py-5">
+                <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[14px] font-bold text-[#EDEEFF]">{plan.name}</p>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                        color: isPro ? "#a78bfa" : "#5a5f68",
+                        textTransform: "uppercase", letterSpacing: "0.1em",
+                      }}
+                    >
+                      {plan.name}
+                    </span>
                     {plan.badge && (
                       <span
-                        className="shrink-0 rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em]"
-                        style={
-                          isPro
-                            ? { borderColor: "rgba(124,109,250,0.35)", background: "rgba(124,109,250,0.10)", color: "#C4B8FF" }
-                            : { borderColor: "rgba(255,255,255,0.10)", background: "transparent", color: "#6870A0" }
-                        }
+                        className="shrink-0 rounded px-2 py-0.5"
+                        style={{
+                          fontFamily: "var(--font-geist-mono)", fontSize: 10,
+                          textTransform: "uppercase", letterSpacing: "0.08em",
+                          ...(isPro
+                            ? { border: "1px solid rgba(167,139,250,0.28)", background: "rgba(167,139,250,0.08)", color: "#a78bfa" }
+                            : { border: "1px solid rgba(255,255,255,0.09)", background: "transparent", color: "#5a5f68" })
+                        }}
                       >
                         {plan.badge}
                       </span>
                     )}
                   </div>
                   <p
-                    className="mt-2 text-[22px] font-bold tabular-nums tracking-tight"
-                    style={{ color: isPro ? "#9E91FF" : "#EDEEFF" }}
+                    className="mt-2.5"
+                    style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.015em", color: "#f4f5f7" }}
                   >
                     {plan.priceLabel}
                   </p>
-                  <p className="mt-2 text-[12px] leading-5 text-[#5E6A88]">{plan.positioning}</p>
+                  <p className="mt-2" style={{ fontSize: 13, lineHeight: 1.5, color: "#8a8f98" }}>{plan.positioning}</p>
                 </div>
 
                 {/* Features */}
                 <div className="flex-1 px-5 py-5">
                   <ul className="space-y-2.5">
                     {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5 text-[12px] text-[#B8C0D8]">
-                        <Check className="mt-0.5 size-3.5 shrink-0 text-[#7C6DFA]" />
+                      <li key={f} className="flex items-start gap-2.5" style={{ fontSize: 12.5, color: "#c9ccd2" }}>
+                        <span style={{ marginTop: 5, width: 5, height: 5, borderRadius: 1, background: isPro ? "#a78bfa" : "#5a5f68", flexShrink: 0, display: "inline-block" }} />
                         {f}
                       </li>
                     ))}
@@ -241,7 +294,7 @@ export default function PlansPage() {
                           <div className="h-px bg-white/6" />
                         </li>
                         {plan.missing.map((f) => (
-                          <li key={f} className="flex items-start gap-2.5 text-[12px] text-[#3A4460]">
+                          <li key={f} className="flex items-start gap-2.5 text-[12px] text-[#3a3e46]">
                             <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#2E3050]" />
                             {f}
                           </li>
@@ -252,11 +305,12 @@ export default function PlansPage() {
                 </div>
 
                 {/* CTA */}
-                <div className="border-t border-white/8 px-5 py-4">
+                <div className="mt-auto px-5 pb-5">
                   {isFree ? (
                     <Link
                       href="/app/install"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/12 px-4 py-2.5 text-[13px] font-medium text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-[6px] px-4 py-2.5 text-[13px] font-medium transition-colors hover:bg-[#16191e] hover:text-[#f4f5f7]"
+                      style={{ border: "1px solid rgba(255,255,255,0.14)", color: "#8a8f98" }}
                     >
                       {plan.ctaLabel}
                       <ArrowRight className="size-3.5" />
@@ -264,18 +318,18 @@ export default function PlansPage() {
                   ) : (
                     <button
                       disabled
-                      className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-md px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity"
-                      style={{
-                        background: isPro ? "#7C6DFA" : "rgba(124,109,250,0.15)",
-                        color: isPro ? "#ffffff" : "#9E91FF",
-                        opacity: 0.85,
-                      }}
+                      className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-[6px] px-4 py-2.5 text-[13px] font-medium transition-opacity"
+                      style={
+                        isPro
+                          ? { background: "#f4f5f7", color: "#0b0d10", border: "1px solid #fff", opacity: 0.85 }
+                          : { border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#f4f5f7", opacity: 0.7 }
+                      }
                     >
                       {plan.ctaLabel}
                     </button>
                   )}
                   {plan.microcopy && (
-                    <p className="mt-2 text-center font-mono text-[10px] text-[#2E2E50]">{plan.microcopy}</p>
+                    <p className="mt-2 text-center font-mono text-[10px] text-[#3a3e46]">{plan.microcopy}</p>
                   )}
                 </div>
               </div>
@@ -283,23 +337,23 @@ export default function PlansPage() {
           })}
         </div>
 
-        <p className="mt-5 text-center font-mono text-[11px] text-[#2E2E50]">
+        <p className="mt-5 text-center font-mono text-[11px] text-[#3a3e46]">
           Payments are not self-serve yet. Request access and we will follow up.
         </p>
       </div>
 
       {/* Comparison table */}
-      <div className="border-t border-white/8 bg-[#08081C]">
+      <div className="border-t border-white/6 bg-[#0e1116]">
         <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="mb-8 text-[1.4rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">Full comparison</h2>
+          <h2 className="mb-8 text-[1.4rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">Full comparison</h2>
           <div className="overflow-x-auto">
             <div className="min-w-[680px]">
               {/* Column headers */}
-              <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr] border-b border-white/8">
+              <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr] border-b border-white/6">
                 <div className="px-4 py-3" />
                 {PLANS.map((plan) => (
-                  <div key={plan.id} className={`px-4 py-3 ${plan.id === "pro" ? "bg-[#0D0C22]" : ""}`}>
-                    <p className="text-[12px] font-bold text-[#EDEEFF]">{plan.name}</p>
+                  <div key={plan.id} className={`px-4 py-3 ${plan.id === "pro" ? "bg-[#0c0e11]" : ""}`}>
+                    <p className="text-[12px] font-bold text-[#f4f5f7]">{plan.name}</p>
                   </div>
                 ))}
               </div>
@@ -310,21 +364,21 @@ export default function PlansPage() {
                   <div
                     key={label}
                     className={`grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr] ${i < TABLE_ROWS.length - 1 ? "border-b border-white/6" : ""}`}
-                    style={{ background: i % 2 === 0 ? "#0A0A1C" : "#0C0C20" }}
+                    style={{ background: i % 2 === 0 ? "#08090b" : "#0c0e11" }}
                   >
                     <div className="px-4 py-3">
-                      <p className="text-[12px] text-[#9699BE]">{label}</p>
+                      <p className="text-[12px] text-[#8a8f98]">{label}</p>
                     </div>
                     {cells.map((val, ci) => {
                       const isPro = ci === 1;
                       return (
-                        <div key={ci} className={`flex items-center px-4 py-3 ${isPro ? "bg-[#0D0C22]" : ""}`}>
+                        <div key={ci} className={`flex items-center px-4 py-3 ${isPro ? "bg-[#0c0e11]" : ""}`}>
                           {val === true ? (
                             <Check className="size-3.5 text-[#7C6DFA]" />
                           ) : val === false ? (
                             <span className="size-2 rounded-sm bg-white/6" />
                           ) : (
-                            <span className="font-mono text-[11px] text-[#6870A0]">{val}</span>
+                            <span className="font-mono text-[11px] text-[#5a5f68]">{val}</span>
                           )}
                         </div>
                       );
@@ -333,23 +387,23 @@ export default function PlansPage() {
                 );
               })}
               {/* CTA row */}
-              <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr] border-t border-white/8 bg-[#07071A]">
+              <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr] border-t border-white/6 bg-[#08090b]">
                 <div className="px-4 py-4">
-                  <p className="text-[11px] text-[#2E2E50]">Source code stays local. Cloud sync stores metadata only.</p>
+                  <p className="text-[11px] text-[#3a3e46]">Source code stays local. Cloud sync stores metadata only.</p>
                 </div>
                 {PLANS.map((plan) => (
-                  <div key={plan.id} className={`flex items-center px-4 py-4 ${plan.id === "pro" ? "bg-[#0D0C22]" : ""}`}>
+                  <div key={plan.id} className={`flex items-center px-4 py-4 ${plan.id === "pro" ? "bg-[#0c0e11]" : ""}`}>
                     {plan.id === "free" ? (
                       <Link
                         href="/app/install"
-                        className="rounded border border-white/10 px-3 py-1.5 text-[11px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+                        className="rounded border border-white/10 px-3 py-1.5 text-[11px] text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
                       >
                         Install
                       </Link>
                     ) : (
                       <button
                         disabled
-                        className="cursor-not-allowed rounded px-3 py-1.5 text-[11px] font-medium text-[#9E91FF] opacity-70"
+                        className="cursor-not-allowed rounded px-3 py-1.5 text-[11px] font-medium text-[#a78bfa] opacity-70"
                         style={{ background: "rgba(124,109,250,0.10)", border: "1px solid rgba(124,109,250,0.20)" }}
                       >
                         Request
@@ -364,7 +418,7 @@ export default function PlansPage() {
       </div>
 
       {/* FAQ-style note */}
-      <div className="border-t border-white/8 bg-[#07071A]">
+      <div className="border-t border-white/6 bg-[#08090b]">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <div className="grid gap-8 sm:grid-cols-2">
             {[
@@ -386,28 +440,37 @@ export default function PlansPage() {
               },
             ].map(({ q, a }) => (
               <div key={q}>
-                <p className="text-[14px] font-semibold text-[#EDEEFF]">{q}</p>
-                <p className="mt-2 text-[13px] leading-[1.65] text-[#5E6A88]">{a}</p>
+                <p className="text-[14px] font-semibold text-[#f4f5f7]">{q}</p>
+                <p className="mt-2 text-[13px] leading-[1.65] text-[#8a8f98]">{a}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-white/8">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
-          <Link href="/" className="flex items-center gap-2">
+      {/* Footer — matches homepage footer */}
+      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "40px 0 56px", color: "#5a5f68" }}>
+        <div
+          className="mx-auto grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-6"
+          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
+        >
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 10 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-5 rounded" />
-            <span className="text-sm font-bold text-[#EDEEFF]">RunTrim</span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/app/install" className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9699BE]">Docs</Link>
-            <Link href="/plans"       className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9699BE]">Plans</Link>
-            <Link href="/app"         className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9699BE]">Dashboard</Link>
+            <img src="/icon.svg" alt="" aria-hidden className="size-4 rounded" />
+            runtrim · plans · local-first AI run control
           </div>
-          <span className="font-mono text-[11px] text-[#2E2E50]">Local-first. Source code never uploaded.</span>
+          <div className="flex gap-[18px]">
+            {[
+              { href: "/",            label: "Home"      },
+              { href: "/app/install", label: "Docs"      },
+              { href: "/app",         label: "Dashboard" },
+              { href: "/privacy",     label: "Privacy"   },
+            ].map(({ href, label }) => (
+              <Link key={label} href={href} style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }} className="hover:text-[#f4f5f7]">
+                {label}
+              </Link>
+            ))}
+          </div>
         </div>
       </footer>
     </div>

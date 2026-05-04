@@ -71,11 +71,11 @@ export default function EarlyAccessPage() {
 
       {/* Header */}
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#4D5070]">Early Access</p>
-        <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Early Access</p>
+        <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">
           Join the waitlist.
         </h1>
-        <p className="mt-2 text-[13px] leading-[1.7] text-[#5E6A88]">
+        <p className="mt-2 text-[13px] leading-[1.7] text-[#8a8f98]">
           Pro, Builder, and Team plans are entering early access with cloud sync, hosted run history, and the RunTrim Agent. Tell us where you are and what matters most.
         </p>
       </div>
@@ -94,13 +94,13 @@ export default function EarlyAccessPage() {
             className={`rounded-xl border p-4 text-left transition-colors ${
               plan === p
                 ? "border-[#7C6DFA]/40 bg-[#7C6DFA]/10"
-                : "border-white/8 bg-[#0C0C20] hover:border-white/14"
+                : "border-white/8 bg-[#0c0e11] hover:border-white/14"
             }`}
           >
-            <p className={`text-[13px] font-semibold ${plan === p ? "text-[#D3CBFF]" : "text-[#EDEEFF]"}`}>
+            <p className={`text-[13px] font-semibold ${plan === p ? "text-[#c9ccd2]" : "text-[#f4f5f7]"}`}>
               {p}
             </p>
-            <p className="mt-1.5 text-[11px] leading-[1.6] text-[#5E6A88]">{desc}</p>
+            <p className="mt-1.5 text-[11px] leading-[1.6] text-[#8a8f98]">{desc}</p>
           </button>
         ))}
       </div>
@@ -110,13 +110,13 @@ export default function EarlyAccessPage() {
           <div className="flex items-start gap-3">
             <CheckCircle className="mt-0.5 size-5 shrink-0 text-[#4DE8B0]/70" />
             <div>
-              <p className="text-[14px] font-semibold text-[#EDEEFF]">
+              <p className="text-[14px] font-semibold text-[#f4f5f7]">
                 You are on the list.
               </p>
-              <p className="mt-1.5 text-[13px] leading-[1.7] text-[#5E6A88]">
+              <p className="mt-1.5 text-[13px] leading-[1.7] text-[#8a8f98]">
                 We will reach out to{" "}
                 <span className="font-mono text-[#C8D4DF]">{email}</span> when{" "}
-                <span className="text-[#EDEEFF]">{plan}</span> access opens. Free CLI continues to work locally in the meantime.
+                <span className="text-[#f4f5f7]">{plan}</span> access opens. Free CLI continues to work locally in the meantime.
               </p>
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function EarlyAccessPage() {
 
           {/* Email */}
           <div>
-            <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#4D5070]">
+            <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#5a5f68]">
               Email
             </label>
             <input
@@ -134,7 +134,7 @@ export default function EarlyAccessPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-[#0C0C20] px-4 py-3 font-mono text-[14px] text-[#EDEEFF] placeholder-[#2E3554] outline-none transition-colors focus:border-[#7C6DFA]/50"
+              className="w-full rounded-lg border border-white/10 bg-[#0c0e11] px-4 py-3 font-mono text-[14px] text-[#f4f5f7] placeholder-[#3a3e46] outline-none transition-colors focus:border-[#7C6DFA]/50"
               placeholder="you@example.com"
             />
           </div>
@@ -142,8 +142,8 @@ export default function EarlyAccessPage() {
           {/* Plan interest — handled by cards above, show selected */}
           {plan && (
             <div className="flex items-center gap-2 rounded-lg border border-[#7C6DFA]/20 bg-[#7C6DFA]/8 px-4 py-2.5">
-              <Zap className="size-3.5 text-[#9E91FF]/70" />
-              <span className="font-mono text-[12px] text-[#9E91FF]">
+              <Zap className="size-3.5 text-[#a78bfa]/70" />
+              <span className="font-mono text-[12px] text-[#a78bfa]">
                 {plan} plan selected
               </span>
             </div>
@@ -151,7 +151,7 @@ export default function EarlyAccessPage() {
 
           {/* Workflow */}
           <div>
-            <label className="mb-2 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#4D5070]">
+            <label className="mb-2 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#5a5f68]">
               Primary workflow
             </label>
             <div className="flex flex-wrap gap-2">
@@ -174,7 +174,7 @@ export default function EarlyAccessPage() {
 
           {/* Biggest pain */}
           <div>
-            <label className="mb-2 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#4D5070]">
+            <label className="mb-2 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#5a5f68]">
               Biggest pain
             </label>
             <div className="flex flex-wrap gap-2">
@@ -197,7 +197,7 @@ export default function EarlyAccessPage() {
 
           {/* Notes */}
           <div>
-            <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#4D5070]">
+            <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.1em] text-[#5a5f68]">
               Notes{" "}
               <span className="normal-case tracking-normal text-[#3A3F5A]">(optional)</span>
             </label>
@@ -206,7 +206,7 @@ export default function EarlyAccessPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Anything specific you need, your team size, your stack..."
-              className="w-full resize-none rounded-lg border border-white/10 bg-[#0C0C20] px-4 py-3 text-[13px] text-[#EDEEFF] placeholder-[#2E3554] outline-none transition-colors focus:border-[#7C6DFA]/50"
+              className="w-full resize-none rounded-lg border border-white/10 bg-[#0c0e11] px-4 py-3 text-[13px] text-[#f4f5f7] placeholder-[#3a3e46] outline-none transition-colors focus:border-[#7C6DFA]/50"
             />
           </div>
 

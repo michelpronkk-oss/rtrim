@@ -248,3 +248,126 @@ export function HeroRunContract() {
     </div>
   );
 }
+
+/* ── Compact proof card for mobile hero ─────────────────────────────────────── */
+
+const MOBILE_ROWS: { k: string; v: string; color?: string }[] = [
+  { k: "task",      v: "fix checkout bug",   color: "#f4f5f7"  },
+  { k: "memory",    v: "loaded",             color: "#a78bfa"  },
+  { k: "scope",     v: "api/webhooks/**",    color: "#6ee7b7"  },
+  { k: "forbidden", v: ".env  migrations/**", color: "#f87171" },
+  { k: "risk",      v: "low",               color: "#6ee7b7"  },
+  { k: "finish",    v: "tests pass",         color: "#c9ccd2"  },
+];
+
+export function MobileContractCard() {
+  return (
+    <div
+      style={{
+        position: "relative",
+        background: "linear-gradient(180deg, #0e1116, #0a0c10)",
+        border: "1px solid rgba(255,255,255,0.09)",
+        borderRadius: 10,
+        boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px -20px rgba(0,0,0,0.7)",
+        overflow: "hidden",
+        ...MONO,
+        fontSize: "12px",
+        color: "#c9ccd2",
+      }}
+    >
+      {/* Top violet tint */}
+      <div
+        style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: "linear-gradient(180deg, rgba(167,139,250,0.05), transparent 40%)",
+        }}
+      />
+
+      {/* Head */}
+      <div
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 14px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "linear-gradient(180deg, #14171c, #0d1014)",
+        }}
+      >
+        <span style={{ color: "#5a5f68", fontSize: "10.5px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          runtrim · run contract
+        </span>
+        <span
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            fontSize: "10.5px", color: "#6ee7b7",
+            letterSpacing: "0.06em", textTransform: "uppercase",
+          }}
+        >
+          <span
+            style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "#6ee7b7",
+              boxShadow: "0 0 6px #6ee7b7",
+              animation: "rt-contract-pulse 1.8s ease-in-out infinite",
+              display: "inline-block", flexShrink: 0,
+            }}
+          />
+          live
+        </span>
+      </div>
+
+      {/* Rows */}
+      <div style={{ padding: "4px 0" }}>
+        {MOBILE_ROWS.map(({ k, v, color }, i) => (
+          <div
+            key={k}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "80px 1fr",
+              gap: 12,
+              padding: "7px 14px",
+              alignItems: "center",
+              borderBottom: i < MOBILE_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+            }}
+          >
+            <span style={{ color: "#5a5f68", fontSize: "10.5px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              {k}
+            </span>
+            <span style={{ color: color ?? "#c9ccd2", fontSize: "12px", fontWeight: 500 }}>
+              {v}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div
+        style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "9px 14px",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(255,255,255,0.01)",
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            fontSize: "10.5px", color: "#a78bfa",
+            textTransform: "uppercase", letterSpacing: "0.06em",
+          }}
+        >
+          <span
+            style={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: "#a78bfa",
+              boxShadow: "0 0 0 2px rgba(167,139,250,0.2)",
+              display: "inline-block",
+            }}
+          />
+          guarded
+        </span>
+        <span style={{ width: 1, height: 12, background: "rgba(255,255,255,0.09)", display: "inline-block" }} />
+        <span style={{ color: "#5a5f68", fontSize: "10.5px" }}>step 4 / 7 · writing tests</span>
+      </div>
+    </div>
+  );
+}
