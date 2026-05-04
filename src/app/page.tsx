@@ -219,17 +219,18 @@ export default function Home() {
         />
 
         {/*
-          Above-fold zone.
-          Mobile: min-h-[100svh] fills the full viewport. flex-1 spacer pushes
-          the feature strip to the very bottom so the terminal appears below the fold.
-          Desktop: min-h is removed and the section behaves compactly.
-        */}
-        <div className="relative z-10 flex min-h-[100svh] w-full flex-col items-center pb-14 pt-16 sm:min-h-0 sm:pb-0 sm:pt-28">
+          Mobile: flows naturally — no min-height, no spacer.
+          Layout: headline → CTA → compact terminal → chips.
+          Everything fits above the fold on 375-430px screens.
 
-          {/* Core content */}
+          Desktop: unchanged compact flow, then HeroTerminal below.
+        */}
+        <div className="relative z-10 flex w-full flex-col items-center pt-12 pb-10 sm:pb-0 sm:pt-28">
+
+          {/* Core text content */}
           <div className="flex w-full flex-col items-center px-6 text-center">
 
-            {/* Pill — desktop only; mobile headline speaks for itself */}
+            {/* Pill — desktop only */}
             <MotionFade>
               <div className="rt-ai-pill mb-8 hidden items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm sm:inline-flex">
                 <span className="rt-ai-pill-dot size-1.5 rounded-full bg-[#7C6DFA]" />
@@ -240,24 +241,20 @@ export default function Home() {
             </MotionFade>
 
             <MotionFade delay={0.06}>
-              {/*
-                Mobile headline — shorter, bolder, 2 exact lines at 3rem.
-                "Run AI agents" + "with control." = max visual punch, zero waste.
-              */}
+              {/* Mobile headline — 2 exact lines, font-black, fills space */}
               <h1 className="mx-auto max-w-[320px] text-[3rem] font-black leading-[1.03] tracking-[-0.055em] text-[#EDEEFF] sm:hidden">
                 Run AI agents<br />
                 with{" "}
                 <span className="brand-gradient-text">control.</span>
               </h1>
-
-              {/* Desktop headline — full message */}
+              {/* Desktop headline */}
               <h1 className="mx-auto hidden max-w-[860px] text-[3.4rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:block lg:text-[4.5rem] xl:text-[5rem]">
                 Run AI coding agents with{" "}
                 <span className="brand-gradient-text">memory, scope, and control.</span>
               </h1>
             </MotionFade>
 
-            {/* Sub — desktop only; mobile headline is self-contained */}
+            {/* Sub — desktop only */}
             <MotionFade delay={0.12}>
               <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
                 RunTrim installs a protocol into your repo, creates scoped contracts before Claude, Codex, or Cursor touches code, then checks drift, risk, changed files, and continuation after every run.
@@ -265,27 +262,27 @@ export default function Home() {
             </MotionFade>
 
             <MotionFade delay={0.17}>
-              {/* Mobile CTAs — single primary, text secondary below */}
-              <div className="mt-9 flex flex-col items-center gap-3 sm:hidden">
+              {/* Mobile CTA — single primary, tight margin */}
+              <div className="mt-6 flex flex-col items-center gap-2.5 sm:hidden">
                 <Link
                   href="/app/install"
                   data-rt-event="install_cta_clicked"
-                  className="inline-flex w-full max-w-[300px] items-center justify-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3.5 text-[16px] font-semibold text-white"
-                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 8px 24px rgba(124,109,250,0.28), inset 0 1px 0 rgba(255,255,255,0.12)" }}
+                  className="inline-flex w-full max-w-[300px] items-center justify-center gap-2 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
+                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 6px 20px rgba(124,109,250,0.30), inset 0 1px 0 rgba(255,255,255,0.12)" }}
                 >
                   Install Free CLI
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
                 <SmartCta
                   label="Request access"
                   variant="pro"
-                  className="text-[14px] text-[#6870A0] transition-colors hover:text-[#9699BE]"
+                  className="text-[13px] text-[#6870A0] transition-colors hover:text-[#9699BE]"
                   openAppLabel="Open app"
-                  openAppClassName="text-[14px] text-[#9E91FF]"
+                  openAppClassName="text-[13px] text-[#9E91FF]"
                 />
               </div>
 
-              {/* Desktop CTAs — horizontal row */}
+              {/* Desktop CTAs */}
               <div className="mt-10 hidden flex-wrap items-center justify-center gap-3 sm:flex">
                 <Link
                   href="/app/install"
@@ -315,18 +312,52 @@ export default function Home() {
                 Free local CLI is live. Pro, Builder, and Team are in early access.
               </p>
             </MotionFade>
-
           </div>
 
-          {/* Spacer: pushes feature strip to viewport bottom on mobile */}
-          <div className="flex-1 sm:hidden" />
-
-          {/* Feature strip
-              Mobile: compact cards — label only, no note, 2×2 pinned to bottom.
-              Desktop: label + note, 4-col row, flows naturally below content.
+          {/*
+            MOBILE ONLY — compact product terminal.
+            Sits directly below the CTA, proves the product in 5 lines.
+            Hidden on sm+ where HeroTerminal renders in its own section.
           */}
-          <MotionFade delay={0.34} className="w-full max-w-4xl px-6 pb-2 sm:mt-8 sm:pb-0">
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <MotionFade delay={0.22} className="mt-5 w-full px-5 sm:hidden">
+            <div
+              className="overflow-hidden rounded-xl border border-[#7C6DFA]/25 bg-[#06060F]"
+              style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.10), 0 12px 32px rgba(0,0,0,0.55)" }}
+            >
+              {/* Title bar */}
+              <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1.5">
+                    <span className="size-2 rounded-full bg-white/14" />
+                    <span className="size-2 rounded-full bg-white/9"  />
+                    <span className="size-2 rounded-full bg-white/5"  />
+                  </div>
+                  <span className="font-mono text-[10px] text-[#3A3E58]">runtrim</span>
+                </div>
+                <span className="rounded border border-[#3DDAB4]/22 bg-[#3DDAB4]/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-[#3DDAB4]">
+                  guarded
+                </span>
+              </div>
+              {/* Content — 5 lines, tight */}
+              <div className="px-3 py-3 font-mono leading-[1.65]">
+                <div className="flex items-baseline gap-1.5 text-[12px]">
+                  <span className="text-[#3A3E58]">$</span>
+                  <span className="text-[#8B82FF]">runtrim go &quot;fix mobile nav&quot;</span>
+                </div>
+                <div className="mt-1.5 space-y-0.5 text-[11px]">
+                  <p className="text-[#484868]">  Memory loaded</p>
+                  <p className="text-[#484868]">  Contract created</p>
+                  <p className="text-[#484868]">  Protected: auth, billing, env</p>
+                  <p className="text-[#484868]">  Agent inside scope</p>
+                  <p className="text-[#3DDAB4]">  Auto-sync ready</p>
+                </div>
+              </div>
+            </div>
+          </MotionFade>
+
+          {/* Feature chips — directly under terminal on mobile, under content on desktop */}
+          <MotionFade delay={0.28} className="mt-4 w-full max-w-4xl px-5 sm:mt-8 sm:px-6">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4">
               {[
                 { label: "Scope the task",   note: "Contract before execution" },
                 { label: "Load memory",      note: "Never start from zero" },
@@ -335,13 +366,11 @@ export default function Home() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-lg border border-white/8 bg-[#0D0C22]/70 px-3 py-2.5 backdrop-blur-sm sm:px-4 sm:py-3"
+                  className="rounded-lg border border-white/8 bg-[#0D0C22]/70 px-2.5 py-2 backdrop-blur-sm sm:px-4 sm:py-3"
                 >
-                  {/* Mobile: label only — single dense line */}
-                  <p className="text-[12px] font-semibold leading-none text-[#C4C8EA] sm:leading-normal">
+                  <p className="text-[11px] font-semibold leading-none text-[#C4C8EA] sm:text-[12px] sm:leading-normal">
                     {item.label}
                   </p>
-                  {/* Note hidden on mobile — cards stay razor-thin */}
                   <p className="mt-1 hidden font-mono text-[10px] text-[#4A5068] sm:block">
                     {item.note}
                   </p>
@@ -351,10 +380,10 @@ export default function Home() {
           </MotionFade>
         </div>
 
-        {/* Terminal — starts below the fold on mobile, flows after content on desktop */}
+        {/* Desktop HeroTerminal — hidden on mobile, shown sm+ */}
         <MotionFade
           delay={0.28}
-          className="relative z-10 mx-auto w-full max-w-4xl px-6 pb-16 pt-8 sm:pb-24 sm:pt-14"
+          className="relative z-10 mx-auto hidden w-full max-w-4xl px-6 pb-16 pt-8 sm:block sm:pb-24 sm:pt-14"
         >
           <div
             className="pointer-events-none absolute inset-x-0 top-1/2 -z-10 h-64 -translate-y-1/2"
