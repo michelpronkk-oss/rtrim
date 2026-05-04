@@ -64,7 +64,7 @@ const DIRECT_COMMANDS = [
 
 export default function InstallPage() {
   return (
-    <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
+    <div className="rt-page-in min-h-screen bg-[#08090b] text-[#f4f5f7]">
       <PublicNav />
 
       {/* ── Hero — same grid/glow as all public pages ── */}

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/app/sign-out-button";
+import { RunTrimLogo } from "@/components/app/runtrim-logo";
 
 const NAV_ITEMS = [
   { href: "/app",              label: "Overview",     icon: LayoutGrid   },
@@ -52,12 +53,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           style={{ background: "#0c0e11", borderRight: "1px solid rgba(255,255,255,0.06)" }}
         >
           {/* Logo */}
-          <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
-            <span style={{ ...MONO, fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
-              runtrim
-            </span>
+          <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <RunTrimLogo size={20} />
           </div>
 
           {/* User row */}
@@ -119,10 +116,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             style={{ background: "rgba(12,14,17,0.95)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
           >
             <div className="flex items-center justify-between px-4 py-3">
-              <Link href="/app" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
-                <span style={{ ...MONO, fontSize: 13, fontWeight: 600, color: "#f4f5f7" }}>runtrim</span>
+              <Link href="/app" onClick={() => setMobileMenuOpen(false)}>
+                <RunTrimLogo size={20} />
               </Link>
 
               <button

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RunTrimMark } from "@/components/app/runtrim-logo";
 import { Check, ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
+import { SmartCta } from "@/components/app/smart-cta";
 
 export const metadata: Metadata = {
   title: "Plans | RunTrim",
@@ -136,7 +138,7 @@ const TABLE_ROWS = [
 
 export default function PlansPage() {
   return (
-    <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
+    <div className="rt-page-in min-h-screen bg-[#08090b] text-[#f4f5f7]">
 
       <PublicNav />
 
@@ -222,6 +224,8 @@ export default function PlansPage() {
 
       {/* Plan cards */}
       <div className="mx-auto max-w-6xl px-6 py-16">
+        {/* align-items: stretch (default grid) makes all cards equal row height.
+            Each card uses flex-col so features (flex-1) grow and CTA sits at bottom. */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {PLANS.map((plan) => {
             const isPro = plan.id === "pro";
@@ -229,7 +233,7 @@ export default function PlansPage() {
             return (
               <div
                 key={plan.id}
-                className="relative flex flex-col overflow-hidden rounded-[10px]"
+                className="relative flex flex-col rounded-[10px] overflow-hidden"
                 style={{
                   background: isPro
                     ? "radial-gradient(160% 80% at 0% 0%, rgba(167,139,250,0.08), transparent 60%), #0c0e11"
@@ -303,24 +307,24 @@ export default function PlansPage() {
                   {isFree ? (
                     <Link
                       href="/app/install"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-[6px] px-4 py-2.5 text-[13px] font-medium transition-colors hover:bg-[#16191e] hover:text-[#f4f5f7]"
+                      className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors hover:bg-[#16191e] hover:text-[#f4f5f7]"
                       style={{ border: "1px solid rgba(255,255,255,0.14)", color: "#8a8f98" }}
                     >
                       {plan.ctaLabel}
-                      <ArrowRight className="size-3.5" />
+                      <ArrowRight className="size-3.5 shrink-0" />
                     </Link>
                   ) : (
-                    <button
-                      disabled
-                      className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-[6px] px-4 py-2.5 text-[13px] font-medium transition-opacity"
-                      style={
+                    <SmartCta
+                      label={plan.ctaLabel}
+                      variant={plan.id === "builder" ? "builder" : "pro"}
+                      className={
                         isPro
-                          ? { background: "#f4f5f7", color: "#0b0d10", border: "1px solid #fff", opacity: 0.85 }
-                          : { border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#f4f5f7", opacity: 0.7 }
+                          ? "inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white"
+                          : "inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
                       }
-                    >
-                      {plan.ctaLabel}
-                    </button>
+                      openAppLabel="Open dashboard"
+                      openAppClassName={`inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors ${isPro ? "bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white" : "border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[#a78bfa] hover:bg-[rgba(167,139,250,0.12)]"}`}
+                    />
                   )}
                   {plan.microcopy && (
                     <p className="mt-2 text-center font-mono text-[10px] text-[#3a3e46]">{plan.microcopy}</p>
@@ -449,9 +453,8 @@ export default function PlansPage() {
           style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
         >
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-4 rounded" />
-            runtrim · plans · local-first AI run control
+            <RunTrimMark size={16} bg="#0c0e11" bgRadius={3} />
+              runtrim · plans · local-first AI run control
           </div>
           <div className="flex gap-[18px]">
             {[

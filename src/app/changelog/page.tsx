@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RunTrimMark } from "@/components/app/runtrim-logo";
 import { ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
 
@@ -71,7 +72,7 @@ const RELEASES = [
 
 export default function ChangelogPage() {
   return (
-    <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
+    <div className="rt-page-in min-h-screen bg-[#08090b] text-[#f4f5f7]">
 
       <PublicNav />
 
@@ -100,7 +101,7 @@ export default function ChangelogPage() {
 
           <h1
             className="mt-5"
-            style={{ fontSize: "clamp(34px, 5.4vw, 62px)", lineHeight: 1.04, letterSpacing: "-0.033em", fontWeight: 500, color: "#f4f5f7", maxWidth: 760 }}
+            style={{ fontSize: "clamp(20px, 2.4vw, 30px)", lineHeight: 1.4, letterSpacing: "-0.018em", fontWeight: 500, color: "#f4f5f7", maxWidth: 640 }}
           >
             Product updates for the RunTrim protocol, Bridge Mode, dashboard sync, and agent workflows.
           </h1>
@@ -245,9 +246,8 @@ export default function ChangelogPage() {
           style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
         >
           <div style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-4 rounded" />
-            runtrim · changelog
+            <RunTrimMark size={16} bg="#0c0e11" bgRadius={3} />
+              runtrim · changelog
           </div>
           <div className="flex gap-[18px]">
             {[

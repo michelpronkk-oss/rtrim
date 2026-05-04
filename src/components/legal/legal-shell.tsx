@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PublicNav } from "@/components/app/public-nav";
+import { RunTrimMark } from "@/components/app/runtrim-logo";
 
 interface LegalSection {
   title: string;
@@ -204,11 +205,7 @@ export function LegalShell({ title, subtitle, lastUpdated, active, sections }: L
           className="mx-auto flex flex-wrap items-center justify-between gap-4"
           style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
         >
-          <div className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-[18px] rounded" />
-            <span style={{ ...MONO, fontSize: 11, color: "#5a5f68" }}>runtrim</span>
-          </div>
+          <RunTrimMark size={18} bg="#0c0e11" bgRadius={4} />
           <nav className="flex flex-wrap gap-x-5 gap-y-2">
             {[
               { href: "/privacy",  label: "Privacy"  },

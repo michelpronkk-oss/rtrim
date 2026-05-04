@@ -6,6 +6,7 @@ import { CopyButton } from "@/components/app/copy-button";
 import { SmartCta } from "@/components/app/smart-cta";
 import { HeroRunContract, MobileContractCard } from "@/components/app/hero-run-contract";
 import { planOrder, plans } from "@/lib/plans";
+import { RunTrimLogo, RunTrimMark } from "@/components/app/runtrim-logo";
 
 export const metadata: Metadata = {
   title: "RunTrim — Control layer for AI coding agents",
@@ -145,12 +146,8 @@ export default function Home() {
           className="mx-auto flex items-center gap-7"
           style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
         >
-          <Link href="/" aria-label="RunTrim" className="flex items-center gap-2.5 no-underline">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
-            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
-              runtrim
-            </span>
+          <Link href="/" aria-label="RunTrim" className="no-underline">
+            <RunTrimLogo size={20} />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1 ml-3">
@@ -192,7 +189,7 @@ export default function Home() {
                 display: "inline-block",
               }}
             />
-            v0.7 · all systems normal
+            all systems normal
           </Link>
 
           <Link
@@ -1124,13 +1121,7 @@ export default function Home() {
             {/* Brand + install + status */}
             <div>
               {/* Wordmark */}
-              <div className="flex items-center gap-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
-                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
-                  runtrim
-                </span>
-              </div>
+              <RunTrimLogo size={20} />
 
               {/* Descriptor */}
               <p className="mt-2.5" style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", lineHeight: 1.65 }}>

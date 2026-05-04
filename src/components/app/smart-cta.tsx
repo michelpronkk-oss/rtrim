@@ -16,13 +16,10 @@ interface SmartCtaProps {
 }
 
 /**
- * Drop-in replacement for EarlyAccessModalTrigger that is auth-aware.
- *
- * - Logged in  → renders an "Open app" link (user is approved, already in)
- * - Not logged in → renders the EA modal trigger as normal
- *
- * Defaults to showing the modal until the session check resolves so there
- * is no layout shift for the majority of visitors who are not logged in.
+ * Auth-aware CTA.
+ * - Checking → shimmer skeleton (avoids layout shift and blank flash)
+ * - Logged in  → "Open app/dashboard" link
+ * - Logged out → EA modal trigger
  */
 export function SmartCta({
   label,
@@ -31,21 +28,38 @@ export function SmartCta({
   openAppLabel = "Open app",
   openAppClassName,
 }: SmartCtaProps) {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn,  setLoggedIn]  = useState(false);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setLoggedIn(!!session?.user);
+      setChecking(false);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_, session) => {
       setLoggedIn(!!session?.user);
+      setChecking(false);
     });
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Skeleton while session resolves — reuse caller's className so sizing matches
+  if (checking) {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-hidden="true"
+        className={`rt-btn-loading ${className ?? ""}`}
+      >
+        {label}
+      </button>
+    );
+  }
 
   if (loggedIn) {
     return (

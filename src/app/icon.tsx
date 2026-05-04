@@ -3,47 +3,37 @@ import { ImageResponse } from "next/og";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-const MARK = "linear-gradient(160deg, #6E8DFF 0%, #7A4DFF 100%)";
+// R mark at 32px on a 100u grid scaled to 32px:
+// scale = 32/100 = 0.32
+// body:   x=10→3.2, y=10→3.2, x=80→25.6, y=54→17.28, x=26→8.32, y=90→28.8, y=26→8.32, y=38→12.16, x=64→20.48
+// leg:    (26,54)→(8.32,17.28), (52,54)→(16.64,17.28), (84,90)→(26.88,28.8), (58,90)→(18.56,28.8)
 
 export default function Icon() {
   return new ImageResponse(
     <div
       style={{
-        width: 32,
-        height: 32,
+        width: 32, height: 32,
         borderRadius: 7,
-        background: "#0A0B1F",
+        background: "#0c0e11",
         display: "flex",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 8, top: 6, width: 19, height: 4, background: MARK, display: "flex" }} />
-      <div style={{ position: "absolute", left: 8, top: 6, width: 4, height: 22, background: MARK, display: "flex" }} />
-      <div
-        style={{
-          position: "absolute",
-          left: 18,
-          top: 6,
-          width: 9,
-          height: 9,
-          background: MARK,
-          clipPath: "polygon(9px 0px, 0px 9px, 9px 4px)",
-          display: "flex",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          left: 12,
-          top: 15,
-          width: 14,
-          height: 14,
-          background: MARK,
-          clipPath: "polygon(0px 0px, 5px 0px, 14px 14px, 9px 14px)",
-          display: "flex",
-        }}
-      />
+      {/* Violet diagonal leg */}
+      <div style={{
+        position: "absolute",
+        width: 32, height: 32,
+        display: "flex",
+        clipPath: "polygon(8.32px 17.28px, 16.64px 17.28px, 26.88px 28.8px, 18.56px 28.8px)",
+        background: "#a78bfa",
+      }} />
+      {/* R body — stem + bowl top (full width) */}
+      <div style={{ position: "absolute", left: 3.2, top: 3.2, width: 22.4, height: 14.08, background: "#f4f5f7", display: "flex" }} />
+      {/* Left stem extending down */}
+      <div style={{ position: "absolute", left: 3.2, top: 3.2, width: 5.12, height: 25.6, background: "#f4f5f7", display: "flex" }} />
+      {/* Counter slot — dark bg colour to punch hole in bowl */}
+      <div style={{ position: "absolute", left: 8.32, top: 8.32, width: 12.16, height: 3.84, background: "#0c0e11", display: "flex" }} />
     </div>,
     { ...size }
   );

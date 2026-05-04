@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RunTrimMark } from "@/components/app/runtrim-logo";
 import { ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
 
@@ -43,7 +44,7 @@ const STATUS_GROUPS = [
 
 export default function StatusPage() {
   return (
-    <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
+    <div className="rt-page-in min-h-screen bg-[#08090b] text-[#f4f5f7]">
 
       <PublicNav />
 
@@ -194,9 +195,8 @@ export default function StatusPage() {
           style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
         >
           <div style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-4 rounded" />
-            runtrim · system status
+            <RunTrimMark size={16} bg="#0c0e11" bgRadius={3} />
+              runtrim · system status
           </div>
           <div className="flex gap-[18px]">
             {[

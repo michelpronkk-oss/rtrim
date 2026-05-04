@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RunTrimLogo } from "@/components/app/runtrim-logo";
 
 const MONO: React.CSSProperties = {
   fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
@@ -28,12 +29,8 @@ export function PublicNav() {
         style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
       >
         {/* Logo */}
-        <Link href="/" aria-label="RunTrim" className="flex items-center gap-2.5 no-underline">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
-          <span style={{ ...MONO, fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
-            runtrim
-          </span>
+        <Link href="/" aria-label="RunTrim" className="no-underline">
+          <RunTrimLogo size={20} />
         </Link>
 
         {/* Nav links */}
@@ -72,7 +69,7 @@ export function PublicNav() {
               display: "inline-block",
             }}
           />
-          v0.7 · all systems normal
+          all systems normal
         </Link>
 
         {/* Primary CTA */}
