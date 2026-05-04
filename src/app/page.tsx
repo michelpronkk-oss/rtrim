@@ -214,7 +214,7 @@ export default function Home() {
 
       {/* ── HERO ── */}
       <section
-        className="pt-7 pb-5 sm:pt-16 sm:pb-20 lg:pt-24 lg:pb-28"
+        className="pt-9 pb-8 sm:pt-16 sm:pb-20 lg:pt-24 lg:pb-28"
         style={{
           position: "relative",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -248,7 +248,7 @@ export default function Home() {
         >
           {/* Two-column grid — stacks on mobile */}
           <div
-            className="grid gap-5 lg:gap-20 items-start"
+            className="grid gap-6 lg:gap-20 items-start"
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%,480px), 1fr))" }}
           >
             {/* Left: copy */}
@@ -286,7 +286,7 @@ export default function Home() {
                 <h1
                   className="mt-3 sm:mt-5 mb-0"
                   style={{
-                    fontSize: "clamp(31px, 5.4vw, 66px)",
+                    fontSize: "clamp(34px, 5.4vw, 66px)",
                     lineHeight: 1.06, letterSpacing: "-0.033em",
                     fontWeight: 500, color: "#f4f5f7",
                   }}
@@ -300,7 +300,7 @@ export default function Home() {
 
               <MotionFade delay={0.12}>
                 {/* Mobile sub — compact single statement */}
-                <p className="sm:hidden" style={{ marginTop: 10, fontSize: 13.5, lineHeight: 1.55, color: "#8a8f98", maxWidth: 340 }}>
+                <p className="sm:hidden" style={{ marginTop: 12, fontSize: 15, lineHeight: 1.6, color: "#8a8f98", maxWidth: 340 }}>
                   Memory, scope, and finish checks for Claude, Codex, Cursor, and other coding agents.
                 </p>
                 {/* Desktop sub */}
@@ -339,7 +339,7 @@ export default function Home() {
 
               <MotionFade delay={0.22}>
                 <div
-                  className="mt-3 sm:mt-6 flex flex-wrap gap-x-5 gap-y-2"
+                  className="mt-4 sm:mt-6 flex flex-wrap gap-x-5 gap-y-2"
                   style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}
                 >
                   {[

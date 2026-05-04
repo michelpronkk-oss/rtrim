@@ -297,7 +297,7 @@ export function MobileContractCard() {
       </div>
 
       {/* Rows */}
-      <div style={{ padding: "2px 0" }}>
+      <div style={{ padding: "3px 0" }}>
         {MOBILE_ROWS.map(({ k, v, color }, i) => (
           <div
             key={k}
@@ -305,7 +305,7 @@ export function MobileContractCard() {
               display: "grid",
               gridTemplateColumns: "76px 1fr",
               gap: 10,
-              padding: "5px 14px",
+              padding: "6px 14px",
               alignItems: "center",
               borderBottom: i < MOBILE_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
             }}
