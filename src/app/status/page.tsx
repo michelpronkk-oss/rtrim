@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { PublicNav } from "@/components/app/public-nav";
 
 export const metadata: Metadata = {
   title: "Status | RunTrim",
@@ -44,99 +45,48 @@ export default function StatusPage() {
   return (
     <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
 
-      {/* Nav */}
-      <header
-        style={{
-          position: "sticky", top: 0, zIndex: 50,
-          background: "rgba(8,9,11,0.72)",
-          backdropFilter: "saturate(140%) blur(12px)",
-          WebkitBackdropFilter: "saturate(140%) blur(12px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div
-          className="mx-auto flex items-center gap-7"
-          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
-        >
-          <Link href="/" className="flex items-center gap-2.5 no-underline">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
-            <span style={{ ...MONO, fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
-              runtrim
-            </span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-1 ml-3">
-            {[
-              { href: "/",            label: "Home"      },
-              { href: "/plans",       label: "Plans"     },
-              { href: "/app/install", label: "Docs"      },
-              { href: "/changelog",   label: "Changelog" },
-            ].map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                style={{ fontSize: 13, color: "#8a8f98", padding: "7px 10px", borderRadius: 5, transition: "color 0.15s, background 0.15s" }}
-                className="hover:text-[#f4f5f7] hover:bg-white/6"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div style={{ flex: 1 }} />
-          <Link
-            href="/app/install"
-            style={{
-              display: "inline-flex", alignItems: "center",
-              height: 32, padding: "0 14px", borderRadius: 6,
-              background: "#f4f5f7", color: "#0b0d10",
-              fontSize: 13, fontWeight: 500, border: "1px solid #fff",
-              transition: "background 0.15s",
-            }}
-            className="hover:bg-white"
-          >
-            Install CLI
-          </Link>
-        </div>
-      </header>
+      <PublicNav />
 
       {/* Hero */}
-      <div
-        className="py-14 sm:py-16"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+      <section
+        className="pt-14 pb-12 sm:pt-20 sm:pb-16"
+        style={{ position: "relative", borderBottom: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}
       >
-        <div className="mx-auto max-w-3xl px-6">
-          <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ color: "#a78bfa", fontWeight: 500 }}>sys</span>
+        <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)", backgroundSize: "64px 64px", maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)", WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)" }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.07), transparent 60%)" }} />
+
+        <div className="mx-auto relative z-10" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <span
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "4px 10px 4px 8px",
+              border: "1px solid rgba(110,231,183,0.22)", borderRadius: 999,
+              background: "rgba(110,231,183,0.04)",
+              fontFamily: "var(--font-geist-mono)", fontSize: 11,
+              color: "#6ee7b7", letterSpacing: "0.07em", textTransform: "uppercase",
+            }}
+          >
+            <span className="rt-live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />
             System status
           </span>
+
           <h1
             className="mt-5"
-            style={{ fontSize: "clamp(28px,3.6vw,40px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}
+            style={{ fontSize: "clamp(34px, 5.4vw, 62px)", lineHeight: 1.04, letterSpacing: "-0.033em", fontWeight: 500, color: "#f4f5f7", maxWidth: 760 }}
           >
             Current health for RunTrim web, dashboard sync, CLI protocol, and agent bridge.
           </h1>
 
-          {/* Overall badge */}
-          <div className="mt-8 inline-flex items-center gap-3 rounded-[10px] px-4 py-3" style={{ border: "1px solid rgba(110,231,183,0.2)", background: "rgba(110,231,183,0.04)" }}>
-            <span
-              style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: "#6ee7b7",
-                boxShadow: "0 0 0 3px rgba(110,231,183,0.15), 0 0 10px rgba(110,231,183,0.3)",
-                display: "inline-block", flexShrink: 0,
-              }}
-            />
-            <span style={{ ...MONO, fontSize: 12, color: "#6ee7b7", fontWeight: 500, letterSpacing: "0.04em" }}>
-              All systems normal
-            </span>
+          <div className="mt-6 inline-flex items-center gap-3 rounded-[10px] px-4 py-3" style={{ border: "1px solid rgba(110,231,183,0.2)", background: "rgba(110,231,183,0.04)" }}>
+            <span className="rt-live-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />
+            <span style={{ ...MONO, fontSize: 12, color: "#6ee7b7", fontWeight: 500, letterSpacing: "0.04em" }}>All systems normal</span>
           </div>
 
-          {/* Last updated */}
-          <p className="mt-5" style={{ ...MONO, fontSize: 11, color: "#3a3e46" }}>
+          <p className="mt-4" style={{ ...MONO, fontSize: 11, color: "#3a3e46" }}>
             Updated manually during early access. Last check: May 2026.
           </p>
         </div>
-      </div>
+      </section>
 
       {/* Status groups */}
       <div className="py-12 sm:py-16">

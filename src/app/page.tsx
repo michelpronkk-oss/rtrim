@@ -1152,8 +1152,19 @@ export default function Home() {
                 </code>
               </div>
 
-              {/* Status */}
-              <div className="mt-3 flex items-center gap-2">
+              {/* Status badge — pill button */}
+              <Link
+                href="/status"
+                className="mt-4 inline-flex items-center gap-2 rounded-[999px] transition-colors hover:border-[rgba(110,231,183,0.35)] hover:bg-[rgba(110,231,183,0.06)]"
+                style={{
+                  fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                  color: "#3a3e46", letterSpacing: "0.05em",
+                  padding: "4px 10px 4px 8px",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "#0c0e11",
+                  display: "inline-flex",
+                }}
+              >
                 <span
                   className="rt-live-dot"
                   style={{
@@ -1162,14 +1173,8 @@ export default function Home() {
                     display: "inline-block", flexShrink: 0,
                   }}
                 />
-                <Link
-                  href="/status"
-                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46", letterSpacing: "0.04em", transition: "color 0.15s" }}
-                  className="hover:text-[#6ee7b7]"
-                >
-                  All systems normal
-                </Link>
-              </div>
+                All systems normal
+              </Link>
             </div>
 
             {/* Links */}

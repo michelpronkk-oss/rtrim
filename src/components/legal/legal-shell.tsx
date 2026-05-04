@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PublicNav } from "@/components/app/public-nav";
 
 interface LegalSection {
   title: string;
@@ -13,93 +14,183 @@ interface LegalShellProps {
   sections: LegalSection[];
 }
 
+const MONO: React.CSSProperties = {
+  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+};
+
 const NAV_LINKS = [
-  { href: "/privacy", label: "Privacy", key: "privacy" as const },
-  { href: "/terms", label: "Terms", key: "terms" as const },
+  { href: "/privacy",  label: "Privacy",  key: "privacy"  as const },
+  { href: "/terms",    label: "Terms",    key: "terms"    as const },
   { href: "/security", label: "Security", key: "security" as const },
 ];
 
 const TRUST_ROWS = [
-  { label: "Source code", value: "Not uploaded in V1" },
-  { label: "Local CLI", value: "Stores data in .runtrim" },
-  { label: "Cloud sync", value: "Metadata only" },
-  { label: "Secrets", value: "Never intentionally collected" },
-  { label: "Contact", value: "hello@runtrim.com" },
+  { label: "Source code",  value: "Not uploaded in V1"             },
+  { label: "Local CLI",    value: "Stores data in .runtrim"        },
+  { label: "Cloud sync",   value: "Metadata only"                  },
+  { label: "Secrets",      value: "Never intentionally collected"  },
+  { label: "Contact",      value: "hello@runtrim.com"             },
 ];
 
 export function LegalShell({ title, subtitle, lastUpdated, active, sections }: LegalShellProps) {
   return (
-    <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
-      <header className="border-b border-white/10 bg-[#090A1D]/96 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-5">
-            <Link href="/" className="flex items-center gap-2.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-              <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
-            </Link>
-            <nav className="hidden items-center gap-4 sm:flex">
-              {NAV_LINKS.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${
-                    active === item.key
-                      ? "bg-[#7C6DFA]/14 text-[#CFC8FF]"
-                      : "text-[#7480A0] hover:text-[#EDEEFF]"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="hidden rounded-md border border-white/10 px-3 py-1.5 text-[12px] text-[#97A3BA] transition-colors hover:border-white/20 hover:text-[#EDEEFF] sm:inline-flex"
-            >
-              Homepage
-            </Link>
-            <Link
-              href="/app/install"
-              className="rounded-md bg-[#7C6DFA] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-            >
-              Install CLI
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div style={{ minHeight: "100vh", background: "#08090b", color: "#c9ccd2" }}>
+      <PublicNav />
 
-      <main className="mx-auto w-full max-w-6xl px-6 py-10 sm:py-12">
-        <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-6 sm:p-8">
-          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#7682A6]">RUNTRIM LEGAL</p>
-          <h1 className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-[#EDEEFF]">{title}</h1>
-          <p className="mt-3 max-w-3xl text-[14px] leading-7 text-[#9DABC4]">{subtitle}</p>
-          <p className="mt-4 text-[12px] text-[#6C7797]">Last updated: {lastUpdated}</p>
-        </div>
+      {/* ── Hero — same grid/glow as all public pages ── */}
+      <section
+        style={{
+          position: "relative",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          overflow: "hidden",
+          padding: "clamp(48px,8vw,80px) 0 clamp(40px,6vw,64px)",
+        }}
+      >
+        {/* Line grid */}
+        <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)", backgroundSize: "64px 64px", maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)", WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)" }} />
+        {/* Violet glow */}
+        <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.07), transparent 60%)" }} />
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <section className="space-y-4">
+        <div className="mx-auto relative z-10" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          {/* Legal sub-nav tabs */}
+          <div className="flex items-center gap-1 mb-6">
+            {NAV_LINKS.map(({ href, label, key }) => (
+              <Link
+                key={key}
+                href={href}
+                style={{
+                  ...MONO,
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  padding: "4px 10px",
+                  borderRadius: 5,
+                  transition: "color 0.15s, background 0.15s",
+                  color: active === key ? "#f4f5f7" : "#5a5f68",
+                  background: active === key ? "rgba(255,255,255,0.06)" : "transparent",
+                  border: active === key ? "1px solid rgba(255,255,255,0.09)" : "1px solid transparent",
+                }}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Eyebrow */}
+          <span
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "4px 10px 4px 8px",
+              border: "1px solid rgba(167,139,250,0.22)", borderRadius: 999,
+              background: "rgba(167,139,250,0.06)",
+              ...MONO, fontSize: 11, color: "#a78bfa",
+              letterSpacing: "0.07em", textTransform: "uppercase",
+            }}
+          >
+            <span
+              className="rt-violet-dot"
+              style={{ width: 5, height: 5, borderRadius: "50%", background: "#a78bfa", display: "inline-block", flexShrink: 0 }}
+            />
+            Legal
+          </span>
+
+          <h1
+            style={{
+              marginTop: 18, marginBottom: 0,
+              fontSize: "clamp(30px, 4.5vw, 54px)",
+              lineHeight: 1.05, letterSpacing: "-0.03em",
+              fontWeight: 500, color: "#f4f5f7",
+            }}
+          >
+            {title}
+          </h1>
+          <p style={{ marginTop: 14, fontSize: 16, lineHeight: 1.65, color: "#8a8f98", maxWidth: 560 }}>
+            {subtitle}
+          </p>
+          <p style={{ marginTop: 10, ...MONO, fontSize: 11, color: "#3a3e46" }}>
+            Last updated: {lastUpdated}
+          </p>
+        </div>
+      </section>
+
+      {/* ── Content ── */}
+      <main
+        className="mx-auto"
+        style={{ maxWidth: 1240, padding: "clamp(32px,6vw,64px) clamp(20px,4vw,40px) 80px" }}
+      >
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] items-start">
+
+          {/* Sections */}
+          <div className="space-y-4">
             {sections.map((section) => (
-              <article key={section.title} className="rounded-xl border border-white/10 bg-[#0A0C1F] p-5 sm:p-6">
-                <h2 className="text-[16px] font-semibold text-[#EDEEFF]">{section.title}</h2>
-                <div className="mt-3 space-y-3 text-[14px] leading-7 text-[#B8C3D8]">
+              <article
+                key={section.title}
+                style={{
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  background: "#0c0e11",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "12px 20px",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    background: "linear-gradient(180deg, #111317, #0c0e11)",
+                  }}
+                >
+                  <h2 style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>
+                    {section.title}
+                  </h2>
+                </div>
+                <div style={{ padding: "16px 20px" }}>
                   {section.body.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
+                    <p
+                      key={paragraph}
+                      style={{ fontSize: 13.5, lineHeight: 1.7, color: "#8a8f98", marginBottom: 10 }}
+                    >
+                      {paragraph}
+                    </p>
                   ))}
                 </div>
               </article>
             ))}
-          </section>
+          </div>
 
-          <aside className="h-fit rounded-xl border border-white/10 bg-[#0B0C1F] p-5 sm:p-6">
-            <h2 className="text-[15px] font-semibold text-[#EDEEFF]">RunTrim trust model</h2>
-            <div className="mt-4 space-y-3">
-              {TRUST_ROWS.map((row) => (
-                <div key={row.label} className="rounded-lg border border-white/8 bg-[#0F1228] px-3 py-2.5">
-                  <p className="text-[11px] uppercase tracking-[0.08em] text-[#7A85A6]">{row.label}</p>
-                  <p className="mt-1 text-[13px] text-[#CFD7E8]">{row.value}</p>
+          {/* Trust sidebar */}
+          <aside
+            className="lg:sticky lg:top-[76px]"
+            style={{
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.07)",
+              background: "#0c0e11",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 18px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                background: "linear-gradient(180deg, #111317, #0c0e11)",
+              }}
+            >
+              <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Trust model
+              </p>
+            </div>
+            <div style={{ padding: "8px 0" }}>
+              {TRUST_ROWS.map(({ label, value }, i) => (
+                <div
+                  key={label}
+                  style={{
+                    padding: "9px 18px",
+                    borderBottom: i < TRUST_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  }}
+                >
+                  <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                    {label}
+                  </p>
+                  <p style={{ fontSize: 13, color: "#c9ccd2", marginTop: 2 }}>{value}</p>
                 </div>
               ))}
             </div>
@@ -107,16 +198,39 @@ export function LegalShell({ title, subtitle, lastUpdated, active, sections }: L
         </div>
       </main>
 
-      <footer className="border-t border-white/10 bg-[#080919]">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-5">
-          <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-[#7C87A8]">
-            <Link href="/privacy" className="transition-colors hover:text-[#C8C1FF]">Privacy</Link>
-            <Link href="/terms" className="transition-colors hover:text-[#C8C1FF]">Terms</Link>
-            <Link href="/security" className="transition-colors hover:text-[#C8C1FF]">Security</Link>
-            <a href="https://github.com/michelpronkk-oss/rtrim" target="_blank" rel="noreferrer" className="transition-colors hover:text-[#C8C1FF]">GitHub</a>
-            <a href="mailto:hello@runtrim.com" className="transition-colors hover:text-[#C8C1FF]">Contact</a>
+      {/* Footer */}
+      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "28px 0 40px" }}>
+        <div
+          className="mx-auto flex flex-wrap items-center justify-between gap-4"
+          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
+        >
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" aria-hidden className="size-[18px] rounded" />
+            <span style={{ ...MONO, fontSize: 11, color: "#5a5f68" }}>runtrim</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-2">
+            {[
+              { href: "/privacy",  label: "Privacy"  },
+              { href: "/terms",    label: "Terms"     },
+              { href: "/security", label: "Security"  },
+              { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub", ext: true },
+              { href: "mailto:hello@runtrim.com", label: "Contact", ext: true },
+            ].map(({ href, label, ext }) =>
+              ext ? (
+                <a key={label} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noreferrer"
+                  style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
+                  className="hover:text-[#f4f5f7]">{label}</a>
+              ) : (
+                <Link key={label} href={href}
+                  style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
+                  className="hover:text-[#f4f5f7]">{label}</Link>
+              )
+            )}
           </nav>
-          <p className="font-mono text-[11px] text-[#4E5878]">{new Date().getFullYear()} RunTrim</p>
+          <p style={{ ...MONO, fontSize: 10.5, color: "#3a3e46" }}>
+            &copy; {new Date().getFullYear()} RunTrim
+          </p>
         </div>
       </footer>
     </div>

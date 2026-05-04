@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
+import { PublicNav } from "@/components/app/public-nav";
 
 export const metadata: Metadata = {
   title: "Plans | RunTrim",
@@ -137,86 +138,79 @@ export default function PlansPage() {
   return (
     <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
 
-      {/* Header — matches homepage nav */}
-      <header
+      <PublicNav />
+
+      {/* Page hero — same visual treatment as homepage hero */}
+      <section
+        className="pt-14 pb-12 sm:pt-20 sm:pb-16"
         style={{
-          position: "sticky", top: 0, zIndex: 50,
-          background: "rgba(8,9,11,0.72)",
-          backdropFilter: "saturate(140%) blur(12px)",
-          WebkitBackdropFilter: "saturate(140%) blur(12px)",
+          position: "relative",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
+          overflow: "hidden",
         }}
       >
+        {/* Line grid */}
         <div
-          className="mx-auto flex items-center gap-7"
-          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
-        >
-          <Link href="/" className="flex items-center gap-2.5 no-underline">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
-            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
-              runtrim
-            </span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-1 ml-3">
-            {[
-              { href: "/",            label: "Home"       },
-              { href: "/#protocol",   label: "Protocol"   },
-              { href: "/#plans",      label: "Plans"      },
-              { href: "/app/install", label: "Docs"       },
-            ].map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                style={{ fontSize: 13, color: "#8a8f98", padding: "7px 10px", borderRadius: 5, transition: "color 0.15s, background 0.15s" }}
-                className="hover:text-[#f4f5f7] hover:bg-white/6"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div style={{ flex: 1 }} />
-          <Link
-            href="/app/install"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              height: 32, padding: "0 14px", borderRadius: 6,
-              background: "#f4f5f7", color: "#0b0d10",
-              fontSize: 13, fontWeight: 500, border: "1px solid #fff",
-              transition: "background 0.15s",
-            }}
-            className="hover:bg-white"
-          >
-            Install CLI
-          </Link>
-        </div>
-      </header>
+          aria-hidden
+          style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            backgroundImage:
+              "linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)",
+            backgroundSize: "64px 64px",
+            maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+          }}
+        />
+        {/* Violet glow */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.07), transparent 60%)",
+          }}
+        />
 
-      {/* Page header */}
-      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="mx-auto max-w-6xl px-6 pt-16 pb-12 text-center">
+        <div className="mx-auto relative z-10 text-center" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          {/* Eyebrow */}
           <span
             style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "4px 10px 4px 8px",
+              border: "1px solid rgba(167,139,250,0.22)",
+              borderRadius: 999,
+              background: "rgba(167,139,250,0.06)",
               fontFamily: "var(--font-geist-mono)", fontSize: 11,
-              color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em",
+              color: "#a78bfa", letterSpacing: "0.07em", textTransform: "uppercase",
             }}
           >
-            <span style={{ color: "#a78bfa", fontWeight: 500 }}>05</span>
+            <span
+              className="rt-violet-dot"
+              style={{ width: 5, height: 5, borderRadius: "50%", background: "#a78bfa", display: "inline-block", flexShrink: 0 }}
+            />
             Plans
           </span>
+
           <h1
             className="mt-5"
-            style={{ fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}
+            style={{
+              fontSize: "clamp(34px, 5.4vw, 62px)",
+              lineHeight: 1.04, letterSpacing: "-0.033em",
+              fontWeight: 500, color: "#f4f5f7",
+            }}
           >
             Start local.{" "}
             <em style={{ fontStyle: "normal", color: "#8a8f98" }}>Scale to a team.</em>
           </h1>
-          <p className="mx-auto mt-4 max-w-[520px]" style={{ fontSize: 16, lineHeight: 1.7, color: "#8a8f98" }}>
+
+          <p
+            className="mx-auto mt-5"
+            style={{ fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}
+          >
             Free CLI works without an account. Pro, Builder, and Team are request-access plans for cloud history, auto-sync, memory, reports, and team control.
           </p>
+
           <div
-            className="mx-auto mt-5 max-w-fit rounded-lg px-4 py-2.5"
+            className="mx-auto mt-5 inline-flex rounded-[8px] px-4 py-2.5"
             style={{ border: "1px solid rgba(245,165,36,0.2)", background: "rgba(245,165,36,0.04)" }}
           >
             <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#a8916a" }}>
@@ -224,7 +218,7 @@ export default function PlansPage() {
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Plan cards */}
       <div className="mx-auto max-w-6xl px-6 py-16">
