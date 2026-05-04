@@ -330,9 +330,9 @@ export default function Home() {
             <MobileHeroTerminal />
           </MotionFade>
 
-          {/* Feature chips — directly under terminal on mobile, under content on desktop */}
-          <MotionFade delay={0.28} className="mt-3 w-full max-w-4xl px-5 sm:mt-8 sm:px-6">
-            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4">
+          {/* Feature cards — visible on all sizes, stronger on mobile */}
+          <MotionFade delay={0.28} className="mt-4 w-full max-w-4xl px-5 sm:mt-8 sm:px-6">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {[
                 { label: "Scope the task",   note: "Contract before execution" },
                 { label: "Load memory",      note: "Never start from zero" },
@@ -341,12 +341,12 @@ export default function Home() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-lg border border-white/8 bg-[#0D0C22]/70 px-2.5 py-2 backdrop-blur-sm sm:px-4 sm:py-3"
+                  className="rounded-xl border border-white/9 bg-[#0D0C22]/80 px-3.5 py-3 backdrop-blur-sm sm:px-4 sm:py-3.5"
                 >
-                  <p className="text-[11px] font-semibold leading-none text-[#C4C8EA] sm:text-[12px] sm:leading-normal">
+                  <p className="text-[12px] font-semibold leading-snug text-[#C8CAEC]">
                     {item.label}
                   </p>
-                  <p className="mt-1 hidden font-mono text-[10px] text-[#4A5068] sm:block">
+                  <p className="mt-1 font-mono text-[10px] leading-snug text-[#484A68]">
                     {item.note}
                   </p>
                 </div>

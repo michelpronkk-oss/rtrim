@@ -2,51 +2,59 @@
 
 import { useState, useEffect } from "react";
 
-// ── Command definitions ────────────────────────────────────────────────────
+// ── Command definitions — the real RunTrim workflow ────────────────────────
+// Sequence: go (guard the run) → finish (close and check) → sync (push to cloud)
 
 const CMDS = [
   {
     cmd:   'runtrim go "fix mobile nav"',
     badge: "guarded",
-    badge_style: { color: "#3DDAB4", border: "rgba(61,218,180,0.22)", bg: "rgba(61,218,180,0.07)" },
+    bs:    { color: "#3DDAB4", border: "rgba(61,218,180,0.22)", bg: "rgba(61,218,180,0.07)" },
     lines: [
-      { t: "Memory loaded",                 c: "#484A68" },
-      { t: "Contract created",              c: "#484A68" },
-      { t: "Protected: auth, billing, env", c: "#484A68" },
-      { t: "Agent inside scope",            c: "#484A68" },
+      { t: "Memory loaded",                 c: "#55587A" },
+      { t: "Contract created",              c: "#55587A" },
+      { t: "Protected: auth, billing, env", c: "#55587A" },
+      { t: "Agent inside scope",            c: "#55587A" },
       { t: "Auto-sync ready",               c: "#3DDAB4" },
     ],
   },
   {
-    cmd:   "runtrim history",
-    badge: "3 runs",
-    badge_style: { color: "#8B82FF", border: "rgba(139,130,255,0.22)", bg: "rgba(139,130,255,0.07)" },
+    cmd:   "runtrim finish",
+    badge: "checked",
+    bs:    { color: "#9E91FF", border: "rgba(158,145,255,0.22)", bg: "rgba(158,145,255,0.07)" },
     lines: [
-      { t: "3 runs found",           c: "#484A68" },
-      { t: "Latest: fix mobile nav", c: "#484A68" },
-      { t: "Status: guarded",        c: "#3DDAB4" },
-      { t: "Tokens saved: ~24k",     c: "#8B82FF" },
+      { t: "Drift check: clean",  c: "#55587A" },
+      { t: "Changed files: 2",    c: "#55587A" },
+      { t: "Report saved",        c: "#55587A" },
+      { t: "Continuation ready",  c: "#9E91FF" },
+      { t: "Tokens saved: ~18k",  c: "#3DDAB4" },
     ],
   },
   {
     cmd:   "runtrim sync",
     badge: "synced",
-    badge_style: { color: "#3DDAB4", border: "rgba(61,218,180,0.22)", bg: "rgba(61,218,180,0.07)" },
+    bs:    { color: "#3DDAB4", border: "rgba(61,218,180,0.22)", bg: "rgba(61,218,180,0.07)" },
     lines: [
-      { t: "Syncing run history",  c: "#484A68" },
-      { t: "Memory uploaded",      c: "#484A68" },
+      { t: "Syncing 3 runs...",    c: "#55587A" },
+      { t: "Memory uploaded",      c: "#55587A" },
       { t: "Dashboard updated",    c: "#3DDAB4" },
+      { t: "Run history: synced",  c: "#55587A" },
+      { t: "Reports: 3 ready",     c: "#55587A" },
     ],
   },
 ] as const;
 
-// Max lines across all commands — reserves space so height never shifts.
-const MAX_LINES = Math.max(...CMDS.map((c) => c.lines.length));
-const CHAR_MS    = 35;   // ms per character typed
-const LINE_MS    = 190;  // ms between output lines
-const HOLD_MS    = 2900; // ms to hold after last output line
-const FADE_MS    = 380;  // ms to fade before cycling
-const CURSOR_MS  = 530;  // ms per cursor blink half-period
+// All commands have the same line count — terminal height is perfectly stable.
+const LINE_COUNT = 5;          // must match each cmd.lines.length above
+const LINE_H_PX  = 20;         // 12px × 1.66 leading ≈ 20px per line
+const LINE_GAP   = 2;          // space-y-0.5 = 2px gap
+const OUTPUT_H   = LINE_COUNT * LINE_H_PX + (LINE_COUNT - 1) * LINE_GAP; // 108px
+
+const CHAR_MS   = 34;   // ms per character typed
+const LINE_MS   = 185;  // ms between output lines
+const HOLD_MS   = 3000; // ms hold after final output line
+const FADE_MS   = 360;  // ms fade-out before cycling
+const CURSOR_MS = 520;  // ms per cursor blink half-period
 
 type Phase = "typing" | "output" | "hold" | "clear";
 
@@ -59,27 +67,26 @@ export function MobileHeroTerminal() {
   const [shown,   setShown]   = useState(0);
   const [phase,   setPhase]   = useState<Phase>("typing");
   const [cursorV, setCursorV] = useState(true);
-  const [fade,    setFade]    = useState(1);
+  const [opacity, setOpacity] = useState(1);
 
-  // Detect prefers-reduced-motion once on mount
+  // Detect prefers-reduced-motion on mount
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setReduced(true);
       setTyped(CMDS[0].cmd.length);
-      setShown(CMDS[0].lines.length);
+      setShown(LINE_COUNT);
       setPhase("hold");
     }
   }, []);
 
-  // Cursor blink
+  // Cursor blink — independent of phase
   useEffect(() => {
     if (reduced) return;
     const id = setInterval(() => setCursorV((v) => !v), CURSOR_MS);
     return () => clearInterval(id);
   }, [reduced]);
 
-  // Animation state machine
+  // State machine
   useEffect(() => {
     if (reduced) return;
     const cmd = CMDS[idx];
@@ -89,7 +96,7 @@ export function MobileHeroTerminal() {
         const id = setTimeout(() => setTyped((t) => t + 1), CHAR_MS);
         return () => clearTimeout(id);
       }
-      const id = setTimeout(() => setPhase("output"), 220);
+      const id = setTimeout(() => setPhase("output"), 210);
       return () => clearTimeout(id);
     }
 
@@ -98,7 +105,7 @@ export function MobileHeroTerminal() {
         const id = setTimeout(() => setShown((s) => s + 1), LINE_MS);
         return () => clearTimeout(id);
       }
-      const id = setTimeout(() => setPhase("hold"), 350);
+      const id = setTimeout(() => setPhase("hold"), 320);
       return () => clearTimeout(id);
     }
 
@@ -108,74 +115,88 @@ export function MobileHeroTerminal() {
     }
 
     if (phase === "clear") {
-      setFade(0);
+      setOpacity(0);
       const id = setTimeout(() => {
-        const next = (idx + 1) % CMDS.length;
-        setIdx(next);
+        setIdx((i) => (i + 1) % CMDS.length);
         setTyped(0);
         setShown(0);
-        setFade(1);
+        setOpacity(1);
         setPhase("typing");
       }, FADE_MS);
       return () => clearTimeout(id);
     }
   }, [phase, typed, shown, idx, reduced]);
 
-  const cmd      = CMDS[idx];
+  const cmd        = CMDS[idx];
   const showCursor = !reduced && (phase === "typing" || (phase === "output" && shown === 0));
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-[#7C6DFA]/25 bg-[#06060F]"
+      className="overflow-hidden rounded-xl border border-[#7C6DFA]/28 bg-[#06060F]"
       style={{
-        boxShadow: "0 0 0 1px rgba(124,109,250,0.10), 0 12px 32px rgba(0,0,0,0.55)",
-        opacity:    fade,
+        boxShadow: "0 0 0 1px rgba(124,109,250,0.11), 0 14px 36px rgba(0,0,0,0.58)",
+        opacity,
         transition: `opacity ${FADE_MS}ms ease`,
+        // Explicit outer height keeps the card perfectly stable.
+        // Title bar ≈ 37px  +  body (py-3.5 × 2 + cmd line + mt-2 + output) ≈ 183px
       }}
     >
-      {/* Title bar */}
-      <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
-        <div className="flex items-center gap-2">
+      {/* ── Title bar ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b border-white/8 px-3.5 py-2.5">
+        <div className="flex items-center gap-2.5">
           <div className="flex gap-1.5">
-            {([0.14, 0.09, 0.05] as const).map((op, i) => (
-              <span key={i} className="size-2 rounded-full" style={{ background: `rgba(255,255,255,${op})` }} />
+            {([0.18, 0.11, 0.06] as const).map((op, i) => (
+              <span
+                key={i}
+                className="size-2 rounded-full"
+                style={{ background: `rgba(255,255,255,${op})` }}
+              />
             ))}
           </div>
-          <span className="font-mono text-[10px] text-[#3A3E58]">runtrim</span>
+          <span className="font-mono text-[11px] text-[#3A3E5A]">runtrim</span>
         </div>
         <span
-          className="rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em]"
+          className="rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.07em]"
           style={{
-            color:            cmd.badge_style.color,
-            borderColor:      cmd.badge_style.border,
-            backgroundColor:  cmd.badge_style.bg,
+            color:           cmd.bs.color,
+            borderColor:     cmd.bs.border,
+            backgroundColor: cmd.bs.bg,
           }}
         >
           {cmd.badge}
         </span>
       </div>
 
-      {/* Terminal body */}
-      <div className="px-3 py-3 font-mono leading-[1.65]">
-        {/* Command with typing cursor */}
-        <div className="flex items-baseline gap-1.5 text-[12px]">
-          <span className="shrink-0 text-[#3A3E58]">$</span>
-          <span className="text-[#8B82FF]">{cmd.cmd.slice(0, typed)}</span>
+      {/* ── Terminal body ─────────────────────────────────────────────── */}
+      <div className="px-3.5 py-3.5 font-mono">
+
+        {/* Command line with blinking cursor */}
+        <div className="flex items-baseline gap-1.5">
+          <span className="shrink-0 text-[12px] text-[#3A3E5A]">$</span>
+          <span className="text-[13px] text-[#8B82FF]">{cmd.cmd.slice(0, typed)}</span>
           {showCursor && (
             <span
-              className="inline-block h-[0.82em] w-[0.48ch] shrink-0 align-text-bottom rounded-[1px]"
-              style={{ background: "#7C6DFA", opacity: cursorV ? 0.9 : 0 }}
+              className="inline-block shrink-0 rounded-[1px] align-text-bottom"
+              style={{
+                width:      "0.45ch",
+                height:     "0.85em",
+                fontSize:   "13px",
+                background: "#7C6DFA",
+                opacity:    cursorV ? 0.88 : 0,
+              }}
             />
           )}
         </div>
 
-        {/* Output lines — reserved height prevents layout shift */}
+        {/* Output area — fixed height so the card never resizes */}
         <div
-          className="mt-1.5 space-y-0.5 text-[11px]"
-          style={{ minHeight: `${MAX_LINES * 11 * 1.65}px` }}
+          className="mt-2 overflow-hidden space-y-0.5"
+          style={{ height: OUTPUT_H }}
         >
           {cmd.lines.slice(0, shown).map((line, i) => (
-            <p key={i} style={{ color: line.c }}>{"  "}{line.t}</p>
+            <p key={i} className="text-[12px] leading-[1.66]" style={{ color: line.c }}>
+              {"  "}{line.t}
+            </p>
           ))}
         </div>
       </div>
