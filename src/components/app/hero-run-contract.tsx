@@ -151,7 +151,7 @@ export function HeroRunContract() {
             ))}
           </div>
           <span style={{ color: "#5a5f68", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            runtrim · run contract
+            runtrim · guarded run
           </span>
           <span style={{ marginLeft: "auto", color: "#5a5f68", fontSize: "11px" }}>
             repo <b style={{ color: "#c9ccd2", fontWeight: 500 }}>core/checkout-api</b>
@@ -161,50 +161,30 @@ export function HeroRunContract() {
         {/* Body */}
         <div style={{ padding: "6px 0" }}>
           <Row k="Task">
-            <span style={{ color: "#f4f5f7" }}>refactor stripe webhook to idempotent queue</span>
+            <span style={{ color: "#f4f5f7" }}>fix checkout bug</span>
           </Row>
           <Row k="Memory">
-            <Pill variant="mem">runs/last-3</Pill>
-            <Pill variant="mem">repo.map</Pill>
-            <Pill variant="mem">conventions.md</Pill>
-            <span style={{ color: "#5a5f68", fontSize: "11.5px" }}>14.2k tokens</span>
+            <Pill variant="mem">loaded</Pill>
+            <span style={{ color: "#5a5f68", fontSize: "11.5px" }}>project context</span>
           </Row>
-          <Row k="Allowed scope">
+          <Row k="Scope">
             <Pill variant="scope">api/webhooks/**</Pill>
-            <Pill variant="scope">lib/queue/**</Pill>
           </Row>
           <Row k="Forbidden">
             <Pill variant="forbid">.env*</Pill>
             <Pill variant="forbid">migrations/**</Pill>
-            <Pill variant="forbid">infra/**</Pill>
-          </Row>
-          <Row k="Token budget">
-            <Meter pct={38} />
-            <span style={{ color: "#8a8f98", fontSize: "11.5px", minWidth: 56, textAlign: "right" }}>38k / 100k</span>
           </Row>
           <Row k="Risk">
             <Meter pct={22} mint />
-            <span style={{ color: "#6ee7b7", fontSize: "11.5px", minWidth: 56, textAlign: "right" }}>low · 22</span>
+            <span style={{ color: "#6ee7b7", fontSize: "11.5px", minWidth: 56, textAlign: "right" }}>low</span>
           </Row>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "120px 1fr",
-              gap: 16,
-              padding: "9px 16px",
-              alignItems: "center",
-              ...MONO,
-            }}
-          >
-            <span style={{ color: "#5a5f68", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Finish check
-            </span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
-              <Pill>tests pass</Pill>
-              <Pill>no forbidden writes</Pill>
-              <Pill>diff &lt; 400 lines</Pill>
-            </div>
-          </div>
+          <Row k="Finish">
+            <Pill>tests pass</Pill>
+            <Pill>no forbidden writes</Pill>
+          </Row>
+          <Row k="Sync">
+            <span style={{ color: "#6ee7b7", fontSize: "11.5px" }}>ready</span>
+          </Row>
         </div>
 
         {/* Footer */}
@@ -252,12 +232,13 @@ export function HeroRunContract() {
 /* ── Compact proof card for mobile hero ─────────────────────────────────────── */
 
 const MOBILE_ROWS: { k: string; v: string; color?: string }[] = [
-  { k: "task",      v: "fix checkout bug",   color: "#f4f5f7"  },
-  { k: "memory",    v: "loaded",             color: "#a78bfa"  },
-  { k: "scope",     v: "api/webhooks/**",    color: "#6ee7b7"  },
+  { k: "task",      v: "fix checkout bug",    color: "#f4f5f7" },
+  { k: "memory",    v: "loaded",              color: "#a78bfa" },
+  { k: "scope",     v: "api/webhooks/**",     color: "#6ee7b7" },
   { k: "forbidden", v: ".env  migrations/**", color: "#f87171" },
-  { k: "risk",      v: "low",               color: "#6ee7b7"  },
-  { k: "finish",    v: "tests pass",         color: "#c9ccd2"  },
+  { k: "risk",      v: "low",                 color: "#6ee7b7" },
+  { k: "finish",    v: "tests pass",          color: "#c9ccd2" },
+  { k: "sync",      v: "ready",               color: "#6ee7b7" },
 ];
 
 export function MobileContractCard() {
@@ -293,7 +274,7 @@ export function MobileContractCard() {
         }}
       >
         <span style={{ color: "#5a5f68", fontSize: "10.5px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          runtrim · run contract
+          runtrim · guarded run
         </span>
         <span
           style={{

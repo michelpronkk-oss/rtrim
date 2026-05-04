@@ -244,10 +244,28 @@
   50%       { opacity: 0.13; transform: scale(1.3); }
 }
 
+/* Live status dot — slow pulse, used in hero eyebrow */
+@keyframes rt-live-dot {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 3px rgba(110,231,183,0.12); }
+  50%       { opacity: 0.55; transform: scale(0.82); box-shadow: 0 0 0 3px rgba(110,231,183,0.06); }
+}
+.rt-live-dot {
+  animation: rt-live-dot 2.2s ease-in-out infinite;
+}
+
 /* Glow breathe */
 @keyframes rt-glow-pulse {
   0%, 100% { opacity: 0.75; }
   50%       { opacity: 1;    }
+}
+
+/* Hero card ambient glow — very slow, very restrained */
+@keyframes rt-hero-card-glow {
+  0%, 100% { box-shadow: 0 0 40px rgba(167,139,250,0.04), 0 24px 48px rgba(0,0,0,0.5); }
+  50%       { box-shadow: 0 0 64px rgba(167,139,250,0.08), 0 24px 48px rgba(0,0,0,0.5); }
+}
+.rt-hero-card-glow {
+  animation: rt-hero-card-glow 6s ease-in-out infinite;
 }
 
 @keyframes rt-terminal-fade-in {

@@ -205,7 +205,7 @@ export default function Home() {
 
       {/* ── HERO ── */}
       <section
-        className="pt-10 pb-12 sm:pt-14 sm:pb-16 lg:pt-24 lg:pb-28"
+        className="pt-10 pb-10 sm:pt-16 sm:pb-20 lg:pt-24 lg:pb-28"
         style={{
           position: "relative",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -218,7 +218,7 @@ export default function Home() {
           style={{
             position: "absolute", inset: 0, pointerEvents: "none",
             backgroundImage:
-              "linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px)",
+              "linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)",
             backgroundSize: "64px 64px",
             maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
             WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
@@ -229,7 +229,7 @@ export default function Home() {
           aria-hidden
           style={{
             position: "absolute", inset: 0, pointerEvents: "none",
-            background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.08), transparent 60%)",
+            background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.07), transparent 60%)",
           }}
         />
 
@@ -239,34 +239,37 @@ export default function Home() {
         >
           {/* Two-column grid — stacks on mobile */}
           <div
-            className="grid gap-10 lg:gap-20 items-start"
+            className="grid gap-8 lg:gap-20 items-start"
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%,480px), 1fr))" }}
           >
             {/* Left: copy */}
             <div>
+              {/* Eyebrow — "Bridge Mode live" with pulsing mint dot */}
               <MotionFade>
                 <span
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 10,
-                    fontFamily: "var(--font-geist-mono)", fontSize: 11,
-                    color: "#8a8f98", textTransform: "uppercase", letterSpacing: "0.08em",
-                    padding: "5px 10px 5px 8px",
-                    border: "1px solid rgba(255,255,255,0.09)", borderRadius: 999,
-                    background: "#0c0e11",
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "4px 10px 4px 8px",
+                    border: "1px solid rgba(110,231,183,0.2)",
+                    borderRadius: 999,
+                    background: "rgba(110,231,183,0.04)",
                   }}
                 >
                   <span
+                    className="rt-live-dot"
                     style={{
-                      color: "#a78bfa",
-                      background: "rgba(167,139,250,0.12)",
-                      padding: "1px 7px", borderRadius: 4,
-                      border: "1px solid rgba(167,139,250,0.25)",
-                      letterSpacing: "0.04em",
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: "#6ee7b7",
+                      display: "inline-block", flexShrink: 0,
                     }}
-                  >
-                    v0.7
+                  />
+                  <span style={{
+                    fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                    color: "#6ee7b7", letterSpacing: "0.07em",
+                    textTransform: "uppercase",
+                  }}>
+                    Bridge Mode live
                   </span>
-                  Protocol layer for AI coding agents
                 </span>
               </MotionFade>
 
@@ -274,27 +277,27 @@ export default function Home() {
                 <h1
                   className="mt-4 sm:mt-5 mb-0"
                   style={{
-                    fontSize: "clamp(36px, 5.6vw, 68px)",
-                    lineHeight: 1.03, letterSpacing: "-0.033em",
+                    fontSize: "clamp(36px, 5.4vw, 66px)",
+                    lineHeight: 1.04, letterSpacing: "-0.033em",
                     fontWeight: 500, color: "#f4f5f7",
                   }}
                 >
-                  Bring your own agent.{" "}
+                  Run AI coding agents with{" "}
                   <em style={{ fontStyle: "normal", color: "#8a8f98" }}>
-                    Run it through a contract first.
+                    memory, scope, and control.
                   </em>
                 </h1>
               </MotionFade>
 
               <MotionFade delay={0.12}>
-                {/* Short mobile sub / full desktop sub */}
-                <p className="sm:hidden" style={{ marginTop: 14, fontSize: 14, lineHeight: 1.6, color: "#8a8f98", maxWidth: 400 }}>
-                  Memory, scope, forbidden files, and finish checks for every AI coding run.
+                {/* Mobile sub — slightly shortened */}
+                <p className="sm:hidden" style={{ marginTop: 13, fontSize: 14, lineHeight: 1.6, color: "#8a8f98", maxWidth: 360 }}>
+                  RunTrim gives Claude, Codex, and Cursor the context, boundaries, and finish checks they need before they touch your code.
                 </p>
-                <p className="hidden sm:block" style={{ marginTop: 20, fontSize: 17, lineHeight: 1.55, color: "#c9ccd2", maxWidth: 540 }}>
-                  RunTrim installs a protocol into your repo, gives every AI coding task memory, scope,
-                  forbidden files, and a finish check, then syncs the run to your dashboard. Fewer drifts,
-                  lower token burn, cleaner diffs.
+                {/* Desktop sub */}
+                <p className="hidden sm:block" style={{ marginTop: 20, fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}>
+                  RunTrim gives Claude, Codex, Cursor, and other coding agents the context,
+                  boundaries, and finish checks they need before they touch your code.
                 </p>
               </MotionFade>
 
@@ -307,7 +310,8 @@ export default function Home() {
                       height: 40, padding: "0 18px", borderRadius: 7,
                       fontSize: 14, fontWeight: 500,
                       background: "#f4f5f7", color: "#0b0d10",
-                      border: "1px solid #fff",
+                      border: "1px solid rgba(255,255,255,0.9)",
+                      boxShadow: "0 0 0 1px rgba(255,255,255,0.12), 0 4px 16px rgba(255,255,255,0.06)",
                       transition: "background 0.15s",
                     }}
                     className="hover:bg-white group"
@@ -316,7 +320,7 @@ export default function Home() {
                     <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </Link>
                   <SmartCta
-                    label="Request early access"
+                    label="Request access"
                     variant="pro"
                     className="inline-flex items-center gap-2 h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
                     openAppLabel="Open dashboard"
@@ -327,30 +331,18 @@ export default function Home() {
 
               <MotionFade delay={0.22}>
                 <div
-                  className="mt-4 sm:mt-6 flex flex-wrap gap-x-4 sm:gap-x-5 gap-y-2"
-                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68" }}
+                  className="mt-4 sm:mt-6 flex flex-wrap gap-x-5 gap-y-2"
+                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}
                 >
                   {[
                     "Works with Claude, Codex, Cursor",
-                    "Local first, opt-in cloud",
+                    "Local first, cloud when connected",
                     "No model lock-in",
-                  ].map((t) => (
+                  ].map((t, i) => (
                     <span key={t} className="flex items-center gap-2">
-                      <span
-                        style={{
-                          width: 12, height: 12, borderRadius: "50%",
-                          background: "rgba(110,231,183,0.12)",
-                          border: "1px solid rgba(110,231,183,0.4)",
-                          display: "inline-grid", placeItems: "center",
-                          position: "relative",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {/* Checkmark via SVG inline */}
-                        <svg width="6" height="4" viewBox="0 0 6 4" fill="none" style={{ position: "absolute" }}>
-                          <path d="M1 2L2.5 3.5L5 1" stroke="#6ee7b7" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
+                      {i > 0 && (
+                        <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.07)", display: "inline-block" }} />
+                      )}
                       {t}
                     </span>
                   ))}
@@ -359,11 +351,11 @@ export default function Home() {
             </div>
 
             {/* Right: Run contract — compact card on mobile, full panel on desktop */}
-            <MotionFade delay={0.25} className="pt-2 sm:pt-4 lg:pt-2">
+            <MotionFade delay={0.25} className="pt-1 sm:pt-4 lg:pt-2">
               <div className="sm:hidden">
                 <MobileContractCard />
               </div>
-              <div className="hidden sm:block">
+              <div className="hidden sm:block rt-hero-card-glow rounded-[10px]">
                 <HeroRunContract />
               </div>
             </MotionFade>
@@ -1102,48 +1094,97 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "40px 0 56px", color: "#5a5f68", fontSize: 12.5 }}>
+      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div
-          className="mx-auto grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-6"
+          className="mx-auto"
           style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
         >
-          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em" }}>
-            <span className="inline-flex items-center gap-2.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.svg" alt="" aria-hidden className="size-4 rounded" />
-              runtrim · v0.7 · the control layer for AI coding agents
-            </span>
+          {/* Main footer content */}
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-10 py-12 items-start">
+
+            {/* Brand column */}
+            <div>
+              <div className="flex items-center gap-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
+                  runtrim
+                </span>
+              </div>
+              <p className="mt-3" style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", lineHeight: 1.65 }}>
+                The protocol layer for AI coding agents.
+              </p>
+
+              {/* Install command */}
+              <div
+                className="mt-4 inline-flex items-center gap-2 rounded-md px-3 py-2"
+                style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.07)" }}
+              >
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#a78bfa" }}>$</span>
+                <code style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8a8f98" }}>
+                  npm install -g runtrim
+                </code>
+              </div>
+
+              {/* Status line */}
+              <div className="mt-3 flex items-center gap-2">
+                <span
+                  style={{
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: "#6ee7b7",
+                    boxShadow: "0 0 4px rgba(110,231,183,0.5)",
+                    display: "inline-block", flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46", letterSpacing: "0.04em" }}>
+                  All systems normal
+                </span>
+              </div>
+            </div>
+
+            {/* Links — right side */}
+            <div className="flex flex-wrap gap-x-8 gap-y-3 lg:justify-end lg:items-start lg:pt-1">
+              {[
+                { href: "/app/install", label: "Docs"      },
+                { href: "/plans",       label: "Plans"     },
+                { href: "/changelog",   label: "Changelog" },
+                { href: "/status",      label: "Status"    },
+                { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub", ext: true },
+                { href: "/privacy",     label: "Privacy"   },
+              ].map(({ href, label, ext }) =>
+                ext ? (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 13, color: "#5a5f68", transition: "color 0.15s" }}
+                    className="hover:text-[#f4f5f7]"
+                  >
+                    {label}
+                  </a>
+                ) : (
+                  <Link
+                    key={label}
+                    href={href}
+                    style={{ fontSize: 13, color: "#5a5f68", transition: "color 0.15s" }}
+                    className="hover:text-[#f4f5f7]"
+                  >
+                    {label}
+                  </Link>
+                )
+              )}
+            </div>
           </div>
-          <div className="flex gap-[18px]">
-            {[
-              { href: "/app/install", label: "Docs"      },
-              { href: "/changelog",   label: "Changelog" },
-              { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub",  ext: true },
-              { href: "/status",      label: "Status"    },
-              { href: "/privacy",     label: "Privacy"   },
-            ].map(({ href, label, ext }) =>
-              ext ? (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
-                  className="hover:text-[#f4f5f7]"
-                >
-                  {label}
-                </a>
-              ) : (
-                <Link
-                  key={label}
-                  href={href}
-                  style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
-                  className="hover:text-[#f4f5f7]"
-                >
-                  {label}
-                </Link>
-              )
-            )}
+
+          {/* Bottom bar */}
+          <div
+            className="py-5"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+          >
+            <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}>
+              &copy; {new Date().getFullYear()} RunTrim. Bring your own agent. Run it with memory, scope, and control.
+            </p>
           </div>
         </div>
       </footer>
