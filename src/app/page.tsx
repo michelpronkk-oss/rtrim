@@ -1,1093 +1,1075 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, Check, Terminal } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { MotionFade } from "@/components/app/motion-section";
-import { HeroTerminal } from "@/components/app/hero-terminal";
-import { TerminalCard } from "@/components/app/terminal-card";
 import { CopyButton } from "@/components/app/copy-button";
-import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 import { SmartCta } from "@/components/app/smart-cta";
-import { MobileHeroTerminal } from "@/components/app/mobile-hero-terminal";
-import { BeforeAfterSection } from "@/components/app/before-after-section";
-import { AnimatedRunContract } from "@/components/app/animated-run-contract";
+import { HeroRunContract } from "@/components/app/hero-run-contract";
 import { planOrder, plans } from "@/lib/plans";
 
 export const metadata: Metadata = {
-  title: "RunTrim | Run AI coding tasks with guardrails",
+  title: "RunTrim — Control layer for AI coding agents",
   description:
-    "RunTrim turns prompts into controlled AI coding runs with scoped contracts, reusable memory, token control, risk checks, and clean continuation.",
+    "RunTrim installs a protocol into your repo, gives every AI coding task memory, scope, forbidden files, and a finish check, then syncs the run to your dashboard. Fewer drifts, lower token burn, cleaner diffs.",
   alternates: {
     canonical: "https://www.runtrim.com",
   },
 };
 
-const CLI_PREVIEW = [
-  { type: "comment" as const, text: "# daily guarded run (copy mode)" },
-  { type: "prompt"  as const, text: '$ runtrim go "fix the billing redirect"' },
-  { type: "dim"     as const, text: "  guarded prompt prepared" },
-  { type: "dim"     as const, text: "  scoped to: billing route, checkout" },
-  { type: "dim"     as const, text: "  project memory loaded" },
-  { type: "dim"     as const, text: "  copied to clipboard — paste into agent" },
-  { text: "" },
-  { type: "prompt"  as const, text: "$ runtrim check" },
-  { type: "dim"     as const, text: "  changed files reviewed" },
-  { type: "dim"     as const, text: "  scope drift: none detected" },
-  { type: "dim"     as const, text: "  proof gaps: 3 recorded" },
-  { text: "" },
-  { type: "prompt"  as const, text: "$ runtrim continue --reason usage_limit" },
-  { type: "dim"     as const, text: "  continuation pack built" },
-  { type: "dim"     as const, text: "  memory preserved" },
-  { type: "dim"     as const, text: "  next: paste into the next agent session" },
-];
+/* ─── Section data ──────────────────────────────────────────────────────────── */
 
-const AGENT_MODES = [
-  { cmd: "runtrim agent set copy",    note: "# recommended — paste into any tool" },
-  { cmd: "runtrim agent set claude",  note: "# Claude Code (CLI)" },
-  { cmd: "runtrim agent set codex",   note: "# OpenAI Codex CLI" },
-  { cmd: "runtrim agent set cursor",  note: "# Cursor" },
-];
-
-const PROTOCOL_STEPS = [
+const DRIFT_ITEMS = [
   {
-    n:      "00",
+    tag:   "Context reset",
+    title: "Every session starts blind",
+    body:  "The agent forgets your conventions, the last run, and which files matter. You re-explain the codebase, again.",
+    glyph: "SESSION_NEW",
+    code:  "memory: null",
+  },
+  {
+    tag:   "Scope creep",
+    title: "One task, twelve files",
+    body:  "You asked to fix a webhook. It touched the auth layer, two configs, and a migration nobody approved.",
+    glyph: "DELTA",
+    code:  "files_touched: 12 / 3",
+  },
+  {
+    tag:   "Token burn",
+    title: "Re-loading the same repo",
+    body:  "Without scoped memory, the agent reads the world to do anything. Token bills compound silently, run after run.",
+    glyph: "USAGE",
+    code:  "+38% vs scoped",
+  },
+  {
+    tag:   "Forbidden writes",
+    title: "It edited .env",
+    body:  "Production secrets, migrations, and infrastructure should be off-limits by default. Most agents have no concept of off-limits.",
+    glyph: "VIOLATION",
+    code:  "writes: .env.production",
+  },
+  {
+    tag:   "Unclear handoff",
+    title: "Is it actually done?",
+    body:  'The agent says "complete." Tests are red, the diff is half-applied, and nobody flagged it. You find out at PR review.',
+    glyph: "FINISH",
+    code:  "checks: skipped",
+  },
+  {
+    tag:   "No audit trail",
+    title: "What did it actually do?",
+    body:  "Three runs, four branches, zero history of intent. You can read the diff, but you can't read the reasoning behind it.",
+    glyph: "RUN_LOG",
+    code:  "not found",
+  },
+];
+
+const PIPELINE_STAGES = [
+  {
+    n:      "01 / install",
     cmd:    "runtrim init",
-    label:  "Initialize",
-    note:   "Installs the project protocol, memory structure, and agent instruction files.",
-    accent: "#7C6DFA",
+    desc:   "Drop the protocol into your repo. Conventions, allowed paths, forbidden files, finish checks.",
+    active: true,
   },
   {
-    n:      "01",
-    cmd:    'runtrim go "fix checkout bug"',
-    label:  "Scope the run",
-    note:   "Creates a scoped contract, loads memory, and generates the guarded prompt.",
-    accent: "#5B8BFF",
+    n:      "02 / dispatch",
+    cmd:    'runtrim go "task"',
+    desc:   "Compile the run contract. Load memory, lock scope, set the token budget, attach the finish check.",
+    active: true,
   },
   {
-    n:      "02",
-    cmd:    null,
-    label:  "Use your agent",
-    note:   "Paste the prompt into Claude Code, Codex, Cursor, or any coding agent.",
-    accent: "#9966FF",
+    n:      "03 / execute",
+    cmd:    "› agent",
+    desc:   "Claude, Codex, Cursor or any agent runs the guarded prompt. Stop rules trigger if it strays.",
+    active: true,
   },
   {
-    n:      "03",
+    n:      "04 / verify",
     cmd:    "runtrim finish",
-    label:  "Close the loop",
-    note:   "Checks changed files, detects drift, scores risk, and saves the report.",
-    accent: "#0DDB9E",
+    desc:   "Run the finish check. Tests, scope, diff size, forbidden writes. Pass or fail, no in-between.",
+    active: false,
   },
   {
-    n:      "04",
-    cmd:    null,
-    label:  "Continue cleanly",
-    note:   "Report, memory, and continuation pack saved locally and synced to dashboard.",
-    accent: "#4DE8B0",
+    n:      "05 / sync",
+    cmd:    "↗ dashboard",
+    desc:   "Run, contract, diff, token spend, and verdict are written to your dashboard. Resumable next session.",
+    active: false,
   },
 ];
 
-const FREE_CLI_FEATURES = [
-  "Prompt history",
-  "Run history",
-  "Reusable context",
-  "Token savings",
-  "Cost savings",
-  "Basic reports",
-  "Clean continuation",
+const BENEFITS = [
+  { n: "01", title: "Faster runs",        body: "Scoped context means the agent stops re-reading the world. Same task, less wandering.",                     stat: "avg run time",     delta: "↓ 41%" },
+  { n: "02", title: "Lower token burn",   body: "Memory recall replaces context dumping. You pay for the work, not the warmup.",                             stat: "tokens per task",  delta: "↓ 27%" },
+  { n: "03", title: "Stricter output",    body: "Diff caps, file allowlists, stop rules. The agent works inside lines you draw.",                             stat: "scope violations", delta: "↓ 96%" },
+  { n: "04", title: "Less breakage",      body: "Forbidden files stay forbidden. .env, migrations, infrastructure are protected by default.",                stat: "forbidden writes", delta: "0"     },
+  { n: "05", title: "Clean continuation", body: "Memory survives sessions. Next run starts where the last one stopped, with intent intact.",                 stat: "cold-start tokens", delta: "↓ 64%" },
+  { n: "06", title: "Cloud run history",  body: "Every run is a record. Contract, diff, verdict, agent, model. Searchable, auditable, replayable.",          stat: "retention",        delta: "90 days" },
 ];
 
-const PRICING_FEATURES = [
-  { label: "Local CLI",             free: true,       pro: true,       builder: true,        team: true        },
-  { label: "Run history",           free: "local",    pro: "cloud",    builder: "cloud",     team: "cloud"     },
-  { label: "Reusable context",      free: "local",    pro: "synced",   builder: "synced",    team: "synced"    },
-  { label: "Continuation packs",    free: "local",    pro: "synced",   builder: "synced",    team: "synced"    },
-  { label: "Savings reports",       free: false,      pro: true,       builder: true,        team: true        },
-  { label: "Tracked projects",      free: "1 local",  pro: "1 synced", builder: "unlimited", team: "unlimited" },
-  { label: "Custom project rules",  free: false,      pro: false,      builder: true,        team: true        },
-  { label: "Scope drift detection", free: false,      pro: false,      builder: true,        team: true        },
-  { label: "Risk scores",           free: "basic",    pro: "standard", builder: "advanced",  team: "advanced"  },
-  { label: "Agent early access",    free: false,      pro: true,       builder: true,        team: true        },
-  { label: "Team policies",         free: false,      pro: false,      builder: false,       team: true        },
-  { label: "GitHub checks",         free: false,      pro: false,      builder: false,       team: "planned"   },
+const AGENT_LIST = [
+  { icon: "C",   name: "Claude Code",    status: "first-class", beta: false },
+  { icon: "Cx",  name: "OpenAI Codex",   status: "first-class", beta: false },
+  { icon: "Cu",  name: "Cursor",         status: "first-class", beta: false },
+  { icon: "Gp",  name: "ChatGPT",        status: "supported",   beta: false },
+  { icon: "Km",  name: "Kimi",           status: "supported",   beta: false },
+  { icon: "Ds",  name: "DeepSeek",       status: "supported",   beta: false },
+  { icon: "Oc",  name: "OpenClaw",       status: "beta",        beta: true  },
+  { icon: "···", name: "Custom agent",   status: "any prompt-runner", beta: false },
 ];
 
-const FAQS = [
-  {
-    q: "Does RunTrim upload my source code?",
-    a: "No. The free CLI runs entirely locally. Source code never leaves your machine. Cloud sync in Pro early access uploads run metadata only, not file contents or environment values.",
-  },
-  {
-    q: "What is RunTrim Agent?",
-    a: "RunTrim Agent is the next layer: a guarded AI coding agent that runs tasks through scoped contracts, memory, token budgets, risk checks, and audit-ready reports. It is entering early access for Pro, Builder, and Team plans.",
-  },
-  {
-    q: "Which agents does it work with?",
-    a: "Claude Code, Codex CLI, Cursor, and any agent you can run from a terminal or paste into. RunTrim wraps or copies depending on your configuration.",
-  },
-  {
-    q: "How accurate are the savings estimates?",
-    a: "They are approximations based on task score, captured run size, and token usage patterns. Treat them as directional signals, not billing data.",
-  },
-];
+/* ─── Page ──────────────────────────────────────────────────────────────────── */
 
 export default function Home() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#07071A]">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/8 bg-[#07071A]/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
+    <div style={{ background: "#08090b", minHeight: "100vh", overflowX: "hidden", color: "#c9ccd2", fontFeatureSettings: '"ss01","ss02","cv11"' }}>
+
+      {/* ── NAV ── */}
+      <header
+        style={{
+          position: "sticky", top: 0, zIndex: 50,
+          background: "rgba(8,9,11,0.72)",
+          backdropFilter: "saturate(140%) blur(12px)",
+          WebkitBackdropFilter: "saturate(140%) blur(12px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <div
+          className="mx-auto flex items-center gap-7"
+          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
+        >
+          <Link href="/" aria-label="RunTrim" className="flex items-center gap-2.5 no-underline">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
-          </div>
-          <nav className="hidden items-center gap-8 md:flex">
-            <Link href="/how-it-works" data-rt-event="how_it_works_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">How it works</Link>
-            <Link href="/plans" data-rt-event="plans_nav_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Plans</Link>
-            <Link href="/app/install" data-rt-event="docs_clicked" className="text-sm text-[#4D5070] transition-colors hover:text-[#EDEEFF]">Docs</Link>
+            <img src="/icon.svg" alt="" aria-hidden className="size-[22px] rounded" />
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "#f4f5f7" }}>
+              runtrim
+            </span>
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-1 ml-3">
+            {[
+              { href: "/app/install", label: "Install CLI" },
+              { href: "#protocol",    label: "Protocol"    },
+              { href: "#agents",      label: "Agents"      },
+              { href: "#plans",       label: "Plans"       },
+              { href: "/app/install", label: "Docs"        },
+            ].map(({ href, label }) => (
+              <Link
+                key={label}
+                href={href}
+                style={{ fontSize: 13, color: "#8a8f98", padding: "7px 10px", borderRadius: 5, transition: "color 0.15s, background 0.15s" }}
+                className="hover:text-[#f4f5f7] hover:bg-white/6"
+              >
+                {label}
+              </Link>
+            ))}
           </nav>
+
+          <div style={{ flex: 1 }} />
+
+          {/* Status badge */}
+          <div
+            className="hidden sm:inline-flex items-center gap-2"
+            style={{
+              fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8a8f98",
+              padding: "5px 10px", border: "1px solid rgba(255,255,255,0.09)",
+              borderRadius: 999, background: "#0c0e11",
+            }}
+          >
+            <span
+              style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: "#6ee7b7",
+                boxShadow: "0 0 0 3px rgba(110,231,183,0.12)",
+                display: "inline-block",
+              }}
+            />
+            v0.7 · all systems normal
+          </div>
+
           <Link
             href="/app/install"
-            data-rt-event="install_cta_clicked"
-            className="rounded-md bg-[#7C6DFA] px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              height: 32, padding: "0 14px", borderRadius: 6,
+              background: "#f4f5f7", color: "#0b0d10",
+              fontSize: 13, fontWeight: 500,
+              border: "1px solid #fff",
+              transition: "background 0.15s",
+            }}
+            className="hover:bg-white"
           >
-            Install CLI
+            Request access
           </Link>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-white/8">
-
-        {/* Background */}
-
-        {/* Line grid — replaces dot grid, fades radially from center */}
+      {/* ── HERO ── */}
+      <section
+        style={{
+          position: "relative",
+          padding: "clamp(56px,8vw,96px) 0 clamp(72px,10vw,120px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Subtle grid */}
         <div
-          className="pointer-events-none absolute inset-0"
+          aria-hidden
           style={{
-            backgroundImage: [
-              "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)",
-              "linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-            ].join(","),
-            backgroundSize: "44px 44px",
-            maskImage: "radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%)",
-            WebkitMaskImage: "radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%)",
+            position: "absolute", inset: 0, pointerEvents: "none",
+            backgroundImage:
+              "linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px)",
+            backgroundSize: "64px 64px",
+            maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+          }}
+        />
+        {/* Violet glow */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.08), transparent 60%)",
           }}
         />
 
-        {/* Orb 1 — large violet, drifts slowly left side */}
         <div
-          className="pointer-events-none absolute -left-[180px] -top-[80px] h-[640px] w-[640px] rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(124,109,250,0.18) 0%, rgba(124,109,250,0.06) 45%, transparent 70%)",
-            animation: "rt-orb-1 26s ease-in-out infinite",
-          }}
-        />
-
-        {/* Orb 2 — blue-indigo, drifts right side */}
-        <div
-          className="pointer-events-none absolute -right-[120px] top-[80px] h-[520px] w-[520px] rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(91,139,255,0.13) 0%, rgba(91,139,255,0.04) 50%, transparent 70%)",
-            animation: "rt-orb-2 34s ease-in-out infinite",
-          }}
-        />
-
-        {/* Orb 3 — purple accent, bottom center */}
-        <div
-          className="pointer-events-none absolute -bottom-[60px] left-1/2 h-[380px] w-[700px] -translate-x-1/2 rounded-full"
-          style={{
-            background: "radial-gradient(ellipse, rgba(153,102,255,0.14) 0%, rgba(153,102,255,0.04) 50%, transparent 70%)",
-            animation: "rt-orb-3 20s ease-in-out infinite",
-          }}
-        />
-
-        {/* Edge vignette — darkens corners, keeps centre readable */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: "radial-gradient(ellipse 75% 75% at 50% 45%, transparent 45%, #07071A 88%)",
-          }}
-        />
-
-        <div className="pointer-events-none absolute inset-0 hero-glow hero-glow-animate" />
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-28"
-          style={{ background: "linear-gradient(to bottom, #07071A, transparent)" }}
-        />
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-28"
-          style={{ background: "linear-gradient(to top, #07071A, transparent)" }}
-        />
-
-        {/*
-          Mobile: flows naturally — no min-height, no spacer.
-          Layout: headline → CTA → compact terminal → chips.
-          Everything fits above the fold on 375-430px screens.
-
-          Desktop: unchanged compact flow, then HeroTerminal below.
-        */}
-        <div className="relative z-10 flex w-full flex-col items-center pt-14 pb-10 sm:pb-0 sm:pt-28">
-
-          {/* Core text content */}
-          <div className="flex w-full flex-col items-center px-6 text-center">
-
-            {/* Pill — desktop only */}
-            <MotionFade>
-              <div className="rt-ai-pill mb-8 hidden items-center gap-2 rounded-full border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 px-4 py-1.5 backdrop-blur-sm sm:inline-flex">
-                <span className="rt-ai-pill-dot size-1.5 rounded-full bg-[#7C6DFA]" />
-                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#9E91FF]">
-                  Control layer for AI coding agents
-                </span>
-              </div>
-            </MotionFade>
-
-            <MotionFade delay={0.06}>
-              {/* Mobile headline — 2 exact lines, font-black, fills space */}
-              <h1 className="mx-auto max-w-[320px] text-[3rem] font-black leading-[1.03] tracking-[-0.055em] text-[#EDEEFF] sm:hidden">
-                Run AI agents<br />
-                with{" "}
-                <span className="brand-gradient-text">control.</span>
-              </h1>
-              {/* Desktop headline */}
-              <h1 className="mx-auto hidden max-w-[860px] text-[3.4rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#EDEEFF] sm:block lg:text-[4.5rem] xl:text-[5rem]">
-                Run AI coding agents with{" "}
-                <span className="brand-gradient-text">memory, scope, and control.</span>
-              </h1>
-            </MotionFade>
-
-            {/* Sub — desktop only */}
-            <MotionFade delay={0.12}>
-              {/* Mobile subtext */}
-              <p className="mx-auto mt-4 max-w-[300px] text-[13px] leading-[1.6] text-[#6870A0] sm:hidden">
-                Memory, scope, and finish checks for Claude, Codex, Cursor, and other agents.
-              </p>
-              {/* Desktop subtext — full sentence */}
-              <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
-                RunTrim installs a protocol into your repo, creates scoped contracts before Claude, Codex, or Cursor touches code, then checks drift, risk, changed files, and continuation after every run.
-              </p>
-            </MotionFade>
-
-            <MotionFade delay={0.17}>
-              {/* Mobile CTA */}
-              <div className="mt-5 flex w-full max-w-[300px] flex-col items-center gap-2.5 sm:hidden">
-                <Link
-                  href="/app/install"
-                  data-rt-event="install_cta_clicked"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#7C6DFA] px-6 py-3.5 text-[15px] font-semibold text-white"
-                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 8px 24px rgba(124,109,250,0.30), inset 0 1px 0 rgba(255,255,255,0.12)" }}
-                >
-                  Install Free CLI
-                  <ArrowRight className="size-4" />
-                </Link>
-                {/* Secondary CTA — real button, not text link */}
-                <SmartCta
-                  label="Request early access"
-                  variant="pro"
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-6 py-2.5 text-[13px] font-medium text-[#A3AEBD] transition-colors hover:border-white/18 hover:text-[#EDEEFF]"
-                  openAppLabel="Open dashboard"
-                  openAppClassName="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#7C6DFA]/25 bg-[#7C6DFA]/8 px-6 py-2.5 text-[13px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/14"
-                />
-              </div>
-
-              {/* Desktop CTAs */}
-              <div className="mt-10 hidden flex-wrap items-center justify-center gap-3 sm:flex">
-                <Link
-                  href="/app/install"
-                  data-rt-event="install_cta_clicked"
-                  className="group inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
-                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 8px 20px rgba(124,109,250,0.22), inset 0 1px 0 rgba(255,255,255,0.12)" }}
-                >
-                  Install Free CLI
-                  <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
-                </Link>
-                <SmartCta
-                  label="Request early access"
-                  variant="pro"
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-6 py-3 text-[15px] text-[#A3AEBD] backdrop-blur-sm transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-                  openAppLabel="Open app"
-                  openAppClassName="inline-flex items-center gap-2 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-6 py-3 text-[15px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/18"
-                />
-                <Link href="/plans" className="text-[14px] text-[#4A5170] underline-offset-2 transition-colors hover:text-[#9699BE]">
-                  See plans
-                </Link>
-              </div>
-            </MotionFade>
-
-            {/* Status line — desktop only */}
-            <MotionFade delay={0.20}>
-              <p className="mt-5 hidden font-mono text-[11px] text-[#4A5170] sm:block">
-                Free local CLI is live. Pro, Builder, and Team are in early access.
-              </p>
-            </MotionFade>
-          </div>
-
-          {/*
-            MOBILE ONLY — compact product terminal.
-            Sits directly below the CTA, proves the product in 5 lines.
-            Hidden on sm+ where HeroTerminal renders in its own section.
-          */}
-          {/* Mobile terminal — the single product demo element, anchors the lower hero */}
-          <MotionFade delay={0.22} className="mt-6 w-full px-5 sm:hidden">
-            <MobileHeroTerminal />
-          </MotionFade>
-
-        </div>
-
-        {/* Desktop HeroTerminal — hidden on mobile, shown sm+ */}
-        <MotionFade
-          delay={0.28}
-          className="relative z-10 mx-auto hidden w-full max-w-4xl px-6 pb-16 pt-8 sm:block sm:pb-24 sm:pt-14"
+          className="mx-auto relative z-10"
+          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
         >
+          {/* Two-column grid — stacks on mobile */}
           <div
-            className="pointer-events-none absolute inset-x-0 top-1/2 -z-10 h-64 -translate-y-1/2"
-            style={{
-              background: "radial-gradient(ellipse 60% 100% at 50% 50%, rgba(124,109,250,0.12) 0%, transparent 70%)",
-            }}
-          />
-          <div
-            className="overflow-hidden rounded-xl border border-white/10"
-            style={{
-              boxShadow:
-                "0 0 0 1px rgba(124,109,250,0.15), 0 32px 64px rgba(0,0,0,0.6), 0 0 60px rgba(124,109,250,0.08)",
-            }}
+            className="grid gap-10 lg:gap-20 items-start"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%,480px), 1fr))" }}
           >
-            <HeroTerminal />
-          </div>
-        </MotionFade>
-      </section>
-
-      {/* Trust strip — concise, honest signals between hero and content */}
-      <div className="border-b border-white/8 bg-[#07071A]">
-        <div className="mx-auto max-w-6xl px-6 py-5">
-          <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2.5 sm:gap-x-10">
-            {[
-              { c: "#7C6DFA", t: "Free CLI, no account required" },
-              { c: "#3DDAB4", t: "Claude Code, Codex, Cursor, any agent" },
-              { c: "#7C6DFA", t: "Source code never uploaded" },
-              { c: "#3DDAB4", t: "Early access now open" },
-            ].map(({ c, t }) => (
-              <div key={t} className="flex items-center gap-2">
-                <span className="size-1.5 shrink-0 rounded-full" style={{ background: c }} />
-                <span className="font-mono text-[11px] text-[#4D5070]">{t}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* How RunTrim works */}
-      <section id="how-it-works" className="border-t border-white/8 bg-[#07071A]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-
-          <div className="mb-12">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">
-              01 / The flow
-            </p>
-            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Three commands.<br className="hidden sm:block" /> Full agent control.
-            </h2>
-          </div>
-
-          {/* Protocol table */}
-          <div className="overflow-hidden rounded-xl border border-white/7">
-            {PROTOCOL_STEPS.map(({ n, cmd, label, note, accent }, i) => (
-              <div
-                key={n}
-                className={`grid items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.018] sm:grid-cols-[2.5rem_1fr_1fr] sm:gap-8 sm:px-6 sm:py-5 ${
-                  i < PROTOCOL_STEPS.length - 1 ? "border-b border-white/6" : ""
-                }`}
-                style={{ background: i % 2 === 0 ? "#0C0C20" : "#0A0A1C" }}
-              >
-                {/* Step number */}
-                <span
-                  className="hidden font-mono text-[11px] font-bold sm:block"
-                  style={{ color: `${accent}60` }}
-                >
-                  {n}
-                </span>
-
-                {/* Command or label */}
-                <div className="flex items-center gap-3">
-                  <span
-                    className="flex-shrink-0 font-mono text-[11px] font-bold sm:hidden"
-                    style={{ color: `${accent}60` }}
-                  >
-                    {n}
-                  </span>
-                  {cmd ? (
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="font-mono text-[11px] text-[#3A4460]">$</span>
-                      <code
-                        className="truncate font-mono text-[13px] font-semibold"
-                        style={{ color: accent }}
-                      >
-                        {cmd}
-                      </code>
-                    </div>
-                  ) : (
-                    <span className="text-[14px] font-semibold text-[#DDE0F2]">{label}</span>
-                  )}
-                </div>
-
-                {/* One-liner note */}
-                <p className="pl-6 text-[13px] leading-[1.6] text-[#5E6A88] sm:pl-0">{note}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* CTAs — clean, centered */}
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/app/install"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
-              style={{ boxShadow: "0 4px 14px rgba(124,109,250,0.28)" }}
-            >
-              Install CLI
-              <ArrowRight className="size-3.5" />
-            </Link>
-            <Link
-              href="/how-it-works"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-5 py-2.5 text-[13px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-            >
-              See the full flow
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <BeforeAfterSection />
-
-      {/* Benefits */}
-      <section className="border-t border-white/8 bg-[#08081C]">
-        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
-          <div className="mb-8 sm:mb-12">
-            <p className="mb-3 hidden font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070] sm:block">02 / Why RunTrim</p>
-            <h2 className="text-[1.55rem] font-bold leading-[1.12] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Faster agents.<br className="sm:hidden" /> Less waste.<br className="hidden sm:block" /> Stricter output.
-            </h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                title: "Agents run faster",
-                body: "Every run starts with the task, memory, allowed scope, and stop rules already loaded. Less searching. Less guessing.",
-              },
-              {
-                title: "Less wasted context",
-                body: "RunTrim eliminates repeated setup prompts, prevents irrelevant file scanning, and keeps each run focused on the actual task.",
-              },
-              {
-                title: "Stricter output quality",
-                body: "Every task gets a scoped contract, success criteria, forbidden files, and a finish check before the next run opens.",
-              },
-              {
-                title: "Protected scope areas",
-                body: "Auth, billing, env files, database, middleware, and webhooks are marked protected before the agent touches any file.",
-              },
-              {
-                title: "Clean hand-off",
-                body: "Every run closes with a report, changed files, proof gaps, and a ready-to-paste continuation prompt.",
-              },
-              {
-                title: "Synced run history",
-                body: "Connected accounts get cloud run history, dashboard reports, project memory, and continuation context across devices.",
-              },
-            ].map(({ title, body }) => (
-              <div key={title} className="rounded-xl border border-white/8 bg-[#0C0C20] px-5 py-5">
-                <p className="text-[14px] font-semibold text-[#EDEEFF]">{title}</p>
-                <p className="mt-2 text-[13px] leading-[1.65] text-[#5E6A88]">{body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Free CLI */}
-      <section id="free-cli" className="border-t border-white/8 bg-[#07071A]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:items-start">
-
-            {/* Left */}
+            {/* Left: copy */}
             <div>
-              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">03 / Free CLI</p>
-              <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-                Free CLI is live.
-              </h2>
-              <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-                Runs locally in your repo. No account required. Source code is never uploaded.
-              </p>
-              <ul className="mt-7 grid grid-cols-2 gap-x-6 gap-y-2.5">
-                {FREE_CLI_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-[13px] text-[#B8C0D8]">
-                    <Check className="size-3.5 shrink-0 text-[#7C6DFA]" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-8">
-                <Link
-                  href="/app/install"
-                  data-rt-event="install_cta_clicked"
-                  className="group inline-flex items-center gap-2 rounded-lg border border-white/12 px-5 py-2.5 text-[14px] font-medium text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+              <MotionFade>
+                <span
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 10,
+                    fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                    color: "#8a8f98", textTransform: "uppercase", letterSpacing: "0.08em",
+                    padding: "5px 10px 5px 8px",
+                    border: "1px solid rgba(255,255,255,0.09)", borderRadius: 999,
+                    background: "#0c0e11",
+                  }}
                 >
-                  Full install guide
-                  <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
-                </Link>
-              </div>
+                  <span
+                    style={{
+                      color: "#a78bfa",
+                      background: "rgba(167,139,250,0.12)",
+                      padding: "1px 7px", borderRadius: 4,
+                      border: "1px solid rgba(167,139,250,0.25)",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    v0.7
+                  </span>
+                  Protocol layer for AI coding agents
+                </span>
+              </MotionFade>
+
+              <MotionFade delay={0.06}>
+                <h1
+                  style={{
+                    marginTop: 22, marginBottom: 0,
+                    fontSize: "clamp(40px, 5.6vw, 68px)",
+                    lineHeight: 1.02, letterSpacing: "-0.035em",
+                    fontWeight: 500, color: "#f4f5f7",
+                  }}
+                >
+                  Bring your own agent.{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>
+                    Run it through a contract first.
+                  </em>
+                </h1>
+              </MotionFade>
+
+              <MotionFade delay={0.12}>
+                <p style={{ marginTop: 22, fontSize: 17, lineHeight: 1.55, color: "#c9ccd2", maxWidth: 540 }}>
+                  RunTrim installs a protocol into your repo, gives every AI coding task memory, scope,
+                  forbidden files, and a finish check, then syncs the run to your dashboard. Fewer drifts,
+                  lower token burn, cleaner diffs.
+                </p>
+              </MotionFade>
+
+              <MotionFade delay={0.17}>
+                <div className="mt-8 flex flex-wrap gap-3 items-center">
+                  <Link
+                    href="/app/install"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 10,
+                      height: 40, padding: "0 18px", borderRadius: 7,
+                      fontSize: 14, fontWeight: 500,
+                      background: "#f4f5f7", color: "#0b0d10",
+                      border: "1px solid #fff",
+                      transition: "background 0.15s",
+                    }}
+                    className="hover:bg-white group"
+                  >
+                    Install free CLI
+                    <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </Link>
+                  <SmartCta
+                    label="Request early access"
+                    variant="pro"
+                    className="inline-flex items-center gap-2 h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
+                    openAppLabel="Open dashboard"
+                    openAppClassName="inline-flex items-center gap-2 h-10 px-[18px] rounded-[7px] border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[14px] text-[#a78bfa] font-medium hover:bg-[rgba(167,139,250,0.12)] transition-colors"
+                  />
+                </div>
+              </MotionFade>
+
+              <MotionFade delay={0.22}>
+                <div
+                  className="mt-6 flex flex-wrap gap-x-5 gap-y-2"
+                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#5a5f68" }}
+                >
+                  {[
+                    "Works with Claude, Codex, Cursor",
+                    "Local first, opt-in cloud",
+                    "No model lock-in",
+                  ].map((t) => (
+                    <span key={t} className="flex items-center gap-2">
+                      <span
+                        style={{
+                          width: 12, height: 12, borderRadius: "50%",
+                          background: "rgba(110,231,183,0.12)",
+                          border: "1px solid rgba(110,231,183,0.4)",
+                          display: "inline-grid", placeItems: "center",
+                          position: "relative",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {/* Checkmark via SVG inline */}
+                        <svg width="6" height="4" viewBox="0 0 6 4" fill="none" style={{ position: "absolute" }}>
+                          <path d="M1 2L2.5 3.5L5 1" stroke="#6ee7b7" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </MotionFade>
             </div>
 
-            {/* Right — install guide panel */}
-            <div className="space-y-3">
+            {/* Right: Run contract panel */}
+            <MotionFade delay={0.25} className="pt-6 lg:pt-2">
+              <HeroRunContract />
+            </MotionFade>
+          </div>
+        </div>
+      </section>
 
-              {/* Step 1: npm install */}
-              <div className="rounded-xl border border-white/8 bg-[#0A0A1C] p-5">
-                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">1. Install</p>
-                <div
-                  className="flex items-center overflow-hidden rounded-lg"
-                  style={{
-                    background: "#0C0A22",
-                    border: "1px solid rgba(124,109,250,0.28)",
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  <span className="pl-4 pr-1 font-mono text-[12px] text-[#7C6DFA]/50">$</span>
-                  <code className="flex-1 py-3 pr-3 font-mono text-[13px] text-[#B8AAFF]">npm install -g runtrim</code>
-                  <div className="border-l border-[#7C6DFA]/18 px-3.5 py-3">
-                    <CopyButton text="npm install -g runtrim" trackCommandKey="npm_install_global" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 2: quick start */}
-              <div className="rounded-xl border border-[#7C6DFA]/18 bg-[#0A0A1C] p-5"
-                style={{ boxShadow: "inset 0 1px 0 rgba(124,109,250,0.06)" }}
+      {/* ── PROBLEM — The drift problem ── */}
+      <section
+        id="problem"
+        style={{
+          padding: "clamp(72px,10vw,120px) 0",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          position: "relative",
+        }}
+      >
+        <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <MotionFade>
+            <div
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+            >
+              <div
+                style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
               >
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">2. Daily shortcut</p>
-                  <span className="rounded border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-[#C4B8FF]">
-                    recommended
-                  </span>
-                </div>
-                <div
-                  className="flex items-center overflow-hidden rounded-lg"
-                  style={{
-                    background: "#0C0A22",
-                    border: "1px solid rgba(124,109,250,0.28)",
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  <span className="pl-4 pr-1 font-mono text-[12px] text-[#7C6DFA]/50">$</span>
-                  <code className="flex-1 py-3 pr-3 font-mono text-[13px] text-[#B8AAFF]">{'runtrim go "your task"'}</code>
-                  <div className="border-l border-[#7C6DFA]/18 px-3.5 py-3">
-                    <CopyButton text={'runtrim go "your task"'} />
-                  </div>
-                </div>
-                <p className="mt-2.5 text-[12px] leading-5 text-[#4D5070]">
-                  Prepares a guarded prompt, copies it for your agent, and records the run locally.
+                <span style={{ color: "#a78bfa", fontWeight: 500 }}>01</span>
+                The drift problem
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
+                  AI agents are fast.{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>They also drift.</em>
+                </h2>
+                <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
+                  Without a protocol, every run is a coin flip. Context resets between sessions, scope creeps quietly,
+                  and the audit trail ends at a Slack message. Six failure modes show up again and again.
                 </p>
               </div>
+            </div>
+          </MotionFade>
 
-              {/* Step 3: direct commands */}
-              <div className="overflow-hidden rounded-xl border border-white/8 bg-[#0A0A1C]">
-                <div className="border-b border-white/6 px-5 py-3.5">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#4D5070]">3. Direct commands</p>
-                </div>
-                {[
-                  { step: "01", cmd: "runtrim start",                         note: "Guided menu — let RunTrim choose the next step"  },
-                  { step: "02", cmd: "runtrim check",                         note: "Review changed files and proof gaps"              },
-                  { step: "03", cmd: "runtrim memory",                        note: "Show and resume from project memory"             },
-                  { step: "04", cmd: "runtrim continue --reason usage_limit", note: "Build continuation prompt after context limit"   },
-                ].map(({ step, cmd, note }, i, arr) => (
-                  <div
-                    key={cmd}
-                    className={`flex items-start gap-3.5 px-5 py-3.5 ${i < arr.length - 1 ? "border-b border-white/6" : ""}`}
+          {/* Drift grid */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+            style={{
+              gap: 1,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 10,
+              overflow: "hidden",
+            }}
+          >
+            {DRIFT_ITEMS.map(({ tag, title, body, glyph, code }, i) => (
+              <MotionFade key={tag} delay={0.05 * i}>
+                <div
+                  style={{
+                    background: "#0c0e11",
+                    padding: "28px 26px",
+                    minHeight: 200,
+                    display: "flex", flexDirection: "column",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "var(--font-geist-mono)", fontSize: 10.5,
+                      color: "#f87171", textTransform: "uppercase", letterSpacing: "0.08em",
+                      marginBottom: 14,
+                      display: "inline-flex", alignItems: "center", gap: 8, alignSelf: "flex-start",
+                    }}
                   >
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border border-white/8 bg-[#07071A] font-mono text-[10px] text-[#7C6DFA]/60">
-                      {step}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <code className="font-mono text-[12px] text-[#9E91FF]">{cmd}</code>
-                      <p className="mt-0.5 text-[11px] leading-4 text-[#3A4460]">{note}</p>
-                    </div>
-                    <CopyButton text={cmd} />
+                    <span
+                      style={{
+                        width: 6, height: 6, borderRadius: 1,
+                        background: "#f87171",
+                        boxShadow: "0 0 6px rgba(248,113,113,0.5)",
+                        display: "inline-block",
+                      }}
+                    />
+                    {tag}
+                  </span>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em", lineHeight: 1.25 }}>
+                    {title}
+                  </h3>
+                  <p style={{ margin: "8px 0 0", color: "#8a8f98", fontSize: 13.5, maxWidth: "32ch" }}>
+                    {body}
+                  </p>
+                  <div
+                    style={{
+                      marginTop: "auto", paddingTop: 22,
+                      fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68",
+                    }}
+                  >
+                    {glyph} ·{" "}
+                    <code
+                      style={{
+                        color: "#c9ccd2", background: "#16191e",
+                        border: "1px solid rgba(255,255,255,0.09)",
+                        padding: "2px 6px", borderRadius: 4,
+                      }}
+                    >
+                      {code}
+                    </code>
                   </div>
-                ))}
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* The guarded loop */}
-      <section className="border-t border-white/8 bg-[#07071A]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mb-10">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">04 / The guarded loop</p>
-            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Scope. Check. Continue.
-            </h2>
-            <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-              Every run follows the same guarded loop. Contract first, then execution, then continuation.
-            </p>
-          </div>
-          <TerminalCard title="runtrim — terminal" lines={CLI_PREVIEW} />
-        </div>
-      </section>
-
-      {/* RunTrim Agent early access */}
-      <section className="border-t border-white/8 bg-[#08081C]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
-            <div>
-              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">05 / RunTrim Agent</p>
-              <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-                RunTrim Agent.<br className="hidden sm:block" /> Guarded execution, not just prompting.
-              </h2>
-              <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-                The next layer runs tasks end-to-end through scoped contracts, memory, token budgets, drift checks, and audit-ready reports. No manual prompting loop.
-              </p>
-              <p className="mt-3 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-                Early access is open for Pro, Builder, and Team plans.
-              </p>
-              <div className="mt-8">
-                <SmartCta
-                  label="Join Agent Early Access"
-                  variant="pro"
-                  className="inline-flex items-center gap-2.5 rounded-lg bg-[#7C6DFA] px-5 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-85"
-                  openAppLabel="Open app"
-                  openAppClassName="inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-5 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-85"
-                />
-              </div>
-            </div>
-
-            <AnimatedRunContract />
-          </div>
-        </div>
-      </section>
-
-      {/* Works with */}
-      <section className="border-t border-white/8 bg-[#07071A]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mb-10">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">06 / Integrations</p>
-            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Bring your own agent.
-            </h2>
-            <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-              Set your agent once. RunTrim wraps or copies depending on your config.
-            </p>
-          </div>
-          <div className="overflow-hidden rounded-xl border border-white/8">
-            {AGENT_MODES.map(({ cmd, note }, i) => (
-              <div
-                key={cmd}
-                className={`flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-white/[0.02] ${i < AGENT_MODES.length - 1 ? "border-b border-white/8" : ""}`}
-                style={{ background: i % 2 === 0 ? "#0C0C20" : "#0A0A1C" }}
-              >
-                <div className="flex min-w-0 items-center gap-4">
-                  <Terminal className="size-3.5 shrink-0 text-[#7C6DFA]/50" />
-                  <code className="shrink-0 font-mono text-[13px] text-[#9E91FF]">{cmd}</code>
-                  <span className="hidden truncate font-mono text-[12px] text-[#2E2E50] sm:block">{note}</span>
                 </div>
-                <CopyButton text={cmd} />
+              </MotionFade>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SOLUTION — The RunTrim protocol ── */}
+      <section
+        id="protocol"
+        style={{
+          padding: "clamp(72px,10vw,120px) 0",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          position: "relative",
+        }}
+      >
+        <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <MotionFade>
+            <div
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+            >
+              <div
+                style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
+              >
+                <span style={{ color: "#a78bfa", fontWeight: 500 }}>02</span>
+                The RunTrim protocol
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
+                  AI coding,{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>turned into scoped execution.</em>
+                </h2>
+                <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
+                  Five stages. One contract. Any agent. RunTrim wraps your model of choice with memory,
+                  scope, stop rules, and a finish check, then writes the run to your dashboard.
+                </p>
+              </div>
+            </div>
+          </MotionFade>
+
+          {/* Pipeline */}
+          <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
+          <div
+            className="min-w-[640px] overflow-hidden rounded-[10px]"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(5, 1fr)",
+              border: "1px solid rgba(255,255,255,0.09)",
+              background: "linear-gradient(180deg, #0e1116, #0a0c10)",
+            }}
+          >
+            {PIPELINE_STAGES.map(({ n, cmd, desc, active }, i) => (
+              <div
+                key={n}
+                style={{
+                  padding: "24px 22px 22px",
+                  borderRight: i < 4 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  position: "relative",
+                  display: "flex", flexDirection: "column", gap: 10,
+                }}
+              >
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.06em" }}>
+                  {n}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-geist-mono)", fontSize: 14,
+                    color: "#f4f5f7", fontWeight: 500,
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}
+                >
+                  <span style={{ color: "#a78bfa" }}>$</span>
+                  {cmd}
+                </span>
+                <p style={{ color: "#8a8f98", fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
+                  {desc}
+                </p>
+                {/* Progress bar */}
+                <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", gap: 4 }}>
+                  {[0,1,2,3].map((j) => (
+                    <span
+                      key={j}
+                      style={{
+                        flex: 1, height: 3, borderRadius: 2,
+                        background: active
+                          ? (j === 3 ? "#6ee7b7" : "rgba(110,231,183,0.45)")
+                          : "#1c2026",
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          </div>
+
+          {/* Callout stats */}
+          <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            {[
+              { label: "Avg run time",         val: "2m 14s", delta: "↓ 41% vs unguarded" },
+              { label: "Tokens per task",       val: "38.2k",  delta: "↓ 27% vs unguarded" },
+              { label: "Finish-check pass rate", val: "94.1%", delta: "first attempt"        },
+            ].map(({ label, val, delta }) => (
+              <div
+                key={label}
+                style={{
+                  border: "1px solid rgba(255,255,255,0.09)",
+                  borderRadius: 8,
+                  background: "#0c0e11",
+                  padding: "18px",
+                  display: "flex", flexDirection: "column", gap: 6,
+                }}
+              >
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                  {label}
+                </span>
+                <span style={{ fontSize: 22, color: "#f4f5f7", letterSpacing: "-0.015em", fontWeight: 500 }}>
+                  {val}
+                </span>
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#6ee7b7", marginTop: 2 }}>
+                  {delta}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="border-t border-white/8 bg-[#08081C]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">07 / Plans</p>
-              <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-                Start local. Scale when it matters.
-              </h2>
-              <p className="mt-4 max-w-lg text-[14px] leading-[1.75] text-[#5E6A88]">
-                Free CLI works without an account. Pro, Builder, and Team are request-access plans for cloud history, memory, reports, and team control.
-              </p>
-            </div>
-            <Link
-              href="/plans"
-              className="shrink-0 rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+      {/* ── BENEFITS ── */}
+      <section
+        id="benefits"
+        style={{
+          padding: "clamp(72px,10vw,120px) 0",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          position: "relative",
+        }}
+      >
+        <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <MotionFade>
+            <div
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
             >
-              See full plans
-            </Link>
-          </div>
+              <div
+                style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
+              >
+                <span style={{ color: "#a78bfa", fontWeight: 500 }}>03</span>
+                What you get
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
+                  Six things{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>that change the next run.</em>
+                </h2>
+              </div>
+            </div>
+          </MotionFade>
 
-          {/* Mobile pricing cards */}
-          <div className="mt-8 grid gap-3 md:hidden">
-            {planOrder.map((id) => {
-              const plan = plans[id];
-              const isBuilder = id === "builder";
-              const isProOrBuilder = id === "pro" || id === "builder";
-              const mobileFeatures =
-                id === "free"
-                  ? ["Local CLI", "Run history (local)", "Reusable context", "Token savings"]
-                  : id === "pro"
-                    ? ["Cloud run history", "Synced context", "Savings reports", "Agent early access"]
-                    : id === "builder"
-                      ? ["Everything in Pro", "Unlimited projects", "Scope drift detection", "Risk scores (advanced)"]
-                      : ["Everything in Builder", "Team policies", "Shared workspaces", "GitHub checks (planned)"];
-
-              return (
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+            style={{
+              gap: 1,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 10,
+              overflow: "hidden",
+            }}
+          >
+            {BENEFITS.map(({ n, title, body, stat, delta }, i) => (
+              <MotionFade key={n} delay={0.05 * i}>
                 <div
-                  key={id}
-                  className={`rounded-xl border border-white/10 bg-[#0C0C20] p-5 ${isBuilder ? "shadow-[0_0_0_1px_rgba(124,109,250,0.35)]" : ""}`}
+                  style={{
+                    background: "#0c0e11",
+                    padding: "28px 26px 30px",
+                    display: "flex", flexDirection: "column", gap: 10,
+                    minHeight: 180,
+                  }}
                 >
-                  <p className="text-[12px] font-semibold text-[#9699BE]">{plan.name}</p>
-                  <p className={`mt-1 text-2xl font-bold tracking-tight ${isBuilder ? "text-[#9E91FF]" : "text-[#EDEEFF]"}`}>{plan.priceLabel}</p>
-                  <p className="mt-1 text-[12px] leading-5 text-[#6A7398]">{plan.summary}</p>
-                  <ul className="mt-4 space-y-2">
-                    {mobileFeatures.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-[12px] text-[#B8C0D8]">
-                        <Check className="size-3.5 text-[#7C6DFA]" />
-                        <span>{feature}</span>
+                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.08em" }}>
+                    {n}
+                  </span>
+                  <h3 style={{ margin: 0, fontSize: 19, color: "#f4f5f7", fontWeight: 500, letterSpacing: "-0.01em" }}>
+                    {title}
+                  </h3>
+                  <p style={{ margin: 0, color: "#8a8f98", fontSize: 13.5 }}>
+                    {body}
+                  </p>
+                  <div
+                    style={{
+                      marginTop: "auto", paddingTop: 16,
+                      fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#c9ccd2",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}
+                  >
+                    {stat}{" "}
+                    <span style={{ color: "#6ee7b7" }}>{delta}</span>
+                  </div>
+                </div>
+              </MotionFade>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── AGENTS ── */}
+      <section
+        id="agents"
+        style={{
+          padding: "clamp(72px,10vw,120px) 0",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          position: "relative",
+        }}
+      >
+        <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <MotionFade>
+            <div
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+            >
+              <div
+                style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
+              >
+                <span style={{ color: "#a78bfa", fontWeight: 500 }}>04</span>
+                Agent compatibility
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
+                  Works with{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>every agent you already use.</em>
+                </h2>
+                <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
+                  If it can read a prompt or repo instructions, it can run through RunTrim. No SDK, no model
+                  lock-in, no rewiring.
+                </p>
+              </div>
+            </div>
+          </MotionFade>
+
+          {/* Agents shell */}
+          <div
+            style={{
+              border: "1px solid rgba(255,255,255,0.09)",
+              borderRadius: 10,
+              overflow: "hidden",
+              background: "linear-gradient(180deg, #0e1116, #0a0c10)",
+            }}
+          >
+            {/* Shell head */}
+            <div
+              style={{
+                padding: "16px 22px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                display: "flex", alignItems: "center", gap: 14,
+                fontFamily: "var(--font-geist-mono)", fontSize: 11.5,
+                color: "#5a5f68", letterSpacing: "0.06em", textTransform: "uppercase",
+              }}
+            >
+              <span
+                style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "#6ee7b7",
+                  boxShadow: "0 0 6px #6ee7b7",
+                  display: "inline-block",
+                }}
+              />
+              connected agents · 7
+            </div>
+
+            {/* Agent grid */}
+            <div
+              className="grid grid-cols-2 md:grid-cols-4"
+              style={{ gap: 1, background: "rgba(255,255,255,0.06)" }}
+            >
+              {AGENT_LIST.map(({ icon, name, status, beta }, i) => (
+                <div
+                  key={name}
+                  style={{
+                    padding: "26px 22px",
+                    background: "linear-gradient(180deg, #0e1116, #0a0c10)",
+                    display: "flex", flexDirection: "column", gap: 12,
+                    minHeight: 156,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 32, height: 32, borderRadius: 6,
+                      background: "#16191e",
+                      border: "1px solid rgba(255,255,255,0.09)",
+                      display: "grid", placeItems: "center",
+                      color: "#c9ccd2",
+                      fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600,
+                    }}
+                  >
+                    {icon}
+                  </div>
+                  <span style={{ color: "#f4f5f7", fontSize: 14.5, fontWeight: 500, letterSpacing: "-0.005em" }}>
+                    {name}
+                  </span>
+                  <div
+                    style={{
+                      marginTop: "auto",
+                      fontFamily: "var(--font-geist-mono)", fontSize: 10.5,
+                      color: "#5a5f68", letterSpacing: "0.06em", textTransform: "uppercase",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 5, height: 5, borderRadius: "50%",
+                        background: beta ? "#f5a524" : "#6ee7b7",
+                        display: "inline-block",
+                      }}
+                    />
+                    {status}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Shell footer */}
+            <div
+              style={{
+                padding: "18px 22px",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                color: "#8a8f98", fontSize: 13.5,
+                display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap",
+              }}
+            >
+              <strong style={{ color: "#f4f5f7", fontWeight: 500 }}>Bring your own agent.</strong>
+              <span>If it reads a prompt or repo instructions, RunTrim wraps it. No SDK required.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PLANS ── */}
+      <section
+        id="plans"
+        style={{
+          padding: "clamp(72px,10vw,120px) 0",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          position: "relative",
+        }}
+      >
+        <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <MotionFade>
+            <div
+              className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-14 mb-14 items-end"
+            >
+              <div
+                style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
+              >
+                <span style={{ color: "#a78bfa", fontWeight: 500 }}>05</span>
+                Plans
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
+                  Start local.{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>Scale to a team.</em>
+                </h2>
+                <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
+                  The CLI is free forever. Cloud sync, advanced guardrails, and team governance unlock as you grow.
+                </p>
+              </div>
+            </div>
+          </MotionFade>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+            {[
+              {
+                id: "free",
+                name: "Free",
+                price: "$0",
+                per: "/ local",
+                desc: "The CLI, the protocol, and local run history. Forever.",
+                features: ["Unlimited local runs", "Memory, scope, finish checks", "All supported agents", "JSON run logs on disk"],
+                featured: false,
+              },
+              {
+                id: "pro",
+                name: "Pro · cloud sync",
+                price: "$18",
+                per: "/ month",
+                desc: "Everything local, plus run history, dashboard, and resume across machines.",
+                features: ["Everything in Free", "Cloud run history · 90 days", "Cross-machine memory", "Web dashboard"],
+                featured: true,
+              },
+              {
+                id: "builder",
+                name: "Builder",
+                price: "$48",
+                per: "/ month",
+                desc: "For founders shipping production code through agents daily.",
+                features: ["Everything in Pro", "Advanced guardrails", "Custom finish checks", "Priority support"],
+                featured: false,
+              },
+              {
+                id: "team",
+                name: "Team",
+                price: "From $24",
+                per: "/ seat",
+                desc: "Shared protocol, shared memory, shared accountability.",
+                features: ["Everything in Builder", "Org-wide policy", "SSO, roles, audit log", "Run governance reports"],
+                featured: false,
+              },
+            ].map(({ id, name, price, per, desc, features, featured }) => (
+              <MotionFade key={id} delay={0.06}>
+                <div
+                  style={{
+                    background: featured
+                      ? "radial-gradient(160% 80% at 0% 0%, rgba(167,139,250,0.08), transparent 60%), #0c0e11"
+                      : "#0c0e11",
+                    border: `1px solid ${featured ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.09)"}`,
+                    borderRadius: 10,
+                    padding: "24px 22px 26px",
+                    display: "flex", flexDirection: "column",
+                    minHeight: 280,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                      color: featured ? "#a78bfa" : "#5a5f68",
+                      letterSpacing: "0.1em", textTransform: "uppercase",
+                    }}
+                  >
+                    {name}
+                  </span>
+                  <span style={{ marginTop: 10, fontSize: 26, color: "#f4f5f7", letterSpacing: "-0.02em", fontWeight: 500 }}>
+                    {price}
+                    <span style={{ fontSize: 13, color: "#5a5f68", fontWeight: 400, marginLeft: 4 }}>{per}</span>
+                  </span>
+                  <p style={{ marginTop: 6, color: "#8a8f98", fontSize: 13.5 }}>
+                    {desc}
+                  </p>
+                  <ul style={{ listStyle: "none", padding: 0, margin: "18px 0 24px", display: "flex", flexDirection: "column", gap: 9 }}>
+                    {features.map((f) => (
+                      <li
+                        key={f}
+                        style={{
+                          fontSize: 13, color: "#c9ccd2",
+                          display: "grid", gridTemplateColumns: "14px 1fr", gap: 10, alignItems: "start",
+                        }}
+                      >
+                        <span
+                          style={{
+                            marginTop: 6, width: 6, height: 6,
+                            background: featured ? "#a78bfa" : "#5a5f68",
+                            borderRadius: 1, display: "block",
+                          }}
+                        />
+                        {f}
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-4">
+                  <div style={{ marginTop: "auto" }}>
                     {id === "free" ? (
                       <Link
                         href="/app/install"
-                        className="inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          height: 36, borderRadius: 6,
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          background: "transparent", color: "#f4f5f7",
+                          fontSize: 13, cursor: "pointer", transition: "background 0.15s",
+                          textDecoration: "none",
+                        }}
+                        className="hover:bg-[#16191e]"
                       >
-                        {plan.ctaLabel}
+                        Install CLI
                       </Link>
                     ) : (
                       <SmartCta
-                        label={plan.ctaLabel}
-                        variant={isBuilder ? "builder" : "pro"}
+                        label={id === "team" ? "Talk to us" : `Start ${name.split(" ")[0]}`}
+                        variant={id === "builder" ? "builder" : "pro"}
                         className={
-                          isBuilder
-                            ? "inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-                            : "inline-flex rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
+                          featured
+                            ? "flex items-center justify-center h-9 w-full rounded-[6px] border border-white bg-[#f4f5f7] text-[#0b0d10] text-[13px] font-medium transition-colors hover:bg-white"
+                            : "flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]"
                         }
-                        openAppLabel="Open app"
-                        openAppClassName={
-                          isBuilder
-                            ? "inline-flex rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-                            : "inline-flex rounded-md border border-[#7C6DFA]/25 bg-[#7C6DFA]/8 px-3.5 py-2 text-[12px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/14"
-                        }
+                        openAppLabel="Open dashboard"
+                        openAppClassName={`flex items-center justify-center h-9 rounded-[6px] w-full text-[13px] font-medium transition-colors ${featured ? "bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white" : "border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"}`}
                       />
                     )}
                   </div>
                 </div>
-              );
-            })}
-            <div className="rounded-xl border border-white/8 bg-[#07071A] px-4 py-3">
-              <p className="text-[11px] text-[#2E2E50]">Cloud sync stores metadata only. Source code stays local.</p>
-              <p className="mt-1 text-[11px] text-[#2E2E50]">Agent early access is included in Pro, Builder, and Team.</p>
-            </div>
-          </div>
-
-          {/* Comparison table */}
-          <div className="mt-10 hidden overflow-x-auto md:block">
-            <div className="min-w-[680px]">
-
-              {/* Plan headers */}
-              <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] border-b border-white/8">
-                <div className="px-5 py-4" />
-                {planOrder.map((id) => {
-                  const plan = plans[id];
-                  const isBuilder = id === "builder";
-                  return (
-                    <div key={id} className={`relative px-5 py-4 ${isBuilder ? "bg-[#0D0C22]" : ""}`}>
-                      {isBuilder && <div className="absolute inset-x-0 top-0 h-px brand-gradient" />}
-                      <p className="text-[12px] font-semibold text-[#9699BE]">{plan.name}</p>
-                      <p className={`mt-1.5 text-2xl font-bold tabular-nums tracking-tight ${isBuilder ? "text-[#9E91FF]" : "text-[#EDEEFF]"}`}>
-                        {plan.priceLabel}
-                      </p>
-                      <p className="mt-1.5 text-[11px] leading-4 text-[#4D5070]">{plan.summary}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Feature rows */}
-              {PRICING_FEATURES.map(({ label, free, pro, builder, team }, i) => {
-                const cells = [free, pro, builder, team];
-                const isLast = i === PRICING_FEATURES.length - 1;
-                return (
-                  <div
-                    key={label}
-                    className={`grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] ${isLast ? "" : "border-b border-white/8"}`}
-                  >
-                    <div className="px-5 py-3.5">
-                      <p className="text-[13px] text-[#9699BE]">{label}</p>
-                    </div>
-                    {cells.map((val, ci) => {
-                      const isBld = ci === 2;
-                      return (
-                        <div key={ci} className={`flex items-center px-5 py-3.5 ${isBld ? "bg-[#0D0C22]" : ""}`}>
-                          {val === true ? (
-                            <Check className="size-3.5 text-[#7C6DFA]" />
-                          ) : val === false ? (
-                            <span className="size-3.5 rounded-sm bg-white/6" />
-                          ) : (
-                            <span className="font-mono text-[12px] text-[#6870A0]">{val}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-
-              {/* CTA row */}
-              <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] border-t border-white/8 bg-[#07071A]">
-                <div className="px-5 py-5">
-                  <p className="text-[11px] text-[#2E2E50]">Cloud sync stores metadata only. Source code stays local.</p>
-                  <p className="mt-1 text-[11px] text-[#2E2E50]">Agent early access is included in Pro, Builder, and Team.</p>
-                </div>
-                {planOrder.map((id) => {
-                  const plan = plans[id];
-                  const isFree    = id === "free";
-                  const isBuilder = id === "builder";
-                  return (
-                    <div key={id} className={`flex items-center px-5 py-5 ${isBuilder ? "bg-[#0D0C22]" : ""}`}>
-                      {isFree ? (
-                        <Link
-                          href="/app/install"
-                          className="rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
-                        >
-                          {plan.ctaLabel}
-                        </Link>
-                      ) : (
-                        <SmartCta
-                          label={plan.ctaLabel}
-                          variant={isBuilder ? "builder" : "pro"}
-                          className={
-                            isBuilder
-                              ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-                              : "rounded-md border border-white/8 px-3.5 py-2 text-[12px] font-medium text-[#9699BE] transition-colors hover:border-white/16 hover:text-[#EDEEFF]"
-                          }
-                          openAppLabel="Open app"
-                          openAppClassName={
-                            isBuilder
-                              ? "rounded-md bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-                              : "rounded-md border border-[#7C6DFA]/25 bg-[#7C6DFA]/8 px-3.5 py-2 text-[12px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/14"
-                          }
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="relative overflow-hidden" style={{ background: "#07071A" }}>
-
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.08) 1.5px, transparent 1.5px)",
-            backgroundSize: "30px 30px",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 85% 55% at 50% 110%, rgba(124,109,250,0.28) 0%, rgba(100,80,240,0.10) 50%, transparent 70%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(ellipse 90% 90% at 50% 50%, transparent 50%, #07071A 92%)" }}
-        />
-        <div
-          className="absolute inset-x-0 top-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent 10%, rgba(124,109,250,0.6) 40%, rgba(153,102,255,0.6) 60%, transparent 90%)" }}
-        />
-
-        <div className="relative z-10 mx-auto w-full max-w-xl px-6 py-28 text-center">
-
-          <h3 className="text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] sm:text-[2.8rem] lg:text-[3.2rem]">
-            <span className="block text-[#EDEEFF]">Start controlled.</span>
-            <span
-              className="block"
-              style={{
-                background: "linear-gradient(135deg, #C4B8FF 10%, #9E91FF 50%, #7C6DFA 100%)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              Scale when it matters.
-            </span>
-          </h3>
-
-          <p className="mx-auto mt-5 max-w-[360px] text-[14px] leading-[1.75] text-[#505870]">
-            Free CLI is live now. Join early access for cloud memory, run reports, and the RunTrim Agent.
-          </p>
-
-          <div
-            className="mx-auto mt-9 flex w-fit items-center overflow-hidden rounded-xl"
-            style={{
-              background: "#0C0A22",
-              border: "1px solid rgba(124,109,250,0.32)",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",
-            }}
-          >
-            <span className="pl-4 pr-1 font-mono text-[13px] text-[#7C6DFA]/55">$</span>
-            <code className="py-3.5 pr-4 font-mono text-[14px] text-[#B8AAFF]">
-              npm install -g runtrim
-            </code>
-            <div className="border-l border-[#7C6DFA]/20 px-4 py-3.5">
-              <CopyButton text="npm install -g runtrim" trackCommandKey="npm_install_global" />
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col items-center gap-4">
-            <Link
-              href="/app/install"
-              data-rt-event="install_cta_clicked"
-              className="group inline-flex items-center gap-2.5 rounded-xl px-9 py-4 text-[15px] font-semibold text-white transition-all duration-200 hover:opacity-90"
-              style={{
-                background: "linear-gradient(160deg, #8B7EFF 0%, #7C6DFA 60%, #6A54E8 100%)",
-                boxShadow:
-                  "0 0 0 1px rgba(155,140,255,0.50), 0 8px 32px rgba(124,109,250,0.40), 0 2px 8px rgba(124,109,250,0.30), inset 0 1px 0 rgba(255,255,255,0.18)",
-              }}
-            >
-              Install Free CLI
-              <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
-            </Link>
-
-            <SmartCta
-              label="Join Agent Early Access"
-              variant="pro"
-              className="text-[13px] text-[#3E4462] transition-colors hover:text-[#9E91FF]"
-              openAppLabel="Open app"
-              openAppClassName="text-[13px] text-[#7C6DFA] transition-colors hover:text-[#B2A7FF]"
-            />
-          </div>
-
-          <p className="mt-8 px-4 text-center text-[11px] leading-6 text-[#4E5577] sm:text-[12px]">
-            Free and local in V1. No account required. Agent-agnostic.
-          </p>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="border-t border-white/8 bg-[#08081C]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mb-12">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">FAQ</p>
-            <h2 className="text-[1.6rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">
-              Common questions
-            </h2>
-          </div>
-          <div className="grid gap-x-16 gap-y-8 lg:grid-cols-2">
-            {FAQS.map(({ q, a }) => (
-              <div key={q} className="border-l-2 border-[#7C6DFA]/25 pl-5">
-                <p className="text-[14px] font-semibold leading-snug text-[#C8CCF0]">{q}</p>
-                <p className="mt-2.5 text-[13px] leading-[1.7] text-[#525978]">{a}</p>
-              </div>
+              </MotionFade>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative overflow-hidden border-t border-white/6 bg-[#050514]">
+      {/* ── FINAL CTA ── */}
+      <section
+        id="install"
+        style={{
+          position: "relative",
+          padding: "clamp(80px,12vw,140px) 0",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          background: "radial-gradient(1000px 500px at 50% 0%, rgba(109,76,242,0.1), transparent 60%)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Grid overlay */}
         <div
-          className="absolute inset-x-0 top-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent 0%, #7C6DFA 30%, #9966FF 60%, transparent 100%)" }}
+          aria-hidden
+          style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px)",
+            backgroundSize: "64px 64px",
+            maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+          }}
         />
 
-        <div className="mx-auto max-w-6xl px-6 py-12">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto]">
+        <div className="mx-auto relative z-10 text-center" style={{ maxWidth: 760, padding: "0 clamp(20px,4vw,40px)" }}>
+          <MotionFade>
+            <h2
+              style={{
+                fontSize: "clamp(34px,5vw,56px)",
+                lineHeight: 1.05, letterSpacing: "-0.03em",
+                color: "#f4f5f7", fontWeight: 500, margin: 0,
+              }}
+            >
+              Before any AI agent touches your code, run it through RunTrim.
+            </h2>
+            <p style={{ margin: "18px auto 0", color: "#8a8f98", fontSize: 17, maxWidth: 540 }}>
+              One command installs the protocol. Every run after that is scoped, memorable, and on the record.
+            </p>
 
-            {/* Brand */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-                <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
-              </div>
-              <p className="max-w-[200px] text-[13px] leading-[1.6] text-[#3E4260]">
-                The guarded way to run AI coding agents. Free CLI is live. RunTrim Agent is entering early access.
-              </p>
-              <p className="font-mono text-[11px] text-[#2A2A45]">Local-first. Agent-agnostic. No code uploads.</p>
+            {/* CLI command */}
+            <div
+              className="mx-auto mt-8 inline-flex items-center gap-3"
+              style={{
+                padding: "9px 12px 9px 14px",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: 8, background: "#0c0e11",
+                fontFamily: "var(--font-geist-mono)", fontSize: 13, color: "#c9ccd2",
+              }}
+            >
+              <span style={{ color: "#a78bfa" }}>$</span>
+              <span>npm install -g runtrim</span>
+              <CopyButton text="npm install -g runtrim" trackCommandKey="npm_install_global" />
             </div>
 
-            {/* Product */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Product</p>
-              <nav className="flex flex-col gap-2.5">
-                {[
-                  { href: "/app/install", label: "Install"        },
-                  { href: "/how-it-works",label: "How it works"   },
-                  { href: "#pricing",     label: "Pricing"        },
-                  { href: "/login",       label: "Dashboard"      },
-                ].map((l) => (
-                  <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
-                    {l.label}
-                  </Link>
-                ))}
-              </nav>
+            <div className="mt-8 flex flex-wrap gap-3 justify-center">
+              <Link
+                href="/app/install"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  height: 40, padding: "0 18px", borderRadius: 7,
+                  fontSize: 14, fontWeight: 500,
+                  background: "#f4f5f7", color: "#0b0d10",
+                  border: "1px solid #fff",
+                  transition: "background 0.15s",
+                }}
+                className="group hover:bg-white"
+              >
+                Install free CLI
+                <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
+              <SmartCta
+                label="Request early access"
+                variant="pro"
+                className="inline-flex items-center h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
+                openAppLabel="Open dashboard"
+                openAppClassName="inline-flex items-center h-10 px-[18px] rounded-[7px] border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[14px] text-[#a78bfa] font-medium hover:bg-[rgba(167,139,250,0.12)] transition-colors"
+              />
             </div>
+          </MotionFade>
+        </div>
+      </section>
 
-            {/* Legal */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Legal</p>
-              <nav className="flex flex-col gap-2.5">
-                {[
-                  { href: "/privacy",  label: "Privacy"  },
-                  { href: "/terms",    label: "Terms"    },
-                  { href: "/security", label: "Security" },
-                  { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub",  external: true },
-                  { href: "mailto:hello@runtrim.com",                  label: "Contact", external: true },
-                ].map((l) =>
-                  l.external ? (
-                    <a key={l.href} href={l.href} target="_blank" rel="noreferrer"
-                      className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
-                      {l.label}
-                    </a>
-                  ) : (
-                    <Link key={l.href} href={l.href} className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
-                      {l.label}
-                    </Link>
-                  )
-                )}
-              </nav>
-            </div>
-
-            {/* CTA callout */}
-            <div className="space-y-3 lg:justify-self-end">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3E4260]">Get started</p>
-              <div className="rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8 p-4">
-                <p className="text-[13px] font-semibold text-[#C4B8FF]">Free CLI is live</p>
-                <p className="mt-1 text-[12px] leading-snug text-[#5C6490]">Install locally, no account required.</p>
-                <Link
-                  href="/app/install"
-                  data-rt-event="install_cta_clicked"
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#7C6DFA] px-4 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-                  style={{ boxShadow: "0 4px 14px rgba(124,109,250,0.30)" }}
-                >
-                  Install CLI
-                  <ArrowRight className="size-3" />
-                </Link>
-              </div>
-            </div>
+      {/* ── FOOTER ── */}
+      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "40px 0 56px", color: "#5a5f68", fontSize: 12.5 }}>
+        <div
+          className="mx-auto grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-6"
+          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
+        >
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em" }}>
+            <span className="inline-flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.svg" alt="" aria-hidden className="size-4 rounded" />
+              runtrim · v0.7 · the control layer for AI coding agents
+            </span>
           </div>
-
-          {/* Bottom bar */}
-          <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-white/6 pt-6">
-            <p className="font-mono text-[11px] text-[#252540]">
-              {new Date().getFullYear()} RunTrim. All rights reserved.
-            </p>
-            <p className="font-mono text-[11px] text-[#252540]">
-              Guarded by default. Local-first. Agent-agnostic.
-            </p>
+          <div className="flex gap-[18px]">
+            {[
+              { href: "/app/install", label: "Docs"      },
+              { href: "#",            label: "Changelog" },
+              { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub",  ext: true },
+              { href: "#",            label: "Status"    },
+              { href: "/privacy",     label: "Privacy"   },
+            ].map(({ href, label, ext }) =>
+              ext ? (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
+                  className="hover:text-[#f4f5f7]"
+                >
+                  {label}
+                </a>
+              ) : (
+                <Link
+                  key={label}
+                  href={href}
+                  style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
+                  className="hover:text-[#f4f5f7]"
+                >
+                  {label}
+                </Link>
+              )
+            )}
           </div>
         </div>
       </footer>

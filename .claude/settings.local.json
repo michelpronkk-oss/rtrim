@@ -44,7 +44,16 @@
       "Bash(node dist-cli/runtrim.cjs go \"test resting state\" --no-clipboard --print --no-sync)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")",
-      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({remotion:p.dependencies?.remotion,'@remotion/cli':p.dependencies?.['@remotion/cli']},null,2\\)\\)\")"
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({remotion:p.dependencies?.remotion,'@remotion/cli':p.dependencies?.['@remotion/cli']},null,2\\)\\)\")",
+      "WebFetch(domain:api.anthropic.com)",
+      "PowerShell($binPath = \"C:\\\\Users\\\\miche\\\\.claude\\\\projects\\\\c--Users-miche-Desktop-runtrim\\\\542f350e-04b1-47d9-9f3c-9a86e66bc8de\\\\tool-results\\\\webfetch-1777900882700-ddc737.bin\"; $outPath = \"C:\\\\Users\\\\miche\\\\AppData\\\\Local\\\\Temp\\\\design_extracted\"; New-Item -ItemType Directory -Force -Path $outPath | Out-Null; Copy-Item $binPath \"$outPath\\\\design.gz\"; Add-Type -AssemblyName System.IO.Compression.FileSystem; $gzStream = [System.IO.File]::OpenRead\\(\"$outPath\\\\design.gz\"\\); $outStream = [System.IO.File]::Create\\(\"$outPath\\\\design.tar\"\\); $decomp = New-Object System.IO.Compression.GZipStream\\($gzStream, [System.IO.Compression.CompressionMode]::Decompress\\); $decomp.CopyTo\\($outStream\\); $decomp.Close\\(\\); $gzStream.Close\\(\\); $outStream.Close\\(\\); [System.IO.Compression.TarFile]::ExtractToDirectory\\(\"$outPath\\\\design.tar\", $outPath\\) 2>&1; Get-ChildItem -Recurse $outPath)",
+      "Bash(cd /tmp)",
+      "Bash(mkdir -p design_extracted)",
+      "Bash(cp \"C:/Users/miche/AppData/Local/Temp/design_extracted/design.tar\" .)",
+      "Bash(tar -xf design.tar -C design_extracted)",
+      "Read(//tmp/design_extracted/runtrim/**)",
+      "Read(//tmp/design_extracted/runtrim/project/**)",
+      "Bash(git stash *)"
     ]
   }
 }
