@@ -225,7 +225,7 @@ export default function Home() {
 
           Desktop: unchanged compact flow, then HeroTerminal below.
         */}
-        <div className="relative z-10 flex w-full flex-col items-center pt-12 pb-10 sm:pb-0 sm:pt-28">
+        <div className="relative z-10 flex w-full flex-col items-center pt-14 pb-8 sm:pb-0 sm:pt-28">
 
           {/* Core text content */}
           <div className="flex w-full flex-col items-center px-6 text-center">
@@ -256,14 +256,19 @@ export default function Home() {
 
             {/* Sub — desktop only */}
             <MotionFade delay={0.12}>
+              {/* Mobile subtext — short, one idea, max 2 lines at 13px on 375px */}
+              <p className="mx-auto mt-3 max-w-[300px] text-[13px] leading-[1.6] text-[#6870A0] sm:hidden">
+                Memory, scope, and finish checks for Claude, Codex, Cursor, and other agents.
+              </p>
+              {/* Desktop subtext — full sentence */}
               <p className="mx-auto mt-6 hidden max-w-[600px] text-[1.03rem] leading-[1.8] text-[#7F8CA3] sm:block">
                 RunTrim installs a protocol into your repo, creates scoped contracts before Claude, Codex, or Cursor touches code, then checks drift, risk, changed files, and continuation after every run.
               </p>
             </MotionFade>
 
             <MotionFade delay={0.17}>
-              {/* Mobile CTA — single primary, tight margin */}
-              <div className="mt-6 flex flex-col items-center gap-2.5 sm:hidden">
+              {/* Mobile CTA — tighter margin to keep terminal in view */}
+              <div className="mt-4 flex flex-col items-center gap-2 sm:hidden">
                 <Link
                   href="/app/install"
                   data-rt-event="install_cta_clicked"
@@ -319,7 +324,7 @@ export default function Home() {
             Sits directly below the CTA, proves the product in 5 lines.
             Hidden on sm+ where HeroTerminal renders in its own section.
           */}
-          <MotionFade delay={0.22} className="mt-5 w-full px-5 sm:hidden">
+          <MotionFade delay={0.22} className="mt-4 w-full px-5 sm:hidden">
             <div
               className="overflow-hidden rounded-xl border border-[#7C6DFA]/25 bg-[#06060F]"
               style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.10), 0 12px 32px rgba(0,0,0,0.55)" }}
@@ -356,7 +361,7 @@ export default function Home() {
           </MotionFade>
 
           {/* Feature chips — directly under terminal on mobile, under content on desktop */}
-          <MotionFade delay={0.28} className="mt-4 w-full max-w-4xl px-5 sm:mt-8 sm:px-6">
+          <MotionFade delay={0.28} className="mt-3 w-full max-w-4xl px-5 sm:mt-8 sm:px-6">
             <div className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4">
               {[
                 { label: "Scope the task",   note: "Contract before execution" },
