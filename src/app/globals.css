@@ -253,6 +253,33 @@
   animation: rt-live-dot 2.2s ease-in-out infinite;
 }
 
+/* Primary CTA outer glow breathe — very slow, very restrained */
+@keyframes rt-cta-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.12),
+      0 4px 16px rgba(255,255,255,0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.22),
+      0 4px 24px rgba(255,255,255,0.13),
+      0 0 44px rgba(255,255,255,0.05);
+  }
+}
+.rt-cta-glow {
+  animation: rt-cta-glow 5s ease-in-out infinite;
+}
+
+/* Violet accent dot pulse — for section kicker numbers, accent indicators */
+@keyframes rt-violet-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 3px rgba(167,139,250,0.12); }
+  50%       { opacity: 0.6; box-shadow: 0 0 0 4px rgba(167,139,250,0.06); }
+}
+.rt-violet-dot {
+  animation: rt-violet-dot 3s ease-in-out infinite;
+}
+
 /* Glow breathe */
 @keyframes rt-glow-pulse {
   0%, 100% { opacity: 0.75; }

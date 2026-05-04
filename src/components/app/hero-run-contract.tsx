@@ -268,7 +268,7 @@ export function MobileContractCard() {
       <div
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "10px 14px",
+          padding: "8px 14px",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           background: "linear-gradient(180deg, #14171c, #0d1014)",
         }}
@@ -297,15 +297,15 @@ export function MobileContractCard() {
       </div>
 
       {/* Rows */}
-      <div style={{ padding: "4px 0" }}>
+      <div style={{ padding: "2px 0" }}>
         {MOBILE_ROWS.map(({ k, v, color }, i) => (
           <div
             key={k}
             style={{
               display: "grid",
-              gridTemplateColumns: "80px 1fr",
-              gap: 12,
-              padding: "7px 14px",
+              gridTemplateColumns: "76px 1fr",
+              gap: 10,
+              padding: "5px 14px",
               alignItems: "center",
               borderBottom: i < MOBILE_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
             }}
@@ -324,7 +324,7 @@ export function MobileContractCard() {
       <div
         style={{
           display: "flex", alignItems: "center", gap: 10,
-          padding: "9px 14px",
+          padding: "7px 14px",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           background: "rgba(255,255,255,0.01)",
         }}
