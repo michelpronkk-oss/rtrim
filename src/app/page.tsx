@@ -338,8 +338,18 @@ export default function Home() {
               </MotionFade>
 
               <MotionFade delay={0.22}>
+                {/* Mobile: 2 items inline — no wrapping */}
                 <div
-                  className="mt-4 sm:mt-6 flex flex-wrap gap-x-5 gap-y-2"
+                  className="mt-4 flex sm:hidden items-center gap-x-4"
+                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46", whiteSpace: "nowrap" }}
+                >
+                  <span>Free CLI</span>
+                  <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.07)", display: "inline-block", flexShrink: 0 }} />
+                  <span>No model lock-in</span>
+                </div>
+                {/* Desktop: all 3 */}
+                <div
+                  className="mt-6 hidden sm:flex flex-wrap gap-x-5 gap-y-2"
                   style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}
                 >
                   {[
