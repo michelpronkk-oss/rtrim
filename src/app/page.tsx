@@ -7,6 +7,7 @@ import { TerminalCard } from "@/components/app/terminal-card";
 import { CopyButton } from "@/components/app/copy-button";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 import { SmartCta } from "@/components/app/smart-cta";
+import { MobileHeroTerminal } from "@/components/app/mobile-hero-terminal";
 import { BeforeAfterSection } from "@/components/app/before-after-section";
 import { AnimatedRunContract } from "@/components/app/animated-run-contract";
 import { planOrder, plans } from "@/lib/plans";
@@ -225,7 +226,7 @@ export default function Home() {
 
           Desktop: unchanged compact flow, then HeroTerminal below.
         */}
-        <div className="relative z-10 flex w-full flex-col items-center pt-14 pb-8 sm:pb-0 sm:pt-28">
+        <div className="relative z-10 flex w-full flex-col items-center pt-14 pb-3 sm:pb-0 sm:pt-28">
 
           {/* Core text content */}
           <div className="flex w-full flex-col items-center px-6 text-center">
@@ -256,8 +257,8 @@ export default function Home() {
 
             {/* Sub — desktop only */}
             <MotionFade delay={0.12}>
-              {/* Mobile subtext — short, one idea, max 2 lines at 13px on 375px */}
-              <p className="mx-auto mt-3 max-w-[300px] text-[13px] leading-[1.6] text-[#6870A0] sm:hidden">
+              {/* Mobile subtext */}
+              <p className="mx-auto mt-4 max-w-[300px] text-[13px] leading-[1.6] text-[#6870A0] sm:hidden">
                 Memory, scope, and finish checks for Claude, Codex, Cursor, and other agents.
               </p>
               {/* Desktop subtext — full sentence */}
@@ -267,8 +268,8 @@ export default function Home() {
             </MotionFade>
 
             <MotionFade delay={0.17}>
-              {/* Mobile CTA — tighter margin to keep terminal in view */}
-              <div className="mt-4 flex flex-col items-center gap-2 sm:hidden">
+              {/* Mobile CTA */}
+              <div className="mt-5 flex flex-col items-center gap-2 sm:hidden">
                 <Link
                   href="/app/install"
                   data-rt-event="install_cta_clicked"
@@ -324,40 +325,9 @@ export default function Home() {
             Sits directly below the CTA, proves the product in 5 lines.
             Hidden on sm+ where HeroTerminal renders in its own section.
           */}
-          <MotionFade delay={0.22} className="mt-4 w-full px-5 sm:hidden">
-            <div
-              className="overflow-hidden rounded-xl border border-[#7C6DFA]/25 bg-[#06060F]"
-              style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.10), 0 12px 32px rgba(0,0,0,0.55)" }}
-            >
-              {/* Title bar */}
-              <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1.5">
-                    <span className="size-2 rounded-full bg-white/14" />
-                    <span className="size-2 rounded-full bg-white/9"  />
-                    <span className="size-2 rounded-full bg-white/5"  />
-                  </div>
-                  <span className="font-mono text-[10px] text-[#3A3E58]">runtrim</span>
-                </div>
-                <span className="rounded border border-[#3DDAB4]/22 bg-[#3DDAB4]/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-[#3DDAB4]">
-                  guarded
-                </span>
-              </div>
-              {/* Content — 5 lines, tight */}
-              <div className="px-3 py-3 font-mono leading-[1.65]">
-                <div className="flex items-baseline gap-1.5 text-[12px]">
-                  <span className="text-[#3A3E58]">$</span>
-                  <span className="text-[#8B82FF]">runtrim go &quot;fix mobile nav&quot;</span>
-                </div>
-                <div className="mt-1.5 space-y-0.5 text-[11px]">
-                  <p className="text-[#484868]">  Memory loaded</p>
-                  <p className="text-[#484868]">  Contract created</p>
-                  <p className="text-[#484868]">  Protected: auth, billing, env</p>
-                  <p className="text-[#484868]">  Agent inside scope</p>
-                  <p className="text-[#3DDAB4]">  Auto-sync ready</p>
-                </div>
-              </div>
-            </div>
+          {/* Animated mobile terminal — cycles through runtrim go, history, sync */}
+          <MotionFade delay={0.22} className="mt-5 w-full px-5 sm:hidden">
+            <MobileHeroTerminal />
           </MotionFade>
 
           {/* Feature chips — directly under terminal on mobile, under content on desktop */}
