@@ -226,7 +226,7 @@ export default function Home() {
 
           Desktop: unchanged compact flow, then HeroTerminal below.
         */}
-        <div className="relative z-10 flex w-full flex-col items-center pt-14 pb-3 sm:pb-0 sm:pt-28">
+        <div className="relative z-10 flex w-full flex-col items-center pt-14 pb-10 sm:pb-0 sm:pt-28">
 
           {/* Core text content */}
           <div className="flex w-full flex-col items-center px-6 text-center">
@@ -269,22 +269,23 @@ export default function Home() {
 
             <MotionFade delay={0.17}>
               {/* Mobile CTA */}
-              <div className="mt-5 flex flex-col items-center gap-2 sm:hidden">
+              <div className="mt-5 flex w-full max-w-[300px] flex-col items-center gap-2.5 sm:hidden">
                 <Link
                   href="/app/install"
                   data-rt-event="install_cta_clicked"
-                  className="inline-flex w-full max-w-[300px] items-center justify-center gap-2 rounded-lg bg-[#7C6DFA] px-6 py-3 text-[15px] font-semibold text-white"
-                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 6px 20px rgba(124,109,250,0.30), inset 0 1px 0 rgba(255,255,255,0.12)" }}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#7C6DFA] px-6 py-3.5 text-[15px] font-semibold text-white"
+                  style={{ boxShadow: "0 0 0 1px rgba(124,109,250,0.45), 0 8px 24px rgba(124,109,250,0.30), inset 0 1px 0 rgba(255,255,255,0.12)" }}
                 >
                   Install Free CLI
-                  <ArrowRight className="size-3.5" />
+                  <ArrowRight className="size-4" />
                 </Link>
+                {/* Secondary CTA — real button, not text link */}
                 <SmartCta
-                  label="Request access"
+                  label="Request early access"
                   variant="pro"
-                  className="text-[13px] text-[#6870A0] transition-colors hover:text-[#9699BE]"
-                  openAppLabel="Open app"
-                  openAppClassName="text-[13px] text-[#9E91FF]"
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-6 py-2.5 text-[13px] font-medium text-[#A3AEBD] transition-colors hover:border-white/18 hover:text-[#EDEEFF]"
+                  openAppLabel="Open dashboard"
+                  openAppClassName="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#7C6DFA]/25 bg-[#7C6DFA]/8 px-6 py-2.5 text-[13px] font-medium text-[#C4B8FF] transition-colors hover:bg-[#7C6DFA]/14"
                 />
               </div>
 
@@ -325,34 +326,36 @@ export default function Home() {
             Sits directly below the CTA, proves the product in 5 lines.
             Hidden on sm+ where HeroTerminal renders in its own section.
           */}
-          {/* Animated mobile terminal — cycles through runtrim go, history, sync */}
-          <MotionFade delay={0.22} className="mt-5 w-full px-5 sm:hidden">
+          {/* Mobile terminal — the single product demo element, anchors the lower hero */}
+          <MotionFade delay={0.22} className="mt-6 w-full px-5 sm:hidden">
             <MobileHeroTerminal />
           </MotionFade>
 
-          {/* Feature cards — visible on all sizes, stronger on mobile */}
-          <MotionFade delay={0.28} className="mt-4 w-full max-w-4xl px-5 sm:mt-8 sm:px-6">
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-              {[
-                { label: "Scope the task",   note: "Contract before execution" },
-                { label: "Load memory",      note: "Never start from zero" },
-                { label: "Control the run",  note: "Budgets, rules, drift checks" },
-                { label: "Continue cleanly", note: "Preserved across sessions" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border border-white/9 bg-[#0D0C22]/80 px-3.5 py-3 backdrop-blur-sm sm:px-4 sm:py-3.5"
-                >
-                  <p className="text-[12px] font-semibold leading-snug text-[#C8CAEC]">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 font-mono text-[10px] leading-snug text-[#484A68]">
-                    {item.note}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </MotionFade>
+          {/* Feature cards — desktop only; mobile hero is terminal-only */}
+          <div className="hidden sm:block">
+            <MotionFade delay={0.28} className="mt-8 w-full max-w-4xl px-6">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {[
+                  { label: "Scope the task",   note: "Contract before execution" },
+                  { label: "Load memory",      note: "Never start from zero" },
+                  { label: "Control the run",  note: "Budgets, rules, drift checks" },
+                  { label: "Continue cleanly", note: "Preserved across sessions" },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-white/8 bg-[#0D0C22]/80 px-4 py-3.5 backdrop-blur-sm"
+                  >
+                    <p className="text-[12px] font-semibold leading-snug text-[#C8CAEC]">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 font-mono text-[10px] leading-snug text-[#484A68]">
+                      {item.note}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </MotionFade>
+          </div>
         </div>
 
         {/* Desktop HeroTerminal — hidden on mobile, shown sm+ */}
@@ -378,17 +381,35 @@ export default function Home() {
         </MotionFade>
       </section>
 
+      {/* Trust strip — concise, honest signals between hero and content */}
+      <div className="border-b border-white/8 bg-[#07071A]">
+        <div className="mx-auto max-w-6xl px-6 py-5">
+          <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2.5 sm:gap-x-10">
+            {[
+              { c: "#7C6DFA", t: "Free CLI, no account required" },
+              { c: "#3DDAB4", t: "Claude Code, Codex, Cursor, any agent" },
+              { c: "#7C6DFA", t: "Source code never uploaded" },
+              { c: "#3DDAB4", t: "Early access now open" },
+            ].map(({ c, t }) => (
+              <div key={t} className="flex items-center gap-2">
+                <span className="size-1.5 shrink-0 rounded-full" style={{ background: c }} />
+                <span className="font-mono text-[11px] text-[#4D5070]">{t}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* How RunTrim works */}
       <section id="how-it-works" className="border-t border-white/8 bg-[#07071A]">
         <div className="mx-auto max-w-6xl px-6 py-24">
 
-          {/* Header — lean, no subheadline */}
           <div className="mb-12">
             <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">
               01 / The flow
             </p>
             <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Install the protocol.<br className="hidden sm:block" /> Run any agent through it.
+              Three commands.<br className="hidden sm:block" /> Full agent control.
             </h2>
           </div>
 
@@ -467,34 +488,34 @@ export default function Home() {
           <div className="mb-12">
             <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">02 / Why RunTrim</p>
             <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Why run agents through RunTrim?
+              Faster agents. Less waste.<br className="hidden sm:block" /> Stricter output.
             </h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                title: "Faster agent runs",
-                body: "Agents start with the task, memory, allowed scope, and stop rules. Less searching. Less guessing. Faster execution.",
+                title: "Agents run faster",
+                body: "Every run starts with the task, memory, allowed scope, and stop rules already loaded. Less searching. Less guessing.",
               },
               {
-                title: "Lower token burn",
-                body: "RunTrim reduces repeated context, prevents irrelevant exploration, and keeps each run focused.",
+                title: "Less wasted context",
+                body: "RunTrim eliminates repeated setup prompts, prevents irrelevant file scanning, and keeps each run focused on the actual task.",
               },
               {
-                title: "Stricter output",
-                body: "Every task gets a scoped contract, success criteria, forbidden areas, and a finish check.",
+                title: "Stricter output quality",
+                body: "Every task gets a scoped contract, success criteria, forbidden files, and a finish check before the next run opens.",
               },
               {
-                title: "Less breakage",
-                body: "Auth, billing, env files, database, middleware, and webhooks can be marked as protected before the agent edits.",
+                title: "Protected scope areas",
+                body: "Auth, billing, env files, database, middleware, and webhooks are marked protected before the agent touches any file.",
               },
               {
-                title: "Clean continuation",
-                body: "Every run ends with a report, changed files, proof gaps, and the next safe action.",
+                title: "Clean hand-off",
+                body: "Every run closes with a report, changed files, proof gaps, and a ready-to-paste continuation prompt.",
               },
               {
-                title: "Cloud run history",
-                body: "Connected users get synced runs, dashboard reports, project history, memory, and continuation context.",
+                title: "Synced run history",
+                body: "Connected accounts get cloud run history, dashboard reports, project memory, and continuation context across devices.",
               },
             ].map(({ title, body }) => (
               <div key={title} className="rounded-xl border border-white/8 bg-[#0C0C20] px-5 py-5">
@@ -627,7 +648,7 @@ export default function Home() {
       <section className="border-t border-white/8 bg-[#07071A]">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <div className="mb-10">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">03 / The guarded loop</p>
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">04 / The guarded loop</p>
             <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
               Scope. Check. Continue.
             </h2>
@@ -644,15 +665,15 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-6 py-24">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
             <div>
-              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">04 / RunTrim Agent</p>
+              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">05 / RunTrim Agent</p>
               <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-                RunTrim Agent is next.
+                RunTrim Agent.<br className="hidden sm:block" /> Guarded execution, not just prompting.
               </h2>
               <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-                The next layer is a guarded AI coding agent that runs tasks through scoped contracts, memory, token budgets, risk checks, and audit-ready reports.
+                The next layer runs tasks end-to-end through scoped contracts, memory, token budgets, drift checks, and audit-ready reports. No manual prompting loop.
               </p>
               <p className="mt-3 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-                Agent early access is opening for Pro, Builder, and Team.
+                Early access is open for Pro, Builder, and Team plans.
               </p>
               <div className="mt-8">
                 <SmartCta
@@ -674,9 +695,9 @@ export default function Home() {
       <section className="border-t border-white/8 bg-[#07071A]">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <div className="mb-10">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">05 / Integrations</p>
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">06 / Integrations</p>
             <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Works with every agent.
+              Bring your own agent.
             </h2>
             <p className="mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
               Set your agent once. RunTrim wraps or copies depending on your config.
@@ -706,7 +727,7 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-6 py-24">
           <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">06 / Plans</p>
+              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">07 / Plans</p>
               <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
                 Start local. Scale when it matters.
               </h2>
