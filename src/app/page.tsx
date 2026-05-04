@@ -331,31 +331,6 @@ export default function Home() {
             <MobileHeroTerminal />
           </MotionFade>
 
-          {/* Feature cards — desktop only; mobile hero is terminal-only */}
-          <div className="hidden sm:block">
-            <MotionFade delay={0.28} className="mt-8 w-full max-w-4xl px-6">
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                {[
-                  { label: "Scope the task",   note: "Contract before execution" },
-                  { label: "Load memory",      note: "Never start from zero" },
-                  { label: "Control the run",  note: "Budgets, rules, drift checks" },
-                  { label: "Continue cleanly", note: "Preserved across sessions" },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-xl border border-white/8 bg-[#0D0C22]/80 px-4 py-3.5 backdrop-blur-sm"
-                  >
-                    <p className="text-[12px] font-semibold leading-snug text-[#C8CAEC]">
-                      {item.label}
-                    </p>
-                    <p className="mt-1 font-mono text-[10px] leading-snug text-[#484A68]">
-                      {item.note}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </MotionFade>
-          </div>
         </div>
 
         {/* Desktop HeroTerminal — hidden on mobile, shown sm+ */}
@@ -484,11 +459,11 @@ export default function Home() {
 
       {/* Benefits */}
       <section className="border-t border-white/8 bg-[#08081C]">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mb-12">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">02 / Why RunTrim</p>
-            <h2 className="text-[1.9rem] font-bold leading-[1.1] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
-              Faster agents. Less waste.<br className="hidden sm:block" /> Stricter output.
+        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
+          <div className="mb-8 sm:mb-12">
+            <p className="mb-3 hidden font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070] sm:block">02 / Why RunTrim</p>
+            <h2 className="text-[1.55rem] font-bold leading-[1.12] tracking-[-0.03em] text-[#EDEEFF] sm:text-[2.4rem]">
+              Faster agents.<br className="sm:hidden" /> Less waste.<br className="hidden sm:block" /> Stricter output.
             </h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
