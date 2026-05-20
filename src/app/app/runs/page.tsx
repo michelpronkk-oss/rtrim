@@ -16,12 +16,14 @@ type RunRow = {
   risk_before: string | null;
   risk_after: string | null;
   estimated_tokens_trimmed: number | null;
-  estimated_dollars_standard: number | null;
+  estimated_tokens_saved: number | null;
   created_at_local: string | null;
   evaluated_at_local: string | null;
   created_at: string | null;
   synced_at: string | null;
   project_id: string | null;
+  changed_files: string[] | null;
+  missing_proof_items: string[] | null;
 };
 
 function toTimeMs(value: string | null | undefined): number | null {
@@ -58,16 +60,16 @@ function runDate(run: RunRow): string {
 
 const STATUS_BADGE: Record<string, string> = {
   guarded: "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
-  passed:  "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
+  passed: "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
   partial: "border-[#F0BF72]/22 bg-[#F0BF72]/8 text-[#F2C88D]",
-  failed:  "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
-  split:   "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
+  failed: "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
+  split: "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
 };
 
 const RISK_BADGE: Record<string, string> = {
-  low:    "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
+  low: "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
   medium: "border-[#F0BF72]/22 bg-[#F0BF72]/8 text-[#F2C88D]",
-  high:   "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
+  high: "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
 };
 
 function formatStatusLabel(value: string | null): string | null {
@@ -92,7 +94,7 @@ function Badge({ label, kind }: { label: string | null; kind: "status" | "risk" 
 function formatTokens(n: number | null) {
   if (!n) return null;
   if (n >= 1_000_000) return `~${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `~${(n / 1_000).toFixed(0)}k`;
+  if (n >= 1_000) return `~${(n / 1_000).toFixed(0)}k`;
   return String(n);
 }
 
@@ -108,7 +110,7 @@ export default async function RunsPage() {
     const { data } = await supabase
       .from("runtrim_runs")
       .select(
-        "id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_dollars_standard, created_at_local, evaluated_at_local, created_at, synced_at, project_id"
+        "id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_tokens_saved, created_at_local, evaluated_at_local, created_at, synced_at, project_id, changed_files, missing_proof_items"
       )
       .eq("user_id", user.id)
       .limit(100);
@@ -134,9 +136,7 @@ export default async function RunsPage() {
     <div className="mx-auto max-w-[92rem] space-y-6">
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Runs</p>
-        <h1 className="mt-1 text-[1.5rem] font-bold tracking-[-0.03em] text-[#f4f5f7] sm:text-[1.6rem]">
-          Run history
-        </h1>
+        <h1 className="mt-1 text-[1.5rem] font-bold tracking-[-0.03em] text-[#f4f5f7] sm:text-[1.6rem]">Run history</h1>
       </div>
 
       {runs.length === 0 ? (
@@ -144,17 +144,12 @@ export default async function RunsPage() {
           <div className="mb-5 flex size-10 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
             <History className="size-4.5 text-[#a78bfa]/70" />
           </div>
-          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
-            No guarded runs yet.
-          </h2>
+          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">No guarded runs yet.</h2>
           <p className="mt-1.5 max-w-[440px] text-[13px] leading-[1.7] text-[#8a8f98]">
             Start with a task in any project. Finish it, then sync to see the contract, risk score, token savings, and continuation pack here.
           </p>
           <div className="mt-5 space-y-2 max-w-[360px]">
-            {[
-              'runtrim go "fix a small bug"',
-              "runtrim finish",
-            ].map((cmd) => (
+            {["runtrim go \"fix a small bug\"", "runtrim finish"].map((cmd) => (
               <div
                 key={cmd}
                 className="flex items-center overflow-hidden rounded-[6px]"
@@ -184,26 +179,25 @@ export default async function RunsPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090A1A]">
           <div className="border-b border-white/10 bg-[#111317]/90 px-4 py-3 sm:px-6">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">
-              Recent guarded runs
-            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Recent guarded runs</p>
           </div>
 
-          {/* Desktop table header — hidden on mobile */}
-          <div className="hidden grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto] items-center gap-x-6 border-b border-white/8 bg-[#111317] px-6 py-3 md:grid">
-            {["Task", "Project", "Status", "Risk", "Tokens saved", "Date", ""].map((h) => (
+          <div className="hidden grid-cols-[minmax(0,4fr)_minmax(0,1.2fr)_max-content_max-content_max-content_max-content_minmax(0,1.2fr)_auto] items-center gap-x-5 border-b border-white/8 bg-[#111317] px-6 py-3 md:grid">
+            {["Task", "Project", "Status", "Risk", "Files", "Proof gaps", "Tokens saved", ""].map((h) => (
               <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3a3e46]">{h}</p>
             ))}
           </div>
 
           {runs.map((run, i) => {
-            const tokens       = formatTokens(run.estimated_tokens_trimmed);
-            const dateStr      = runDate(run);
-            const projectName  = run.project_id ? (projectMap[run.project_id] ?? null) : null;
-            const statusLabel  = formatStatusLabel(run.status);
-            const riskLabel    = run.risk_after ?? run.risk_before;
-            const borderClass  = i < runs.length - 1 ? "border-b border-white/6" : "";
-            const bgStyle      = { background: i % 2 === 0 ? "#0B0C1F" : "#090A1B" };
+            const tokens = formatTokens(run.estimated_tokens_saved ?? run.estimated_tokens_trimmed);
+            const dateStr = runDate(run);
+            const projectName = run.project_id ? (projectMap[run.project_id] ?? null) : null;
+            const statusLabel = formatStatusLabel(run.status);
+            const riskLabel = run.risk_after ?? run.risk_before;
+            const filesChanged = run.changed_files?.length ?? 0;
+            const proofGaps = run.missing_proof_items?.length ?? 0;
+            const borderClass = i < runs.length - 1 ? "border-b border-white/6" : "";
+            const bgStyle = { background: i % 2 === 0 ? "#0B0C1F" : "#090A1B" };
 
             return (
               <Link
@@ -212,47 +206,34 @@ export default async function RunsPage() {
                 className={`group block transition-colors hover:bg-white/[0.025] ${borderClass}`}
                 style={bgStyle}
               >
-                {/* ── Mobile card (hidden md+) ─────────────────── */}
-                <div className="px-4 py-4 md:hidden">
-                  {/* Task title — 2 lines max */}
-                  <p className="line-clamp-2 text-[14px] font-medium leading-snug text-[#f4f5f7]">
-                    {run.task ?? "Untitled run"}
-                  </p>
-
-                  {/* Badges + project */}
-                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <div className="space-y-2 px-4 py-4 md:hidden">
+                  <p className="line-clamp-2 text-[14px] font-medium leading-snug text-[#f4f5f7]">{run.task ?? "Untitled run"}</p>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge label={statusLabel} kind="status" />
-                    <Badge label={riskLabel}    kind="risk"   />
-                    {projectName && (
-                      <span className="font-mono text-[10px] text-[#5a5f68]">{projectName}</span>
-                    )}
+                    <Badge label={riskLabel} kind="risk" />
+                    {projectName && <span className="font-mono text-[10px] text-[#5a5f68]">{projectName}</span>}
                   </div>
-
-                  {/* Date + tokens + arrow */}
-                  <div className="mt-2.5 flex items-center justify-between gap-3">
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="font-mono text-[11px] text-[#5a5f68]">{dateStr}</p>
-                      {tokens && (
-                        <p className="font-mono text-[11px] text-[#5a5f68]">{tokens} tokens</p>
-                      )}
-                    </div>
-                    <ArrowRight className="size-4 shrink-0 text-[#5a5f68] transition-colors group-hover:text-[#7680AA]" />
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <p className="font-mono text-[#8a8f98]">Files: {filesChanged}</p>
+                    <p className="font-mono text-[#8a8f98]">Proof gaps: {proofGaps}</p>
+                    <p className="font-mono text-[#8a8f98]">Tokens: {tokens ?? "-"}</p>
+                    <p className="font-mono text-[#8a8f98]">{dateStr}</p>
                   </div>
                 </div>
 
-                {/* ── Desktop table row (hidden mobile) ───────── */}
-                <div className="hidden items-center gap-x-6 px-6 py-3 md:grid md:grid-cols-[minmax(0,4.8fr)_minmax(0,1.5fr)_max-content_max-content_minmax(0,1fr)_minmax(0,1.3fr)_auto]">
-                  <p className="truncate pr-2 text-[13px] font-medium text-[#f4f5f7]">
-                    {run.task ?? "Untitled run"}
-                  </p>
-                  <p className="font-mono text-[11px] text-[#5a5f68]">
-                    {projectName ?? "-"}
-                  </p>
+                <div className="hidden items-center gap-x-5 px-6 py-3 md:grid md:grid-cols-[minmax(0,4fr)_minmax(0,1.2fr)_max-content_max-content_max-content_max-content_minmax(0,1.2fr)_auto]">
+                  <p className="truncate pr-2 text-[13px] font-medium text-[#f4f5f7]">{run.task ?? "Untitled run"}</p>
+                  <p className="truncate font-mono text-[11px] text-[#5a5f68]">{projectName ?? "-"}</p>
                   <Badge label={statusLabel} kind="status" />
-                  <Badge label={riskLabel}   kind="risk"   />
+                  <Badge label={riskLabel} kind="risk" />
+                  <p className="font-mono text-[11px] text-[#8a8f98]">{filesChanged}</p>
+                  <p className="font-mono text-[11px] text-[#8a8f98]">{proofGaps}</p>
                   <p className="font-mono text-[12px] text-[#8a8f98]">{tokens ?? "-"}</p>
-                  <p className="font-mono text-[11px] text-[#5a5f68]">{dateStr}</p>
-                  <ArrowRight className="size-3.5 text-[#5a5f68] transition-colors group-hover:text-[#7680AA]" />
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono text-[11px] text-[#5a5f68]">{dateStr}</p>
+                    <span className="rounded border border-white/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#9ca2ad]">Open report</span>
+                    <ArrowRight className="size-3.5 text-[#5a5f68] transition-colors group-hover:text-[#7680AA]" />
+                  </div>
                 </div>
               </Link>
             );
