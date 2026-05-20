@@ -33,11 +33,31 @@ const MONO: React.CSSProperties = {
 interface AppShellProps {
   children: React.ReactNode;
   userEmail?: string;
+  plan?: string;
+  planStatus?: string;
 }
 
-export function AppShell({ children, userEmail }: AppShellProps) {
+const PLAN_BADGE_STYLE: Record<string, React.CSSProperties> = {
+  free:     { color: "#5a5f68", border: "1px solid rgba(255,255,255,0.07)" },
+  pro:      { color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)", background: "rgba(167,139,250,0.08)" },
+  builder:  { color: "#4DE8B0", border: "1px solid rgba(77,232,176,0.25)", background: "rgba(77,232,176,0.08)" },
+  team:     { color: "#F0BF72", border: "1px solid rgba(240,191,114,0.25)", background: "rgba(240,191,114,0.08)" },
+};
+
+function planBadgeLabel(plan: string, planStatus: string | undefined): string {
+  if (plan === "pro" && planStatus === "trialing") return "Pro Trial";
+  if (plan === "pro")     return "Pro";
+  if (plan === "builder") return "Builder";
+  if (plan === "team")    return "Team";
+  return "Free";
+}
+
+export function AppShell({ children, userEmail, plan = "free", planStatus }: AppShellProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const badgeStyle = PLAN_BADGE_STYLE[plan] ?? PLAN_BADGE_STYLE.free;
+  const badgeLabel = planBadgeLabel(plan, planStatus);
 
   function isActive(href: string) {
     return href === "/app" ? pathname === "/app" : pathname.startsWith(href);
@@ -64,8 +84,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
               <span className="min-w-0 flex-1 truncate" style={{ ...MONO, fontSize: 11.5, color: "#8a8f98" }}>
                 {userEmail ?? "Dashboard"}
               </span>
-              <span className="shrink-0 rounded px-1.5 py-0.5" style={{ ...MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5a5f68", border: "1px solid rgba(255,255,255,0.07)" }}>
-                free
+              <span className="shrink-0 rounded px-1.5 py-0.5" style={{ ...MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", ...badgeStyle }}>
+                {badgeLabel}
               </span>
             </div>
           </div>
@@ -144,7 +164,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                   <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2.5" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#111317" }}>
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa", display: "inline-block", flexShrink: 0 }} />
                     <span className="min-w-0 flex-1 truncate" style={{ ...MONO, fontSize: 11.5, color: "#8a8f98" }}>{userEmail}</span>
-                    <span style={{ ...MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "#5a5f68", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 3, padding: "1px 5px" }}>free</span>
+                    <span style={{ ...MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderRadius: 3, padding: "1px 5px", ...badgeStyle }}>{badgeLabel}</span>
                   </div>
                 )}
 

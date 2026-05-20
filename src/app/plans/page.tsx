@@ -4,11 +4,12 @@ import { RunTrimMark } from "@/components/app/runtrim-logo";
 import { Check, ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
 import { SmartCta } from "@/components/app/smart-cta";
+import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
   title: "Plans | RunTrim",
   description:
-    "RunTrim plans. Free CLI runs locally. Pro, Builder, and Team are request-access plans for cloud history, auto-sync, memory, reports, and team control.",
+    "RunTrim plans. Free CLI runs locally. Pro starts with a 3-day trial — cloud sync, memory, unlimited Bridge Mode. Builder and Team are reviewed access.",
   alternates: { canonical: "https://www.runtrim.com/plans" },
 };
 
@@ -44,22 +45,20 @@ const PLANS = [
     id: "pro",
     name: "Pro",
     price: null,
-    priceLabel: "Early access",
+    priceLabel: "$29 / month",
     badge: "Recommended",
-    positioning: "For solo builders using AI coding every day.",
-    microcopy: null,
-    ctaLabel: "Request Pro access",
+    positioning: "Start a 3-day trial. Unlimited Bridge Mode, cloud sync, and reports for solo builders.",
+    microcopy: "3-day trial · cancel anytime",
+    ctaLabel: "Start 3-day Pro trial",
     ctaHref: null,
     ctaVariant: "primary" as const,
     features: [
       "Unlimited Bridge Mode",
       "Auto-sync dashboard",
-      "Synced run history",
-      "Cloud reports",
-      "Project memory",
-      "Continuation packs",
-      "Token and cost savings",
-      "Faster daily AI coding workflow",
+      "Cloud run history",
+      "Memory sync",
+      "Continuation / handoff",
+      "Savings reports",
     ],
     missing: [],
   },
@@ -67,23 +66,20 @@ const PLANS = [
     id: "builder",
     name: "Builder",
     price: null,
-    priceLabel: "Early access",
+    priceLabel: "$49 / month",
     badge: "Serious projects",
-    positioning: "For founders, freelancers, and agencies.",
+    positioning: "Advanced guardrails for founders and agencies shipping production code daily.",
     microcopy: null,
     ctaLabel: "Request Builder access",
     ctaHref: null,
     ctaVariant: "secondary" as const,
     features: [
       "Everything in Pro",
-      "Multiple projects",
-      "Advanced scope drift detection",
-      "Advanced risk scoring",
+      "Unlimited projects",
+      "Proof / drift reports",
+      "Priority Run Compiler + Agent Preview access",
       "Forbidden file controls",
-      "Project timelines",
       "Exportable reports",
-      "Stronger project memory",
-      "Client/project audit trail",
     ],
     missing: [],
   },
@@ -91,7 +87,7 @@ const PLANS = [
     id: "team",
     name: "Team",
     price: null,
-    priceLabel: "Reviewed access",
+    priceLabel: "From $24 / seat",
     badge: "Reviewed access",
     positioning: "For teams running AI agents across real codebases.",
     microcopy: null,
@@ -100,13 +96,11 @@ const PLANS = [
     ctaVariant: "secondary" as const,
     features: [
       "Everything in Builder",
-      "Shared workspace",
-      "Team policies",
-      "Team-level run history",
-      "Governance for AI-assisted development",
-      "Approval gates (planned)",
-      "GitHub checks (planned)",
-      "Audit logs (planned)",
+      "Shared team state",
+      "Approvals + GitHub checks",
+      "Audit logs",
+      "SSO and roles",
+      "Org-level budget rules",
     ],
     missing: [],
   },
@@ -208,15 +202,15 @@ export default function PlansPage() {
             className="mx-auto mt-5"
             style={{ fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}
           >
-            Free CLI works without an account. Pro, Builder, and Team are request-access plans for cloud history, auto-sync, memory, reports, and team control.
+            Free CLI works without an account. Pro starts with a 3-day trial. Builder and Team are reviewed-access plans for advanced guardrails and team control.
           </p>
 
           <div
             className="mx-auto mt-5 inline-flex rounded-[8px] px-4 py-2.5"
-            style={{ border: "1px solid rgba(245,165,36,0.2)", background: "rgba(245,165,36,0.04)" }}
+            style={{ border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.04)" }}
           >
-            <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#a8916a" }}>
-              Payments are not self-serve yet. Access is reviewed manually during early access.
+            <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#a78bfa" }}>
+              Pro has a 3-day trial. Builder and Team are reviewed access.
             </p>
           </div>
         </div>
@@ -313,17 +307,18 @@ export default function PlansPage() {
                       {plan.ctaLabel}
                       <ArrowRight className="size-3.5 shrink-0" />
                     </Link>
+                  ) : isPro ? (
+                    <ProCheckoutButton
+                      label={plan.ctaLabel}
+                      className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
+                    />
                   ) : (
                     <SmartCta
                       label={plan.ctaLabel}
                       variant={plan.id === "builder" ? "builder" : "pro"}
-                      className={
-                        isPro
-                          ? "inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white"
-                          : "inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                      }
+                      className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
                       openAppLabel="Open dashboard"
-                      openAppClassName={`inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors ${isPro ? "bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white" : "border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[#a78bfa] hover:bg-[rgba(167,139,250,0.12)]"}`}
+                      openAppClassName={`inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[#a78bfa] hover:bg-[rgba(167,139,250,0.12)]`}
                     />
                   )}
                   {plan.microcopy && (
@@ -336,7 +331,7 @@ export default function PlansPage() {
         </div>
 
         <p className="mt-5 text-center font-mono text-[11px] text-[#3a3e46]">
-          Payments are not self-serve yet. Request access and we will follow up.
+          Pro is self-serve with a 3-day trial. Builder and Team are reviewed access.
         </p>
       </div>
 

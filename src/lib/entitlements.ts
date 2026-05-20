@@ -90,6 +90,28 @@ export function isUnlimitedBridge(plan: string): boolean {
   return getEntitlements(plan).bridgeRunsPerMonth === null;
 }
 
+/**
+ * Returns true if the subscription is in a state that grants paid-plan access.
+ * Only "active" and "trialing" unlock Pro/Builder/Team entitlements.
+ * Canceled, past_due, expired, unpaid, etc. fall back to free.
+ */
+export function isSubscriptionActive(plan: string, planStatus: string | null): boolean {
+  if (plan === "free") return true;
+  const status = (planStatus ?? "").toLowerCase();
+  return status === "active" || status === "trialing";
+}
+
+/**
+ * Returns the plan ID that should actually be used for entitlement checks.
+ * If the subscription is not active/trialing, the user is treated as free.
+ */
+export function effectivePlanId(plan: string, planStatus: string | null): PlanId {
+  if (isSubscriptionActive(plan, planStatus)) {
+    return (plan in PLAN_ENTITLEMENTS ? plan : "free") as PlanId;
+  }
+  return "free";
+}
+
 /** Returns the current billing period key, e.g. "2026-05". */
 export function currentPeriod(): string {
   const d = new Date();

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { getEntitlements, currentPeriod } from "@/lib/entitlements";
+import { getEntitlements, currentPeriod, effectivePlanId } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -49,7 +49,10 @@ export async function POST(request: Request) {
     .eq("id", profile.id)
     .then(() => {});
 
-  const plan  = (profile.plan as string) || "free";
+  const rawPlan    = (profile.plan as string) || "free";
+  const planStatus = (profile.plan_status as string | null) ?? null;
+  // Only honor paid plan entitlements while subscription is active or trialing
+  const plan  = effectivePlanId(rawPlan, planStatus);
   const ents  = getEntitlements(plan);
   const limit = ents.bridgeRunsPerMonth;
 

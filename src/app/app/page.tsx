@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Shield, Activity, Layers, TrendingDown, Zap } from "lucide-react";
+import { ArrowRight, Shield, Activity, Layers, TrendingDown, Zap, Clock } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { getEntitlements, currentPeriod } from "@/lib/entitlements";
+import { getEntitlements, currentPeriod, effectivePlanId } from "@/lib/entitlements";
 
 export const metadata: Metadata = {
   title: "Overview | RunTrim Dashboard",
@@ -15,6 +15,7 @@ type ProfileRow = {
   plan_status: string | null;
   bridge_runs_used: number | null;
   bridge_runs_period: string | null;
+  current_period_end: string | null;
 };
 
 // Only the fields needed for the "Last guarded run" card
@@ -74,7 +75,7 @@ async function getDashboardData(userId: string) {
   ] = await Promise.all([
     supabase
       .from("runtrim_profiles")
-      .select("plan, plan_status, bridge_runs_used, bridge_runs_period")
+      .select("plan, plan_status, bridge_runs_used, bridge_runs_period, current_period_end")
       .eq("id", userId)
       .maybeSingle(),
 
@@ -107,7 +108,11 @@ async function getDashboardData(userId: string) {
   const projects   = (projectsResult.data ?? []) as ProjectRow[];
   const recentRuns = (recentRunResult.data ?? []) as RecentRunRow[];
 
-  const plan        = profile?.plan || "free";
+  const rawPlan     = profile?.plan || "free";
+  const rawStatus   = profile?.plan_status ?? null;
+  const plan        = effectivePlanId(rawPlan, rawStatus);
+  const planStatus  = rawStatus;
+  const periodEnd   = profile?.current_period_end ?? null;
   const period      = currentPeriod();
   const ents        = getEntitlements(plan);
   const runsUsed    = profile?.bridge_runs_period === period
@@ -130,7 +135,7 @@ async function getDashboardData(userId: string) {
     recentRuns[0] ??
     null;
 
-  return { plan, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun };
+  return { plan, planStatus, periodEnd, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun };
 }
 
 const RISK_BADGE: Record<string, string> = {
@@ -182,11 +187,27 @@ export default async function OverviewPage() {
     : "$0.00";
 
   const plan        = data?.plan ?? "free";
+  const planStatus  = data?.planStatus ?? null;
+  const periodEnd   = data?.periodEnd ?? null;
+  const isTrialing  = plan !== "free" && planStatus === "trialing";
   const runsUsed    = data?.runsUsed ?? 0;
   const runsLimit   = data?.runsLimit ?? 5;
   const isUnlimited = runsLimit === null;
   const isNearLimit = !isUnlimited && runsUsed >= (runsLimit - 1);
   const isAtLimit   = !isUnlimited && runsUsed >= runsLimit;
+
+  // Trial days remaining
+  const trialDaysLeft = (() => {
+    if (!isTrialing || !periodEnd) return null;
+    const diff = new Date(periodEnd).getTime() - Date.now();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 0;
+  })();
+
+  const trialEndLabel = (() => {
+    if (!periodEnd) return null;
+    return new Date(periodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  })();
 
   const PLAN_BADGE: Record<string, string> = {
     free:    "border-white/12 text-[#6A7398]",
@@ -205,7 +226,7 @@ export default async function OverviewPage() {
           <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">Dashboard</h1>
         </div>
         <span className={`rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] ${PLAN_BADGE[plan] ?? PLAN_BADGE.free}`}>
-          {plan}
+          {isTrialing ? "Pro Trial" : plan}
         </span>
       </div>
 
@@ -240,6 +261,40 @@ export default async function OverviewPage() {
               style={isAtLimit ? { boxShadow: "0 4px 14px rgba(124,109,250,0.28)" } : undefined}
             >
               {isAtLimit ? "Upgrade to Pro" : "View plans"}
+            </Link>
+          </div>
+        </div>
+      ) : isTrialing ? (
+        <div className="rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/5 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Clock className="size-3.5 text-[#a78bfa]/70" />
+                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">
+                  Pro Trial active
+                </p>
+              </div>
+              <p className="mt-1.5 text-[14px] font-semibold text-[#f4f5f7]">
+                Bridge Mode: Unlimited during trial
+              </p>
+              {trialDaysLeft !== null && trialEndLabel && (
+                <p className="mt-0.5 text-[12px] text-[#8a8f98]">
+                  {trialDaysLeft === 0
+                    ? "Trial ends today."
+                    : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} remaining — trial ends ${trialEndLabel}.`}
+                </p>
+              )}
+              {!trialEndLabel && (
+                <p className="mt-0.5 text-[12px] text-[#8a8f98]">
+                  3-day Pro trial. Full Pro access while active.
+                </p>
+              )}
+            </div>
+            <Link
+              href="/pricing"
+              className="shrink-0 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-3.5 py-2 text-[12px] font-medium text-[#a78bfa] transition-colors hover:bg-[#7C6DFA]/18"
+            >
+              Keep Pro
             </Link>
           </div>
         </div>

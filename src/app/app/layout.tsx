@@ -2,6 +2,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getEarlyAccessStatus, eaStatusToPath } from "@/lib/early-access-gate";
+import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { effectivePlanId } from "@/lib/entitlements";
 import { AppShell } from "@/components/app/app-shell";
 
 export default async function AppLayout({
@@ -31,5 +33,31 @@ export default async function AppLayout({
     redirect(eaStatusToPath(eaStatus));
   }
 
-  return <AppShell userEmail={user.email ?? undefined}>{children}</AppShell>;
+  // Fetch plan for sidebar badge
+  let plan       = "free";
+  let planStatus: string | undefined;
+  try {
+    const supabase = getSupabaseServiceClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from("runtrim_profiles")
+        .select("plan, plan_status")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data) {
+        const rawPlan = (data.plan as string) || "free";
+        const rawStatus = (data.plan_status as string | null) ?? null;
+        plan       = effectivePlanId(rawPlan, rawStatus);
+        planStatus = rawStatus ?? undefined;
+      }
+    }
+  } catch {
+    // Non-fatal — sidebar falls back to "free"
+  }
+
+  return (
+    <AppShell userEmail={user.email ?? undefined} plan={plan} planStatus={planStatus}>
+      {children}
+    </AppShell>
+  );
 }

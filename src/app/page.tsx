@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { MotionFade } from "@/components/app/motion-section";
 import { CopyButton } from "@/components/app/copy-button";
 import { SmartCta } from "@/components/app/smart-cta";
+import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 import { HeroRunContract, MobileContractCard } from "@/components/app/hero-run-contract";
 import { planOrder, plans } from "@/lib/plans";
 import { RunTrimLogo, RunTrimMark } from "@/components/app/runtrim-logo";
@@ -870,38 +871,54 @@ export default function Home() {
                 name: "Free",
                 price: "$0",
                 per: "/ local",
+                trial: null as string | null,
                 desc: "The CLI, the protocol, and local run history. Forever.",
                 features: ["Unlimited local runs", "Memory, scope, finish checks", "All supported agents", "JSON run logs on disk"],
                 featured: false,
               },
               {
                 id: "pro",
-                name: "Pro · cloud sync",
-                price: "$18",
+                name: "Pro",
+                price: "$29",
                 per: "/ month",
-                desc: "Everything local, plus run history, dashboard, and resume across machines.",
-                features: ["Everything in Free", "Cloud run history · 90 days", "Cross-machine memory", "Web dashboard"],
+                trial: "3-day trial" as string | null,
+                desc: "Unlimited Bridge Mode, cloud sync, memory, and savings reports.",
+                features: [
+                  "Unlimited Bridge Mode",
+                  "Auto-sync dashboard",
+                  "Cloud run history",
+                  "Memory sync",
+                  "Continuation / handoff",
+                  "Savings reports",
+                ],
                 featured: true,
               },
               {
                 id: "builder",
                 name: "Builder",
-                price: "$48",
+                price: "$49",
                 per: "/ month",
-                desc: "For founders shipping production code through agents daily.",
-                features: ["Everything in Pro", "Advanced guardrails", "Custom finish checks", "Priority support"],
+                trial: null as string | null,
+                desc: "Advanced guardrails for founders shipping production code daily.",
+                features: [
+                  "Everything in Pro",
+                  "Unlimited projects",
+                  "Proof / drift reports",
+                  "Priority Run Compiler access",
+                ],
                 featured: false,
               },
               {
                 id: "team",
                 name: "Team",
                 price: "From $24",
-                per: "/ seat",
+                per: "/ seat / month",
+                trial: null as string | null,
                 desc: "Shared protocol, shared memory, shared accountability.",
-                features: ["Everything in Builder", "Org-wide policy", "SSO, roles, audit log", "Run governance reports"],
+                features: ["Everything in Builder", "Shared team state", "Approvals + GitHub checks", "Audit logs"],
                 featured: false,
               },
-            ].map(({ id, name, price, per, desc, features, featured }) => (
+            ].map(({ id, name, price, per, trial, desc, features, featured }) => (
               <MotionFade key={id} delay={0.06} className="h-full">
                 <div
                   style={{
@@ -933,6 +950,21 @@ export default function Home() {
                     </span>
                     <span style={{ fontSize: 13, color: "#5a5f68", fontWeight: 400, marginLeft: 4 }}>{per}</span>
                   </div>
+                  {trial && (
+                    <span
+                      style={{
+                        display: "inline-block", marginTop: 6,
+                        fontFamily: "var(--font-geist-mono)", fontSize: 10,
+                        textTransform: "uppercase", letterSpacing: "0.1em",
+                        color: "#a78bfa",
+                        border: "1px solid rgba(167,139,250,0.25)",
+                        borderRadius: 4, padding: "2px 7px",
+                        background: "rgba(167,139,250,0.06)",
+                      }}
+                    >
+                      {trial}
+                    </span>
+                  )}
 
                   {/* Description — fixed height keeps cards aligned below price */}
                   <p style={{ marginTop: 8, marginBottom: 0, color: "#8a8f98", fontSize: 13, lineHeight: 1.55, minHeight: "3.2em" }}>
@@ -979,17 +1011,18 @@ export default function Home() {
                       >
                         Install CLI
                       </Link>
+                    ) : id === "pro" ? (
+                      <ProCheckoutButton
+                        label="Start 3-day Pro trial"
+                        className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white bg-[#f4f5f7] text-[#0b0d10] text-[13px] font-medium transition-colors hover:bg-white disabled:opacity-60"
+                      />
                     ) : (
                       <SmartCta
-                        label={id === "team" ? "Talk to us" : `Start ${name.split(" ")[0]}`}
+                        label={id === "team" ? "Talk to us" : `Request ${name} access`}
                         variant={id === "builder" ? "builder" : "pro"}
-                        className={
-                          featured
-                            ? "flex items-center justify-center h-9 w-full rounded-[6px] border border-white bg-[#f4f5f7] text-[#0b0d10] text-[13px] font-medium transition-colors hover:bg-white"
-                            : "flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]"
-                        }
+                        className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]"
                         openAppLabel="Open dashboard"
-                        openAppClassName={`flex items-center justify-center h-9 rounded-[6px] w-full text-[13px] font-medium transition-colors ${featured ? "bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white" : "border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"}`}
+                        openAppClassName="flex items-center justify-center h-9 rounded-[6px] w-full text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
                       />
                     )}
                   </div>

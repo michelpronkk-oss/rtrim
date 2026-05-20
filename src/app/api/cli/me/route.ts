@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { getEntitlements, currentPeriod } from "@/lib/entitlements";
+import { getEntitlements, currentPeriod, effectivePlanId } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from("runtrim_profiles")
-    .select("id, email, plan, plan_status, bridge_runs_used, bridge_runs_period")
+    .select("id, email, plan, plan_status, bridge_runs_used, bridge_runs_period, current_period_end")
     .eq("cli_token_hash", tokenHash)
     .maybeSingle();
 
@@ -40,9 +40,12 @@ export async function GET(request: Request) {
     .eq("id", profile.id)
     .then(() => {});
 
-  const plan     = (profile.plan as string) || "free";
-  const ents     = getEntitlements(plan);
-  const period   = currentPeriod();
+  const rawPlan    = (profile.plan as string) || "free";
+  const planStatus = (profile.plan_status as string | null) ?? null;
+  // Only honor paid plan entitlements while subscription is active or trialing
+  const plan   = effectivePlanId(rawPlan, planStatus);
+  const ents   = getEntitlements(plan);
+  const period = currentPeriod();
 
   // Reset counter if the period rolled over
   const storedPeriod = profile.bridge_runs_period as string | null;
@@ -54,7 +57,8 @@ export async function GET(request: Request) {
     ok: true,
     email: profile.email,
     plan,
-    planStatus: (profile.plan_status as string) || "active",
+    planStatus: planStatus ?? "active",
+    currentPeriodEnd: (profile.current_period_end as string | null) ?? null,
     entitlements: {
       bridgeRunsPerMonth: ents.bridgeRunsPerMonth,
       cloudSync:          ents.cloudSync,
