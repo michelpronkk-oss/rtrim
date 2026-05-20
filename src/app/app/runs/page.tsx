@@ -140,23 +140,46 @@ export default async function RunsPage() {
       </div>
 
       {runs.length === 0 ? (
-        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-10 text-center sm:px-6 sm:py-12">
-          <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
-            <History className="size-5 text-[#a78bfa]/70" />
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 sm:py-12">
+          <div className="mb-5 flex size-10 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
+            <History className="size-4.5 text-[#a78bfa]/70" />
           </div>
           <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
-            No synced runs yet.
+            No guarded runs yet.
           </h2>
-          <p className="mx-auto mt-2 max-w-[400px] text-[13px] leading-[1.7] text-[#8a8f98]">
-            Every synced run includes the prompt, contract, memory, risk score, token savings, and continuation pack. Sync opens for early access plans.
+          <p className="mt-1.5 max-w-[440px] text-[13px] leading-[1.7] text-[#8a8f98]">
+            Start with a task in any project. Finish it, then sync to see the contract, risk score, token savings, and continuation pack here.
           </p>
-          <Link
-            href="/app/early-access"
-            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
-          >
-            Join early access
-            <ArrowRight className="size-3.5" />
-          </Link>
+          <div className="mt-5 space-y-2 max-w-[360px]">
+            {[
+              'runtrim go "fix a small bug"',
+              "runtrim finish",
+            ].map((cmd) => (
+              <div
+                key={cmd}
+                className="flex items-center overflow-hidden rounded-[6px]"
+                style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#080a0d" }}
+              >
+                <span className="pl-3 pr-1 font-mono text-[10px] text-[#a78bfa]/60">$</span>
+                <code className="flex-1 py-2 pr-2 font-mono text-[11.5px] text-[#c9ccd2]">{cmd}</code>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/app/connect"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
+            >
+              Connect CLI
+              <ArrowRight className="size-3.5" />
+            </Link>
+            <Link
+              href="/app/install"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] text-[#5a5f68] transition-colors hover:text-[#8a8f98]"
+            >
+              View install guide
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090A1A]">

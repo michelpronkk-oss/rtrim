@@ -314,11 +314,12 @@ export default function PlansPage() {
                     />
                   ) : (
                     <SmartCta
-                      label={plan.ctaLabel}
+                      label={plan.id === "builder" ? "Get Builder" : "Get Team"}
                       variant={plan.id === "builder" ? "builder" : "pro"}
+                      loginRedirect
                       className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
                       openAppLabel="Open dashboard"
-                      openAppClassName={`inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[#a78bfa] hover:bg-[rgba(167,139,250,0.12)]`}
+                      openAppClassName="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
                     />
                   )}
                   {plan.microcopy && (

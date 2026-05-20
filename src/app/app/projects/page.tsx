@@ -90,27 +90,47 @@ export default async function ProjectsPage() {
       </div>
 
       {projects.length === 0 ? (
-        /* Empty state */
-        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-12 text-center">
-          <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
-            <FolderKanban className="size-5 text-[#a78bfa]/70" />
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 sm:py-12">
+          <div className="mb-5 flex size-10 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
+            <FolderKanban className="size-4.5 text-[#a78bfa]/70" />
           </div>
           <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
-            No projects synced yet.
+            No synced projects yet.
           </h2>
-          <p className="mx-auto mt-2 max-w-[420px] text-[13px] leading-[1.7] text-[#8a8f98]">
-            Projects appear here once your CLI starts syncing run reports. Each project tracks its own memory, run history, risk levels, and savings.
+          <p className="mt-1.5 max-w-[440px] text-[13px] leading-[1.7] text-[#8a8f98]">
+            Run <code className="font-mono text-[#a78bfa]">runtrim init</code> in a repo, then start and finish a guarded run to sync your first project. Each project tracks its own memory, run history, risk, and savings.
           </p>
-          <div className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 font-mono text-[12px] text-[#5a5f68]">
-            runtrim go &quot;your task&quot;
+          <div className="mt-5 space-y-2 max-w-[360px]">
+            {[
+              "runtrim init",
+              'runtrim go "your first task"',
+              "runtrim finish",
+            ].map((cmd) => (
+              <div
+                key={cmd}
+                className="flex items-center overflow-hidden rounded-[6px]"
+                style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#080a0d" }}
+              >
+                <span className="pl-3 pr-1 font-mono text-[10px] text-[#a78bfa]/60">$</span>
+                <code className="flex-1 py-2 pr-2 font-mono text-[11.5px] text-[#c9ccd2]">{cmd}</code>
+              </div>
+            ))}
           </div>
-          <p className="mt-3 text-[12px] text-[#3a3e46]">
-            Run this in your project directory after{" "}
-            <Link href="/app/install" className="text-[#5a5f68] transition-colors hover:text-[#a78bfa]">
-              installing the CLI
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/app/connect"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
+            >
+              Connect CLI
+              <ArrowRight className="size-3.5" />
             </Link>
-            .
-          </p>
+            <Link
+              href="/app/install"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] text-[#5a5f68] transition-colors hover:text-[#8a8f98]"
+            >
+              View install guide
+            </Link>
+          </div>
         </div>
       ) : (
         /* Project list */

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { sendTrialActivationEmail, sendTrialExpiredEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -219,6 +220,34 @@ export async function POST(request: Request) {
   }
 
   console.info("[/api/webhooks/dodo] Profile updated for event:", eventType, "user_id:", metaUserId ?? custEmail);
+
+  // ── Transactional emails — fire and forget after DB write succeeds ─────────
+  // Resolve the best email address available. The customer email comes from Dodo.
+  // If absent, fall back to fetching from the profile we just updated.
+  const resolveEmail = async (): Promise<string | null> => {
+    if (custEmail) return custEmail;
+    if (!metaUserId) return null;
+    const { data: row } = await supabase
+      .from("runtrim_profiles")
+      .select("email")
+      .eq("id", metaUserId)
+      .maybeSingle();
+    return (row?.email as string | null) ?? null;
+  };
+
+  if (eventType === "subscription.trialing") {
+    const trialEnd = data.subscription?.trial_end ?? data.subscription?.current_period_end ?? null;
+    resolveEmail().then((addr) => {
+      if (addr) sendTrialActivationEmail(addr, trialEnd).catch(() => {});
+    }).catch(() => {});
+  }
+
+  if (eventType === "subscription.expired") {
+    resolveEmail().then((addr) => {
+      if (addr) sendTrialExpiredEmail(addr).catch(() => {});
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true });
 }
 

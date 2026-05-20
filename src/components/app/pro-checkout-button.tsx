@@ -20,10 +20,12 @@ export function ProCheckoutButton({
   className,
   label = "Start 3-day Pro trial",
 }: ProCheckoutButtonProps) {
-  const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+  const [state,   setState]   = useState<"idle" | "loading" | "error">("idle");
+  const [errMsg,  setErrMsg]  = useState<string>("");
 
   async function startCheckout() {
     setState("loading");
+    setErrMsg("");
 
     const supabase = getSupabaseBrowserClient();
     const {
@@ -39,17 +41,24 @@ export function ProCheckoutButton({
       () => null
     );
 
-    if (!res?.ok) {
+    // Try to read the error message before deciding what to show
+    const data = await res?.json().catch(() => null) as {
+      ok?: boolean;
+      url?: string;
+      error?: string;
+    } | null;
+
+    if (!res?.ok || !data?.ok) {
+      setErrMsg(data?.error ?? "Checkout failed — please try again.");
       setState("error");
       return;
     }
 
-    const data = await res.json().catch(() => null) as { url?: string } | null;
-
-    if (data?.url) {
+    if (data.url) {
       window.location.href = data.url;
       // Stay in loading — browser is navigating
     } else {
+      setErrMsg("No checkout URL returned. Please try again.");
       setState("error");
     }
   }
@@ -73,7 +82,7 @@ export function ProCheckoutButton({
             margin: 0,
           }}
         >
-          Checkout failed — please try again
+          {errMsg}
         </p>
       </div>
     );

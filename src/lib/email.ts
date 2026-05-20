@@ -461,6 +461,193 @@ function buildRejectionText(): string {
   ].join("\n");
 }
 
+// ─── Trial emails ─────────────────────────────────────────────────────────────
+
+const C_AMBER        = "#F0BF72";
+const C_AMBER_DIM    = "rgba(240,191,114,0.10)";
+const C_AMBER_BORDER = "rgba(240,191,114,0.22)";
+
+function formatTrialEndDate(isoString: string | null): string {
+  if (!isoString) return "in 3 days";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "in 3 days";
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function buildTrialFeatureRows(): string {
+  const features: Array<[string, string]> = [
+    ["Unlimited Bridge Mode",  "No monthly run limit. Guard every task with runtrim go."],
+    ["Auto-sync dashboard",    "Run history, risk scores, and savings sync to the cloud after every finish."],
+    ["Memory sync",            "Project memory and continuation prompts available across machines."],
+    ["Savings reports",        "Estimated tokens and cost avoided tracked per project over time."],
+  ];
+  return features.map(([title, desc]) => `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:12px;">
+      <tr>
+        <td style="width:16px;vertical-align:top;padding-top:3px;">
+          <div style="width:5px;height:5px;background-color:${C.accent};border-radius:1px;"></div>
+        </td>
+        <td style="padding-left:8px;">
+          <p style="margin:0;font-family:${C.fontSans};font-size:13px;color:${C.text};font-weight:600;">${title}</p>
+          <p style="margin:2px 0 0;font-family:${C.fontSans};font-size:12px;color:${C.muted};line-height:1.6;">${desc}</p>
+        </td>
+      </tr>
+    </table>`).join("");
+}
+
+function buildTrialActivationHtml(trialEndDate: string | null): string {
+  const dashboardUrl = `${getSiteUrl()}/app`;
+  const endLabel     = formatTrialEndDate(trialEndDate);
+
+  const content = `
+    <tr><td style="height:3px;background:linear-gradient(90deg,${C.accent},#9966FF,#5B8BFF);border-radius:12px 12px 0 0;"></td></tr>
+    <tr>
+      <td style="padding:36px 36px 0;">
+
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+          <tr>
+            <td style="background-color:${C.accentDim};border:1px solid rgba(124,109,250,0.22);border-radius:20px;padding:5px 12px;">
+              <span style="font-family:${C.fontMono};font-size:10px;font-weight:600;color:${C.accent};letter-spacing:0.12em;text-transform:uppercase;">Pro Trial Active</span>
+            </td>
+          </tr>
+        </table>
+
+        <h1 style="margin:0 0 12px;font-family:${C.fontSans};font-size:28px;font-weight:700;color:${C.text};letter-spacing:-0.04em;line-height:1.1;">
+          Your 3-day Pro trial has started.
+        </h1>
+        <p style="margin:0;font-family:${C.fontSans};font-size:15px;color:${C.muted};line-height:1.7;">
+          You have full Pro access until ${endLabel}. Use this time to sync your first runs, see memory and reports in the dashboard, and decide if Pro fits your workflow.
+        </p>
+
+        <div style="height:1px;background-color:${C.divider};margin:28px 0;"></div>
+
+        <p style="margin:0 0 16px;font-family:${C.fontMono};font-size:10px;font-weight:600;color:${C.dimmer};letter-spacing:0.14em;text-transform:uppercase;">What is included</p>
+        ${buildTrialFeatureRows()}
+
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 36px 36px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;">
+          <tr>
+            <td style="background-color:${C.accent};border-radius:8px;">
+              <a href="${dashboardUrl}" target="_blank"
+                 style="display:inline-block;font-family:${C.fontSans};font-size:13px;font-weight:700;color:${C.bg};text-decoration:none;padding:11px 22px;border-radius:8px;letter-spacing:-0.01em;">
+                Open dashboard &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0;font-family:${C.fontSans};font-size:12px;color:${C.dimmer};line-height:1.7;">
+          Trial ends ${endLabel}. No charge before then. Cancel anytime.<br/>
+          Questions? Reply to this email or reach us at <a href="mailto:hello@runtrim.com" style="color:${C.muted};text-decoration:underline;">hello@runtrim.com</a>
+        </p>
+      </td>
+    </tr>
+  `;
+  return emailShell(content);
+}
+
+function buildTrialActivationText(trialEndDate: string | null): string {
+  const endLabel = formatTrialEndDate(trialEndDate);
+  return [
+    "Your RunTrim Pro trial has started.",
+    "",
+    `Full Pro access until ${endLabel}.`,
+    "",
+    "What is included:",
+    "  Unlimited Bridge Mode",
+    "  Auto-sync dashboard",
+    "  Memory sync",
+    "  Savings reports",
+    "",
+    `Open your dashboard: ${getSiteUrl()}/app`,
+    "",
+    `Trial ends ${endLabel}. No charge before then. Cancel anytime.`,
+    "",
+    "Questions? hello@runtrim.com",
+    "",
+    "— RunTrim",
+  ].join("\n");
+}
+
+function buildTrialExpiredHtml(checkoutUrl: string): string {
+  const content = `
+    <tr><td style="height:3px;background:linear-gradient(90deg,${C_AMBER},#e8a84a,#d49340);border-radius:12px 12px 0 0;"></td></tr>
+    <tr>
+      <td style="padding:36px 36px 0;">
+
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+          <tr>
+            <td style="background-color:${C_AMBER_DIM};border:1px solid ${C_AMBER_BORDER};border-radius:20px;padding:5px 12px;">
+              <span style="font-family:${C.fontMono};font-size:10px;font-weight:600;color:${C_AMBER};letter-spacing:0.12em;text-transform:uppercase;">Trial Ended</span>
+            </td>
+          </tr>
+        </table>
+
+        <h1 style="margin:0 0 12px;font-family:${C.fontSans};font-size:28px;font-weight:700;color:${C.text};letter-spacing:-0.04em;line-height:1.1;">
+          Your Pro trial has ended.
+        </h1>
+        <p style="margin:0;font-family:${C.fontSans};font-size:15px;color:${C.muted};line-height:1.7;">
+          Your 3-day trial is over. To keep unlimited Bridge Mode, cloud sync, memory, and your run history, continue with Pro.
+        </p>
+
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 28px;">
+          <tr>
+            <td style="background-color:${C.code};border:1px solid ${C.codeBorder};border-radius:8px;padding:16px 20px;">
+              <p style="margin:0 0 4px;font-family:${C.fontMono};font-size:10px;color:${C.dimmer};letter-spacing:0.1em;text-transform:uppercase;">RunTrim Pro</p>
+              <p style="margin:0;font-family:${C.fontSans};font-size:22px;font-weight:700;color:${C.text};letter-spacing:-0.03em;">
+                $29<span style="font-size:13px;font-weight:400;color:${C.dimmer};margin-left:4px;">/ month</span>
+              </p>
+              <p style="margin:6px 0 0;font-family:${C.fontSans};font-size:12px;color:${C.muted};">Cancel anytime. No contracts.</p>
+            </td>
+          </tr>
+        </table>
+
+        <div style="height:1px;background-color:${C.divider};margin-bottom:24px;"></div>
+
+        <p style="margin:0 0 16px;font-family:${C.fontMono};font-size:10px;font-weight:600;color:${C.dimmer};letter-spacing:0.14em;text-transform:uppercase;">Everything in Pro</p>
+        ${buildTrialFeatureRows()}
+
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 36px 36px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;">
+          <tr>
+            <td style="background-color:${C.accent};border-radius:8px;">
+              <a href="${checkoutUrl}" target="_blank"
+                 style="display:inline-block;font-family:${C.fontSans};font-size:13px;font-weight:700;color:${C.bg};text-decoration:none;padding:11px 22px;border-radius:8px;letter-spacing:-0.01em;">
+                Continue with Pro &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0;font-family:${C.fontSans};font-size:12px;color:${C.dimmer};line-height:1.7;">
+          Questions? Reply to this email or reach us at <a href="mailto:hello@runtrim.com" style="color:${C.muted};text-decoration:underline;">hello@runtrim.com</a>
+        </p>
+      </td>
+    </tr>
+  `;
+  return emailShell(content);
+}
+
+function buildTrialExpiredText(checkoutUrl: string): string {
+  return [
+    "Your RunTrim Pro trial has ended.",
+    "",
+    "To keep unlimited Bridge Mode, cloud sync, memory, and your run history,",
+    "continue with Pro at $29/month. Cancel anytime.",
+    "",
+    "Continue here:",
+    checkoutUrl,
+    "",
+    "Questions? hello@runtrim.com",
+    "",
+    "— RunTrim",
+  ].join("\n");
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 export async function sendApprovalEmail(email: string): Promise<boolean> {
   const resend = getResendClient();
@@ -504,6 +691,54 @@ export async function sendEarlyAccessConfirmation(email: string): Promise<boolea
     text:    buildConfirmationText(),
   });
 
+  return !error;
+}
+
+/**
+ * Sent immediately when Dodo fires subscription.trialing.
+ * trialEndDate is an ISO string from the webhook payload (trial_end or current_period_end).
+ */
+export async function sendTrialActivationEmail(
+  email: string,
+  trialEndDate: string | null,
+): Promise<boolean> {
+  const resend = getResendClient();
+  if (!resend) return false;
+
+  const { error } = await resend.emails.send({
+    from:    getFromEmail(),
+    to:      email,
+    subject: "Your RunTrim Pro trial has started.",
+    html:    buildTrialActivationHtml(trialEndDate),
+    text:    buildTrialActivationText(trialEndDate),
+  });
+
+  if (error) console.error("[email] sendTrialActivationEmail failed:", error);
+  return !error;
+}
+
+/**
+ * Sent when Dodo fires subscription.expired (trial ended without payment).
+ * Uses DODO_PRO_CHECKOUT_URL env var if set (static Dodo payment link),
+ * otherwise falls back to /plans so the user can start a new subscription.
+ */
+export async function sendTrialExpiredEmail(email: string): Promise<boolean> {
+  const resend = getResendClient();
+  if (!resend) return false;
+
+  const checkoutUrl =
+    process.env.DODO_PRO_CHECKOUT_URL?.trim() ||
+    `${getSiteUrl()}/plans`;
+
+  const { error } = await resend.emails.send({
+    from:    getFromEmail(),
+    to:      email,
+    subject: "Your RunTrim Pro trial has ended.",
+    html:    buildTrialExpiredHtml(checkoutUrl),
+    text:    buildTrialExpiredText(checkoutUrl),
+  });
+
+  if (error) console.error("[email] sendTrialExpiredEmail failed:", error);
   return !error;
 }
 

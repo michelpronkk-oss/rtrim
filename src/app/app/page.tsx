@@ -4,6 +4,7 @@ import { ArrowRight, Shield, Activity, Layers, TrendingDown, Zap, Clock } from "
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { getEntitlements, currentPeriod, effectivePlanId } from "@/lib/entitlements";
+import { OnboardingChecklist } from "@/components/app/onboarding-checklist";
 
 export const metadata: Metadata = {
   title: "Overview | RunTrim Dashboard",
@@ -16,6 +17,7 @@ type ProfileRow = {
   bridge_runs_used: number | null;
   bridge_runs_period: string | null;
   current_period_end: string | null;
+  cli_token_created_at: string | null;
 };
 
 // Only the fields needed for the "Last guarded run" card
@@ -75,7 +77,7 @@ async function getDashboardData(userId: string) {
   ] = await Promise.all([
     supabase
       .from("runtrim_profiles")
-      .select("plan, plan_status, bridge_runs_used, bridge_runs_period, current_period_end")
+      .select("plan, plan_status, bridge_runs_used, bridge_runs_period, current_period_end, cli_token_created_at")
       .eq("id", userId)
       .maybeSingle(),
 
@@ -120,6 +122,13 @@ async function getDashboardData(userId: string) {
     : 0;
   const runsLimit   = ents.bridgeRunsPerMonth;
 
+  // Onboarding state
+  const hasConnectedCli  = !!(profile?.cli_token_created_at);
+  const hasCompletedRun  = recentRuns.some((r) => {
+    const s = (r.status ?? "").toLowerCase();
+    return s === "guarded" || s === "passed" || s === "completed";
+  });
+
   // Aggregate across ALL synced runs (not capped at 50)
   const totalTokens   = aggRuns.reduce((s, r) => s + (r.estimated_tokens_trimmed  ?? 0), 0);
   const totalCost     = aggRuns.reduce((s, r) => s + (r.estimated_dollars_standard ?? 0), 0);
@@ -135,7 +144,7 @@ async function getDashboardData(userId: string) {
     recentRuns[0] ??
     null;
 
-  return { plan, planStatus, periodEnd, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun };
+  return { plan, planStatus, periodEnd, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun, hasConnectedCli, hasCompletedRun };
 }
 
 const RISK_BADGE: Record<string, string> = {
@@ -190,6 +199,12 @@ export default async function OverviewPage() {
   const planStatus  = data?.planStatus ?? null;
   const periodEnd   = data?.periodEnd ?? null;
   const isTrialing  = plan !== "free" && planStatus === "trialing";
+
+  // Onboarding state
+  const hasConnectedCli  = data?.hasConnectedCli  ?? false;
+  const hasProjects      = (data?.totalProjects   ?? 0) > 0;
+  const hasRuns          = (data?.totalRuns       ?? 0) > 0;
+  const hasCompletedRun  = data?.hasCompletedRun  ?? false;
   const runsUsed    = data?.runsUsed ?? 0;
   const runsLimit   = data?.runsLimit ?? 5;
   const isUnlimited = runsLimit === null;
@@ -229,6 +244,16 @@ export default async function OverviewPage() {
           {isTrialing ? "Pro Trial" : plan}
         </span>
       </div>
+
+      {/* Activation onboarding — shown until first run is synced and complete */}
+      <OnboardingChecklist
+        hasConnectedCli={hasConnectedCli}
+        hasProjects={hasProjects}
+        hasRuns={hasRuns}
+        hasCompletedRun={hasCompletedRun}
+        plan={plan}
+        planStatus={planStatus}
+      />
 
       {/* Plan / usage card */}
       {plan === "free" ? (

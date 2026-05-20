@@ -1018,8 +1018,9 @@ export default function Home() {
                       />
                     ) : (
                       <SmartCta
-                        label={id === "team" ? "Talk to us" : `Request ${name} access`}
+                        label={id === "team" ? "Get Team" : "Get Builder"}
                         variant={id === "builder" ? "builder" : "pro"}
+                        loginRedirect
                         className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]"
                         openAppLabel="Open dashboard"
                         openAppClassName="flex items-center justify-center h-9 rounded-[6px] w-full text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
