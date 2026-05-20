@@ -1,56 +1,109 @@
 "use client";
 
-import { useState } from "react";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface ProCheckoutButtonProps {
   className?: string;
   label?: string;
 }
 
+type AuthPlan =
+  | "checking"      // resolving session + plan
+  | "logged-out"    // no session → send to /login?next=/app/trial
+  | "free"          // logged in, Free plan → start checkout
+  | "pro";          // logged in, active Pro/trial → open dashboard
+
 /**
- * Wires the Pro "Start 3-day Pro trial" CTA to /api/billing/checkout.
+ * Plan-aware Pro CTA.
  *
- * - Logged-out  → redirect to /login
- * - Logged-in   → POST /api/billing/checkout → redirect to Dodo checkout URL
- * - Loading     → disabled button with "Starting trial…" label
- * - Error       → inline error with "Try again" reset
+ * checking     → shimmer skeleton
+ * logged-out   → "Start 3-day Pro trial" → /login?next=/app/trial (intent preserved)
+ * free         → "Start 3-day Pro trial" → POST /api/billing/checkout → Dodo
+ * pro          → "Open dashboard"        → /app
  */
 export function ProCheckoutButton({
   className,
   label = "Start 3-day Pro trial",
 }: ProCheckoutButtonProps) {
-  const [state,   setState]   = useState<"idle" | "loading" | "error">("idle");
-  const [errMsg,  setErrMsg]  = useState<string>("");
+  const [authPlan,      setAuthPlan]      = useState<AuthPlan>("checking");
+  const [checkoutState, setCheckoutState] = useState<"idle" | "loading" | "error">("idle");
+  const [errMsg,        setErrMsg]        = useState("");
 
-  async function startCheckout() {
-    setState("loading");
-    setErrMsg("");
+  // Resolve auth + plan once on mount
+  useEffect(() => {
+    fetch("/api/billing/plan")
+      .then((r) => r.json())
+      .then((d: { loggedIn: boolean; plan: string; planStatus: string | null }) => {
+        if (!d.loggedIn) { setAuthPlan("logged-out"); return; }
+        const hasPro =
+          d.plan !== "free" &&
+          (d.planStatus === "active" || d.planStatus === "trialing");
+        setAuthPlan(hasPro ? "pro" : "free");
+      })
+      .catch(() => setAuthPlan("logged-out")); // fail-safe
+  }, []);
 
-    const supabase = getSupabaseBrowserClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  // ── Skeleton while resolving ───────────────────────────────────────────────
+  if (authPlan === "checking") {
+    return (
+      <button type="button" disabled aria-hidden="true"
+        className={`rt-btn-loading ${className ?? ""}`}>
+        {label}
+      </button>
+    );
+  }
 
-    if (!session?.user) {
-      window.location.href = "/login";
+  // ── Already has Pro → open dashboard ──────────────────────────────────────
+  if (authPlan === "pro") {
+    return (
+      <Link href="/app" className={className}>
+        Open dashboard
+      </Link>
+    );
+  }
+
+  // ── Error state (checkout failed) ─────────────────────────────────────────
+  if (checkoutState === "error") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <button type="button" onClick={() => setCheckoutState("idle")}
+          className={className}>
+          Try again
+        </button>
+        <p style={{
+          textAlign: "center",
+          fontFamily: "var(--font-geist-mono)",
+          fontSize: 10,
+          color: "#F0BF72",
+          margin: 0,
+        }}>
+          {errMsg}
+        </p>
+      </div>
+    );
+  }
+
+  // ── Checkout button (logged-out or free) ───────────────────────────────────
+  async function handleClick() {
+    // Logged out: preserve intent through auth by using ?next=/app/trial
+    if (authPlan === "logged-out") {
+      window.location.href = "/login?next=/app/trial";
       return;
     }
 
-    const res = await fetch("/api/billing/checkout", { method: "POST" }).catch(
-      () => null
-    );
+    // Logged in, Free: start Dodo checkout directly
+    setCheckoutState("loading");
+    setErrMsg("");
 
-    // Try to read the error message before deciding what to show
+    const res = await fetch("/api/billing/checkout", { method: "POST" }).catch(() => null);
     const data = await res?.json().catch(() => null) as {
-      ok?: boolean;
-      url?: string;
-      error?: string;
+      ok?: boolean; url?: string; error?: string;
     } | null;
 
     if (!res?.ok || !data?.ok) {
       setErrMsg(data?.error ?? "Checkout failed — please try again.");
-      setState("error");
+      setCheckoutState("error");
       return;
     }
 
@@ -59,45 +112,18 @@ export function ProCheckoutButton({
       // Stay in loading — browser is navigating
     } else {
       setErrMsg("No checkout URL returned. Please try again.");
-      setState("error");
+      setCheckoutState("error");
     }
-  }
-
-  if (state === "error") {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <button
-          type="button"
-          onClick={() => setState("idle")}
-          className={className}
-        >
-          Try again
-        </button>
-        <p
-          style={{
-            textAlign: "center",
-            fontFamily: "var(--font-geist-mono)",
-            fontSize: 10,
-            color: "#F0BF72",
-            margin: 0,
-          }}
-        >
-          {errMsg}
-        </p>
-      </div>
-    );
   }
 
   return (
     <button
       type="button"
-      onClick={startCheckout}
-      disabled={state === "loading"}
-      className={
-        state === "loading" ? `rt-btn-loading ${className ?? ""}` : className
-      }
+      onClick={handleClick}
+      disabled={checkoutState === "loading"}
+      className={checkoutState === "loading" ? `rt-btn-loading ${className ?? ""}` : className}
     >
-      {state === "loading" ? "Starting trial…" : label}
+      {checkoutState === "loading" ? "Starting trial…" : label}
     </button>
   );
 }

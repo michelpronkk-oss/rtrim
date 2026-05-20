@@ -25,12 +25,17 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const supabase = getSupabaseBrowserClient();
+    const supabase  = getSupabaseBrowserClient();
+    const nextParam = searchParams.get("next");
+    // Only forward relative paths to prevent open-redirect abuse
+    const safeNext  = nextParam && nextParam.startsWith("/") ? nextParam : null;
+    const callbackUrl = safeNext
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
+      : `${window.location.origin}/auth/callback`;
+
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { emailRedirectTo: callbackUrl },
     });
 
     if (authError) {
