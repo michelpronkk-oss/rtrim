@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { getEntitlements, currentPeriod, effectivePlanId } from "@/lib/entitlements";
 import { OnboardingChecklist } from "@/components/app/onboarding-checklist";
+import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
   title: "Overview | RunTrim Dashboard",
@@ -280,13 +281,10 @@ export default async function OverviewPage() {
                 </p>
               )}
             </div>
-            <Link
-              href="/pricing"
-              className={`shrink-0 rounded-lg px-3.5 py-2 text-[12px] font-medium transition-colors ${isAtLimit ? "bg-[#7C6DFA] text-white hover:opacity-85" : "border border-white/10 text-[#8a8f98] hover:border-white/20 hover:text-[#f4f5f7]"}`}
-              style={isAtLimit ? { boxShadow: "0 4px 14px rgba(124,109,250,0.28)" } : undefined}
-            >
-              {isAtLimit ? "Upgrade to Pro" : "View plans"}
-            </Link>
+            <ProCheckoutButton
+              label="Start 3-day Pro trial"
+              className="shrink-0 rounded-lg bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-medium text-white transition-opacity hover:opacity-85 disabled:opacity-60"
+            />
           </div>
         </div>
       ) : isTrialing ? (

@@ -8,7 +8,6 @@ import {
   FolderKanban,
   History,
   Download,
-  Zap,
   Link2,
   Menu,
   X,
@@ -18,12 +17,11 @@ import { SignOutButton } from "@/components/app/sign-out-button";
 import { RunTrimLogo } from "@/components/app/runtrim-logo";
 
 const NAV_ITEMS = [
-  { href: "/app",              label: "Overview",     icon: LayoutGrid   },
-  { href: "/app/connect",      label: "Connect CLI",  icon: Link2        },
-  { href: "/app/projects",     label: "Projects",     icon: FolderKanban },
-  { href: "/app/runs",         label: "Runs",         icon: History      },
-  { href: "/app/early-access", label: "Early Access", icon: Zap          },
-  { href: "/app/install",      label: "Install",      icon: Download     },
+  { href: "/app",          label: "Overview",    icon: LayoutGrid   },
+  { href: "/app/connect",  label: "Connect CLI", icon: Link2        },
+  { href: "/app/projects", label: "Projects",    icon: FolderKanban },
+  { href: "/app/runs",     label: "Runs",        icon: History      },
+  { href: "/app/install",  label: "Install",     icon: Download     },
 ];
 
 const MONO: React.CSSProperties = {
