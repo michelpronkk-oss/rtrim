@@ -73,6 +73,12 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+type DodoCustomerRecord = Record<string, unknown> & {
+  id?: string;
+  customer_id?: string;
+  email?: string;
+};
+
 function pickString(...values: unknown[]): string | null {
   for (const value of values) {
     if (typeof value === "string") {
@@ -85,7 +91,7 @@ function pickString(...values: unknown[]): string | null {
 
 function extractFields(payload: Record<string, unknown>): ExtractedFields {
   const data = asRecord(payload.data);
-  const customer = asRecord(data.customer);
+  const customer = asRecord(data.customer) as DodoCustomerRecord;
   const subscription = asRecord(data.subscription);
   const product = asRecord(data.product);
   const metadata = asRecord(data.metadata);
@@ -103,13 +109,13 @@ function extractFields(payload: Record<string, unknown>): ExtractedFields {
 
   return {
     eventType,
-    customerId: pickString(data.customer_id, customer.id, subscription.customer_id),
+    customerId: pickString(data.customer_id, customer.customer_id, customer.id, subscription.customer_id),
     customerEmail,
     subscriptionId: pickString(data.subscription_id, subscription.id),
     productId: pickString(data.product_id, product.id, subscription.product_id, item0.product_id),
     status: pickString(subscription.status, data.status)?.toLowerCase() ?? null,
-    currentPeriodStart: pickString(subscription.current_period_start),
-    currentPeriodEnd: pickString(subscription.current_period_end),
+    currentPeriodStart: pickString(subscription.current_period_start, data.previous_billing_date),
+    currentPeriodEnd: pickString(subscription.current_period_end, data.next_billing_date),
     trialEnd: pickString(subscription.trial_end),
     metadataUserId: pickString(metadata.user_id, subMetadata.user_id, subMetadata.supabase_user_id),
   };
@@ -291,7 +297,9 @@ export async function POST(request: Request) {
     "method=", method,
     "hasCustomerId=", Boolean(fields.customerId),
     "hasSubscriptionId=", Boolean(fields.subscriptionId),
-    "hasEmail=", Boolean(fields.customerEmail)
+    "hasEmail=", Boolean(fields.customerEmail),
+    "hasPeriodStart=", Boolean(fields.currentPeriodStart),
+    "hasPeriodEnd=", Boolean(fields.currentPeriodEnd || fields.trialEnd)
   );
 
   if (!row) {

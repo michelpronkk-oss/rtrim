@@ -126,26 +126,29 @@ export default async function BillingPage() {
 
   function getPlanCta(targetPlanId: "pro" | "builder" | "team") {
     const currentPlan = plan as "free" | "pro" | "builder" | "team";
-    if (currentPlan === targetPlanId) return { kind: "current" as const, label: "Open dashboard" };
+    if (currentPlan === targetPlanId) {
+      if (canOpenBillingPortal) return { kind: "manage" as const, label: "Manage billing" };
+      return {
+        kind: "contact" as const,
+        label: "Contact support",
+        helper: "This subscription is not linked to a Dodo customer yet.",
+      };
+    }
 
     if (currentPlan === "free") {
       if (targetPlanId === "pro") return { kind: "checkout" as const, label: "Start 3-day Pro trial" };
       if (targetPlanId === "builder") return { kind: "checkout" as const, label: "Get Builder" };
-      if (targetPlanId === "team" && !teamCheckoutEnabled) return { kind: "contact" as const, label: "Contact for Team" };
+      if (targetPlanId === "team") return { kind: "contact" as const, label: "Contact for Team" };
       return { kind: "checkout" as const, label: `Get ${planLabel(targetPlanId)}` };
     }
 
     const canManageBilling = canOpenBillingPortal;
     if (currentPlan === "pro") {
       if (targetPlanId === "builder") {
-        return canManageBilling
-          ? { kind: "manage" as const, label: "Manage billing" }
-          : { kind: "contact" as const, label: "Contact to upgrade" };
+        return { kind: "contact" as const, label: "Contact to upgrade" };
       }
       if (targetPlanId === "team") {
-        return canManageBilling
-          ? { kind: "manage" as const, label: "Manage billing" }
-          : { kind: "contact" as const, label: "Contact for Team" };
+        return { kind: "contact" as const, label: "Contact for Team" };
       }
     }
 
@@ -317,16 +320,6 @@ export default async function BillingPage() {
               <div className="mt-auto px-5 pb-5">
                 {(() => {
                   const cta = getPlanCta(p.id);
-                  if (cta.kind === "current") {
-                    return (
-                      <Link
-                        href="/app"
-                        className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                      >
-                        {cta.label}
-                      </Link>
-                    );
-                  }
                   if (cta.kind === "checkout") {
                     return (
                       <ProCheckoutButton
@@ -350,12 +343,28 @@ export default async function BillingPage() {
                       );
                     }
                     return (
-                      <a
-                        href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
-                        className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                      >
-                        Contact support
-                      </a>
+                      <div className="space-y-1.5">
+                        <a
+                          href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
+                          className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                        >
+                          Contact support
+                        </a>
+                        <p className="text-center text-[11px] text-[#8a8f98]">Billing portal is available after checkout.</p>
+                      </div>
+                    );
+                  }
+                  if (cta.kind === "contact") {
+                    return (
+                      <div className="space-y-1.5">
+                        <a
+                          href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
+                          className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                        >
+                          {cta.label}
+                        </a>
+                        {cta.helper && <p className="text-center text-[11px] text-[#8a8f98]">{cta.helper}</p>}
+                      </div>
                     );
                   }
                   return (
