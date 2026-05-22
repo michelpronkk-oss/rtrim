@@ -77,6 +77,11 @@ import {
   saveGuardState,
   type AutoGuardMode,
 } from "../src/lib/auto-guard.ts";
+import {
+  updateLearning,
+  loadLearning,
+} from "../src/lib/project-learning.ts";
+import { generatePlan } from "../src/lib/run-planner.ts";
 
 const chalk = new Chalk();
 const oraFactory: typeof ora =
@@ -1665,6 +1670,14 @@ program
       console.log(DIM("  Unfinished  ") + DIM("no"));
     }
 
+    // Learning state
+    const learning = loadLearning(cwd);
+    if (learning) {
+      console.log(DIM("  Learning    ") + chalk.white(`${learning.runCount} run${learning.runCount === 1 ? "" : "s"} — updated ${learning.updatedAt.slice(0, 10)}`));
+    } else {
+      console.log(DIM("  Learning    ") + DIM("none (run runtrim finish to build)"));
+    }
+
     console.log("");
 
     // Next action
@@ -1677,6 +1690,126 @@ program
       next = 'runtrim go "<task>"';
     }
     console.log(DIM("  Next        ") + chalk.white(next));
+    console.log("");
+  });
+
+// ── runtrim plan ─────────────────────────────────────────────────────────────
+
+program
+  .command("plan <task>")
+  .description("Generate a contract preview from a task without starting a run")
+  .action(async (task: string) => {
+    const cwd  = process.cwd();
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim Autopilot Plan"));
+    console.log("");
+
+    const allRuns      = loadAllRuns(cwd);
+    const changedFiles = dedupeFiles(await getGitDiff(cwd)).filter((f) => {
+      const n = f.replace(/\\/g, "/").toLowerCase();
+      return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+    });
+
+    const plan = generatePlan(cwd, task, allRuns, config, changedFiles);
+
+    const riskColor = ({
+      low:      chalk.green,
+      medium:   chalk.yellow,
+      high:     chalk.hex("#FF8C00"),
+      critical: chalk.red,
+    } as Record<string, typeof chalk>)[plan.risk] ?? chalk.white;
+
+    // Header
+    console.log(DIM("  Risk          ") + riskColor(plan.risk));
+    console.log(DIM("  Category      ") + chalk.white(plan.category));
+    console.log(DIM("  Mode          ") + chalk.white(plan.guardMode));
+    console.log(
+      DIM("  Contract      ") +
+      (plan.contractRequired ? chalk.yellow("required") : chalk.green("Fast Path allowed"))
+    );
+    console.log("");
+
+    // Objective
+    console.log(GO_ACCENT.bold("Objective"));
+    console.log(chalk.white("  " + plan.objective));
+    console.log("");
+
+    // Recommended scope
+    if (plan.recommendedScope.length > 0) {
+      console.log(GO_ACCENT.bold("Recommended scope"));
+      for (const s of plan.recommendedScope.slice(0, 6)) {
+        console.log(chalk.white("  - " + s));
+      }
+      console.log("");
+    }
+
+    // Forbidden
+    if (plan.forbiddenAreas.length > 0) {
+      console.log(GO_ACCENT.bold("Forbidden"));
+      for (const f of plan.forbiddenAreas.slice(0, 5)) {
+        console.log(DIM("  - ") + chalk.white(f));
+      }
+      console.log("");
+    }
+
+    // Similar previous runs
+    if (plan.similarRuns.length > 0) {
+      console.log(GO_ACCENT.bold("Similar previous runs"));
+      for (const sr of plan.similarRuns) {
+        console.log(chalk.white("  - " + truncate(sr.task, 60)));
+        if (sr.changedFiles.length > 0) {
+          console.log(DIM("    touched: ") + chalk.white(sr.changedFiles.slice(0, 2).join(", ")));
+        }
+        if (sr.proofGaps.length > 0) {
+          console.log(DIM("    gaps:    ") + chalk.yellow(sr.proofGaps[0]!));
+        }
+      }
+      console.log("");
+    }
+
+    // Learned context
+    if (plan.learnedContext.length > 0) {
+      console.log(GO_ACCENT.bold("Learned context"));
+      for (const c of plan.learnedContext) {
+        console.log(DIM("  - ") + chalk.white(c));
+      }
+      console.log("");
+    }
+
+    // Proof required
+    if (plan.proofRequired.length > 0) {
+      console.log(GO_ACCENT.bold("Proof required"));
+      for (const p of plan.proofRequired.slice(0, 5)) {
+        console.log(chalk.white("  - " + p));
+      }
+      console.log("");
+    }
+
+    // Stop rules (top 3)
+    if (plan.stopRules.length > 0) {
+      console.log(GO_ACCENT.bold("Stop rules"));
+      for (const r of plan.stopRules.slice(0, 3)) {
+        console.log(DIM("  - ") + chalk.white(r));
+      }
+      console.log("");
+    }
+
+    // Reasoning
+    if (plan.reasoning) {
+      console.log(DIM("  Reasoning     ") + chalk.white(plan.reasoning));
+      console.log("");
+    }
+
+    // Next action
+    console.log(GO_ACCENT.bold("Next"));
+    if (plan.contractRequired) {
+      console.log(chalk.white(`  runtrim go "${task}"`));
+    } else {
+      console.log(chalk.white("  Fast Path allowed. Make your change, then run:"));
+      console.log(chalk.white("  runtrim finish"));
+    }
     console.log("");
   });
 
@@ -4043,6 +4176,7 @@ program
       const fastReport = saveFastRunRecord(cwd, agentChanged, risk);
 
       saveGuardState(cwd, { lastFinishAt: new Date().toISOString() });
+      try { updateLearning(cwd, loadAllRuns(cwd)); } catch { /* non-critical */ }
 
       // Write resting state so agents see clean state
       writeRestingContract(cwd);
@@ -4222,6 +4356,9 @@ program
 
     // Track finish timestamp for auto-guard Finish Gate
     saveGuardState(cwd, { lastFinishAt: new Date().toISOString() });
+
+    // Update project learning from all completed runs (non-blocking)
+    try { updateLearning(cwd, freshRuns); } catch { /* learning update is non-critical */ }
 
     // ── Restore resting-state protocol ───────────────────────────────────
     // Archive session files before overwriting them
