@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("runtrim_profiles")
-    .select("id, plan, plan_status, bridge_runs_used, bridge_runs_period")
+    .select("id, plan, plan_status, bridge_runs_used, bridge_runs_period, current_period_end")
     .eq("cli_token_hash", tokenHash)
     .maybeSingle();
 
@@ -51,8 +51,9 @@ export async function POST(request: Request) {
 
   const rawPlan    = (profile.plan as string) || "free";
   const planStatus = (profile.plan_status as string | null) ?? null;
-  // Only honor paid plan entitlements while subscription is active or trialing
-  const plan  = effectivePlanId(rawPlan, planStatus);
+  const periodEnd  = (profile.current_period_end as string | null) ?? null;
+  // Canceled-but-in-period users keep their entitlements until period_end
+  const plan  = effectivePlanId(rawPlan, planStatus, periodEnd);
   const ents  = getEntitlements(plan);
   const limit = ents.bridgeRunsPerMonth;
 

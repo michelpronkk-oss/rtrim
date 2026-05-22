@@ -34,13 +34,14 @@ export default async function AppLayout({
     if (supabase) {
       const { data } = await supabase
         .from("runtrim_profiles")
-        .select("plan, plan_status")
+        .select("plan, plan_status, current_period_end")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
         const rawPlan   = (data.plan as string) || "free";
         const rawStatus = (data.plan_status as string | null) ?? null;
-        plan       = effectivePlanId(rawPlan, rawStatus);
+        const rawEnd    = (data.current_period_end as string | null) ?? null;
+        plan       = effectivePlanId(rawPlan, rawStatus, rawEnd);
         planStatus = rawStatus ?? undefined;
       }
     }

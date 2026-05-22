@@ -196,10 +196,13 @@ export default async function OverviewPage() {
     : n >= 0.01 ? `$${n.toFixed(2)}`
     : "$0.00";
 
-  const plan        = data?.plan ?? "free";
-  const planStatus  = data?.planStatus ?? null;
-  const periodEnd   = data?.periodEnd ?? null;
-  const isTrialing  = plan !== "free" && planStatus === "trialing";
+  const plan            = data?.plan ?? "free";
+  const planStatus      = data?.planStatus ?? null;
+  const periodEnd       = data?.periodEnd ?? null;
+  const isTrialing      = plan !== "free" && planStatus === "trialing";
+  const isCanceledInPeriod = plan !== "free" &&
+    (planStatus === "canceled" || planStatus === "cancelled");
+  const isPastDue       = planStatus === "past_due";
 
   // Onboarding state
   const hasConnectedCli  = data?.hasConnectedCli  ?? false;
@@ -255,6 +258,41 @@ export default async function OverviewPage() {
         plan={plan}
         planStatus={planStatus}
       />
+
+      {/* Subscription warning banners */}
+      {isCanceledInPeriod && (
+        <div className="rounded-xl border border-[#F0BF72]/22 bg-[#F0BF72]/5 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#F0BF72]/70">Subscription canceled</p>
+              <p className="mt-1 text-[14px] font-semibold text-[#f4f5f7]">
+                {periodEnd
+                  ? `Access continues until ${new Date(periodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`
+                  : "Your plan has been canceled."}
+              </p>
+              <p className="mt-0.5 text-[12px] text-[#8a8f98]">Resubscribe to keep your features after this period.</p>
+            </div>
+            <Link href="/app/billing" className="shrink-0 rounded-lg border border-[#F0BF72]/30 bg-[#F0BF72]/10 px-3.5 py-2 text-[12px] font-medium text-[#F0BF72] transition-colors hover:bg-[#F0BF72]/18">
+              Resubscribe
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {isPastDue && (
+        <div className="rounded-xl border border-[#FF7B5C]/22 bg-[#FF7B5C]/5 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#FF7B5C]/70">Payment failed</p>
+              <p className="mt-1 text-[14px] font-semibold text-[#f4f5f7]">Your last payment did not go through.</p>
+              <p className="mt-0.5 text-[12px] text-[#8a8f98]">Update your payment method to avoid losing access.</p>
+            </div>
+            <a href="mailto:hello@runtrim.com?subject=RunTrim payment issue" className="shrink-0 rounded-lg border border-[#FF7B5C]/30 bg-[#FF7B5C]/10 px-3.5 py-2 text-[12px] font-medium text-[#FF7B5C] transition-colors hover:bg-[#FF7B5C]/18">
+              Contact support
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Plan / usage card */}
       {plan === "free" ? (

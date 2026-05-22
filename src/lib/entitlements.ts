@@ -91,22 +91,39 @@ export function isUnlimitedBridge(plan: string): boolean {
 }
 
 /**
- * Returns true if the subscription is in a state that grants paid-plan access.
- * Only "active" and "trialing" unlock Pro/Builder/Team entitlements.
- * Canceled, past_due, expired, unpaid, etc. fall back to free.
+ * Returns true if the subscription currently grants paid-plan access.
+ *
+ * - active / trialing  → access granted
+ * - canceled           → access granted ONLY if still within the paid period
+ *                        (graceful degradation: user keeps features until period_end)
+ * - past_due           → access revoked immediately (payment required)
+ * - expired / unpaid   → access revoked
  */
-export function isSubscriptionActive(plan: string, planStatus: string | null): boolean {
+export function isSubscriptionActive(
+  plan: string,
+  planStatus: string | null,
+  periodEnd: string | null = null,
+): boolean {
   if (plan === "free") return true;
   const status = (planStatus ?? "").toLowerCase();
-  return status === "active" || status === "trialing";
+  if (status === "active" || status === "trialing") return true;
+  // Canceled but still inside the billing period → keep access
+  if ((status === "canceled" || status === "cancelled") && periodEnd) {
+    return new Date(periodEnd) > new Date();
+  }
+  return false;
 }
 
 /**
- * Returns the plan ID that should actually be used for entitlement checks.
- * If the subscription is not active/trialing, the user is treated as free.
+ * Returns the plan ID used for entitlement checks.
+ * Accepts periodEnd so canceled-but-in-period users keep their features.
  */
-export function effectivePlanId(plan: string, planStatus: string | null): PlanId {
-  if (isSubscriptionActive(plan, planStatus)) {
+export function effectivePlanId(
+  plan: string,
+  planStatus: string | null,
+  periodEnd: string | null = null,
+): PlanId {
+  if (isSubscriptionActive(plan, planStatus, periodEnd)) {
     return (plan in PLAN_ENTITLEMENTS ? plan : "free") as PlanId;
   }
   return "free";

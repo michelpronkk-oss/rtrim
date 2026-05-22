@@ -94,10 +94,14 @@ export default async function BillingPage() {
     }
   }
 
-  const plan       = effectivePlanId(rawPlan, planStatus);
-  const isFree     = plan === "free";
-  const isTrialing = plan !== "free" && planStatus === "trialing";
-  const trialEnd   = isTrialing && periodEnd ? formatDate(periodEnd) : null;
+  const plan        = effectivePlanId(rawPlan, planStatus, periodEnd);
+  const isFree      = plan === "free";
+  const isTrialing  = plan !== "free" && planStatus === "trialing";
+  const isCanceled  = (planStatus === "canceled" || planStatus === "cancelled");
+  const isPastDue   = planStatus === "past_due";
+  const canceledInPeriod = isCanceled && plan !== "free"; // access still active
+  const trialEnd    = isTrialing && periodEnd ? formatDate(periodEnd) : null;
+  const periodEndFmt = periodEnd ? formatDate(periodEnd) : null;
 
   const MONO: React.CSSProperties = { fontFamily: "var(--font-geist-mono), ui-monospace, monospace" };
 
@@ -121,8 +125,37 @@ export default async function BillingPage() {
         </p>
       </div>
 
-      {/* Active plan banner (non-free) */}
-      {!isFree && (
+      {/* Status banners */}
+      {canceledInPeriod && (
+        <div className="rounded-xl px-5 py-4" style={{ border: "1px solid rgba(240,191,114,0.25)", background: "rgba(240,191,114,0.05)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p style={{ ...MONO, fontSize: 10, color: "#F0BF72", textTransform: "uppercase", letterSpacing: "0.12em" }}>Subscription canceled</p>
+              <p className="mt-1 text-[14px] font-semibold text-[#f4f5f7]">
+                {periodEndFmt ? `Access continues until ${periodEndFmt}.` : "Your plan has been canceled."}
+              </p>
+              <p className="mt-0.5 text-[12px] text-[#8a8f98]">Resubscribe below to keep your features.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isPastDue && (
+        <div className="rounded-xl px-5 py-4" style={{ border: "1px solid rgba(255,123,92,0.25)", background: "rgba(255,123,92,0.05)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p style={{ ...MONO, fontSize: 10, color: "#FF7B5C", textTransform: "uppercase", letterSpacing: "0.12em" }}>Payment failed</p>
+              <p className="mt-1 text-[14px] font-semibold text-[#f4f5f7]">Your last payment did not go through.</p>
+              <p className="mt-0.5 text-[12px] text-[#8a8f98]">Update your payment method to keep access.</p>
+            </div>
+            <a href="mailto:hello@runtrim.com?subject=RunTrim payment issue" className="shrink-0 rounded-lg border border-white/10 px-4 py-2 text-[12px] font-medium text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7]">
+              Contact support
+            </a>
+          </div>
+        </div>
+      )}
+
+      {!isFree && !canceledInPeriod && !isPastDue && (
         <div
           className="rounded-xl px-5 py-4"
           style={{
@@ -137,15 +170,12 @@ export default async function BillingPage() {
               </p>
               <p className="mt-1 text-[14px] font-semibold text-[#f4f5f7]">
                 {isTrialing
-                  ? trialEnd ? `Trial ends ${trialEnd}. Full Pro access until then.` : "3-day trial. Full Pro access."
+                  ? trialEnd ? `Trial ends ${trialEnd}. Full ${plan.charAt(0).toUpperCase() + plan.slice(1)} access until then.` : "Trial active. Full access."
                   : "Your subscription is active."}
               </p>
             </div>
             {isTrialing && (
-              <Link
-                href="/plans"
-                className="shrink-0 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-4 py-2 text-[12px] font-medium text-[#a78bfa] transition-colors hover:bg-[#7C6DFA]/18"
-              >
+              <Link href="/plans" className="shrink-0 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-4 py-2 text-[12px] font-medium text-[#a78bfa] transition-colors hover:bg-[#7C6DFA]/18">
                 View plan details
               </Link>
             )}
