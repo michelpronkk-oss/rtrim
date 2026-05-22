@@ -97,7 +97,7 @@ export default async function ProjectAgentPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto w-full max-w-[1320px]">
       <ProjectAgentChat canUseAgent={canUseAgent} summary={summary} />
     </div>
   );

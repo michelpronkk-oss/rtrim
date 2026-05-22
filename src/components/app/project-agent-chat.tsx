@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
+import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
 
 type ProjectAgentSummary = {
   recentRunsCount: number;
@@ -56,17 +56,32 @@ function initialAssistantMessage(summary: ProjectAgentSummary): Message {
     id: "intro",
     role: "assistant",
     text: [
-      "Project Agent is grounded in your synced RunTrim context.",
+      "Ask about your latest run, proof gaps, risk areas, or next safe action.",
       "",
-      "Current context:",
+      "Synced context snapshot:",
       `- Recent runs: ${summary.recentRunsCount}`,
       `- Latest run: ${latestTask}`,
       `- Latest risk: ${latestRisk}`,
       `- Latest proof gaps: ${summary.latestProofGaps}`,
-      "",
-      "Ask for next safe action, run explanation, proof gaps, contract suggestions, or a Claude/Codex handoff.",
     ].join("\n"),
   };
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/7 bg-[#0d1016] px-4 py-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#596070]">{label}</p>
+      <p className="mt-1 truncate text-[14px] font-semibold text-[#f4f5f7]">{value}</p>
+    </div>
+  );
+}
+
+function StatusPill({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center rounded-md border border-white/12 bg-white/[0.03] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[#8f97a7]">
+      {label}
+    </span>
+  );
 }
 
 export function ProjectAgentChat({
@@ -81,13 +96,15 @@ export function ProjectAgentChat({
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>(() => [initialAssistantMessage(summary)]);
 
+  const hasRuns = summary.recentRunsCount > 0;
+
   const stats = useMemo(
     () => [
       { label: "Recent runs", value: String(summary.recentRunsCount) },
-      { label: "Latest run", value: summary.latestRunTask ?? "None" },
+      { label: "Latest run", value: summary.latestRunTask ?? "No synced run yet" },
       { label: "Proof gaps", value: String(summary.latestProofGaps) },
-      { label: "Estimated tokens saved", value: formatNumber(summary.estimatedTokensSaved) },
-      { label: "Estimated cost saved", value: formatCost(summary.estimatedCostSaved) },
+      { label: "Tokens saved", value: formatNumber(summary.estimatedTokensSaved) },
+      { label: "Cost saved", value: formatCost(summary.estimatedCostSaved) },
     ],
     [summary],
   );
@@ -148,106 +165,225 @@ export function ProjectAgentChat({
     void sendMessage(input);
   }
 
+  function onInputKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (!loading && input.trim()) {
+        void sendMessage(input);
+      }
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-white/8 bg-[#0c0f13] p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Project Agent</p>
-        <h1 className="mt-1 text-[1.45rem] font-bold tracking-[-0.02em] text-[#f4f5f7] sm:text-[1.6rem]">Project Agent</h1>
-        <p className="mt-2 max-w-[740px] text-[13px] leading-[1.7] text-[#8a8f98]">
-          Ask RunTrim about your runs, risks, proof gaps, and next safe action.
+    <div className="space-y-6 pb-2">
+      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f15] px-5 py-5 sm:px-6 sm:py-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-20 h-56 w-56 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(124,109,250,0.22) 0%, rgba(124,109,250,0) 70%)" }}
+        />
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a6070]">Project Agent</p>
+        <h1 className="mt-1 text-[1.55rem] font-bold tracking-[-0.03em] text-[#f5f7fa] sm:text-[1.8rem]">
+          Project Agent
+        </h1>
+        <p className="mt-2 max-w-[820px] text-[13px] leading-[1.8] text-[#8b93a3]">
+          Your project-aware RunTrim agent for runs, risks, proof gaps, contracts, and handoffs.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <StatusPill label="Synced context" />
+          <StatusPill label="Read-only" />
+          <StatusPill label="No code execution" />
+        </div>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-white/6 bg-[#0c0e11] px-4 py-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">{stat.label}</p>
-            <p className="mt-1 truncate text-[13px] font-semibold text-[#f4f5f7]">{stat.value}</p>
-          </div>
+          <MetricCard key={stat.label} label={stat.label} value={stat.value} />
         ))}
       </section>
 
       {!canUseAgent && (
-        <section className="rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/6 px-5 py-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#a78bfa]/80">Pro required</p>
-          <p className="mt-1 text-[13px] text-[#d8d0ff]">
-            Project Agent is available on paid plans. Start a Pro trial to ask about run history, proof gaps, and safe contracts.
+        <section className="rounded-xl border border-[#7C6DFA]/26 bg-[#7C6DFA]/7 px-5 py-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#b8abff]">Pro required</p>
+          <p className="mt-1 text-[13px] leading-[1.7] text-[#ddd6ff]">
+            Project Agent is available on paid plans. Start a Pro trial to unlock project-aware guidance and handoff suggestions.
           </p>
           <Link
             href="/app/trial"
-            className="mt-3 inline-flex rounded-lg border border-[#7C6DFA]/35 bg-[#7C6DFA]/14 px-3.5 py-2 text-[12px] font-medium text-[#d8d0ff] transition-colors hover:bg-[#7C6DFA]/20"
+            className="mt-3 inline-flex rounded-lg border border-[#7C6DFA]/35 bg-[#7C6DFA]/14 px-3.5 py-2 text-[12px] font-medium text-[#e3dcff] transition-colors hover:bg-[#7C6DFA]/22"
           >
             Start 3-day Pro trial
           </Link>
         </section>
       )}
 
-      <section className="rounded-xl border border-white/8 bg-[#0c0f13] p-4 sm:p-5">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">Suggested prompts</p>
-        <div className="flex flex-wrap gap-2">
-          {SUGGESTED_PROMPTS.map((prompt) => (
-            <button
-              key={prompt}
-              type="button"
-              disabled={!canUseAgent || loading}
-              onClick={() => {
-                setInput(prompt);
-                if (canUseAgent) {
-                  void sendMessage(prompt);
-                }
-              }}
-              className="rounded-lg border border-white/10 bg-[#11151b] px-3 py-1.5 text-left text-[12px] text-[#c5cad3] transition-colors hover:border-white/20 hover:bg-[#141923] disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-      </section>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_350px]">
+        <div className="flex min-h-[560px] flex-col rounded-2xl border border-white/10 bg-[#0b0f15]">
+          <div className="border-b border-white/8 px-4 py-3 sm:px-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a6070]">Suggested prompts</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SUGGESTED_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  disabled={!canUseAgent || loading}
+                  onClick={() => {
+                    setInput(prompt);
+                    if (canUseAgent) {
+                      void sendMessage(prompt);
+                    }
+                  }}
+                  className="rounded-lg border border-white/12 bg-[#121721] px-3 py-1.5 text-[12px] text-[#c7cdd8] transition-colors hover:border-white/20 hover:bg-[#171d28] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <section className="rounded-xl border border-white/8 bg-[#0c0f13] p-4 sm:p-5">
-        <div className="max-h-[52vh] space-y-3 overflow-y-auto pr-1">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={message.role === "assistant" ? "rounded-lg border border-white/8 bg-[#10141a] px-3 py-3" : "rounded-lg border border-[#7C6DFA]/25 bg-[#7C6DFA]/8 px-3 py-3"}
-            >
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">
-                {message.role === "assistant" ? "Project Agent" : "You"}
-              </p>
-              <p className="whitespace-pre-wrap break-words text-[12.5px] leading-[1.7] text-[#d3d8e2]">{message.text}</p>
-              {message.actions && message.actions.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {message.actions.map((action, index) => (
-                    <p key={`${message.id}-action-${index}`} className="font-mono text-[11px] text-[#9fa6b4]">
-                      {action}
-                    </p>
-                  ))}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
+              {!hasRuns && (
+                <div className="rounded-xl border border-white/10 bg-[#10151e] px-4 py-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#6a7283]">No synced runs yet</p>
+                  <p className="mt-1 text-[13px] leading-[1.7] text-[#a5adbc]">
+                    Connect the CLI and run your first guarded task to unlock project memory.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/app/connect"
+                      className="rounded-md border border-white/14 bg-white/[0.02] px-3 py-1.5 text-[12px] text-[#d5dbe7] transition-colors hover:border-white/22"
+                    >
+                      Connect CLI
+                    </Link>
+                    <code className="font-mono text-[11px] text-[#8a92a3]">runtrim go "your task"</code>
+                  </div>
+                </div>
+              )}
+
+              {messages.map((message) => {
+                const isUser = message.role === "user";
+                return (
+                  <div key={message.id} className={isUser ? "flex justify-end" : "flex justify-start"}>
+                    <div
+                      className={
+                        isUser
+                          ? "max-w-[92%] rounded-xl border border-[#7C6DFA]/35 bg-[#7C6DFA]/12 px-4 py-3 sm:max-w-[78%]"
+                          : "max-w-[92%] rounded-xl border border-white/10 bg-[#111722] px-4 py-3 sm:max-w-[84%]"
+                      }
+                    >
+                      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#6b7283]">
+                        {isUser ? "You" : "Project Agent"}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[12.8px] leading-[1.75] text-[#d5dbe6]">
+                        {message.text}
+                      </p>
+                      {message.actions && message.actions.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          {message.actions.map((action, index) => (
+                            <p
+                              key={`${message.id}-action-${index}`}
+                              className="rounded border border-white/10 bg-[#0e131c] px-2 py-1 font-mono text-[11px] text-[#a1a9b9]"
+                            >
+                              {action}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="rounded-xl border border-white/10 bg-[#111722] px-4 py-3">
+                    <p className="font-mono text-[11px] text-[#9199aa]">Project Agent is thinking...</p>
+                  </div>
                 </div>
               )}
             </div>
-          ))}
+
+            <div className="border-t border-white/8 px-4 py-3 sm:px-5">
+              {error && <p className="mb-2 text-[12px] text-[#FFAC98]">{error}</p>}
+              <form onSubmit={onSubmit}>
+                <div className="flex gap-2">
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={onInputKeyDown}
+                    rows={2}
+                    placeholder={
+                      canUseAgent
+                        ? "Ask about your runs, risks, proof gaps, or next safe action..."
+                        : "Upgrade to use Project Agent"
+                    }
+                    disabled={!canUseAgent || loading}
+                    className="min-h-[54px] flex-1 resize-none rounded-xl border border-white/12 bg-[#0f141d] px-3 py-2 text-[13px] text-[#f4f5f7] outline-none transition-colors placeholder:text-[#616979] focus:border-[#7C6DFA]/45 disabled:cursor-not-allowed disabled:opacity-55"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!canUseAgent || loading || !input.trim()}
+                    className="h-[54px] rounded-xl bg-[#7C6DFA] px-4 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    {loading ? "Thinking" : "Send"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
 
-        {error && (
-          <p className="mt-3 text-[12px] text-[#FFAC98]">{error}</p>
-        )}
+        <aside className="space-y-4">
+          <section className="rounded-xl border border-white/10 bg-[#0c1016] px-4 py-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a6070]">Project state</p>
+            <div className="mt-3 space-y-2.5 text-[12px]">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[#8c94a4]">Recent runs</span>
+                <span className="font-mono text-[#dde2ea]">{summary.recentRunsCount}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[#8c94a4]">Latest risk</span>
+                <span className="font-mono text-[#dde2ea]">{summary.latestRunRisk ?? "not captured"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[#8c94a4]">Latest proof gaps</span>
+                <span className="font-mono text-[#dde2ea]">{summary.latestProofGaps}</span>
+              </div>
+            </div>
+          </section>
 
-        <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder={canUseAgent ? "Ask about your latest run, risks, proof, or next safe action" : "Upgrade to use Project Agent"}
-            disabled={!canUseAgent || loading}
-            className="h-10 flex-1 rounded-lg border border-white/10 bg-[#10141a] px-3 text-[13px] text-[#f4f5f7] outline-none transition-colors placeholder:text-[#5a5f68] focus:border-[#7C6DFA]/45 disabled:cursor-not-allowed disabled:opacity-55"
-          />
-          <button
-            type="submit"
-            disabled={!canUseAgent || loading || !input.trim()}
-            className="h-10 rounded-lg bg-[#7C6DFA] px-4 text-[12px] font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-55"
-          >
-            {loading ? "Thinking..." : "Send"}
-          </button>
-        </form>
+          <section className="rounded-xl border border-white/10 bg-[#0c1016] px-4 py-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a6070]">Quick actions</p>
+            <div className="mt-3 space-y-2">
+              {SUGGESTED_PROMPTS.slice(1).map((prompt) => (
+                <button
+                  key={`quick-${prompt}`}
+                  type="button"
+                  disabled={!canUseAgent || loading}
+                  onClick={() => {
+                    setInput(prompt);
+                    if (canUseAgent) {
+                      void sendMessage(prompt);
+                    }
+                  }}
+                  className="w-full rounded-lg border border-white/12 bg-[#111722] px-3 py-2 text-left text-[12px] text-[#c8cfd9] transition-colors hover:border-white/20 hover:bg-[#171d28] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-white/10 bg-[#0c1016] px-4 py-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a6070]">Guardrails</p>
+            <div className="mt-3 space-y-2 text-[12px] text-[#b7becc]">
+              <p>Read-only project guidance</p>
+              <p>No execution or deployment actions</p>
+              <p>Uses synced project context and run history</p>
+            </div>
+          </section>
+        </aside>
       </section>
     </div>
   );
