@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function AppEarlyAccessRedirectPage() {
+export default function EarlyAccessRedirectPage() {
   redirect("/plans");
 }

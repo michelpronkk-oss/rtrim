@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId } from "@/lib/entitlements";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
+import { ManageBillingButton } from "./_components/manage-billing-button";
 
 export const metadata: Metadata = {
   title: "Billing | RunTrim Dashboard",
@@ -106,8 +107,13 @@ export default async function BillingPage() {
   const canceledInPeriod = isCanceled && plan !== "free"; // access still active
   const trialEnd    = isTrialing && periodEnd ? formatDate(periodEnd) : null;
   const periodEndFmt = periodEnd ? formatDate(periodEnd) : null;
-  const hasBillingIdentity = Boolean(paymentSubscriptionId || paymentCustomerId);
-  const portalUrl = process.env.DODO_CUSTOMER_PORTAL_URL?.trim() || null;
+  const hasPaymentCustomerId = Boolean(paymentCustomerId);
+  const isPortalEligibleStatus =
+    planStatus === "active" ||
+    planStatus === "trialing" ||
+    planStatus === "past_due" ||
+    canceledInPeriod;
+  const canOpenBillingPortal = hasPaymentCustomerId && isPortalEligibleStatus;
   const teamCheckoutEnabled = Boolean(
     process.env.DODO_TEAM_CHECKOUT_URL?.trim() || process.env.DODO_TEAM_PRODUCT_ID?.trim()
   );
@@ -129,16 +135,16 @@ export default async function BillingPage() {
       return { kind: "checkout" as const, label: `Get ${planLabel(targetPlanId)}` };
     }
 
-    const canManageBilling = Boolean(portalUrl && hasBillingIdentity);
+    const canManageBilling = canOpenBillingPortal;
     if (currentPlan === "pro") {
       if (targetPlanId === "builder") {
         return canManageBilling
-          ? { kind: "manage" as const, label: "Manage billing to upgrade" }
+          ? { kind: "manage" as const, label: "Manage billing" }
           : { kind: "contact" as const, label: "Contact to upgrade" };
       }
       if (targetPlanId === "team") {
         return canManageBilling
-          ? { kind: "manage" as const, label: "Manage billing to upgrade" }
+          ? { kind: "manage" as const, label: "Manage billing" }
           : { kind: "contact" as const, label: "Contact for Team" };
       }
     }
@@ -148,7 +154,7 @@ export default async function BillingPage() {
       if (targetPlanId === "team") {
         if (!teamCheckoutEnabled) return { kind: "contact" as const, label: "Contact for Team" };
         return canManageBilling
-          ? { kind: "manage" as const, label: "Manage billing to upgrade" }
+          ? { kind: "manage" as const, label: "Manage billing" }
           : { kind: "contact" as const, label: "Contact for Team" };
       }
     }
@@ -336,14 +342,11 @@ export default async function BillingPage() {
                     );
                   }
                   if (cta.kind === "manage") {
-                    if (portalUrl) {
+                    if (canOpenBillingPortal) {
                       return (
-                        <a
-                          href={portalUrl}
+                        <ManageBillingButton
                           className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                        >
-                          {cta.label}
-                        </a>
+                        />
                       );
                     }
                     return (
