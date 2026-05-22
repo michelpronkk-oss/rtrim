@@ -5,7 +5,6 @@ import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId } from "@/lib/entitlements";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
-import { SmartCta } from "@/components/app/smart-cta";
 
 export const metadata: Metadata = {
   title: "Billing | RunTrim Dashboard",
@@ -241,13 +240,14 @@ export default async function BillingPage() {
                     />
                   )
                 ) : (
-                  <SmartCta
-                    label={p.id === "builder" ? "Get Builder" : "Get Team"}
-                    loginRedirect
+                  // Builder and Team are reviewed access — not self-serve checkout.
+                  // Direct users to contact for access.
+                  <a
+                    href={`mailto:hello@runtrim.com?subject=RunTrim ${p.name} access request&body=Hi, I'd like to get access to RunTrim ${p.name}. My account email is ${encodeURIComponent(user.email ?? "")}.`}
                     className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                    openAppLabel="Open dashboard"
-                    openAppClassName="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                  />
+                  >
+                    Request {p.name} access
+                  </a>
                 )}
               </div>
             </div>

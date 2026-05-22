@@ -21,22 +21,23 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
 
-  const apiKey     = process.env.DODO_API_KEY;
-  const productId  = process.env.DODO_PRO_PRODUCT_ID;
-  const siteUrl    = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com").replace(/\/$/, "");
+  const apiKey    = process.env.DODO_API_KEY;
+  const productId = process.env.DODO_PRO_PRODUCT_ID;
+  const siteUrl   = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com").replace(/\/$/, "");
+  // Allow overriding the Dodo base URL via env var — useful if the endpoint changes
+  const apiBase   = (process.env.DODO_API_BASE ?? "https://api.dodopayments.com").replace(/\/$/, "");
 
   if (!apiKey || !productId) {
-    console.error("[/api/billing/checkout] Missing DODO_API_KEY or DODO_PRO_PRODUCT_ID");
+    console.error("[/api/billing/checkout] Missing env vars. Set DODO_API_KEY and DODO_PRO_PRODUCT_ID in Vercel.");
     return NextResponse.json(
-      { ok: false, error: "Billing is not configured. Contact support." },
+      { ok: false, error: "Billing is not configured — missing API key or product ID. Contact support." },
       { status: 503 }
     );
   }
 
-  const successUrl = `${siteUrl}/app?checkout=success`;
+  const successUrl  = `${siteUrl}/app?checkout=success`;
+  const endpointUrl = `${apiBase}/subscriptions`;
 
-  // Billing address is intentionally omitted — Dodo collects it at checkout.
-  // Sending empty strings causes a 422 validation error from the Dodo API.
   const requestBody = {
     customer: {
       email: user.email ?? "",
@@ -48,14 +49,16 @@ export async function POST() {
     return_url: successUrl,
     payment_link: true,
     metadata: {
-      user_id:           user.id,
-      supabase_user_id:  user.id,
+      user_id:          user.id,
+      supabase_user_id: user.id,
     },
   };
 
+  console.info("[/api/billing/checkout] Calling Dodo:", endpointUrl, "product:", productId);
+
   let dodoRes: Response;
   try {
-    dodoRes = await fetch("https://api.dodopayments.com/subscriptions", {
+    dodoRes = await fetch(endpointUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -64,9 +67,10 @@ export async function POST() {
       body: JSON.stringify(requestBody),
     });
   } catch (err) {
-    console.error("[/api/billing/checkout] Dodo API fetch failed:", err);
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[/api/billing/checkout] Fetch exception hitting", endpointUrl, "—", detail);
     return NextResponse.json(
-      { ok: false, error: "Could not reach payment provider. Check your connection and try again." },
+      { ok: false, error: `Payment provider unreachable (${detail}). Check DODO_API_BASE env var.` },
       { status: 502 }
     );
   }
