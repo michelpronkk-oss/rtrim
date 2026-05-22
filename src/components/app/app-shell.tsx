@@ -9,6 +9,7 @@ import {
   History,
   CreditCard,
   Link2,
+  MessagesSquare,
   Menu,
   X,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/app/connect",   label: "Connect CLI", icon: Link2        },
   { href: "/app/projects",  label: "Projects",    icon: FolderKanban },
   { href: "/app/runs",      label: "Runs",        icon: History      },
+  { href: "/app/project-agent", label: "Project Agent", icon: MessagesSquare },
   { href: "/app/billing",   label: "Billing",     icon: CreditCard   },
 ];
 
