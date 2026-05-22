@@ -8,6 +8,12 @@ interface ProCheckoutButtonProps {
   label?: string;
   /** Dodo plan to start checkout for. Defaults to "pro". */
   planId?: "pro" | "builder" | "team";
+  /**
+   * Skip auth/plan check and always show the checkout button.
+   * Use on the billing page where we already know the user is logged in
+   * and want to allow upgrading to a different plan.
+   */
+  alwaysCheckout?: boolean;
 }
 
 type AuthPlan =
@@ -28,13 +34,15 @@ export function ProCheckoutButton({
   className,
   label = "Start 3-day Pro trial",
   planId = "pro",
+  alwaysCheckout = false,
 }: ProCheckoutButtonProps) {
-  const [authPlan,      setAuthPlan]      = useState<AuthPlan>("checking");
+  const [authPlan,      setAuthPlan]      = useState<AuthPlan>(alwaysCheckout ? "free" : "checking");
   const [checkoutState, setCheckoutState] = useState<"idle" | "loading" | "error">("idle");
   const [errMsg,        setErrMsg]        = useState("");
 
-  // Resolve auth + plan once on mount
+  // Resolve auth + plan once on mount (skipped when alwaysCheckout=true)
   useEffect(() => {
+    if (alwaysCheckout) return;
     fetch("/api/billing/plan")
       .then((r) => r.json())
       .then((d: { loggedIn: boolean; plan: string; planStatus: string | null }) => {
@@ -45,7 +53,7 @@ export function ProCheckoutButton({
         setAuthPlan(hasPro ? "pro" : "free");
       })
       .catch(() => setAuthPlan("logged-out")); // fail-safe
-  }, []);
+  }, [alwaysCheckout]);
 
   // ── Skeleton while resolving ───────────────────────────────────────────────
   if (authPlan === "checking") {
