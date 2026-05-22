@@ -34,6 +34,8 @@ export const ConfigSchema = z.object({
       promptedAt: z.string().optional(),
     })
     .default({ enabled: false }),
+  /** Auto-guard mode: smart | strict | fast | off. Default: smart. */
+  autoGuardMode: z.enum(["smart", "strict", "fast", "off"]).default("smart"),
 });
 
 export type RunTrimConfig = z.infer<typeof ConfigSchema>;
@@ -60,6 +62,7 @@ export const DEFAULT_CONFIG: RunTrimConfig = {
   telemetry: {
     enabled: false,
   },
+  autoGuardMode: "smart" as const,
 };
 
 export function getConfigDir(cwd = process.cwd()): string {

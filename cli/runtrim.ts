@@ -68,6 +68,15 @@ import {
   refreshAdapterState,
   type AdapterId,
 } from "../src/lib/adapters.ts";
+import {
+  classifyFileRisk,
+  isSensitivePath,
+  saveFastRunRecord,
+  getAutoGuardAdapterBlock,
+  isContractActive,
+  saveGuardState,
+  type AutoGuardMode,
+} from "../src/lib/auto-guard.ts";
 
 const chalk = new Chalk();
 const oraFactory: typeof ora =
@@ -1501,6 +1510,173 @@ adaptersCommand
       refreshAdapterState(cwd);
       console.log(DIM("  State updated in .runtrim/adapters.json"));
     }
+    console.log("");
+  });
+
+// ── runtrim auto ─────────────────────────────────────────────────────────────
+
+const autoCommand = program
+  .command("auto")
+  .description("Configure Auto-guard mode (smart | strict | fast | off)");
+
+autoCommand.action(() => { autoCommand.help(); });
+
+function setAutoGuardMode(mode: AutoGuardMode): void {
+  const cwd = process.cwd();
+  if (!configExists(cwd)) {
+    console.log(chalk.yellow("  RunTrim not initialized. Run: runtrim init"));
+    console.log("");
+    return;
+  }
+  const config = loadConfig(cwd);
+  (config as Record<string, unknown>).autoGuardMode = mode;
+  saveConfig(config, cwd);
+
+  // Write mode-specific auto-guard text to .runtrim/bridge/agent-instructions.md
+  // so agents always see the current guard rule when they read that file.
+  const guardText = getAutoGuardAdapterBlock(mode);
+  const bridgeDir = path.join(getConfigDir(cwd), "bridge");
+  if (!fs.existsSync(bridgeDir)) fs.mkdirSync(bridgeDir, { recursive: true });
+  const guardFilePath = path.join(bridgeDir, "auto-guard.md");
+  fs.writeFileSync(guardFilePath, guardText, "utf-8");
+
+  console.log("");
+  console.log(GO_ACCENT.bold("RunTrim auto"));
+  console.log("");
+  console.log(DIM("  Mode set to  ") + chalk.white(mode));
+  console.log(DIM("  Stored in    ") + chalk.white(".runtrim/config.json"));
+  console.log(DIM("  Guard rule   ") + chalk.white(".runtrim/bridge/auto-guard.md"));
+  console.log("");
+
+  const rule = {
+    smart:  "Fast when safe. Strict when risky. Finish before continuing.",
+    strict: "No active contract means no code edits.",
+    fast:   "Low/medium risk allowed without contract. Critical still requires go.",
+    off:    "Auto-guard disabled. RunTrim commands still work manually.",
+  }[mode];
+  console.log(DIM("  Rule  ") + chalk.white(rule));
+  console.log("");
+}
+
+(["smart", "strict", "fast", "off"] as const).forEach((mode) => {
+  autoCommand
+    .command(mode)
+    .description(`Set Auto-guard to ${mode} mode`)
+    .action(() => setAutoGuardMode(mode));
+});
+
+autoCommand
+  .command("status")
+  .description("Show current Auto-guard mode and project state")
+  .action(async () => {
+    const cwd    = process.cwd();
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const mode   = (config as Record<string, unknown>).autoGuardMode as AutoGuardMode ?? "smart";
+
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim auto"));
+    console.log("");
+    console.log(DIM("  Auto-guard  ") + chalk.white(mode));
+
+    const contractActive = isContractActive(cwd);
+    console.log(DIM("  Contract    ") + (contractActive ? chalk.green("active") : DIM("none")));
+
+    const allRuns   = loadAllRuns(cwd);
+    const activeRun = allRuns.find((r) => r.status === "guarded" || r.status === "checked");
+    console.log(DIM("  Active run  ") + (activeRun ? chalk.white(truncate(activeRun.task, 40)) : DIM("none")));
+
+    const changed = dedupeFiles(await getGitDiff(cwd));
+    const agentChanged = changed.filter((f) => {
+      const n = f.replace(/\\/g, "/").toLowerCase();
+      return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+    });
+    const hasUnfinished = agentChanged.length > 0 && !activeRun;
+
+    if (agentChanged.length > 0) {
+      const risk = classifyFileRisk(agentChanged);
+      const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, typeof chalk>)[risk] ?? chalk.white;
+      console.log(DIM("  Unfinished  ") + (hasUnfinished ? chalk.yellow("yes") : DIM("no")));
+      console.log(DIM("  Changed     ") + chalk.white(String(agentChanged.length) + " file" + (agentChanged.length === 1 ? "" : "s")));
+      console.log(DIM("  Risk        ") + riskColor(risk));
+    } else {
+      console.log(DIM("  Unfinished  ") + DIM("no"));
+    }
+
+    console.log("");
+    if (hasUnfinished) {
+      console.log(DIM("  Next        ") + chalk.white("runtrim finish"));
+    } else if (!activeRun) {
+      console.log(DIM("  Next        ") + chalk.white('runtrim go "<task>"'));
+    } else {
+      console.log(DIM("  Next        ") + chalk.white("runtrim finish (after agent edits)"));
+    }
+    console.log("");
+  });
+
+// ── runtrim status ────────────────────────────────────────────────────────────
+
+program
+  .command("status")
+  .description("Show project guard state, active run, and unfinished changes")
+  .action(async () => {
+    const cwd    = process.cwd();
+    const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+    const mode   = (config as Record<string, unknown>).autoGuardMode as AutoGuardMode ?? "smart";
+
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim status"));
+    console.log("");
+
+    console.log(DIM("  Auto-guard  ") + chalk.white(mode));
+
+    // Active contract
+    const contractActive = isContractActive(cwd);
+    console.log(DIM("  Contract    ") + (contractActive ? chalk.green("active") : DIM("none")));
+
+    // Active run
+    const allRuns   = loadAllRuns(cwd);
+    const activeRun = allRuns.find((r) => r.status === "guarded" || r.status === "checked");
+    const latestRun = loadLatestRun(cwd);
+
+    if (activeRun) {
+      console.log(DIM("  Active run  ") + chalk.white(truncate(activeRun.task, 50)));
+    } else if (latestRun) {
+      console.log(DIM("  Last run    ") + DIM(truncate(latestRun.task, 50)));
+    } else {
+      console.log(DIM("  Active run  ") + DIM("none"));
+    }
+
+    // Changed files
+    const changed = dedupeFiles(await getGitDiff(cwd));
+    const agentChanged = changed.filter((f) => {
+      const n = f.replace(/\\/g, "/").toLowerCase();
+      return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+    });
+
+    const hasUnfinished = agentChanged.length > 0 && !activeRun;
+    const risk = classifyFileRisk(agentChanged);
+    const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, typeof chalk>)[risk] ?? chalk.white;
+
+    if (agentChanged.length > 0) {
+      console.log(DIM("  Unfinished  ") + (hasUnfinished ? chalk.yellow("yes") : DIM("no")));
+      console.log(DIM("  Changed     ") + chalk.white(String(agentChanged.length) + " file" + (agentChanged.length === 1 ? "" : "s")));
+      console.log(DIM("  Risk        ") + riskColor(risk));
+    } else {
+      console.log(DIM("  Unfinished  ") + DIM("no"));
+    }
+
+    console.log("");
+
+    // Next action
+    let next: string;
+    if (hasUnfinished) {
+      next = "runtrim finish";
+    } else if (activeRun) {
+      next = "runtrim finish (after agent edits are done)";
+    } else {
+      next = 'runtrim go "<task>"';
+    }
+    console.log(DIM("  Next        ") + chalk.white(next));
     console.log("");
   });
 
@@ -3836,16 +4012,94 @@ program
     const allRuns = loadAllRuns(cwd);
     const activeRun = allRuns.find((r) => r.status === "guarded" || r.status === "checked");
 
-    if (!activeRun) {
-      console.log(chalk.yellow("  No active RunTrim session found."));
-      console.log(DIM("  Start a new session with: runtrim go \"<task>\""));
-      console.log("");
-      return;
-    }
-
     const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
     const projectAudit = loadProjectAudit(cwd);
     const projectName = projectAudit?.projectName ?? path.basename(cwd);
+
+    if (!activeRun) {
+      // ── Fast Run Report path ──────────────────────────────────────────────
+      // No pre-run contract. Detect changed files and create a fast run report.
+      const allChanged   = dedupeFiles(await getGitDiff(cwd));
+      const agentChanged = allChanged.filter((f) => {
+        const n = f.replace(/\\/g, "/").toLowerCase();
+        return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+      });
+
+      if (agentChanged.length === 0) {
+        console.log(DIM("  No active run and no changed files detected."));
+        console.log(DIM('  Start a new session with: runtrim go "<task>"'));
+        console.log("");
+        return;
+      }
+
+      const risk         = classifyFileRisk(agentChanged);
+      const sensitive    = agentChanged.filter(isSensitivePath);
+      const riskColor    = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, typeof chalk>)[risk] ?? chalk.white;
+
+      console.log(DIM("  No active RunTrim contract found."));
+      console.log(DIM("  Creating Fast Run Report for uncontracted changes."));
+      console.log("");
+
+      const fastReport = saveFastRunRecord(cwd, agentChanged, risk);
+
+      saveGuardState(cwd, { lastFinishAt: new Date().toISOString() });
+
+      // Write resting state so agents see clean state
+      writeRestingContract(cwd);
+      writeRestingMemory(cwd);
+
+      // Cloud sync if available
+      let cloudSync: CloudSyncResult = { status: "skipped_no_token" };
+      if (options.sync !== false) {
+        const memoryMarkdown = (() => { try { return readMemory(cwd); } catch { return null; } })();
+        cloudSync = await syncRunsToCloud({
+          cwd,
+          config,
+          projectName,
+          projectAudit: projectAudit ?? null,
+          memoryMarkdown: memoryMarkdown ?? "",
+          runs: loadAllRuns(cwd),
+          markPendingRunIds: [fastReport.id],
+        });
+      }
+
+      // Output
+      console.log(GO_ACCENT.bold("Fast Run Report"));
+      console.log(DIM("  Note: No pre-run contract was captured for this run."));
+      console.log("");
+      console.log(DIM("  Changed files"));
+      for (const f of agentChanged.slice(0, 8)) {
+        const sens = isSensitivePath(f);
+        console.log(chalk.white("  - " + f) + (sens ? chalk.yellow(" [sensitive]") : ""));
+      }
+      if (agentChanged.length > 8) {
+        console.log(DIM(`  ... and ${agentChanged.length - 8} more`));
+      }
+      console.log("");
+      console.log(DIM("  Risk        ") + riskColor(risk));
+      if (sensitive.length > 0) {
+        console.log(DIM("  Sensitive   ") + chalk.yellow(String(sensitive.length) + " path" + (sensitive.length === 1 ? "" : "s")));
+      }
+      console.log("");
+      console.log(GO_ACCENT.bold("Proof gaps"));
+      for (const gap of fastReport.proofGaps) {
+        console.log(DIM("  - ") + chalk.white(gap));
+      }
+      console.log("");
+      if (options.sync !== false) {
+        if (cloudSync.status === "synced") {
+          console.log(DIM("  Cloud sync  ") + chalk.green("synced"));
+        } else if (cloudSync.status === "failed") {
+          console.log(DIM("  Cloud sync  ") + chalk.yellow("failed — run runtrim sync to retry"));
+        } else if (cloudSync.status !== "skipped_no_token" && cloudSync.status !== "skipped_invalid_token") {
+          console.log(DIM("  Cloud sync  ") + DIM("skipped"));
+        }
+      }
+      console.log("");
+      console.log(DIM("  Next  ") + chalk.white('runtrim go "<task>" to start a properly guarded run'));
+      console.log("");
+      return;
+    }
 
     console.log(DIM("  Run     ") + chalk.white(truncate(activeRun.task, 60)));
     console.log(DIM("  Run ID  ") + chalk.white(activeRun.id));
@@ -3965,6 +4219,9 @@ program
     const freshRuns = loadAllRuns(cwd);
     const updatedRun = freshRuns.find((r) => r.id === activeRun.id) ?? activeRun;
     writeMemoryFromRuns(updatedRun, freshRuns, config, cwd);
+
+    // Track finish timestamp for auto-guard Finish Gate
+    saveGuardState(cwd, { lastFinishAt: new Date().toISOString() });
 
     // ── Restore resting-state protocol ───────────────────────────────────
     // Archive session files before overwriting them
