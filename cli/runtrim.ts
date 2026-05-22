@@ -59,6 +59,15 @@ import {
   unlinkCurrentRepo,
 } from "../src/lib/global-registry.ts";
 import { trackCliCommandEvent } from "../src/lib/cli-telemetry.ts";
+import {
+  ADAPTERS,
+  detectAdapters,
+  isAdapterInstalled,
+  installAdapter,
+  installAllAdapters,
+  refreshAdapterState,
+  type AdapterId,
+} from "../src/lib/adapters.ts";
 
 const chalk = new Chalk();
 const oraFactory: typeof ora =
@@ -1259,8 +1268,239 @@ program
       console.log("");
     }
 
+    // ── Adapter detection + auto-install ──────────────────────────────────
+    const detectedAdapters = detectAdapters(cwd);
+
+    // Always install adapters for detected environments.
+    // Additionally install claude + codex as safe defaults (they are markdown files
+    // that only update if already present, or create minimal pointer files).
+    const toInstall: AdapterId[] = [...new Set([
+      ...detectedAdapters,
+      // Safe defaults: install if already triggered by --agent-files
+      ...(options.agentFiles ? ["claude" as AdapterId, "codex" as AdapterId] : []),
+    ])];
+
+    const adapterResults: Array<{ id: AdapterId; displayName: string; result: string }> = [];
+    for (const id of toInstall) {
+      const adapter = ADAPTERS.find((a) => a.id === id);
+      if (!adapter) continue;
+      const result = installAdapter(cwd, id);
+      if (result !== "unchanged") {
+        adapterResults.push({ id, displayName: adapter.displayName, result });
+      }
+    }
+    refreshAdapterState(cwd);
+
+    // ── Output ─────────────────────────────────────────────────────────────
+    console.log(DIM("  Adapters"));
+    if (detectedAdapters.length > 0) {
+      console.log(DIM("  Detected:"));
+      for (const id of detectedAdapters) {
+        const a = ADAPTERS.find((x) => x.id === id);
+        const installed = isAdapterInstalled(cwd, id);
+        if (a) {
+          console.log(
+            DIM("  ") +
+            chalk.white(a.displayName.padEnd(16)) +
+            DIM(a.targetFile.padEnd(38)) +
+            (installed ? chalk.green("installed") : DIM("detected"))
+          );
+        }
+      }
+    } else {
+      console.log(DIM("  No specific agent environments detected."));
+      console.log(DIM("  Add one with: runtrim adapters install cursor"));
+    }
+    console.log("");
+
     console.log(DIM("  Next"));
     console.log(chalk.white('  runtrim go "your first task"'));
+    if (detectedAdapters.length === 0) {
+      console.log(chalk.white("  runtrim adapters install --all"));
+    }
+    console.log("");
+  });
+
+// ── runtrim adapters ──────────────────────────────────────────────────────────
+
+const adaptersCommand = program
+  .command("adapters")
+  .description("Manage RunTrim agent adapters (list, status, install)");
+
+// Default: show help
+adaptersCommand.action(() => {
+  adaptersCommand.help();
+});
+
+// runtrim adapters list
+adaptersCommand
+  .command("list")
+  .description("List all supported adapters with detection and install status")
+  .action(() => {
+    const cwd = process.cwd();
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim adapters"));
+    console.log("");
+    console.log(DIM("  Supported adapters"));
+    console.log("");
+
+    for (const adapter of ADAPTERS) {
+      const detected  = detectAdapters(cwd).includes(adapter.id);
+      const installed = isAdapterInstalled(cwd, adapter.id);
+
+      const statusParts: string[] = [];
+      if (detected)  statusParts.push("detected");
+      if (installed) statusParts.push("installed");
+      const statusStr = statusParts.length > 0 ? statusParts.join(", ") : "missing";
+      const statusColor = installed ? chalk.green : detected ? chalk.yellow : DIM;
+
+      console.log(
+        DIM("  ") +
+        chalk.white(adapter.id.padEnd(12)) +
+        chalk.white(adapter.targetFile.padEnd(42)) +
+        statusColor(statusStr)
+      );
+    }
+    console.log("");
+    console.log(DIM("  Install one:   ") + chalk.white("runtrim adapters install <id>"));
+    console.log(DIM("  Install all:   ") + chalk.white("runtrim adapters install --all"));
+    console.log("");
+  });
+
+// runtrim adapters status
+adaptersCommand
+  .command("status")
+  .description("Show detected, installed, and recommended adapters")
+  .action(() => {
+    const cwd  = process.cwd();
+    const state = refreshAdapterState(cwd);
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim adapters"));
+    console.log("");
+
+    if (state.detected.length > 0) {
+      console.log(DIM("  Detected agents"));
+      for (const id of state.detected) {
+        const a = ADAPTERS.find((x) => x.id === id);
+        if (a) console.log(DIM("  ") + chalk.white(a.displayName));
+      }
+      console.log("");
+    } else {
+      console.log(DIM("  No specific agent environments detected."));
+      console.log("");
+    }
+
+    if (state.installed.length > 0) {
+      console.log(DIM("  Installed adapters"));
+      for (const id of state.installed) {
+        const a = ADAPTERS.find((x) => x.id === id);
+        if (a) console.log(DIM("  ") + chalk.white(a.displayName) + DIM("  " + a.targetFile));
+      }
+      console.log("");
+    } else {
+      console.log(DIM("  No adapters installed."));
+      console.log("");
+    }
+
+    const missing = state.detected.filter((id) => !state.installed.includes(id));
+    if (missing.length > 0) {
+      console.log(DIM("  Recommended (detected but not installed)"));
+      for (const id of missing) {
+        const a = ADAPTERS.find((x) => x.id === id);
+        if (a) {
+          console.log(DIM("  ") + chalk.yellow(a.displayName) + DIM("  " + a.targetFile));
+        }
+      }
+      console.log("");
+      const first = missing[0];
+      if (first) {
+        console.log(DIM("  Next"));
+        console.log(chalk.white(`  runtrim adapters install ${first}`));
+      }
+    } else if (state.installed.length === 0) {
+      console.log(DIM("  Next"));
+      console.log(chalk.white("  runtrim adapters install --all"));
+    } else {
+      console.log(DIM("  All detected adapters are installed."));
+    }
+    console.log("");
+  });
+
+// runtrim adapters install [adapter] [--all]
+adaptersCommand
+  .command("install [adapter]")
+  .description("Install a specific adapter or all adapters")
+  .option("--all", "Install all supported adapters")
+  .action((adapterId: string | undefined, options: { all?: boolean }) => {
+    const cwd = process.cwd();
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim adapters"));
+    console.log("");
+
+    if (options.all) {
+      console.log(DIM("  Installing all adapters..."));
+      console.log("");
+      const { results } = installAllAdapters(cwd);
+      for (const { displayName, result, id } of results) {
+        const a = ADAPTERS.find((x) => x.id === id);
+        const file = a?.targetFile ?? "";
+        const color = result === "created" ? chalk.green
+          : result === "updated"  ? chalk.cyan
+          : result === "error"    ? chalk.red
+          : DIM;
+        console.log(
+          DIM("  ") +
+          chalk.white(displayName.padEnd(16)) +
+          DIM(file.padEnd(42)) +
+          color(result)
+        );
+      }
+      refreshAdapterState(cwd);
+      console.log("");
+      console.log(DIM("  All adapters processed."));
+      console.log(DIM("  State saved to .runtrim/adapters.json"));
+      console.log("");
+      return;
+    }
+
+    if (!adapterId) {
+      console.log(chalk.yellow("  Specify an adapter ID or use --all."));
+      console.log("");
+      console.log(DIM("  Supported IDs:"));
+      for (const a of ADAPTERS) {
+        console.log(DIM("  ") + chalk.white(a.id.padEnd(12)) + DIM(a.targetFile));
+      }
+      console.log("");
+      return;
+    }
+
+    const adapter = ADAPTERS.find((a) => a.id === adapterId);
+    if (!adapter) {
+      console.log(chalk.red(`  Unknown adapter: ${adapterId}`));
+      console.log("");
+      console.log(DIM("  Supported IDs: ") + ADAPTERS.map((a) => a.id).join(", "));
+      console.log("");
+      return;
+    }
+
+    const result = installAdapter(cwd, adapterId as AdapterId);
+    const color  = result === "created"   ? chalk.green
+      : result === "updated"   ? chalk.cyan
+      : result === "unchanged" ? DIM
+      : chalk.red;
+
+    console.log(
+      DIM("  ") +
+      chalk.white(adapter.displayName.padEnd(16)) +
+      DIM(adapter.targetFile.padEnd(42)) +
+      color(result)
+    );
+    console.log("");
+
+    if (result !== "error") {
+      refreshAdapterState(cwd);
+      console.log(DIM("  State updated in .runtrim/adapters.json"));
+    }
     console.log("");
   });
 
