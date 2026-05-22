@@ -15,6 +15,19 @@ export const runtime = "nodejs";
  *   DODO_PRO_PRODUCT_ID   — Product/plan ID for Pro in the Dodo dashboard
  *   NEXT_PUBLIC_SITE_URL  — e.g. https://www.runtrim.com (for redirect URLs)
  */
+/**
+ * Static payment link URLs from the Dodo dashboard.
+ * Set these in Vercel env vars as the primary checkout method —
+ * they require zero API calls and are always reachable.
+ *
+ * Get these from: Dodo Dashboard → Products → your plan → Payment link
+ */
+const PAYMENT_LINK_MAP: Record<string, string | undefined> = {
+  pro:     process.env.DODO_PRO_CHECKOUT_URL,
+  builder: process.env.DODO_BUILDER_CHECKOUT_URL,
+  team:    process.env.DODO_TEAM_CHECKOUT_URL,
+};
+
 const PRODUCT_ID_MAP: Record<string, string | undefined> = {
   pro:     process.env.DODO_PRO_PRODUCT_ID,
   builder: process.env.DODO_BUILDER_PRODUCT_ID,
@@ -27,7 +40,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
 
-  // planId defaults to "pro" for backwards compat
   const body   = await request.json().catch(() => ({})) as { planId?: string };
   const planId = (body.planId ?? "pro").toLowerCase();
 
@@ -35,23 +47,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid plan." }, { status: 400 });
   }
 
+  // ── Fast path: static payment link (no API call) ─────────────────────────
+  // Set DODO_PRO_CHECKOUT_URL / DODO_BUILDER_CHECKOUT_URL / DODO_TEAM_CHECKOUT_URL
+  // in Vercel to the payment link URL from your Dodo dashboard.
+  const staticUrl = PAYMENT_LINK_MAP[planId];
+  if (staticUrl) {
+    console.info("[/api/billing/checkout] Using static payment link for plan:", planId);
+    return NextResponse.json({ ok: true, url: staticUrl });
+  }
+
+  // ── Fallback: Dodo subscriptions API ─────────────────────────────────────
   const apiKey    = process.env.DODO_API_KEY;
   const productId = PRODUCT_ID_MAP[planId];
   const siteUrl   = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com").replace(/\/$/, "");
   const apiBase   = (process.env.DODO_API_BASE ?? "https://api.dodopayments.com").replace(/\/$/, "");
 
   if (!apiKey) {
-    console.error("[/api/billing/checkout] Missing DODO_API_KEY in Vercel env vars.");
+    console.error("[/api/billing/checkout] No DODO_PRO_CHECKOUT_URL and no DODO_API_KEY set.");
     return NextResponse.json(
-      { ok: false, error: "Billing is not configured — missing API key. Contact support." },
+      { ok: false, error: "Billing not configured. Set DODO_PRO_CHECKOUT_URL in Vercel env vars." },
       { status: 503 }
     );
   }
 
   if (!productId) {
-    console.error(`[/api/billing/checkout] Missing DODO_${planId.toUpperCase()}_PRODUCT_ID in Vercel env vars.`);
+    console.error(`[/api/billing/checkout] No DODO_${planId.toUpperCase()}_CHECKOUT_URL and no product ID.`);
     return NextResponse.json(
-      { ok: false, error: `Billing not configured for ${planId} plan — missing product ID. Contact support.` },
+      { ok: false, error: `Billing not configured for ${planId}. Set DODO_${planId.toUpperCase()}_CHECKOUT_URL in Vercel.` },
       { status: 503 }
     );
   }
