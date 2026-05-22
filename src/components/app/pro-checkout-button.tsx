@@ -76,33 +76,21 @@ export function ProCheckoutButton({
 
   // ── Error state ───────────────────────────────────────────────────────────
   if (checkoutState === "error") {
-    // If checkout isn't configured yet, show a clean contact fallback
-    const isConfig = errMsg.toLowerCase().includes("not configured") ||
-                     errMsg.toLowerCase().includes("fetch failed") ||
-                     errMsg.toLowerCase().includes("unreachable");
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {isConfig ? (
-          <a
-            href={`mailto:hello@runtrim.com?subject=RunTrim ${planId.charAt(0).toUpperCase() + planId.slice(1)} plan`}
-            className={className}
-            style={{ textDecoration: "none", textAlign: "center" }}
-          >
-            Contact us to upgrade
-          </a>
-        ) : (
-          <button type="button" onClick={() => setCheckoutState("idle")} className={className}>
-            Try again
-          </button>
-        )}
+        <button type="button" onClick={() => setCheckoutState("idle")} className={className}>
+          Try again
+        </button>
         <p style={{
           textAlign: "center",
           fontFamily: "var(--font-geist-mono)",
           fontSize: 10,
-          color: isConfig ? "#5a5f68" : "#F0BF72",
+          color: "#F0BF72",
           margin: 0,
         }}>
-          {isConfig ? "hello@runtrim.com" : errMsg}
+          {errMsg.includes("not_configured") || errMsg.includes("unreachable") || errMsg.includes("fetch failed")
+            ? "Contact hello@runtrim.com if this persists"
+            : errMsg}
         </p>
       </div>
     );
