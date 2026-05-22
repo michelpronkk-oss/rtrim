@@ -106,20 +106,9 @@ export function ProjectAgentChat({
   const latestRunLabel = summary.latestRunTask ?? "none";
 
   const contextStrip = useMemo(
-    () => [
-      `Recent runs ${summary.recentRunsCount}`,
-      `Proof gaps ${summary.latestProofGaps}`,
-      `Tokens saved ${formatNumber(summary.estimatedTokensSaved)}`,
-      `Latest run ${latestRunLabel}`,
-      `Cost saved ${formatCost(summary.estimatedCostSaved)}`,
-    ],
-    [
-      latestRunLabel,
-      summary.estimatedCostSaved,
-      summary.estimatedTokensSaved,
-      summary.latestProofGaps,
-      summary.recentRunsCount,
-    ],
+    () =>
+      `Recent runs ${summary.recentRunsCount} · Proof gaps ${summary.latestProofGaps} · Tokens saved ${formatNumber(summary.estimatedTokensSaved)} · Latest run ${latestRunLabel} · Cost saved ${formatCost(summary.estimatedCostSaved)}`,
+    [latestRunLabel, summary.estimatedCostSaved, summary.estimatedTokensSaved, summary.latestProofGaps, summary.recentRunsCount],
   );
 
   async function sendMessage(message: string) {
@@ -150,7 +139,7 @@ export function ProjectAgentChat({
       const assistantText = body.answer;
 
       if (!response.ok || !body.ok || !assistantText) {
-        setError("Could not get a Project Agent response. Try again in a moment.");
+        setError("I could not load the Project Agent response. Try again.");
         return;
       }
 
@@ -164,7 +153,7 @@ export function ProjectAgentChat({
         },
       ]);
     } catch {
-      setError("Could not get a Project Agent response. Try again in a moment.");
+      setError("I could not load the Project Agent response. Try again.");
     } finally {
       setLoading(false);
     }
@@ -185,15 +174,20 @@ export function ProjectAgentChat({
   }
 
   return (
-    <div className="mx-auto min-h-[calc(100vh-170px)] w-full max-w-[980px] px-1 pb-6 pt-3 sm:pt-6">
+    <div className="relative mx-auto min-h-[calc(100vh-160px)] w-full max-w-[1120px] px-1 pb-6 pt-4 sm:pt-7">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[58%] h-[380px] w-[760px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40"
+        style={{ background: "radial-gradient(circle, rgba(124,109,250,0.12) 0%, rgba(124,109,250,0.03) 38%, rgba(124,109,250,0) 72%)" }}
+      />
       <div className="flex min-h-full flex-col">
         {!hasConversation && (
           <section className="flex flex-col items-center px-2 pt-8 text-center sm:pt-12">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#666f81]">Project Agent</p>
-            <h1 className="mt-2 max-w-[760px] text-[2rem] font-semibold tracking-[-0.03em] text-[#f5f7fb] sm:text-[2.4rem]">
+            <h1 className="mt-3 max-w-[780px] text-[2rem] font-semibold tracking-[-0.03em] text-[#f5f7fb] sm:text-[2.4rem]">
               What should RunTrim help you understand?
             </h1>
-            <p className="mt-3 max-w-[720px] text-[14px] leading-[1.75] text-[#98a1b3]">
+            <p className="mt-4 max-w-[740px] text-[14px] leading-[1.75] text-[#98a1b3]">
               Ask about runs, risks, proof gaps, contracts, or your next safe action.
             </p>
 
@@ -213,16 +207,7 @@ export function ProjectAgentChat({
               )}
             </div>
 
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {contextStrip.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-md border border-white/10 bg-[#0f141d] px-2.5 py-1 font-mono text-[10.5px] text-[#9aa3b6]"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
+            <p className="mt-3 text-[11px] text-[#8690a3]">{contextStrip}</p>
           </section>
         )}
 
@@ -313,8 +298,8 @@ export function ProjectAgentChat({
             </div>
           )}
 
-          <div className="mt-4">
-            {error && <p className="mb-2 text-[12px] text-[#FFAC98]">{error}</p>}
+            <div className="mx-auto mt-8 w-full max-w-[940px]">
+              {error && <p className="mb-2 text-[12px] text-[#FFAC98]">{error}</p>}
 
             <form onSubmit={onSubmit}>
               <div className="rounded-[22px] border border-white/12 bg-[#0f151f] p-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] focus-within:border-[#7C6DFA]/46 focus-within:shadow-[0_0_0_1px_rgba(124,109,250,0.24)]">
@@ -355,7 +340,7 @@ export function ProjectAgentChat({
                       void sendMessage(suggestion);
                     }
                   }}
-                  className="rounded-full border border-white/12 bg-[#101620] px-3 py-1.5 text-[12px] text-[#c7cfdd] transition-colors hover:border-white/22 hover:bg-[#141c29] disabled:cursor-not-allowed disabled:opacity-55"
+                  className="rounded-full border border-white/10 bg-[#111722]/75 px-3 py-1 text-[11.5px] text-[#bac4d6] transition-colors hover:border-white/18 hover:bg-[#141c29]/85 disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {suggestion}
                 </button>

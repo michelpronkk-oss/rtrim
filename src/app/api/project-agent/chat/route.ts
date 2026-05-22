@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId } from "@/lib/entitlements";
@@ -38,6 +38,7 @@ type RunRow = {
 };
 
 type Intent =
+  | "testing"
   | "latest_run"
   | "next_action"
   | "proof_gaps"
@@ -83,6 +84,7 @@ function parseChangedPath(entry: ChangedFileRow): string | null {
 
 function classifyIntent(message: string): Intent {
   const text = message.toLowerCase();
+  if (text === "test" || text === "testing" || text.includes("just testing")) return "testing";
   if (text.includes("latest run") || text.includes("what happened")) return "latest_run";
   if (text.includes("what should i do next") || text.includes("next safe") || text.includes("next step")) return "next_action";
   if (text.includes("proof") || text.includes("before deploy")) return "proof_gaps";
@@ -100,77 +102,90 @@ function formatRunDate(run: RunRow): string {
   return new Date(when).toLocaleString();
 }
 
+function noRunsGuidance(opening: string): { answer: string; actions: string[] } {
+  return {
+    answer: [
+      opening,
+      "",
+      "Suggested first run:",
+      'runtrim go "your task"',
+      "",
+      "After edits:",
+      "runtrim finish",
+      "",
+      "Once that is synced, I can explain risks, proof gaps, changed files, and your next safe step.",
+    ].join("\n"),
+    actions: ['runtrim go "your task"', "runtrim finish"],
+  };
+}
+
 function buildContractSuggestion(message: string): { answer: string; actions: string[] } {
   const objective = message
     .replace(/create\s+a?\s*safe\s*contract\s*(for)?/i, "")
     .replace(/create\s+contract\s*(for)?/i, "")
-    .trim() || "narrow scoped task";
+    .trim() || "your scoped task";
 
-  const command = `runtrim go \"ONLY EDIT files directly tied to: ${objective}. Audit first. No unrelated refactors.\"`;
+  const command = `runtrim go \"ONLY EDIT files directly tied to: ${objective}. Do not touch auth, billing, webhooks, database, or env.\"`;
 
   return {
     answer: [
-      "Here is a safe contract suggestion for this task:",
+      "Here is a safe RunTrim contract direction for that task.",
       "",
-      `Suggested command: ${command}`,
+      "Suggested command:",
+      command,
       "",
       "Allowed scope:",
-      "- Files directly referenced by the objective",
-      "- Small helper files imported by those files when required",
+      "- Files directly related to the target task",
+      "- Small adjacent helpers only when required",
       "",
-      "Forbidden scope:",
+      "Forbidden:",
       "- Auth internals",
-      "- Billing or payment flows unless explicitly requested",
-      "- Webhooks, database schema, and unrelated dashboard pages",
+      "- Billing/payments",
+      "- Webhooks",
+      "- Database schema and migrations",
+      "- Environment/secrets",
       "",
       "Stop rules:",
-      "- Stop if more than 5 files are needed",
+      "- Stop if more than 5 files are required",
       "- Stop before touching forbidden areas",
       "- Stop if root cause is ambiguous",
       "",
       "Proof required:",
       "- npm run build",
-      "- Targeted manual verification for the affected page/route",
+      "- Targeted manual verification for the changed flow",
     ].join("\n"),
-    actions: [
-      `Next: ${command}`,
-      "After edits: runtrim finish",
-    ],
+    actions: [command, "runtrim finish"],
   };
 }
 
 function buildHandoff(context: Context): { answer: string; actions: string[] } {
   const latest = context.latestRun;
-  const latestTask = latest?.task ?? "No synced run yet";
-  const latestRisk = latest?.risk_after ?? latest?.risk_before ?? "not captured";
-
   return {
     answer: [
-      "RunTrim handoff draft for Claude/Codex:",
+      "Use this handoff with Claude/Codex/Cursor.",
       "",
-      "You are working inside a RunTrim guarded run.",
-      "Before editing:",
-      "- Read .runtrim/contracts/latest.md",
-      "- Stay strictly in allowed scope",
-      "- Stop if scope expansion is required",
-      "",
-      "Current context:",
-      `- Latest run: ${latestTask}`,
-      `- Latest risk: ${latestRisk}`,
+      "Context:",
+      `- Latest run: ${latest?.task ?? "No synced run yet"}`,
+      `- Risk: ${latest?.risk_after ?? latest?.risk_before ?? "not captured"}`,
       `- Recent runs: ${context.runCount}`,
       "",
-      "Proof requirements:",
+      "Objective:",
+      "- Complete the requested task while staying in contract scope",
+      "",
+      "Scope:",
+      "- Read .runtrim/contracts/latest.md before editing",
+      "- Stay in allowed scope only",
+      "- Stop if scope expansion is required",
+      "",
+      "Proof required:",
       "- npm run build",
-      "- Validate behavior in the affected page/API route",
-      "- Record remaining proof gaps honestly",
+      "- Manual verification for changed behavior",
+      "- Document any remaining proof gaps",
       "",
       "After edits:",
-      "- Ask the user to run: runtrim finish",
+      "runtrim finish",
     ].join("\n"),
-    actions: [
-      "Copy this handoff into your coding agent",
-      "After edits: runtrim finish",
-    ],
+    actions: ["Copy this handoff into your coding agent", "runtrim finish"],
   };
 }
 
@@ -178,20 +193,51 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string):
   const latest = context.latestRun;
 
   if (!latest) {
-    return {
-      answer: [
-        "I do not have a synced run history yet for this project.",
-        "",
-        "Next safe action:",
-        "1. Run a guarded task with runtrim go \"<task>\"",
-        "2. Complete edits and run runtrim finish",
-        "3. Sync runs so Project Agent can ground future answers",
-      ].join("\n"),
-      actions: [
-        "runtrim go \"your task\"",
-        "runtrim finish",
-      ],
-    };
+    if (intent === "testing") {
+      return noRunsGuidance(
+        "Project Agent is working. I do not have synced run history for this project yet, so I can only give setup guidance right now.",
+      );
+    }
+
+    if (intent === "next_action") {
+      return noRunsGuidance(
+        "The best next step is to create the first synced run. Without run history, I cannot safely infer project risk yet.",
+      );
+    }
+
+    if (intent === "latest_run") {
+      return noRunsGuidance(
+        "I do not have a synced latest run yet. Create one guarded run first so I can explain task, scope, changed files, proof gaps, and next action.",
+      );
+    }
+
+    if (intent === "proof_gaps") {
+      return noRunsGuidance(
+        "I cannot inspect proof gaps until a run is synced. Once available, I will check build, tests, manual verification, logs, scope compliance, and finish evidence.",
+      );
+    }
+
+    if (intent === "risk") {
+      return {
+        answer: [
+          "I have not learned project-specific risky files yet.",
+          "",
+          "Common high-risk areas are auth, billing, webhooks, database, middleware, environment files, and migrations.",
+          "",
+          "To get project-specific risk mapping, run:",
+          'runtrim go "your task"',
+          "runtrim finish",
+        ].join("\n"),
+        actions: ['runtrim go "your task"', "runtrim finish"],
+      };
+    }
+
+    if (intent === "safe_contract") return buildContractSuggestion(originalMessage);
+    if (intent === "handoff") return buildHandoff(context);
+
+    return noRunsGuidance(
+      "I can help, but I do not have synced project history yet. Run one guarded task first, then I can reason from your real context.",
+    );
   }
 
   const latestRisk = latest.risk_after ?? latest.risk_before ?? "not captured";
@@ -201,144 +247,146 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string):
     .filter((item): item is string => Boolean(item));
 
   switch (intent) {
-    case "latest_run": {
+    case "testing":
       return {
         answer: [
-          "Here is your latest synced run:",
-          `- Task: ${latest.task ?? "Untitled run"}`,
-          `- Status: ${latest.status ?? "not captured"}`,
-          `- Risk: ${latestRisk}`,
-          `- Files changed: ${changedFiles.length}`,
-          `- Proof gaps: ${proofGaps.length}`,
-          `- Evaluated: ${formatRunDate(latest)}`,
+          "Project Agent is working and using your synced context.",
           "",
-          `Next safe action: ${latest.next_safest_step ?? "Run verification and then use runtrim finish."}`,
+          `Latest run: ${latest.task ?? "Untitled run"}`,
+          `Risk: ${latestRisk}`,
+          `Proof gaps: ${proofGaps.length}`,
+          "",
+          "Ask for the next safe step, a contract suggestion, or a coding-agent handoff.",
         ].join("\n"),
-        actions: [
-          "Open /app/runs for full run history",
-          "Open the latest run report to close proof gaps",
-        ],
+        actions: ["Ask: What should I do next?", "Ask: Create a Claude handoff"],
       };
-    }
-    case "next_action": {
-      const next = latest.next_safest_step ?? "Close proof gaps before starting a new implementation task.";
+
+    case "latest_run":
       return {
         answer: [
-          "Based on your current run context, the safest next step is:",
+          `Latest run summary: ${latest.task ?? "Untitled run"}.`,
+          "",
+          `Status: ${latest.status ?? "not captured"}`,
+          `Risk: ${latestRisk}`,
+          `Changed files: ${changedFiles.length}`,
+          `Proof gaps: ${proofGaps.length}`,
+          `Evaluated: ${formatRunDate(latest)}`,
+          "",
+          "Next safe action:",
+          latest.next_safest_step ?? "Close proof gaps, then run runtrim finish.",
+        ].join("\n"),
+        actions: ["Open /app/runs for full history", "Review the latest run report"],
+      };
+
+    case "next_action": {
+      const next = latest.next_safest_step ?? "Close the latest proof gaps before starting new implementation work.";
+      return {
+        answer: [
+          "The safest next step is to complete verification on your latest run before expanding scope.",
+          "",
+          "Suggested next step:",
           next,
           "",
-          "Reasoning:",
-          `- Latest run risk: ${latestRisk}`,
+          "Why:",
+          `- Latest risk: ${latestRisk}`,
           `- Proof gaps: ${proofGaps.length}`,
-          `- Unfinished changes detected: ${context.unfinishedChanges ? "yes" : "no"}`,
-          "",
-          "If this is high risk, narrow scope before starting the next run.",
+          `- Unfinished changes: ${context.unfinishedChanges ? "yes" : "no"}`,
         ].join("\n"),
-        actions: [
-          context.unfinishedChanges ? "runtrim finish" : "runtrim go \"narrow scoped next task\"",
-        ],
+        actions: [context.unfinishedChanges ? "runtrim finish" : 'runtrim go "narrow scoped next task"'],
       };
     }
-    case "proof_gaps": {
+
+    case "proof_gaps":
       return {
         answer: proofGaps.length
           ? [
-              "Proof still missing before calling this safe:",
+              "These proof items are still missing before calling this run complete:",
               ...proofGaps.map((item) => `- ${item}`),
               "",
-              "Recommended verification:",
+              "Next verification steps:",
               "- npm run build",
-              "- Manual check of affected UX/API flow",
+              "- Validate the affected flow manually",
               "- Re-run runtrim finish to capture proof",
             ].join("\n")
           : [
-              "No explicit proof gaps are recorded on your latest run.",
+              "No explicit proof gaps are recorded on the latest run.",
               "",
-              "Recommended final check:",
+              "Final check before closing:",
               "- npm run build",
-              "- One manual smoke test of touched flows",
+              "- One manual smoke test of the touched flow",
             ].join("\n"),
-        actions: [
-          "Review latest run report for proof details",
-          "runtrim finish",
-        ],
+        actions: ["Open latest run report", "runtrim finish"],
       };
-    }
+
     case "safe_contract":
       return buildContractSuggestion(originalMessage);
+
     case "handoff":
       return buildHandoff(context);
+
     case "risk": {
       const topRisks = [...new Set([...(latest.detected_risks ?? []), ...(latest.sensitive_areas ?? [])])].slice(0, 8);
       return {
         answer: [
-          "Highest risk areas from your recent context:",
-          ...(topRisks.length ? topRisks.map((item) => `- ${item}`) : ["- No explicit risk labels captured in the latest run"]),
+          topRisks.length
+            ? "These are the highest-risk areas from your recent run context:"
+            : "No run-specific risk labels were captured, so use standard high-risk guardrails.",
+          ...(topRisks.length ? topRisks.map((item) => `- ${item}`) : []),
           "",
-          "Why these are risky:",
-          "- They often affect auth, billing, webhooks, or production-critical behavior",
-          "- They usually require stricter proof before merge",
+          "High-risk categories usually include auth, billing, webhooks, database, middleware, and environment handling.",
           "",
-          "Recommendation: use narrow allowed scope and explicit stop rules on the next run.",
+          "Use narrow scope and strict stop rules when touching these areas.",
         ].join("\n"),
-        actions: [
-          "runtrim go \"audit-only task in risky area\"",
-        ],
+        actions: ['runtrim go "audit-only task in risky area"'],
       };
     }
-    case "savings": {
+
+    case "savings":
       return {
         answer: [
-          "Estimated savings from recent synced runs:",
+          "Estimated savings so far from synced runs:",
           `- Estimated tokens saved: ${context.estimatedTokensSaved.toLocaleString()}`,
           `- Estimated cost saved: $${context.estimatedCostSaved.toFixed(2)}`,
           "",
-          "These values are estimates based on captured run metrics.",
+          "These values are estimated from captured run metrics.",
         ].join("\n"),
-        actions: [
-          "Open /app/runs to inspect savings per run",
-        ],
+        actions: ["Open /app/runs to inspect savings by run"],
       };
-    }
+
     case "scope": {
       const allowed = latest.allowed_scope ?? [];
       const forbidden = latest.forbidden_scope ?? [];
       const stopRules = latest.stop_conditions ?? [];
       return {
         answer: [
-          "Latest run scope check:",
-          `- Allowed entries: ${allowed.length}`,
-          `- Forbidden entries: ${forbidden.length}`,
+          "Scope check for the latest run:",
+          `- Allowed scope entries: ${allowed.length}`,
+          `- Forbidden scope entries: ${forbidden.length}`,
           `- Stop rules: ${stopRules.length}`,
-          `- Changed files recorded: ${changedFiles.length}`,
+          `- Changed files captured: ${changedFiles.length}`,
           "",
           changedFiles.length
-            ? "Review each changed file against allowed/forbidden scope in the run report before proceeding."
-            : "No changed files recorded on the latest run.",
+            ? "Review changed files against allowed and forbidden scope before continuing."
+            : "No changed files were captured on the latest run.",
         ].join("\n"),
-        actions: [
-          "Open latest run report to validate scope adherence",
-        ],
+        actions: ["Open latest run report for scope verification"],
       };
     }
-    default: {
+
+    default:
       return {
         answer: [
-          "Project summary from your current synced context:",
+          "Here is the current project context I can rely on:",
           `- Plan: ${context.plan}`,
-          `- Recent runs: ${context.runCount}`,
-          `- Latest task: ${latest.task ?? "Untitled run"}`,
-          `- Latest risk: ${latestRisk}`,
-          `- Latest proof gaps: ${proofGaps.length}`,
+          `- Recent synced runs: ${context.runCount}`,
+          `- Latest run: ${latest.task ?? "Untitled run"}`,
+          `- Risk: ${latestRisk}`,
+          `- Proof gaps: ${proofGaps.length}`,
           "",
-          "I can generate a safe contract suggestion or a Claude/Codex handoff next.",
+          "If you want, I can now generate a safe contract suggestion or a Claude handoff.",
         ].join("\n"),
-        actions: [
-          "Ask: Create a safe contract for <task>",
-          "Ask: Create a Claude handoff",
-        ],
+        actions: ["Ask: Create a safe contract", "Ask: Create a Claude handoff"],
       };
-    }
   }
 }
 
@@ -364,20 +412,17 @@ export async function POST(request: Request) {
   if (
     lowerMessage.includes("deploy") ||
     lowerMessage.includes("edit code") ||
-    lowerMessage.includes("cancel subscription") ||
-    lowerMessage.includes("bypass guard")
+    lowerMessage.includes("run this command") ||
+    lowerMessage.includes("execute") ||
+    lowerMessage.includes("bypass guard") ||
+    lowerMessage.includes("cancel subscription")
   ) {
     return NextResponse.json({
       ok: true,
       answer:
-        "I can prepare a safe contract or handoff. To execute, use RunTrim CLI or your coding agent with the generated handoff.",
-      actions: [
-        "Ask: Create a safe contract for <task>",
-        "Ask: Create a Claude handoff",
-      ],
-      contextUsed: {
-        intent: "safety_redirect",
-      },
+        "I cannot execute or deploy from Project Agent. I can prepare a safe contract or handoff you can run through RunTrim.",
+      actions: ['runtrim go "your task"', "Ask: Create a Claude handoff"],
+      contextUsed: { intent: "safety_redirect" },
     });
   }
 
