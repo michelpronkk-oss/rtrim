@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { RunTrimConfig } from "./runtrim-config";
+import { compileTask, type TaskCategory } from "./run-compiler";
 
 export type WasteRisk = "low" | "medium" | "high" | "critical";
 
@@ -38,6 +39,15 @@ export interface AuditResult {
   isMegaRun: boolean;
   /** The high-risk systems that triggered the mega-run classification. */
   megaRunSystems: string[];
+  // ── Run Compiler v1 fields ─────────────────────────────────────────────────
+  /** File/directory paths explicitly referenced in the task. Always override heuristic scope. */
+  explicitPaths: string[];
+  /** True when task uses "only edit/touch X" — allowed scope is ONLY those explicit paths. */
+  onlyMode: boolean;
+  /** True when task uses "allowed scope must include X" — explicit paths are additive. */
+  mustIncludeMode: boolean;
+  /** Heuristic category: ui, auth, billing, webhook, cli, etc. */
+  taskCategory: TaskCategory;
 }
 
 // Always forbidden regardless of task content.
@@ -391,15 +401,27 @@ export function auditTask(
   const promptScoreBefore = scoreTask(task, flags);
   const wasteRiskBefore = scoreToRisk(promptScoreBefore);
 
+  // ── Run Compiler v1: extract explicit paths and classify task ─────────────
+  const compiler = compileTask(task);
+
+  // Boost score when user provides explicit paths (narrows scope meaningfully)
+  const adjustedScore = compiler.explicitPaths.length > 0
+    ? Math.min(100, promptScoreBefore + (compiler.onlyMode ? 20 : 10))
+    : promptScoreBefore;
+
   return {
     task,
     flags,
-    promptScoreBefore,
-    wasteRiskBefore,
+    promptScoreBefore: adjustedScore,
+    wasteRiskBefore: scoreToRisk(adjustedScore),
     projectContext,
     sensitiveAreasTouched: forbiddenAreasTouched,
     sensitiveAreasRelevant,
     isMegaRun,
     megaRunSystems,
+    explicitPaths: compiler.explicitPaths,
+    onlyMode: compiler.onlyMode,
+    mustIncludeMode: compiler.mustIncludeMode,
+    taskCategory: compiler.taskCategory,
   };
 }

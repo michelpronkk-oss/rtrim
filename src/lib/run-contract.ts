@@ -1,5 +1,6 @@
 ﻿import type { AuditResult, WasteRisk, ProjectContext } from "./run-audit";
 import type { RunTrimConfig } from "./runtrim-config";
+import { buildCategoryScope } from "./run-compiler";
 
 export interface RunContract {
   objective: string;
@@ -106,42 +107,81 @@ export function cleanObjective(task: string): string {
 }
 
 /**
- * Build relevant scope, adding task-specific surfaces for checkout/billing.
+ * Build relevant scope using Run Compiler v1.
+ *
+ * Priority order:
+ *   1. Explicit paths mentioned by the user — always win.
+ *      "only edit X"           → ONLY those paths, no heuristic additions.
+ *      "must include X"        → those paths + category-based hints.
+ *      Paths mentioned plainly → those paths + "only files referenced".
+ *   2. Task category heuristics — used when no explicit paths were found.
+ *      Category drives which directories are included (not always src/app/).
+ *   3. Legacy checkout/billing hints — preserved for backward compatibility.
  */
 function buildRelevantScope(
   task: string,
   projectContext: ProjectContext,
   config: RunTrimConfig,
-  sensitiveAreasRelevant: string[]
+  sensitiveAreasRelevant: string[],
+  audit: Pick<AuditResult, "explicitPaths" | "onlyMode" | "mustIncludeMode" | "taskCategory">
 ): string[] {
+  const { explicitPaths, onlyMode, mustIncludeMode, taskCategory } = audit;
   const scope: string[] = [];
-  const taskLower = task.toLowerCase();
 
-  if (projectContext.hasSrc && projectContext.hasApp) {
-    scope.push("src/app/ - App Router pages and layouts only");
-  } else if (projectContext.hasApp) {
-    scope.push("app/ - App Router pages and layouts only");
-  } else if (projectContext.hasPages) {
-    scope.push("pages/ - Pages Router files only");
+  // ── Explicit paths: highest priority ────────────────────────────────────
+  if (explicitPaths.length > 0) {
+    for (const p of explicitPaths) {
+      scope.push(`${p}${onlyMode ? "  [explicit — user-specified, only this]" : "  [explicit — user-specified]"}`);
+    }
+
+    if (onlyMode) {
+      // "only edit X" — stop here. No directory-level heuristics.
+      scope.push(`Maximum ${config.maxFilesPerRun} files total`);
+      return scope;
+    }
+
+    // "must include X" or plain explicit reference — add a note but skip broad heuristics
+    scope.push("Only files directly referenced by the objective");
+    scope.push(`Maximum ${config.maxFilesPerRun} files total`);
+    return scope;
   }
 
-  // Add specific checkout/billing surfaces when relevant
-  const hasCheckout =
-    sensitiveAreasRelevant.includes("checkout") ||
-    /\b(checkout|redirect)\b/i.test(taskLower);
-  const hasBilling =
-    sensitiveAreasRelevant.some((a) => ["billing", "payments", "stripe", "dodo"].includes(a)) ||
-    /\b(billing|payment)\b/i.test(taskLower);
+  // ── No explicit paths — use category-based heuristics ───────────────────
+  const categoryScope = buildCategoryScope(
+    taskCategory,
+    projectContext.hasSrc,
+    projectContext.hasApp,
+    projectContext.hasPages,
+  );
 
-  if (hasCheckout) {
-    scope.push("Checkout page: src/app/checkout/** or equivalent checkout route");
-    scope.push("Checkout success / redirect handler route");
-  }
-  if (hasBilling && !hasCheckout) {
-    scope.push("Billing or payment service layer (read-only unless approved)");
-  }
-  if (hasBilling && hasCheckout) {
-    scope.push("Billing client or payment service: read-only to trace the redirect flow");
+  if (categoryScope.allowedHints.length > 0) {
+    for (const hint of categoryScope.allowedHints) {
+      if (hint) scope.push(hint);
+    }
+  } else {
+    // Ultimate fallback: directory detection (legacy behavior)
+    const taskLower = task.toLowerCase();
+    if (projectContext.hasSrc && projectContext.hasApp) {
+      scope.push("src/app/ - App Router pages and layouts only");
+    } else if (projectContext.hasApp) {
+      scope.push("app/ - App Router pages and layouts only");
+    } else if (projectContext.hasPages) {
+      scope.push("pages/ - Pages Router files only");
+    }
+
+    // Legacy checkout/billing hints
+    const hasCheckout = sensitiveAreasRelevant.includes("checkout") || /\b(checkout|redirect)\b/i.test(taskLower);
+    const hasBilling = sensitiveAreasRelevant.some((a) => ["billing", "payments", "stripe", "dodo"].includes(a)) || /\b(billing|payment)\b/i.test(taskLower);
+    if (hasCheckout) {
+      scope.push("Checkout page: src/app/checkout/** or equivalent checkout route");
+      scope.push("Checkout success / redirect handler route");
+    }
+    if (hasBilling && !hasCheckout) {
+      scope.push("Billing or payment service layer (read-only unless approved)");
+    }
+    if (hasBilling && hasCheckout) {
+      scope.push("Billing client or payment service: read-only to trace the redirect flow");
+    }
   }
 
   scope.push("Only files directly referenced by the cleaned objective");
@@ -390,14 +430,34 @@ export function generateContract(
 
   const cleanedObjective = cleanObjective(task);
 
+  // Pass compiler results to scope builder — explicit paths always win
   const relevantScope = buildRelevantScope(
     task,
     projectContext,
     config,
-    sensitiveAreasRelevant
+    sensitiveAreasRelevant,
+    {
+      explicitPaths: audit.explicitPaths ?? [],
+      onlyMode: audit.onlyMode ?? false,
+      mustIncludeMode: audit.mustIncludeMode ?? false,
+      taskCategory: audit.taskCategory ?? "unknown",
+    }
   );
   const sensitiveScope = buildSensitiveScope(sensitiveAreasRelevant);
-  const forbiddenScope = buildForbiddenScope(config, sensitiveAreasRelevant);
+
+  // Merge category-specific forbidden additions with the base forbidden scope
+  const baseForbiddenScope = buildForbiddenScope(config, sensitiveAreasRelevant);
+  const categoryDetails = buildCategoryScope(
+    audit.taskCategory ?? "unknown",
+    projectContext.hasSrc,
+    projectContext.hasApp,
+    projectContext.hasPages,
+  );
+  const seenForbidden = new Set(baseForbiddenScope);
+  const forbiddenScope = [
+    ...baseForbiddenScope,
+    ...categoryDetails.forbiddenAdditions.filter((r) => !seenForbidden.has(r)),
+  ];
 
   const inspectionOrder: string[] = [
     "1. Read the cleaned objective once. Do not start coding.",
@@ -409,13 +469,19 @@ export function generateContract(
     "7. Propose the minimal change. Wait if scope expands.",
   ];
 
-  const stopRules: string[] = [
+  // Base stop rules + category-specific additions (deduplicated)
+  const baseStopRules: string[] = [
     `Stop if the change requires touching more than ${config.maxFilesPerRun} files.`,
     "Stop if you need to modify any file in the forbidden scope.",
     "Stop before editing any sensitive scope item without explicit approval.",
     "Stop if you cannot identify a clear root cause.",
     "Stop if the fix requires installing new packages.",
     "Stop if you find yourself reading files not in the relevant or sensitive scope.",
+  ];
+  const seenStop = new Set(baseStopRules);
+  const stopRules = [
+    ...baseStopRules,
+    ...categoryDetails.stopRules.filter((r) => !seenStop.has(r)),
   ];
 
   const successCriteria: string[] = [
@@ -471,7 +537,7 @@ export function generateContract(
     whenToAsk,
   };
 
-  const contractText = formatContractText(contract, config);
+  const contractText = formatContractText(contract, config, audit);
 
   const promptScoreAfter = Math.min(93, audit.promptScoreBefore + 45);
   const wasteRiskAfter = scoreToRisk(promptScoreAfter);
@@ -500,16 +566,24 @@ export function generateContract(
   };
 }
 
-function formatContractText(contract: RunContract, config: RunTrimConfig): string {
+function formatContractText(contract: RunContract, config: RunTrimConfig, audit?: Partial<AuditResult>): string {
+  const category = audit?.taskCategory ?? "unknown";
+  const hasExplicitPaths = (audit?.explicitPaths?.length ?? 0) > 0;
+
   const lines: string[] = [
     "RUNTRIM GUARDED RUN CONTRACT",
     `Mode: ${contract.mode.toUpperCase()}`,
+    `Category: ${category}`,
     "Agent: Claude, Codex, Cursor, ChatGPT, or configured agent",
     "",
     "OBJECTIVE",
-    contract.cleanedObjective,
+    contract.objective !== contract.cleanedObjective
+      ? `User task: ${contract.objective}\nCompiled: ${contract.cleanedObjective}`
+      : contract.cleanedObjective,
     "",
-    "RELEVANT SCOPE",
+    hasExplicitPaths
+      ? "ALLOWED SCOPE  [explicit paths have highest priority — do not substitute with broader directories]"
+      : "ALLOWED SCOPE",
     ...contract.relevantScope.map((s) => `- ${s}`),
   ];
 
@@ -520,6 +594,13 @@ function formatContractText(contract: RunContract, config: RunTrimConfig): strin
       ...contract.sensitiveScope.map((s) => `- ${s}`)
     );
   }
+
+  const verificationSteps = audit?.taskCategory
+    ? buildCategoryScope(
+        audit.taskCategory,
+        false, false, false,
+      ).verificationSteps
+    : [];
 
   lines.push(
     "",
@@ -534,6 +615,17 @@ function formatContractText(contract: RunContract, config: RunTrimConfig): strin
     "",
     "SUCCESS CRITERIA",
     ...contract.successCriteria.map((s) => `- ${s}`),
+  );
+
+  if (verificationSteps.length > 0) {
+    lines.push(
+      "",
+      "VERIFICATION STEPS",
+      ...verificationSteps.map((s) => `- ${s}`),
+    );
+  }
+
+  lines.push(
     "",
     "REQUIRED OUTPUT FORMAT",
     ...contract.requiredOutputFormat.map((s) => `- ${s}`),

@@ -2266,12 +2266,20 @@ program
     console.log("");
     console.log(GO_ACCENT.bold("Contract"));
     console.log(DIM("  Risk          ") + riskColor(bridgeCtx.riskLevel));
+    console.log(DIM("  Category      ") + chalk.white(audit.taskCategory ?? "unknown"));
     console.log(DIM("  Token budget  ") + chalk.white("~" + bridgeCtx.tokenBudget.toLocaleString()));
-    if (bridgeCtx.allowedScope.length > 0) {
+    // Show explicit paths prominently if present
+    if (audit.explicitPaths && audit.explicitPaths.length > 0) {
+      const mode = audit.onlyMode ? "only" : audit.mustIncludeMode ? "must include" : "explicit";
+      console.log(DIM("  Scope         ") + chalk.cyan(`[${mode}] `) + chalk.white(audit.explicitPaths.slice(0, 3).join(", ")));
+    } else if (bridgeCtx.allowedScope.length > 0) {
       console.log(DIM("  Allowed       ") + chalk.white(truncate(bridgeCtx.allowedScope.slice(0, 2).join(", "), 60)));
     }
     if (bridgeCtx.forbiddenScope.length > 0) {
       console.log(DIM("  Forbidden     ") + chalk.white(truncate(bridgeCtx.forbiddenScope.slice(0, 2).join(", "), 60)));
+    }
+    if (contract.contract.stopRules.length > 0) {
+      console.log(DIM("  Stop rule     ") + chalk.white(truncate(contract.contract.stopRules[contract.contract.stopRules.length - 1] ?? "", 60)));
     }
     console.log(DIM("  Run saved     ") + chalk.white(`.runtrim/runs/${run.id}.json`));
     console.log("");
@@ -3887,7 +3895,7 @@ program
     console.log("");
 
     if (opts.dryRun) {
-      console.log(ACCENT.bold("  Dry run — nothing uploaded."));
+      console.log(ACCENT.bold("  Dry run ï¿½ nothing uploaded."));
       console.log("");
       return;
     }
