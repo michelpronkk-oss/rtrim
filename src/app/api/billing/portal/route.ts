@@ -48,24 +48,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "missing_site_url" }, { status: 503 });
   }
 
-  const endpoint = `https://api.dodopayments.com/customers/${encodeURIComponent(customerId)}/customer-portal/session`;
-  console.info("[/api/billing/portal] dodo_endpoint:", endpoint);
+  const dodoEnv =
+    process.env.DODO_PAYMENTS_ENVIRONMENT?.trim() ||
+    process.env.DODO_ENVIRONMENT?.trim() ||
+    "";
+
+  const documentedEndpoint = new URL("https://api.dodopayments.com/customer-portal");
+  documentedEndpoint.searchParams.set("customer_id", customerId);
+  documentedEndpoint.searchParams.set("send_email", "false");
+  documentedEndpoint.searchParams.set("return_url", `${siteUrl}/app/billing`);
+  if (dodoEnv) {
+    documentedEndpoint.searchParams.set("environment", dodoEnv);
+  }
+
+  const legacyEndpoint = `https://api.dodopayments.com/customers/${encodeURIComponent(customerId)}/customer-portal/session`;
+  console.info("[/api/billing/portal] dodo_endpoint_primary:", documentedEndpoint.toString());
+  console.info("[/api/billing/portal] dodo_method_primary:", "GET");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
-  let dodoRes: Response;
+  let dodoRes: Response | null = null;
   try {
-    dodoRes = await fetch(endpoint, {
-      method: "POST",
+    dodoRes = await fetch(documentedEndpoint.toString(), {
+      method: "GET",
       signal: controller.signal,
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        return_url: `${siteUrl}/app/billing`,
-      }),
     });
   } catch (err) {
     const name = err instanceof Error ? err.name : "UnknownError";
@@ -77,18 +87,53 @@ export async function POST(request: Request) {
   }
   clearTimeout(timeout);
 
-  if (!dodoRes.ok) {
+  if (dodoRes && !dodoRes.ok) {
     const bodyText = await dodoRes.text().catch(() => "");
-    console.error("[/api/billing/portal] dodo_portal_failed:", {
+    console.error("[/api/billing/portal] dodo_portal_primary_failed:", {
       status: dodoRes.status,
       body: bodyText,
     });
-    return NextResponse.json({ ok: false, error: "dodo_portal_failed" }, { status: 502 });
+
+    const shouldTryLegacy = dodoRes.status === 404 || dodoRes.status === 405 || dodoRes.status === 400;
+    if (shouldTryLegacy) {
+      console.info("[/api/billing/portal] trying_legacy_endpoint:", legacyEndpoint);
+      try {
+        dodoRes = await fetch(legacyEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            return_url: `${siteUrl}/app/billing`,
+          }),
+        });
+      } catch (err) {
+        const name = err instanceof Error ? err.name : "UnknownError";
+        const message = err instanceof Error ? err.message : String(err);
+        const cause = err instanceof Error ? String(err.cause ?? "") : "";
+        console.error("[/api/billing/portal] dodo_network_error_legacy:", { name, message, cause });
+        return NextResponse.json({ ok: false, error: "dodo_portal_network_error" }, { status: 502 });
+      }
+
+      if (!dodoRes.ok) {
+        const legacyBody = await dodoRes.text().catch(() => "");
+        console.error("[/api/billing/portal] dodo_portal_legacy_failed:", {
+          status: dodoRes.status,
+          body: legacyBody,
+        });
+        return NextResponse.json({ ok: false, error: "dodo_portal_failed" }, { status: 502 });
+      }
+    } else {
+      return NextResponse.json({ ok: false, error: "dodo_portal_failed" }, { status: 502 });
+    }
   }
 
-  const payload = (await dodoRes.json().catch(() => null)) as { link?: string; url?: string } | null;
-  const url = payload?.link ?? payload?.url;
-  console.info("[/api/billing/portal] dodo_response_status:", dodoRes.status);
+  const payload = (await dodoRes?.json().catch(() => null)) as
+    | { link?: string; url?: string; customer_portal_url?: string; portal_url?: string }
+    | null;
+  const url = payload?.link ?? payload?.url ?? payload?.customer_portal_url ?? payload?.portal_url;
+  console.info("[/api/billing/portal] dodo_response_status:", dodoRes?.status ?? 0);
   console.info("[/api/billing/portal] dodo_response_has_url:", Boolean(url));
 
   if (!url) {
