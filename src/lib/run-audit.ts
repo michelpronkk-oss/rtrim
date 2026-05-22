@@ -52,6 +52,8 @@ export interface AuditResult {
   explicitAllowedScope: string[];
   /** Explicit forbidden scope phrases from task text when provided. */
   explicitForbiddenScope: string[];
+  /** Path-like entries extracted from explicit forbidden phrases. */
+  explicitForbiddenPaths: string[];
 }
 
 // Always forbidden regardless of task content.
@@ -429,5 +431,6 @@ export function auditTask(
     taskCategory: compiler.taskCategory,
     explicitAllowedScope: compiler.explicitAllowedScope,
     explicitForbiddenScope: compiler.explicitForbiddenScope,
+    explicitForbiddenPaths: compiler.explicitForbiddenPaths,
   };
 }

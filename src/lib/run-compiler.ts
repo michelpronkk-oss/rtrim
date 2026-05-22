@@ -44,6 +44,8 @@ export interface ExplicitPathResult {
   explicitAllowedScope: string[];
   /** Explicit forbidden-scope phrases from task text. */
   explicitForbiddenScope: string[];
+  /** Path-like tokens extracted from forbidden phrases. */
+  explicitForbiddenPaths: string[];
 }
 
 export interface CompilerResult {
@@ -52,6 +54,7 @@ export interface CompilerResult {
   mustIncludeMode: boolean;
   explicitAllowedScope: string[];
   explicitForbiddenScope: string[];
+  explicitForbiddenPaths: string[];
   taskCategory: TaskCategory;
 }
 
@@ -86,7 +89,7 @@ const ONLY_EDIT_RE = /\bonly\s+(?:edit|touch|modify|change|update|fix)\b/i;
 /** Patterns indicating "allowed scope must include X" — additive mode. */
 const MUST_INCLUDE_RE = /\ballowed\s+scope\s+(?:must\s+)?include\b|\bmust\s+(?:include|contain)\b/i;
 const CLI_SCOPE_RE =
-  /\b(cli|command routing|runtrim command|run compiler|contract generation|scope inference|preview command|agent preview command|\.runtrim(?:\s+artifacts?)?)\b/i;
+  /\b(cli|command routing|runtrim command|run compiler|contract generation|scope inference|preview command|agent preview command|agent apply|adapters?|auto-guard|bridge helpers?|daemon|local server|localhost|\.runtrim(?:\s+artifacts?)?)\b/i;
 
 function extractScopePhrase(task: string, re: RegExp): string | null {
   const m = task.match(re);
@@ -96,19 +99,51 @@ function extractScopePhrase(task: string, re: RegExp): string | null {
   return text.replace(/[.]+$/, "").trim();
 }
 
+function extractPathsFromText(input: string): string[] {
+  const found = new Set<string>();
+
+  SLASH_PATH_RE.lastIndex = 0;
+  for (const match of input.matchAll(SLASH_PATH_RE)) {
+    const p = match[1].trim().replace(/[,;.!?]+$/, "");
+    if (p.length > 2) found.add(p);
+  }
+
+  KNOWN_FILE_RE.lastIndex = 0;
+  for (const m of input.matchAll(KNOWN_FILE_RE)) found.add(m[0]);
+
+  LOCK_FILE_RE.lastIndex = 0;
+  for (const m of input.matchAll(LOCK_FILE_RE)) found.add(m[1] ?? m[0]);
+
+  ENV_FILE_RE.lastIndex = 0;
+  for (const m of input.matchAll(ENV_FILE_RE)) found.add(m[1] ?? m[0]);
+
+  return [...found].filter(Boolean);
+}
+
 function buildExplicitAllowedScope(task: string, explicitPaths: string[]): string[] {
   const out: string[] = [];
   if (explicitPaths.length > 0) return out;
 
-  if (ONLY_EDIT_RE.test(task) || MUST_INCLUDE_RE.test(task)) {
+  const hasExplicitAllowedPhrase =
+    ONLY_EDIT_RE.test(task) ||
+    MUST_INCLUDE_RE.test(task) ||
+    /\b(allowed\s+files|scope|build\s+only|update\s+only)\b/i.test(task);
+
+  if (hasExplicitAllowedPhrase) {
     const onlyPhrase = extractScopePhrase(task, /\bonly\s+(?:edit|touch|modify|change|update|fix)\s+([^\n.]+)/i);
     const includePhrase = extractScopePhrase(task, /\ballowed\s+scope\s+(?:must\s+)?include\s+([^\n.]+)/i);
-    const phrase = onlyPhrase ?? includePhrase ?? "";
+    const allowedFilesPhrase = extractScopePhrase(task, /\ballowed\s+files\s+([^\n.]+)/i);
+    const buildOnlyPhrase = extractScopePhrase(task, /\bbuild\s+only\s+([^\n.]+)/i);
+    const updateOnlyPhrase = extractScopePhrase(task, /\bupdate\s+only\s+([^\n.]+)/i);
+    const scopePhrase = extractScopePhrase(task, /\bscope\s+([^\n.]+)/i);
+    const phrase = onlyPhrase ?? includePhrase ?? allowedFilesPhrase ?? buildOnlyPhrase ?? updateOnlyPhrase ?? scopePhrase ?? "";
 
     if (CLI_SCOPE_RE.test(task) || CLI_SCOPE_RE.test(phrase)) {
       out.push("CLI command routing files");
       out.push("CLI planning logic");
       out.push("Agent preview command logic");
+      out.push("Agent apply command logic");
+      out.push("RunTrim bridge/daemon helpers");
       if (/run compiler|contract generation|scope inference/i.test(task)) {
         out.push("Run compiler and contract generation helpers");
       }
@@ -129,48 +164,38 @@ function buildExplicitForbiddenScope(task: string): string[] {
   if (forbiddenPhrase) out.push(forbiddenPhrase);
   const doNotTouch = extractScopePhrase(task, /\bdo\s+not\s+touch\s+([^\n.]+)/i);
   if (doNotTouch) out.push(`Do not touch ${doNotTouch}`);
+  const doNotEdit = extractScopePhrase(task, /\bdo\s+not\s+edit\s+([^\n.]+)/i);
+  if (doNotEdit) out.push(`Do not edit ${doNotEdit}`);
   const withoutTouching = extractScopePhrase(task, /\bwithout\s+touching\s+([^\n.]+)/i);
   if (withoutTouching) out.push(`Without touching ${withoutTouching}`);
+  const exclude = extractScopePhrase(task, /\bexclude\s+([^\n.]+)/i);
+  if (exclude) out.push(`Exclude ${exclude}`);
+  const forbidden = extractScopePhrase(task, /\bforbidden\s+([^\n.]+)/i);
+  if (forbidden) out.push(`Forbidden ${forbidden}`);
   return [...new Set(out)];
 }
 
 export function extractExplicitPaths(task: string): ExplicitPathResult {
-  const found = new Set<string>();
-
-  // 1. Slash-separated directory paths (handles hyphens, dots, parens in segments)
-  SLASH_PATH_RE.lastIndex = 0;
-  for (const match of task.matchAll(SLASH_PATH_RE)) {
-    const p = match[1].trim().replace(/[,;.!?]+$/, "");
-    if (p.length > 3) found.add(p);
-  }
-
-  // 2. Known standalone filenames
-  KNOWN_FILE_RE.lastIndex = 0;
-  for (const m of task.matchAll(KNOWN_FILE_RE)) {
-    found.add(m[0]);
-  }
-
-  LOCK_FILE_RE.lastIndex = 0;
-  for (const m of task.matchAll(LOCK_FILE_RE)) {
-    found.add(m[1] ?? m[0]);
-  }
-
-  ENV_FILE_RE.lastIndex = 0;
-  for (const m of task.matchAll(ENV_FILE_RE)) {
-    found.add(m[1] ?? m[0]);
-  }
+  const allPaths = extractPathsFromText(task);
 
   const onlyMode = ONLY_EDIT_RE.test(task);
   const mustIncludeMode = MUST_INCLUDE_RE.test(task);
-  const explicitAllowedScope = buildExplicitAllowedScope(task, [...found]);
   const explicitForbiddenScope = buildExplicitForbiddenScope(task);
+  const explicitForbiddenPaths = extractPathsFromText(explicitForbiddenScope.join(" "));
+
+  // Remove paths that appear in explicit forbidden phrases (e.g. "Do not touch src/app")
+  const forbiddenSet = new Set(explicitForbiddenPaths.map((p) => p.toLowerCase()));
+  const paths = allPaths.filter((p) => !forbiddenSet.has(p.toLowerCase()));
+
+  const explicitAllowedScope = buildExplicitAllowedScope(task, paths);
 
   return {
-    paths: [...found].filter(Boolean).filter((p) => p.length > 2),
+    paths: paths.filter(Boolean).filter((p) => p.length > 2),
     onlyMode,
     mustIncludeMode,
     explicitAllowedScope,
     explicitForbiddenScope,
+    explicitForbiddenPaths,
   };
 }
 
@@ -295,9 +320,9 @@ export function classifyTaskCategory(task: string, explicitPaths: string[]): Tas
 // ── Compiler entry point ──────────────────────────────────────────────────────
 
 export function compileTask(task: string): CompilerResult {
-  const { paths, onlyMode, mustIncludeMode, explicitAllowedScope, explicitForbiddenScope } = extractExplicitPaths(task);
+  const { paths, onlyMode, mustIncludeMode, explicitAllowedScope, explicitForbiddenScope, explicitForbiddenPaths } = extractExplicitPaths(task);
   const taskCategory = classifyTaskCategory(task, paths);
-  return { explicitPaths: paths, onlyMode, mustIncludeMode, explicitAllowedScope, explicitForbiddenScope, taskCategory };
+  return { explicitPaths: paths, onlyMode, mustIncludeMode, explicitAllowedScope, explicitForbiddenScope, explicitForbiddenPaths, taskCategory };
 }
 
 // ── Category-specific scope, stop rules, verification ────────────────────────

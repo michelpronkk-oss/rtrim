@@ -36,6 +36,14 @@ export interface ContractResult {
   /** True when the task was classified as a mega-run and blocked. */
   isBlocked: boolean;
   splitReport?: SplitReport;
+  scopeResolution?: {
+    explicitAllowed: string[];
+    explicitForbidden: string[];
+    category: string;
+    heuristicAllowed: string[];
+    finalAllowed: string[];
+    finalForbidden: string[];
+  };
 }
 
 const COST_PER_MILLION: Record<string, number> = {
@@ -123,35 +131,43 @@ function buildRelevantScope(
   projectContext: ProjectContext,
   config: RunTrimConfig,
   sensitiveAreasRelevant: string[],
-  audit: Pick<AuditResult, "explicitPaths" | "onlyMode" | "mustIncludeMode" | "explicitAllowedScope" | "taskCategory">
-): string[] {
-  const { explicitPaths, onlyMode, mustIncludeMode, explicitAllowedScope, taskCategory } = audit;
+  audit: Pick<AuditResult, "explicitPaths" | "onlyMode" | "mustIncludeMode" | "explicitAllowedScope" | "taskCategory" | "explicitForbiddenPaths">
+): { finalScope: string[]; heuristicAllowed: string[] } {
+  const { explicitPaths, onlyMode, explicitAllowedScope, taskCategory, explicitForbiddenPaths } = audit;
   const scope: string[] = [];
+  const heuristicAllowed: string[] = [];
+  const forbiddenPathSet = new Set((explicitForbiddenPaths ?? []).map((p) => p.toLowerCase()));
+  const pushIfAllowed = (value: string, target: string[]): void => {
+    const lower = value.toLowerCase();
+    if ([...forbiddenPathSet].some((p) => p && lower.includes(p))) return;
+    target.push(value);
+  };
 
   // ── Explicit paths: highest priority ────────────────────────────────────
-  if (explicitPaths.length > 0) {
-    for (const p of explicitPaths) {
+  const filteredExplicitPaths = explicitPaths.filter((p) => !forbiddenPathSet.has(p.toLowerCase()));
+  if (filteredExplicitPaths.length > 0) {
+    for (const p of filteredExplicitPaths) {
       scope.push(`${p}${onlyMode ? "  [explicit — user-specified, only this]" : "  [explicit — user-specified]"}`);
     }
 
     if (onlyMode) {
       // "only edit X" — stop here. No directory-level heuristics.
       scope.push(`Maximum ${config.maxFilesPerRun} files total`);
-      return scope;
+      return { finalScope: scope, heuristicAllowed };
     }
 
     // "must include X" or plain explicit reference — add a note but skip broad heuristics
     scope.push("Only files directly referenced by the objective");
     scope.push(`Maximum ${config.maxFilesPerRun} files total`);
-    return scope;
+    return { finalScope: scope, heuristicAllowed };
   }
 
   // ── Explicit non-path scope phrases: override heuristics ────────────────
   if (explicitAllowedScope.length > 0) {
-    for (const s of explicitAllowedScope) scope.push(s);
+    for (const s of explicitAllowedScope) pushIfAllowed(s, scope);
     scope.push("Only files directly referenced by the cleaned objective");
     scope.push(`Maximum ${config.maxFilesPerRun} files total`);
-    return [...new Set(scope)];
+    return { finalScope: [...new Set(scope)], heuristicAllowed };
   }
 
   // ── No explicit paths — use category-based heuristics ───────────────────
@@ -164,38 +180,53 @@ function buildRelevantScope(
 
   if (categoryScope.allowedHints.length > 0) {
     for (const hint of categoryScope.allowedHints) {
-      if (hint) scope.push(hint);
+      if (hint) {
+        pushIfAllowed(hint, scope);
+        pushIfAllowed(hint, heuristicAllowed);
+      }
     }
   } else {
     // Ultimate fallback: directory detection (legacy behavior)
     const taskLower = task.toLowerCase();
-    if (projectContext.hasSrc && projectContext.hasApp) {
-      scope.push("src/app/ - App Router pages and layouts only");
-    } else if (projectContext.hasApp) {
-      scope.push("app/ - App Router pages and layouts only");
-    } else if (projectContext.hasPages) {
-      scope.push("pages/ - Pages Router files only");
+    const appRouterIntent =
+      taskCategory === "ui" ||
+      /\b(homepage|public page|dashboard page|app router|layout|page|src\/app|app\/)/i.test(taskLower);
+    if (appRouterIntent) {
+      if (projectContext.hasSrc && projectContext.hasApp) {
+        pushIfAllowed("src/app/ - App Router pages and layouts only", scope);
+        pushIfAllowed("src/app/ - App Router pages and layouts only", heuristicAllowed);
+      } else if (projectContext.hasApp) {
+        pushIfAllowed("app/ - App Router pages and layouts only", scope);
+        pushIfAllowed("app/ - App Router pages and layouts only", heuristicAllowed);
+      } else if (projectContext.hasPages) {
+        pushIfAllowed("pages/ - Pages Router files only", scope);
+        pushIfAllowed("pages/ - Pages Router files only", heuristicAllowed);
+      }
     }
 
     // Legacy checkout/billing hints
     const hasCheckout = sensitiveAreasRelevant.includes("checkout") || /\b(checkout|redirect)\b/i.test(taskLower);
     const hasBilling = sensitiveAreasRelevant.some((a) => ["billing", "payments", "stripe", "dodo"].includes(a)) || /\b(billing|payment)\b/i.test(taskLower);
     if (hasCheckout) {
-      scope.push("Checkout page: src/app/checkout/** or equivalent checkout route");
-      scope.push("Checkout success / redirect handler route");
+      pushIfAllowed("Checkout page: src/app/checkout/** or equivalent checkout route", scope);
+      pushIfAllowed("Checkout success / redirect handler route", scope);
+      pushIfAllowed("Checkout page: src/app/checkout/** or equivalent checkout route", heuristicAllowed);
+      pushIfAllowed("Checkout success / redirect handler route", heuristicAllowed);
     }
     if (hasBilling && !hasCheckout) {
-      scope.push("Billing or payment service layer (read-only unless approved)");
+      pushIfAllowed("Billing or payment service layer (read-only unless approved)", scope);
+      pushIfAllowed("Billing or payment service layer (read-only unless approved)", heuristicAllowed);
     }
     if (hasBilling && hasCheckout) {
-      scope.push("Billing client or payment service: read-only to trace the redirect flow");
+      pushIfAllowed("Billing client or payment service: read-only to trace the redirect flow", scope);
+      pushIfAllowed("Billing client or payment service: read-only to trace the redirect flow", heuristicAllowed);
     }
   }
 
   scope.push("Only files directly referenced by the cleaned objective");
   scope.push(`Maximum ${config.maxFilesPerRun} files total`);
 
-  return scope;
+  return { finalScope: scope, heuristicAllowed };
 }
 
 /**
@@ -440,7 +471,7 @@ export function generateContract(
   const cleanedObjective = cleanObjective(task);
 
   // Pass compiler results to scope builder — explicit paths always win
-  const relevantScope = buildRelevantScope(
+  const relevantResolved = buildRelevantScope(
     task,
     projectContext,
     config,
@@ -451,8 +482,10 @@ export function generateContract(
       mustIncludeMode: audit.mustIncludeMode ?? false,
       explicitAllowedScope: audit.explicitAllowedScope ?? [],
       taskCategory: audit.taskCategory ?? "unknown",
+      explicitForbiddenPaths: audit.explicitForbiddenPaths ?? [],
     }
   );
+  const relevantScope = relevantResolved.finalScope;
   const sensitiveScope = buildSensitiveScope(sensitiveAreasRelevant);
 
   // Merge category-specific forbidden additions with the base forbidden scope
@@ -577,6 +610,14 @@ export function generateContract(
     estimatedDollarsTrimmed:
       estimatedDollars < 0.01 ? "<$0.01" : `$${estimatedDollars.toFixed(2)}`,
     isBlocked: false,
+    scopeResolution: {
+      explicitAllowed: [...(audit.explicitPaths ?? []), ...(audit.explicitAllowedScope ?? [])],
+      explicitForbidden: [...(audit.explicitForbiddenScope ?? []), ...(audit.explicitForbiddenPaths ?? [])],
+      category: audit.taskCategory ?? "unknown",
+      heuristicAllowed: relevantResolved.heuristicAllowed,
+      finalAllowed: relevantScope,
+      finalForbidden: forbiddenScope,
+    },
   };
 }
 

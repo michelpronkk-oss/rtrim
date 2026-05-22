@@ -8,6 +8,7 @@ import clipboard from "clipboardy";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import http from "http";
 import { execa } from "execa";
 
 import {
@@ -266,6 +267,459 @@ function dedupeFiles(files: string[]): string[] {
   return [...new Set(files.filter(Boolean).map((f) => f.replace(/\\/g, "/")))];
 }
 
+interface AgentPreviewArtifact {
+  id: string;
+  createdAt: string;
+  task: string;
+  objective: string;
+  risk: "low" | "medium" | "high" | "critical";
+  guardMode: string;
+  contractRequired: boolean;
+  fastPathAllowed: boolean;
+  filesToInspect: string[];
+  allowedScope: string[];
+  forbiddenScope: string[];
+  sensitiveAreas: string[];
+  stopRules: string[];
+  successCriteria: string[];
+  proofRequired: string[];
+  verificationSteps: string[];
+  learnedContext: string[];
+  similarRuns: Array<{
+    task: string;
+    date: string;
+    filesTouched: string[];
+    proofGaps: string[];
+    score: number;
+  }>;
+  patchStrategy: string[];
+  approvalRequired: "no" | "recommended" | "required";
+  recommendedNextCommand: string;
+}
+
+interface AgentPreviewBuildResult {
+  preview: AgentPreviewArtifact;
+  jsonPath: string;
+  markdownPath: string;
+  audit: ReturnType<typeof auditTask>;
+  contract: ReturnType<typeof generateContract>;
+}
+
+interface AgentApplyArtifact {
+  id: string;
+  task: string;
+  createdAt: string;
+  risk: "low" | "medium" | "high" | "critical";
+  approvalRequired: "no" | "recommended" | "required";
+  approved: boolean;
+  previewId: string;
+  contractPath: string;
+  allowedScope: string[];
+  forbiddenScope: string[];
+  stopRules: string[];
+  filesToInspect: string[];
+  patchStrategy: string[];
+  proofRequired: string[];
+  verificationSteps: string[];
+  nextCommand: string;
+  finishRequired: boolean;
+}
+
+function nowId(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
+}
+
+function tokenize(input: string): Set<string> {
+  return new Set(
+    input
+      .toLowerCase()
+      .split(/[^a-z0-9_.\/-]+/)
+      .filter((x) => x.length > 2)
+  );
+}
+
+function extractRunFiles(run: RunEvaluationRecord | null | undefined): string[] {
+  if (!run) return [];
+  const list = Array.isArray(run.changedFiles) ? run.changedFiles : [];
+  return dedupeFiles(list);
+}
+
+function buildSimilarRunsForPreview(
+  task: string,
+  category: string,
+  risk: string,
+  runs: ReturnType<typeof loadAllRuns>
+): AgentPreviewArtifact["similarRuns"] {
+  const taskTokens = tokenize(task);
+  const out: AgentPreviewArtifact["similarRuns"] = [];
+
+  for (const run of runs) {
+    const runTask = (run.task ?? "").toString();
+    const runTokens = tokenize(runTask);
+    let overlap = 0;
+    for (const t of taskTokens) if (runTokens.has(t)) overlap += 1;
+
+    const evalRisk = ((run.evaluation as RunEvaluationRecord | undefined)?.scopeDriftRisk ?? "").toString().toLowerCase();
+    const riskMatch = evalRisk && evalRisk === risk ? 2 : 0;
+    const categoryMatch = runTask.toLowerCase().includes(category.toLowerCase()) ? 2 : 0;
+    const files = extractRunFiles(run.evaluation as RunEvaluationRecord | undefined);
+    const fileOverlap = files.some((f) => task.toLowerCase().includes(path.basename(f).toLowerCase())) ? 1 : 0;
+    const score = overlap + riskMatch + categoryMatch + fileOverlap;
+    if (score <= 0) continue;
+
+    out.push({
+      task: runTask,
+      date: (run.createdAt ?? "").toString(),
+      filesTouched: files.slice(0, 4),
+      proofGaps: ((run.evaluation as RunEvaluationRecord | undefined)?.missingProofItems ?? []).slice(0, 2),
+      score,
+    });
+  }
+
+  return out.sort((a, b) => b.score - a.score).slice(0, 5);
+}
+
+function buildPatchStrategy(
+  category: string,
+  filesToInspect: string[],
+  forbiddenScope: string[]
+): string[] {
+  const hasCli = category === "cli";
+  const strategy: string[] = [];
+  strategy.push("Inspect only the highest-signal files first.");
+  if (filesToInspect.length > 0) strategy.push(`Start with: ${filesToInspect.slice(0, 2).join(", ")}.`);
+  if (hasCli) {
+    strategy.push("Adjust CLI command routing and preview helpers only.");
+    strategy.push("Keep runtrim go/finish behavior unchanged.");
+  } else {
+    strategy.push("Apply the smallest scoped change that satisfies the objective.");
+  }
+  strategy.push("Do not touch forbidden areas listed in this preview.");
+  if (forbiddenScope.length > 0) strategy.push(`Hard stop if work expands into: ${forbiddenScope[0]}.`);
+  strategy.push("Verify with build and task-specific proof before proposing apply.");
+  return strategy.slice(0, 6);
+}
+
+function buildApprovalLevel(
+  risk: "low" | "medium" | "high" | "critical",
+  task: string,
+  category: string
+): "no" | "recommended" | "required" {
+  const text = `${task}\n${category}`.toLowerCase();
+  const highSystems = ["auth", "billing", "payment", "dodo", "stripe", "webhook", "database", "migration", "rls", "middleware", "env", "secret"];
+  if (risk === "high" || risk === "critical") return "required";
+  if (highSystems.some((k) => text.includes(k))) return "required";
+  if (risk === "medium") return "recommended";
+  return "no";
+}
+
+function buildRecommendedNextCommand(task: string, approval: "no" | "recommended" | "required", filesToInspect: string[]): string {
+  if (approval === "no") return `runtrim go "${task}"`;
+  if (approval === "required") {
+    if (filesToInspect.length <= 1) return `runtrim go "${task}"`;
+    return 'split into:\n1. audit only\n2. implementation only\n3. verification only';
+  }
+  return `runtrim go "${task}"`;
+}
+
+function writePreviewArtifacts(cwd: string, preview: AgentPreviewArtifact): { jsonPath: string; markdownPath: string } {
+  const previewsDir = path.join(cwd, ".runtrim", "previews");
+  if (!fs.existsSync(previewsDir)) fs.mkdirSync(previewsDir, { recursive: true });
+
+  const jsonPath = path.join(previewsDir, `${preview.id}.json`);
+  const markdownPath = path.join(previewsDir, "latest.md");
+  fs.writeFileSync(jsonPath, JSON.stringify(preview, null, 2), "utf-8");
+
+  const lines: string[] = [
+    "RunTrim Agent Preview",
+    "",
+    "Task:",
+    preview.task,
+    "",
+    "Risk:",
+    preview.risk,
+    "",
+    "Contract required:",
+    preview.contractRequired ? "yes" : "no",
+    "",
+    "Files to inspect:",
+    ...(preview.filesToInspect.length > 0 ? preview.filesToInspect.map((f) => `- ${f}`) : ["- none identified"]),
+    "",
+    "Forbidden:",
+    ...(preview.forbiddenScope.length > 0 ? preview.forbiddenScope.slice(0, 8).map((f) => `- ${f}`) : ["- none"]),
+    "",
+    "Learned context:",
+    ...(preview.learnedContext.length > 0 ? preview.learnedContext.map((x) => `- ${x}`) : ["- learning not available yet"]),
+    "",
+    "Patch strategy:",
+    ...preview.patchStrategy.map((x, i) => `${i + 1}. ${x}`),
+    "",
+    "Proof required:",
+    ...(preview.proofRequired.length > 0 ? preview.proofRequired.map((p) => `- ${p}`) : ["- npm run build"]),
+    "",
+    "Next:",
+    preview.recommendedNextCommand,
+    "",
+    `Preview JSON: .runtrim/previews/${preview.id}.json`,
+  ];
+  fs.writeFileSync(markdownPath, lines.join("\n"), "utf-8");
+  return { jsonPath, markdownPath };
+}
+
+async function runAgentPreview(task: string): Promise<void> {
+  const result = await buildAgentPreview(task);
+  const preview = result.preview;
+  const artifacts = { jsonPath: result.jsonPath, markdownPath: result.markdownPath };
+  const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, ChalkInstance>)[preview.risk] ?? chalk.white;
+
+  console.log("");
+  console.log(GO_ACCENT.bold("RunTrim Agent Preview"));
+  console.log("");
+  console.log(DIM("  Task               ") + chalk.white(preview.task));
+  console.log(DIM("  Risk               ") + riskColor(preview.risk));
+  console.log(DIM("  Contract required  ") + chalk.white(preview.contractRequired ? "yes" : "no"));
+  console.log(DIM("  Guard mode         ") + chalk.white(preview.guardMode));
+  console.log(DIM("  Approval           ") + chalk.white(preview.approvalRequired));
+  console.log("");
+  console.log(GO_ACCENT.bold("Files to inspect"));
+  for (const file of preview.filesToInspect.slice(0, 8)) console.log(chalk.white(`  - ${file}`));
+  console.log("");
+  console.log(GO_ACCENT.bold("Forbidden"));
+  for (const item of preview.forbiddenScope.slice(0, 6)) console.log(DIM("  - ") + chalk.white(item));
+  console.log("");
+  console.log(GO_ACCENT.bold("Patch strategy"));
+  for (let i = 0; i < preview.patchStrategy.length; i += 1) {
+    console.log(chalk.white(`  ${i + 1}. ${preview.patchStrategy[i]}`));
+  }
+  console.log("");
+  console.log(GO_ACCENT.bold("Proof required"));
+  for (const p of preview.proofRequired.slice(0, 6)) console.log(chalk.white(`  - ${p}`));
+  console.log("");
+  console.log(GO_ACCENT.bold("Next"));
+  console.log(chalk.white(`  ${preview.recommendedNextCommand}`));
+  console.log("");
+  console.log(DIM("  Artifacts          ") + chalk.white(path.relative(process.cwd(), artifacts.markdownPath)));
+  console.log(DIM("                     ") + chalk.white(path.relative(process.cwd(), artifacts.jsonPath)));
+  console.log("");
+}
+
+async function buildAgentPreview(task: string): Promise<AgentPreviewBuildResult> {
+  const cwd = process.cwd();
+  const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+  const runs = loadAllRuns(cwd);
+  const changedFiles = dedupeFiles(await getGitDiff(cwd)).filter((f) => {
+    const n = f.replace(/\\/g, "/").toLowerCase();
+    return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+  });
+  const plan = generatePlan(cwd, task, runs, config, changedFiles);
+  const audit = auditTask(task, config, cwd);
+  const contract = generateContract(task, audit, config);
+  const id = nowId();
+  const createdAt = new Date().toISOString();
+  const filesToInspect = (audit.explicitPaths.length > 0
+    ? audit.explicitPaths
+    : contract.contract.relevantScope.filter((s) => /\/|\.ts|\.tsx|\.js|\.jsx|\.md/.test(s)).slice(0, 8)
+  );
+  const similarRuns = buildSimilarRunsForPreview(task, plan.category, plan.risk, runs);
+  const approvalRequired = buildApprovalLevel(plan.risk, task, plan.category);
+  const recommendedNextCommand = buildRecommendedNextCommand(task, approvalRequired, filesToInspect);
+  const learnedContext = plan.learnedContext.length > 0
+    ? plan.learnedContext
+    : ["Learning not available yet. Run a few guarded runs and finish reports to build project memory."];
+  const preview: AgentPreviewArtifact = {
+    id,
+    createdAt,
+    task,
+    objective: plan.objective,
+    risk: plan.risk,
+    guardMode: plan.guardMode,
+    contractRequired: plan.contractRequired,
+    fastPathAllowed: plan.fastPathAllowed,
+    filesToInspect,
+    allowedScope: contract.contract.relevantScope,
+    forbiddenScope: contract.contract.forbiddenScope,
+    sensitiveAreas: [...contract.contract.sensitiveScope, ...plan.sensitiveAreas].slice(0, 10),
+    stopRules: contract.contract.stopRules,
+    successCriteria: contract.contract.successCriteria,
+    proofRequired: plan.proofRequired,
+    verificationSteps: [...plan.verificationSteps, ...plan.proofRequired].slice(0, 8),
+    learnedContext,
+    similarRuns,
+    patchStrategy: buildPatchStrategy(plan.category, filesToInspect, contract.contract.forbiddenScope),
+    approvalRequired,
+    recommendedNextCommand,
+  };
+
+  const artifacts = writePreviewArtifacts(cwd, preview);
+  return {
+    preview,
+    jsonPath: artifacts.jsonPath,
+    markdownPath: artifacts.markdownPath,
+    audit,
+    contract,
+  };
+}
+
+function writeAgentContract(cwd: string, contractText: string): string {
+  const dir = path.join(cwd, ".runtrim", "contracts");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const contractPath = path.join(dir, "latest.md");
+  fs.writeFileSync(contractPath, contractText, "utf-8");
+  return contractPath;
+}
+
+function writeAgentHandoffArtifacts(
+  cwd: string,
+  apply: AgentApplyArtifact,
+  previewPath: string
+): { jsonPath: string; markdownPath: string; promptText: string } {
+  const dir = path.join(cwd, ".runtrim", "agent");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const jsonPath = path.join(dir, `${apply.id}.json`);
+  const markdownPath = path.join(dir, "latest.md");
+  fs.writeFileSync(jsonPath, JSON.stringify(apply, null, 2), "utf-8");
+
+  const promptLines = [
+    "You are working inside a RunTrim controlled apply run.",
+    "",
+    "Before editing:",
+    "- read .runtrim/contracts/latest.md",
+    "- read .runtrim/agent/latest.md",
+    "- stay inside allowed scope",
+    "- do not touch forbidden scope",
+    "- stop if scope expansion is required",
+    "- preserve user objective",
+    "- produce proof",
+    "- after edits, ask the user to run runtrim finish",
+  ];
+
+  const md = [
+    "RunTrim Agent Apply",
+    "",
+    `Task: ${apply.task}`,
+    `Risk: ${apply.risk}`,
+    `Approval required: ${apply.approvalRequired}`,
+    `Approved: ${apply.approved ? "yes" : "no"}`,
+    `Active contract path: ${apply.contractPath}`,
+    `Preview path: ${previewPath.replace(/\\/g, "/")}`,
+    "",
+    "Allowed scope:",
+    ...apply.allowedScope.map((s) => `- ${s}`),
+    "",
+    "Forbidden scope:",
+    ...apply.forbiddenScope.map((s) => `- ${s}`),
+    "",
+    "Stop rules:",
+    ...apply.stopRules.map((s) => `- ${s}`),
+    "",
+    "Files to inspect:",
+    ...(apply.filesToInspect.length > 0 ? apply.filesToInspect.map((s) => `- ${s}`) : ["- none identified"]),
+    "",
+    "Patch strategy:",
+    ...apply.patchStrategy.map((s, i) => `${i + 1}. ${s}`),
+    "",
+    "Proof required:",
+    ...apply.proofRequired.map((s) => `- ${s}`),
+    "",
+    "Verification steps:",
+    ...apply.verificationSteps.map((s) => `- ${s}`),
+    "",
+    "Finish requirement:",
+    "- After edits are done, run: runtrim finish",
+    "",
+    "Agent instruction summary:",
+    ...promptLines,
+    "",
+    "Next command:",
+    apply.nextCommand,
+  ].join("\n");
+
+  fs.writeFileSync(markdownPath, md, "utf-8");
+  return { jsonPath, markdownPath, promptText: promptLines.join("\n") };
+}
+
+async function runAgentApply(task: string, mode: { apply: boolean; confirm: boolean }): Promise<void> {
+  const cwd = process.cwd();
+  const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+  const changed = dedupeFiles(await getGitDiff(cwd)).filter((f) => {
+    const n = f.replace(/\\/g, "/").toLowerCase();
+    return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+  });
+  const latest = loadLatestRun(cwd);
+  if (((config as Record<string, unknown>).autoGuardMode as string | undefined) && latest?.status === "guarded" && changed.length > 0) {
+    console.log("");
+    console.log(chalk.yellow("Finish the current run before starting another task."));
+    console.log("");
+    return;
+  }
+
+  const previewResult = await buildAgentPreview(task);
+  const { preview, contract, markdownPath: previewPath } = previewResult;
+  const risk = preview.risk;
+  const approvalRequired = preview.approvalRequired;
+
+  if (mode.apply && approvalRequired === "required" && !mode.confirm) {
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim Agent Apply"));
+    console.log("");
+    console.log(DIM("  Risk       ") + chalk.red(risk));
+    console.log(DIM("  Approval   ") + chalk.red("required"));
+    console.log(DIM("  Reason     ") + chalk.white("This task touches high-risk systems."));
+    console.log("");
+    console.log(chalk.white("No apply handoff created."));
+    console.log(chalk.white("To continue:"));
+    console.log(chalk.white(`runtrim agent "${task}" --apply --confirm`));
+    console.log("");
+    return;
+  }
+
+  const contractPath = writeAgentContract(cwd, contract.contractText);
+  const applyId = nowId();
+  const apply: AgentApplyArtifact = {
+    id: applyId,
+    task,
+    createdAt: new Date().toISOString(),
+    risk,
+    approvalRequired,
+    approved: approvalRequired !== "required" || mode.confirm,
+    previewId: preview.id,
+    contractPath: ".runtrim/contracts/latest.md",
+    allowedScope: preview.allowedScope,
+    forbiddenScope: preview.forbiddenScope,
+    stopRules: preview.stopRules,
+    filesToInspect: preview.filesToInspect,
+    patchStrategy: preview.patchStrategy,
+    proofRequired: preview.proofRequired,
+    verificationSteps: preview.verificationSteps,
+    nextCommand: "runtrim finish",
+    finishRequired: true,
+  };
+  const handoff = writeAgentHandoffArtifacts(cwd, apply, path.relative(cwd, previewPath));
+
+  const copied = await copyToClipboardSafe(fs.readFileSync(handoff.markdownPath, "utf-8"));
+  const run = saveRun(task, previewResult.audit, previewResult.contract, cwd);
+  updateRun(run.id, { status: "guarded" }, cwd);
+
+  const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, ChalkInstance>)[risk] ?? chalk.white;
+  console.log("");
+  console.log(GO_ACCENT.bold("RunTrim Agent Apply"));
+  console.log("");
+  console.log(DIM("  Risk         ") + riskColor(risk));
+  console.log(DIM("  Approval     ") + chalk.white(approvalRequired === "no" ? "not required" : approvalRequired));
+  console.log(DIM("  Contract     ") + chalk.white(path.relative(cwd, contractPath)));
+  console.log(DIM("  Handoff      ") + chalk.white(path.relative(cwd, handoff.markdownPath)));
+  console.log(DIM("  Preview      ") + chalk.white(path.relative(cwd, previewPath)));
+  if (copied) console.log(DIM("  Clipboard    ") + chalk.white("Agent Apply prompt copied"));
+  console.log("");
+  console.log(chalk.white("Next:"));
+  console.log(chalk.white("Paste the Agent Apply prompt into Claude Code, Codex, Cursor, or your agent."));
+  console.log(chalk.white("After edits are done:"));
+  console.log(chalk.white("runtrim finish"));
+  console.log("");
+}
+
 const HIGH_RISK_PATH_KEYWORDS = [
   "auth",
   "login",
@@ -295,6 +749,435 @@ const HIGH_RISK_PATH_KEYWORDS = [
   "pnpm-lock.yaml",
   "yarn.lock",
 ];
+
+type BridgeState = {
+  pid: number;
+  port: number;
+  host: "127.0.0.1";
+  startedAt: string;
+};
+
+function getBridgeDir(cwd: string): string {
+  return path.join(getConfigDir(cwd), "bridge");
+}
+
+function getBridgeStatePath(cwd: string): string {
+  return path.join(getBridgeDir(cwd), "state.json");
+}
+
+function readBridgeState(cwd: string): BridgeState | null {
+  const p = getBridgeStatePath(cwd);
+  if (!fs.existsSync(p)) return null;
+  try {
+    const raw = fs.readFileSync(p, "utf-8");
+    const parsed = JSON.parse(raw) as Partial<BridgeState>;
+    if (
+      typeof parsed.pid === "number" &&
+      typeof parsed.port === "number" &&
+      parsed.host === "127.0.0.1" &&
+      typeof parsed.startedAt === "string"
+    ) {
+      return parsed as BridgeState;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function writeBridgeState(cwd: string, state: BridgeState): void {
+  const dir = getBridgeDir(cwd);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(getBridgeStatePath(cwd), JSON.stringify(state, null, 2), "utf-8");
+}
+
+function clearBridgeState(cwd: string): void {
+  const p = getBridgeStatePath(cwd);
+  if (fs.existsSync(p)) fs.unlinkSync(p);
+}
+
+async function bridgeHealth(host: string, port: number): Promise<{ ok: boolean; body?: unknown }> {
+  try {
+    const res = await fetch(`http://${host}:${port}/health`);
+    if (!res.ok) return { ok: false };
+    const body = await res.json();
+    if ((body as { ok?: boolean }).ok !== true) return { ok: false };
+    return { ok: true, body };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function detectBridgePort(): number {
+  const raw = process.env.RUNTRIM_BRIDGE_PORT?.trim();
+  if (!raw) return 4317;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1 || n > 65535) return 4317;
+  return n;
+}
+
+function splitMarkdownSection(lines: string[], heading: string): string[] {
+  const h = heading.trim().toLowerCase();
+  const start = lines.findIndex((line) => line.trim().toLowerCase() === h);
+  if (start === -1) return [];
+  const out: string[] = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.startsWith("## ") || line.startsWith("---")) break;
+    out.push(line);
+  }
+  return out;
+}
+
+function parseBulletList(lines: string[]): string[] {
+  return lines
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- "))
+    .map((line) => line.slice(2).trim())
+    .filter(Boolean);
+}
+
+function parseContractSummary(cwd: string): {
+  exists: boolean;
+  path: string;
+  summary: string;
+  allowedScope: string[];
+  forbiddenScope: string[];
+  stopRules: string[];
+  risk: string;
+  active: boolean;
+} {
+  const p = path.join(cwd, ".runtrim", "contracts", "latest.md");
+  if (!fs.existsSync(p)) {
+    return {
+      exists: false,
+      path: ".runtrim/contracts/latest.md",
+      summary: "",
+      allowedScope: [],
+      forbiddenScope: [],
+      stopRules: [],
+      risk: "unknown",
+      active: false,
+    };
+  }
+  const raw = fs.readFileSync(p, "utf-8");
+  const lines = raw.split(/\r?\n/);
+  const objectiveSection = splitMarkdownSection(lines, "OBJECTIVE").join(" ").trim();
+  const taskLine = lines.find((line) => /^Task:\s*/i.test(line))?.replace(/^Task:\s*/i, "").trim() ?? "";
+  const objective = objectiveSection || taskLine;
+  const allowedScope =
+    parseBulletList(splitMarkdownSection(lines, "ALLOWED SCOPE")).length > 0
+      ? parseBulletList(splitMarkdownSection(lines, "ALLOWED SCOPE"))
+      : parseBulletList(splitMarkdownSection(lines, "## Allowed scope"));
+  const forbiddenScope =
+    parseBulletList(splitMarkdownSection(lines, "FORBIDDEN SCOPE")).length > 0
+      ? parseBulletList(splitMarkdownSection(lines, "FORBIDDEN SCOPE"))
+      : parseBulletList(splitMarkdownSection(lines, "## Forbidden scope"));
+  const stopRules =
+    parseBulletList(splitMarkdownSection(lines, "STOP RULES")).length > 0
+      ? parseBulletList(splitMarkdownSection(lines, "STOP RULES"))
+      : parseBulletList(splitMarkdownSection(lines, "## Stop conditions"));
+  const modeLine = lines.find((line) => line.toLowerCase().startsWith("mode:")) ?? lines.find((line) => line.toLowerCase().startsWith("risk:"));
+  const risk = modeLine?.split(":")[1]?.trim().toLowerCase() ?? "unknown";
+  const active = /Status:\s*active/i.test(raw);
+  return {
+    exists: true,
+    path: ".runtrim/contracts/latest.md",
+    summary: objective.slice(0, 280),
+    allowedScope: allowedScope.slice(0, 12),
+    forbiddenScope: forbiddenScope.slice(0, 12),
+    stopRules: stopRules.slice(0, 8),
+    risk,
+    active,
+  };
+}
+
+function parseMemorySummary(cwd: string): { exists: boolean; path: string; summary: string } {
+  const p = path.join(cwd, ".runtrim", "memory", "current.md");
+  if (!fs.existsSync(p)) return { exists: false, path: ".runtrim/memory/current.md", summary: "" };
+  const raw = fs.readFileSync(p, "utf-8");
+  const summary = raw.split(/\r?\n/).filter((l) => l.trim()).slice(0, 8).join(" ").slice(0, 320);
+  return { exists: true, path: ".runtrim/memory/current.md", summary };
+}
+
+function parsePreviewSummary(cwd: string): {
+  exists: boolean;
+  path: string;
+  task: string;
+  risk: string;
+  filesToInspect: string[];
+  proofRequired: string[];
+  nextCommand: string;
+} {
+  const dir = path.join(cwd, ".runtrim", "previews");
+  const latestPath = path.join(dir, "latest.md");
+  if (!fs.existsSync(latestPath)) {
+    return { exists: false, path: ".runtrim/previews/latest.md", task: "", risk: "", filesToInspect: [], proofRequired: [], nextCommand: "" };
+  }
+  const jsonFiles = fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")).sort().reverse()
+    : [];
+  if (jsonFiles.length === 0) {
+    return { exists: true, path: ".runtrim/previews/latest.md", task: "", risk: "", filesToInspect: [], proofRequired: [], nextCommand: "" };
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(dir, jsonFiles[0]), "utf-8")) as Record<string, unknown>;
+    return {
+      exists: true,
+      path: ".runtrim/previews/latest.md",
+      task: String(parsed.task ?? ""),
+      risk: String(parsed.risk ?? ""),
+      filesToInspect: Array.isArray(parsed.filesToInspect) ? (parsed.filesToInspect as string[]).slice(0, 8) : [],
+      proofRequired: Array.isArray(parsed.proofRequired) ? (parsed.proofRequired as string[]).slice(0, 8) : [],
+      nextCommand: String(parsed.recommendedNextCommand ?? ""),
+    };
+  } catch {
+    return { exists: true, path: ".runtrim/previews/latest.md", task: "", risk: "", filesToInspect: [], proofRequired: [], nextCommand: "" };
+  }
+}
+
+function parseAgentSummary(cwd: string): {
+  exists: boolean;
+  path: string;
+  task: string;
+  risk: string;
+  approved: boolean;
+  finishRequired: boolean;
+  nextCommand: string;
+} {
+  const dir = path.join(cwd, ".runtrim", "agent");
+  const latestPath = path.join(dir, "latest.md");
+  if (!fs.existsSync(latestPath)) {
+    return { exists: false, path: ".runtrim/agent/latest.md", task: "", risk: "", approved: false, finishRequired: false, nextCommand: "" };
+  }
+  const jsonFiles = fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")).sort().reverse()
+    : [];
+  if (jsonFiles.length === 0) {
+    return { exists: true, path: ".runtrim/agent/latest.md", task: "", risk: "", approved: false, finishRequired: false, nextCommand: "" };
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(dir, jsonFiles[0]), "utf-8")) as Record<string, unknown>;
+    return {
+      exists: true,
+      path: ".runtrim/agent/latest.md",
+      task: String(parsed.task ?? ""),
+      risk: String(parsed.risk ?? ""),
+      approved: Boolean(parsed.approved),
+      finishRequired: Boolean(parsed.finishRequired),
+      nextCommand: String(parsed.nextCommand ?? ""),
+    };
+  } catch {
+    return { exists: true, path: ".runtrim/agent/latest.md", task: "", risk: "", approved: false, finishRequired: false, nextCommand: "" };
+  }
+}
+
+function parseLearningSummary(cwd: string): {
+  exists: boolean;
+  updatedAt: string;
+  sensitiveFiles: string[];
+  proofGaps: string[];
+  recentPatterns: string[];
+  projectWarnings: string[];
+} {
+  const learning = loadLearning(cwd);
+  if (!learning) {
+    return { exists: false, updatedAt: "", sensitiveFiles: [], proofGaps: [], recentPatterns: [], projectWarnings: [] };
+  }
+  const learningAny = learning as unknown as { warnings?: unknown };
+  const warnings = Array.isArray(learningAny.warnings)
+    ? (learningAny.warnings as string[])
+    : [];
+  return {
+    exists: true,
+    updatedAt: learning.updatedAt,
+    sensitiveFiles: learning.sensitiveFilesTouched.slice(0, 8),
+    proofGaps: learning.commonProofGaps.slice(0, 8),
+    recentPatterns: learning.recentSuccessfulTasks.map((t) => t.task).slice(0, 8),
+    projectWarnings: (learning.projectWarnings.length > 0 ? learning.projectWarnings : warnings).slice(0, 6),
+  };
+}
+
+async function getBridgeChanges(cwd: string): Promise<{ changedFiles: string[]; count: number; risk: string; sensitiveTouched: boolean }> {
+  const changedFiles = dedupeFiles(await getGitDiff(cwd)).filter((f) => {
+    const n = f.replace(/\\/g, "/").toLowerCase();
+    return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+  });
+  return {
+    changedFiles: changedFiles.slice(0, 80),
+    count: changedFiles.length,
+    risk: classifyFileRisk(changedFiles),
+    sensitiveTouched: changedFiles.some((f) => isSensitivePath(f)),
+  };
+}
+
+async function getBridgeNextAction(cwd: string): Promise<string> {
+  const latest = loadLatestRun(cwd);
+  const changes = await getBridgeChanges(cwd);
+  const hasActiveRun = Boolean(latest && latest.status === "guarded");
+  if (hasActiveRun && changes.count > 0) return "runtrim finish";
+  const agent = parseAgentSummary(cwd);
+  if (agent.exists && agent.approved) return "paste .runtrim/agent/latest.md into your agent";
+  return 'runtrim go "<task>"';
+}
+
+function parseBridgePortArg(opts?: { port?: string }): number {
+  if (!opts?.port) return detectBridgePort();
+  const n = Number.parseInt(opts.port, 10);
+  if (!Number.isFinite(n) || n < 1 || n > 65535) return detectBridgePort();
+  return n;
+}
+
+function resolveBridgeSpawnArgs(port: number): { command: string; args: string[] } | null {
+  const launcher = resolveCliLauncherPath();
+  if (launcher && launcher.endsWith(".cjs")) {
+    return {
+      command: process.execPath,
+      args: [launcher, "bridge", "serve", "--port", String(port)],
+    };
+  }
+  const scriptArg = process.argv.find((arg) => /cli[\/\\]runtrim\.ts$/i.test(arg));
+  if (scriptArg) {
+    return {
+      command: "tsx",
+      args: [scriptArg, "bridge", "serve", "--port", String(port)],
+    };
+  }
+  return null;
+}
+
+function jsonSend(res: http.ServerResponse, status: number, body: Record<string, unknown>): void {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(body));
+}
+
+async function buildBridgeStatusPayload(cwd: string): Promise<Record<string, unknown>> {
+  const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
+  const contract = parseContractSummary(cwd);
+  const learning = parseLearningSummary(cwd);
+  const preview = parsePreviewSummary(cwd);
+  const agent = parseAgentSummary(cwd);
+  const latest = loadLatestRun(cwd);
+  const changes = await getBridgeChanges(cwd);
+  const next = await getBridgeNextAction(cwd);
+  const guardMode = String(((config as Record<string, unknown>).autoGuardMode as string | undefined) ?? "smart");
+  return {
+    ok: true,
+    autoGuardMode: guardMode,
+    activeContract: contract.exists && contract.active,
+    unfinishedChanges: changes.count > 0,
+    changedFilesCount: changes.count,
+    latestRunId: latest?.id ?? null,
+    learningPresent: learning.exists,
+    previewPresent: preview.exists,
+    agentHandoffPresent: agent.exists,
+    nextAction: next,
+  };
+}
+
+async function startBridgeServer(cwd: string, port: number): Promise<void> {
+  const host: "127.0.0.1" = "127.0.0.1";
+  const version = resolveCliVersion();
+  const server = http.createServer(async (req, res) => {
+    try {
+      const method = req.method ?? "GET";
+      const pathname = new URL(req.url ?? "/", `http://${host}:${port}`).pathname;
+      if (method !== "GET") {
+        jsonSend(res, 405, { ok: false, error: "method_not_allowed" });
+        return;
+      }
+      if (pathname === "/health") {
+        jsonSend(res, 200, { ok: true, name: "RunTrim Bridge", version, localOnly: true });
+        return;
+      }
+      if (pathname === "/status") {
+        jsonSend(res, 200, await buildBridgeStatusPayload(cwd));
+        return;
+      }
+      if (pathname === "/current-run") {
+        const latest = loadLatestRun(cwd);
+        const contract = parseContractSummary(cwd);
+        jsonSend(res, 200, {
+          ok: true,
+          activeRunId: latest?.status === "guarded" ? latest.id : null,
+          activeContractPath: contract.exists ? contract.path : null,
+          latestRunId: latest?.id ?? null,
+          status: latest?.status ?? "none",
+        });
+        return;
+      }
+      if (pathname === "/contract") {
+        const c = parseContractSummary(cwd);
+        jsonSend(res, 200, {
+          ok: true,
+          exists: c.exists,
+          path: c.path,
+          summary: c.summary,
+          allowedScope: c.allowedScope,
+          forbiddenScope: c.forbiddenScope,
+          risk: c.risk,
+          stopRules: c.stopRules,
+        });
+        return;
+      }
+      if (pathname === "/memory") {
+        const m = parseMemorySummary(cwd);
+        jsonSend(res, 200, { ok: true, exists: m.exists, path: m.path, summary: m.summary });
+        return;
+      }
+      if (pathname === "/learning") {
+        const l = parseLearningSummary(cwd);
+        jsonSend(res, 200, { ok: true, ...l });
+        return;
+      }
+      if (pathname === "/preview") {
+        const p = parsePreviewSummary(cwd);
+        jsonSend(res, 200, { ok: true, ...p });
+        return;
+      }
+      if (pathname === "/agent") {
+        const a = parseAgentSummary(cwd);
+        jsonSend(res, 200, { ok: true, ...a });
+        return;
+      }
+      if (pathname === "/changes") {
+        const c = await getBridgeChanges(cwd);
+        jsonSend(res, 200, { ok: true, ...c });
+        return;
+      }
+      if (pathname === "/next-action") {
+        const next = await getBridgeNextAction(cwd);
+        jsonSend(res, 200, { ok: true, nextAction: next });
+        return;
+      }
+      jsonSend(res, 404, { ok: false, error: "not_found" });
+    } catch {
+      jsonSend(res, 500, { ok: false, error: "bridge_internal_error" });
+    }
+  });
+
+  server.listen(port, host, () => {
+    writeBridgeState(cwd, {
+      pid: process.pid,
+      port,
+      host,
+      startedAt: new Date().toISOString(),
+    });
+  });
+
+  const shutdown = () => {
+    try {
+      clearBridgeState(cwd);
+    } catch {
+      // no-op
+    }
+    server.close(() => process.exit(0));
+  };
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
 
 function inferMaxFilesFromScope(scope: string[], fallback: number): number {
   const text = scope.join(" ").toLowerCase();
@@ -1813,10 +2696,35 @@ program
     console.log("");
   });
 
+program
+  .command("preview <task>")
+  .description("Generate a RunTrim Agent Preview artifact without running an agent")
+  .action(async (task: string) => {
+    await runAgentPreview(task);
+  });
+
 // Agent config
 const agentCommand = program.command("agent").description("Show or configure local agent execution settings");
 
-agentCommand.action(() => {
+agentCommand
+  .argument("[task]")
+  .option("--preview", "Generate an execution preview instead of running any agent")
+  .option("--apply", "Generate Agent Apply handoff artifacts")
+  .option("--confirm", "Confirm high-risk apply handoff creation")
+  .action(async (task?: string, options?: { preview?: boolean; apply?: boolean; confirm?: boolean }) => {
+    if (task?.trim()) {
+      const normalizedTask = (task ?? "").trim();
+      if (options?.preview) {
+        await runAgentPreview(normalizedTask);
+        return;
+      }
+      await runAgentApply(normalizedTask, {
+        apply: options?.apply === true,
+        confirm: options?.confirm === true,
+      });
+      return;
+    }
+
     const cwd = process.cwd();
     if (!configExists(cwd)) {
       console.log(chalk.yellow("  No config found. Run: runtrim init"));
@@ -1839,6 +2747,224 @@ agentCommand.action(() => {
     console.log(DIM("  defaultModel   ") + chalk.white(config.defaultModel));
     console.log("");
   });
+
+function registerBridgeCommands(name: "bridge" | "daemon"): void {
+  const bridgeCommand = program.command(name).description("RunTrim local bridge daemon controls");
+
+  bridgeCommand
+    .command("start")
+    .description("Start RunTrim Bridge on localhost")
+    .option("--port <port>", "Port override (default 4317 or RUNTRIM_BRIDGE_PORT)")
+    .action(async (options: { port?: string }) => {
+      const cwd = process.cwd();
+      const port = parseBridgePortArg(options);
+      const host = "127.0.0.1";
+      const existing = readBridgeState(cwd);
+      if (existing) {
+        const health = await bridgeHealth(existing.host, existing.port);
+        if (health.ok) {
+          console.log("");
+          console.log(`RunTrim Bridge running on http://${existing.host}:${existing.port}`);
+          console.log("Local only.");
+          console.log("");
+          return;
+        }
+        clearBridgeState(cwd);
+      }
+
+      const spawn = resolveBridgeSpawnArgs(port);
+      if (!spawn) {
+        console.log("");
+        console.log(chalk.red("Could not resolve bridge launcher command."));
+        console.log(chalk.white(`Manual fallback: runtrim ${name} serve --port ${port}`));
+        console.log("");
+        return;
+      }
+
+      let childPid: number | undefined;
+      try {
+        const child = execa(spawn.command, spawn.args, {
+          cwd,
+          detached: true,
+          stdio: "ignore",
+          windowsHide: true,
+        });
+        childPid = child.pid;
+        child.unref?.();
+      } catch {
+        console.log("");
+        console.log(chalk.red("Failed to start bridge process."));
+        console.log(chalk.white(`Manual fallback: runtrim ${name} serve --port ${port}`));
+        console.log("");
+        return;
+      }
+
+      let ready = false;
+      for (let i = 0; i < 25; i += 1) {
+        await new Promise((r) => setTimeout(r, 120));
+        const health = await bridgeHealth(host, port);
+        if (health.ok) {
+          ready = true;
+          break;
+        }
+      }
+
+      if (!ready) {
+        console.log("");
+        console.log(chalk.yellow("Bridge process started but health check is not ready yet."));
+        console.log(chalk.white(`Try: runtrim ${name} status`));
+        console.log("");
+        return;
+      }
+      if (!readBridgeState(cwd) && typeof childPid === "number") {
+        writeBridgeState(cwd, {
+          pid: childPid,
+          port,
+          host: "127.0.0.1",
+          startedAt: new Date().toISOString(),
+        });
+      }
+
+      console.log("");
+      console.log(`RunTrim Bridge running on http://${host}:${port}`);
+      console.log("Local only.");
+      console.log("Endpoints:");
+      console.log("GET /status");
+      console.log("GET /next-action");
+      console.log("GET /contract");
+      console.log("GET /changes");
+      console.log("");
+    });
+
+  bridgeCommand
+    .command("status")
+    .description("Show bridge daemon status")
+    .action(async () => {
+      const cwd = process.cwd();
+      const existing = readBridgeState(cwd);
+      if (!existing) {
+        const fallbackPort = detectBridgePort();
+        const fallbackHealth = await bridgeHealth("127.0.0.1", fallbackPort);
+        if (fallbackHealth.ok) {
+          console.log("");
+          console.log("RunTrim Bridge");
+          console.log("Status: running (untracked)");
+          console.log(`URL: http://127.0.0.1:${fallbackPort}`);
+          console.log("PID: unknown");
+          console.log("Health: ok");
+          console.log("");
+          return;
+        }
+        console.log("");
+        console.log("RunTrim Bridge");
+        console.log("Status: stopped");
+        console.log("");
+        return;
+      }
+
+      const health = await bridgeHealth(existing.host, existing.port);
+      if (!health.ok) {
+        console.log("");
+        console.log("RunTrim Bridge");
+        console.log("Status: stale state (not responding)");
+        console.log(`URL: http://${existing.host}:${existing.port}`);
+        console.log(`PID: ${existing.pid}`);
+        console.log("");
+        return;
+      }
+
+      const status = await fetch(`http://${existing.host}:${existing.port}/status`)
+        .then((r) => r.json() as Promise<Record<string, unknown>>)
+        .catch(() => null);
+
+      console.log("");
+      console.log("RunTrim Bridge");
+      console.log("Status: running");
+      console.log(`URL: http://${existing.host}:${existing.port}`);
+      console.log(`PID: ${existing.pid}`);
+      console.log(`Health: ok`);
+      if (status) {
+        console.log(`Auto-guard: ${String(status.autoGuardMode ?? "unknown")}`);
+        console.log(`Unfinished changes: ${Boolean(status.unfinishedChanges) ? "yes" : "no"}`);
+        console.log(`Next: ${String(status.nextAction ?? 'runtrim go "<task>"')}`);
+      }
+      console.log("");
+    });
+
+  bridgeCommand
+    .command("stop")
+    .description("Stop bridge daemon safely")
+    .action(async () => {
+      const cwd = process.cwd();
+      const existing = readBridgeState(cwd);
+      if (!existing) {
+        const fallbackPort = detectBridgePort();
+        const fallbackHealth = await bridgeHealth("127.0.0.1", fallbackPort);
+        if (fallbackHealth.ok) {
+          console.log("");
+          console.log(chalk.yellow("Bridge is running but state is missing, so safe PID stop is unavailable."));
+          console.log(chalk.white(`Manual fallback: stop process bound to 127.0.0.1:${fallbackPort}, then run runtrim bridge stop again.`));
+          console.log("");
+          return;
+        }
+        console.log("");
+        console.log("RunTrim Bridge is not running.");
+        console.log("");
+        return;
+      }
+
+      const health = await bridgeHealth(existing.host, existing.port);
+      if (!health.ok) {
+        clearBridgeState(cwd);
+        console.log("");
+        console.log("Removed stale bridge state.");
+        console.log("");
+        return;
+      }
+
+      let stopped = false;
+      try {
+        process.kill(existing.pid, "SIGTERM");
+      } catch {
+        stopped = false;
+      }
+
+      for (let i = 0; i < 20; i += 1) {
+        await new Promise((r) => setTimeout(r, 120));
+        const check = await bridgeHealth(existing.host, existing.port);
+        if (!check.ok) {
+          stopped = true;
+          break;
+        }
+      }
+
+      if (!stopped) {
+        console.log("");
+        console.log(chalk.yellow("Could not confirm bridge stop automatically."));
+        console.log(chalk.white(`Manual fallback: stop PID ${existing.pid}, then remove .runtrim/bridge/state.json`));
+        console.log("");
+        return;
+      }
+
+      clearBridgeState(cwd);
+      console.log("");
+      console.log("RunTrim Bridge stopped.");
+      console.log("");
+    });
+
+  bridgeCommand
+    .command("serve")
+    .description("Internal: run bridge HTTP server")
+    .option("--port <port>", "Bridge port")
+    .action(async (options: { port?: string }) => {
+      const cwd = process.cwd();
+      const port = parseBridgePortArg(options);
+      await startBridgeServer(cwd, port);
+    });
+}
+
+registerBridgeCommands("bridge");
+registerBridgeCommands("daemon");
 
 agentCommand
   .command("set <target> [commandText]")
@@ -4578,4 +5704,3 @@ program
     }
   });
 program.parse(process.argv);
-
