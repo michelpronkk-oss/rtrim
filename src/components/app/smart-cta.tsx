@@ -18,14 +18,21 @@ interface SmartCtaProps {
    * Use for Builder and Team where the flow is: sign in → then request access.
    */
   loginRedirect?: boolean;
+  /**
+   * When set, logged-out users see a plain link to this URL (e.g. "/app/install").
+   * Takes precedence over loginRedirect. Use for Free plan so guests get the
+   * install guide while signed-in users see "Open dashboard".
+   */
+  loggedOutHref?: string;
 }
 
 /**
  * Auth-aware CTA.
- * - Checking        → shimmer skeleton (avoids layout shift and blank flash)
- * - Logged in       → "Open dashboard" link to /app
- * - Logged out + loginRedirect=true  → /login link (label prop)
- * - Logged out + loginRedirect=false → EA modal trigger (default)
+ * - Checking          → shimmer skeleton (avoids layout shift and blank flash)
+ * - Logged in         → "Open dashboard" link to /app
+ * - Logged out + loggedOutHref set → plain link to that URL
+ * - Logged out + loginRedirect     → /login link
+ * - Logged out (default)           → EA modal trigger
  */
 export function SmartCta({
   label,
@@ -34,6 +41,7 @@ export function SmartCta({
   openAppLabel = "Open app",
   openAppClassName,
   loginRedirect = false,
+  loggedOutHref,
 }: SmartCtaProps) {
   const [loggedIn,  setLoggedIn]  = useState(false);
   const [checking, setChecking] = useState(true);
@@ -72,6 +80,14 @@ export function SmartCta({
     return (
       <Link href="/app" className={openAppClassName ?? className}>
         {openAppLabel}
+      </Link>
+    );
+  }
+
+  if (loggedOutHref) {
+    return (
+      <Link href={loggedOutHref} className={className}>
+        {label}
       </Link>
     );
   }

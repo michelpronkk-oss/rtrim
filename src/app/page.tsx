@@ -932,20 +932,13 @@ export default function Home() {
                   {/* CTA ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pushed to bottom by flex-1 on the list above */}
                   <div style={{ marginTop: 20 }}>
                     {id === "free" ? (
-                      <Link
-                        href="/app/install"
-                        style={{
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          height: 36, borderRadius: 6, width: "100%",
-                          border: "1px solid rgba(255,255,255,0.14)",
-                          background: "transparent", color: "#f4f5f7",
-                          fontSize: 13, transition: "background 0.15s",
-                          textDecoration: "none",
-                        }}
-                        className="hover:bg-[#16191e]"
-                      >
-                        Install CLI
-                      </Link>
+                      <SmartCta
+                        label="Install free CLI"
+                        loggedOutHref="/app/install"
+                        openAppLabel="Open dashboard"
+                        className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]"
+                        openAppClassName="flex items-center justify-center h-9 rounded-[6px] w-full text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                      />
                     ) : id === "pro" ? (
                       <ProCheckoutButton
                         label="Start free 3-day Pro trial"

@@ -299,14 +299,13 @@ export default function PlansPage() {
                 {/* CTA */}
                 <div className="mt-auto px-5 pb-5 min-h-[74px] flex flex-col justify-end">
                   {isFree ? (
-                    <Link
-                      href="/app/install"
-                      className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors hover:bg-[#16191e] hover:text-[#f4f5f7]"
-                      style={{ border: "1px solid rgba(255,255,255,0.14)", color: "#8a8f98" }}
-                    >
-                      {plan.ctaLabel}
-                      <ArrowRight className="size-3.5 shrink-0" />
-                    </Link>
+                    <SmartCta
+                      label={plan.ctaLabel}
+                      loggedOutHref="/app/install"
+                      openAppLabel="Open dashboard"
+                      className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#8a8f98] hover:bg-[#16191e] hover:text-[#f4f5f7]"
+                      openAppClassName="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                    />
                   ) : isPro ? (
                     <ProCheckoutButton
                       label={plan.ctaLabel}
