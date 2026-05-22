@@ -336,26 +336,25 @@ export default async function OverviewPage() {
                 </p>
               </div>
               <p className="mt-1.5 text-[14px] font-semibold text-[#f4f5f7]">
-                Bridge Mode: Unlimited during trial
+                Pro trial active — full access enabled.
               </p>
-              {trialDaysLeft !== null && trialEndLabel && (
+              {trialDaysLeft !== null && trialEndLabel ? (
                 <p className="mt-0.5 text-[12px] text-[#8a8f98]">
                   {trialDaysLeft === 0
-                    ? "Trial ends today."
-                    : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} remaining — trial ends ${trialEndLabel}.`}
+                    ? `Trial ends today. Your subscription continues after.`
+                    : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left. Converts to Pro on ${trialEndLabel}.`}
                 </p>
-              )}
-              {!trialEndLabel && (
+              ) : (
                 <p className="mt-0.5 text-[12px] text-[#8a8f98]">
-                  3-day Pro trial. Full Pro access while active.
+                  Full Pro access. Converts to paid after trial.
                 </p>
               )}
             </div>
             <Link
-              href="/pricing"
+              href="/app/billing"
               className="shrink-0 rounded-lg border border-[#7C6DFA]/30 bg-[#7C6DFA]/10 px-3.5 py-2 text-[12px] font-medium text-[#a78bfa] transition-colors hover:bg-[#7C6DFA]/18"
             >
-              Keep Pro
+              View plan
             </Link>
           </div>
         </div>
