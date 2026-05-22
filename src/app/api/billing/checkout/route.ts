@@ -62,18 +62,10 @@ export async function POST(request: Request) {
   const siteUrl   = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com").replace(/\/$/, "");
   const apiBase   = (process.env.DODO_API_BASE ?? "https://api.dodopayments.com").replace(/\/$/, "");
 
-  if (!apiKey) {
-    console.error("[/api/billing/checkout] No DODO_PRO_CHECKOUT_URL and no DODO_API_KEY set.");
+  if (!apiKey || !productId) {
+    console.error(`[/api/billing/checkout] ${planId}: no checkout URL and no API key/product ID configured.`);
     return NextResponse.json(
-      { ok: false, error: "Billing not configured. Set DODO_PRO_CHECKOUT_URL in Vercel env vars." },
-      { status: 503 }
-    );
-  }
-
-  if (!productId) {
-    console.error(`[/api/billing/checkout] No DODO_${planId.toUpperCase()}_CHECKOUT_URL and no product ID.`);
-    return NextResponse.json(
-      { ok: false, error: `Billing not configured for ${planId}. Set DODO_${planId.toUpperCase()}_CHECKOUT_URL in Vercel.` },
+      { ok: false, error: `not_configured: ${planId} plan checkout not set up yet. Set DODO_${planId.toUpperCase()}_CHECKOUT_URL in Vercel.` },
       { status: 503 }
     );
   }

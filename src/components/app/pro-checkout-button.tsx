@@ -74,36 +74,47 @@ export function ProCheckoutButton({
     );
   }
 
-  // ── Error state (checkout failed) ─────────────────────────────────────────
+  // ── Error state ───────────────────────────────────────────────────────────
   if (checkoutState === "error") {
+    // If checkout isn't configured yet, show a clean contact fallback
+    const isConfig = errMsg.toLowerCase().includes("not configured") ||
+                     errMsg.toLowerCase().includes("fetch failed") ||
+                     errMsg.toLowerCase().includes("unreachable");
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <button type="button" onClick={() => setCheckoutState("idle")}
-          className={className}>
-          Try again
-        </button>
+        {isConfig ? (
+          <a
+            href={`mailto:hello@runtrim.com?subject=RunTrim ${planId.charAt(0).toUpperCase() + planId.slice(1)} plan`}
+            className={className}
+            style={{ textDecoration: "none", textAlign: "center" }}
+          >
+            Contact us to upgrade
+          </a>
+        ) : (
+          <button type="button" onClick={() => setCheckoutState("idle")} className={className}>
+            Try again
+          </button>
+        )}
         <p style={{
           textAlign: "center",
           fontFamily: "var(--font-geist-mono)",
           fontSize: 10,
-          color: "#F0BF72",
+          color: isConfig ? "#5a5f68" : "#F0BF72",
           margin: 0,
         }}>
-          {errMsg}
+          {isConfig ? "hello@runtrim.com" : errMsg}
         </p>
       </div>
     );
   }
 
-  // ── Checkout button (logged-out or free) ───────────────────────────────────
+  // ── Checkout button ────────────────────────────────────────────────────────
   async function handleClick() {
-    // Logged out: preserve intent through auth by using ?next=/app/trial
     if (authPlan === "logged-out") {
       window.location.href = "/login?next=/app/trial";
       return;
     }
 
-    // Logged in, Free: start Dodo checkout directly
     setCheckoutState("loading");
     setErrMsg("");
 
@@ -112,24 +123,26 @@ export function ProCheckoutButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ planId }),
     }).catch(() => null);
+
     const data = await res?.json().catch(() => null) as {
       ok?: boolean; url?: string; error?: string;
     } | null;
 
     if (!res?.ok || !data?.ok) {
-      setErrMsg(data?.error ?? "Checkout failed — please try again.");
+      setErrMsg(data?.error ?? "Checkout failed. Please try again.");
       setCheckoutState("error");
       return;
     }
 
     if (data.url) {
       window.location.href = data.url;
-      // Stay in loading — browser is navigating
     } else {
       setErrMsg("No checkout URL returned. Please try again.");
       setCheckoutState("error");
     }
   }
+
+  const loadingLabel = planId === "pro" ? "Starting trial…" : "Loading checkout…";
 
   return (
     <button
@@ -138,7 +151,7 @@ export function ProCheckoutButton({
       disabled={checkoutState === "loading"}
       className={checkoutState === "loading" ? `rt-btn-loading ${className ?? ""}` : className}
     >
-      {checkoutState === "loading" ? "Starting trial…" : label}
+      {checkoutState === "loading" ? loadingLabel : label}
     </button>
   );
 }
