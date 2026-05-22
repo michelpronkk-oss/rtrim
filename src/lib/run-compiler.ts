@@ -40,12 +40,18 @@ export interface ExplicitPathResult {
    * The explicit paths are additive to any heuristic scope.
    */
   mustIncludeMode: boolean;
+  /** Explicit allowed-scope phrases when no file paths are present. */
+  explicitAllowedScope: string[];
+  /** Explicit forbidden-scope phrases from task text. */
+  explicitForbiddenScope: string[];
 }
 
 export interface CompilerResult {
   explicitPaths: string[];
   onlyMode: boolean;
   mustIncludeMode: boolean;
+  explicitAllowedScope: string[];
+  explicitForbiddenScope: string[];
   taskCategory: TaskCategory;
 }
 
@@ -79,6 +85,54 @@ const ONLY_EDIT_RE = /\bonly\s+(?:edit|touch|modify|change|update|fix)\b/i;
 
 /** Patterns indicating "allowed scope must include X" — additive mode. */
 const MUST_INCLUDE_RE = /\ballowed\s+scope\s+(?:must\s+)?include\b|\bmust\s+(?:include|contain)\b/i;
+const CLI_SCOPE_RE =
+  /\b(cli|command routing|runtrim command|run compiler|contract generation|scope inference|preview command|agent preview command|\.runtrim(?:\s+artifacts?)?)\b/i;
+
+function extractScopePhrase(task: string, re: RegExp): string | null {
+  const m = task.match(re);
+  if (!m) return null;
+  const text = m[1]?.trim() ?? "";
+  if (!text) return null;
+  return text.replace(/[.]+$/, "").trim();
+}
+
+function buildExplicitAllowedScope(task: string, explicitPaths: string[]): string[] {
+  const out: string[] = [];
+  if (explicitPaths.length > 0) return out;
+
+  if (ONLY_EDIT_RE.test(task) || MUST_INCLUDE_RE.test(task)) {
+    const onlyPhrase = extractScopePhrase(task, /\bonly\s+(?:edit|touch|modify|change|update|fix)\s+([^\n.]+)/i);
+    const includePhrase = extractScopePhrase(task, /\ballowed\s+scope\s+(?:must\s+)?include\s+([^\n.]+)/i);
+    const phrase = onlyPhrase ?? includePhrase ?? "";
+
+    if (CLI_SCOPE_RE.test(task) || CLI_SCOPE_RE.test(phrase)) {
+      out.push("CLI command routing files");
+      out.push("CLI planning logic");
+      out.push("Agent preview command logic");
+      if (/run compiler|contract generation|scope inference/i.test(task)) {
+        out.push("Run compiler and contract generation helpers");
+      }
+      if (/learning|\.runtrim/i.test(task)) {
+        out.push("Project learning readers and .runtrim preview artifact helpers");
+      }
+    } else if (phrase) {
+      out.push(phrase);
+    }
+  }
+
+  return [...new Set(out)];
+}
+
+function buildExplicitForbiddenScope(task: string): string[] {
+  const out: string[] = [];
+  const forbiddenPhrase = extractScopePhrase(task, /\bforbidden\s+scope\s+must\s+include\s+([^\n.]+)/i);
+  if (forbiddenPhrase) out.push(forbiddenPhrase);
+  const doNotTouch = extractScopePhrase(task, /\bdo\s+not\s+touch\s+([^\n.]+)/i);
+  if (doNotTouch) out.push(`Do not touch ${doNotTouch}`);
+  const withoutTouching = extractScopePhrase(task, /\bwithout\s+touching\s+([^\n.]+)/i);
+  if (withoutTouching) out.push(`Without touching ${withoutTouching}`);
+  return [...new Set(out)];
+}
 
 export function extractExplicitPaths(task: string): ExplicitPathResult {
   const found = new Set<string>();
@@ -108,11 +162,15 @@ export function extractExplicitPaths(task: string): ExplicitPathResult {
 
   const onlyMode = ONLY_EDIT_RE.test(task);
   const mustIncludeMode = MUST_INCLUDE_RE.test(task);
+  const explicitAllowedScope = buildExplicitAllowedScope(task, [...found]);
+  const explicitForbiddenScope = buildExplicitForbiddenScope(task);
 
   return {
     paths: [...found].filter(Boolean).filter((p) => p.length > 2),
     onlyMode,
     mustIncludeMode,
+    explicitAllowedScope,
+    explicitForbiddenScope,
   };
 }
 
@@ -220,6 +278,7 @@ const CATEGORY_KEYWORDS: Array<[TaskCategory, string[]]> = [
 
 export function classifyTaskCategory(task: string, explicitPaths: string[]): TaskCategory {
   const lower = task.toLowerCase();
+  if (CLI_SCOPE_RE.test(task)) return "cli";
 
   // Let explicit paths provide hints
   const pathHints = explicitPaths.join(" ").toLowerCase();
@@ -236,9 +295,9 @@ export function classifyTaskCategory(task: string, explicitPaths: string[]): Tas
 // ── Compiler entry point ──────────────────────────────────────────────────────
 
 export function compileTask(task: string): CompilerResult {
-  const { paths, onlyMode, mustIncludeMode } = extractExplicitPaths(task);
+  const { paths, onlyMode, mustIncludeMode, explicitAllowedScope, explicitForbiddenScope } = extractExplicitPaths(task);
   const taskCategory = classifyTaskCategory(task, paths);
-  return { explicitPaths: paths, onlyMode, mustIncludeMode, taskCategory };
+  return { explicitPaths: paths, onlyMode, mustIncludeMode, explicitAllowedScope, explicitForbiddenScope, taskCategory };
 }
 
 // ── Category-specific scope, stop rules, verification ────────────────────────

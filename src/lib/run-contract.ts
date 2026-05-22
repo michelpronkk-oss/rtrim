@@ -123,9 +123,9 @@ function buildRelevantScope(
   projectContext: ProjectContext,
   config: RunTrimConfig,
   sensitiveAreasRelevant: string[],
-  audit: Pick<AuditResult, "explicitPaths" | "onlyMode" | "mustIncludeMode" | "taskCategory">
+  audit: Pick<AuditResult, "explicitPaths" | "onlyMode" | "mustIncludeMode" | "explicitAllowedScope" | "taskCategory">
 ): string[] {
-  const { explicitPaths, onlyMode, mustIncludeMode, taskCategory } = audit;
+  const { explicitPaths, onlyMode, mustIncludeMode, explicitAllowedScope, taskCategory } = audit;
   const scope: string[] = [];
 
   // ── Explicit paths: highest priority ────────────────────────────────────
@@ -144,6 +144,14 @@ function buildRelevantScope(
     scope.push("Only files directly referenced by the objective");
     scope.push(`Maximum ${config.maxFilesPerRun} files total`);
     return scope;
+  }
+
+  // ── Explicit non-path scope phrases: override heuristics ────────────────
+  if (explicitAllowedScope.length > 0) {
+    for (const s of explicitAllowedScope) scope.push(s);
+    scope.push("Only files directly referenced by the cleaned objective");
+    scope.push(`Maximum ${config.maxFilesPerRun} files total`);
+    return [...new Set(scope)];
   }
 
   // ── No explicit paths — use category-based heuristics ───────────────────
@@ -247,7 +255,8 @@ function buildSensitiveScope(sensitiveAreasRelevant: string[]): string[] {
  */
 function buildForbiddenScope(
   config: RunTrimConfig,
-  sensitiveAreasRelevant: string[]
+  sensitiveAreasRelevant: string[],
+  explicitForbiddenScope: string[] = []
 ): string[] {
   const scope: string[] = [];
 
@@ -287,7 +296,7 @@ function buildForbiddenScope(
   scope.push("Do not refactor code outside the direct task scope");
   scope.push("Do not add console.log statements or debug artifacts");
 
-  return scope;
+  return [...scope, ...explicitForbiddenScope.filter(Boolean)];
 }
 
 const SYSTEM_LABELS: Record<string, string> = {
@@ -440,13 +449,18 @@ export function generateContract(
       explicitPaths: audit.explicitPaths ?? [],
       onlyMode: audit.onlyMode ?? false,
       mustIncludeMode: audit.mustIncludeMode ?? false,
+      explicitAllowedScope: audit.explicitAllowedScope ?? [],
       taskCategory: audit.taskCategory ?? "unknown",
     }
   );
   const sensitiveScope = buildSensitiveScope(sensitiveAreasRelevant);
 
   // Merge category-specific forbidden additions with the base forbidden scope
-  const baseForbiddenScope = buildForbiddenScope(config, sensitiveAreasRelevant);
+  const baseForbiddenScope = buildForbiddenScope(
+    config,
+    sensitiveAreasRelevant,
+    audit.explicitForbiddenScope ?? []
+  );
   const categoryDetails = buildCategoryScope(
     audit.taskCategory ?? "unknown",
     projectContext.hasSrc,

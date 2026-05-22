@@ -64,7 +64,10 @@
       "Bash(git push *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git commit -m 'Fix trial card: '\\\\''View plan'\\\\'' -> /app/billing, clearer copy about auto-convert *)"
+      "Bash(git commit -m 'Fix trial card: '\\\\''View plan'\\\\'' -> /app/billing, clearer copy about auto-convert *)",
+      "Bash(node --loader tsx/esm -e ' *)",
+      "Bash(grep -v \"//\")",
+      "Bash(grep -n \"saveGuardState\\(cwd, { lastFinishAt\" c:/Users/miche/Desktop/runtrim/cli/runtrim.ts)"
     ]
   }
 }

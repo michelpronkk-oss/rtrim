@@ -48,6 +48,10 @@ export interface AuditResult {
   mustIncludeMode: boolean;
   /** Heuristic category: ui, auth, billing, webhook, cli, etc. */
   taskCategory: TaskCategory;
+  /** Explicit allowed scope phrases from task text when provided. */
+  explicitAllowedScope: string[];
+  /** Explicit forbidden scope phrases from task text when provided. */
+  explicitForbiddenScope: string[];
 }
 
 // Always forbidden regardless of task content.
@@ -423,5 +427,7 @@ export function auditTask(
     onlyMode: compiler.onlyMode,
     mustIncludeMode: compiler.mustIncludeMode,
     taskCategory: compiler.taskCategory,
+    explicitAllowedScope: compiler.explicitAllowedScope,
+    explicitForbiddenScope: compiler.explicitForbiddenScope,
   };
 }
