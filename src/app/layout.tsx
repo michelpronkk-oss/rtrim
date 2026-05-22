@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter_Tight, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { SiteAnalytics } from "@/components/app/site-analytics";
+import { AuthCodeInterceptor } from "@/components/app/auth-code-interceptor";
 import "./globals.css";
 
 const interTight = Inter_Tight({
@@ -101,6 +102,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
         />
         <SiteAnalytics />
+        <AuthCodeInterceptor />
         {children}
         <Toaster
           theme="dark"

@@ -31,6 +31,13 @@ function LoginForm() {
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
       : `${window.location.origin}/auth/callback`;
 
+    // Store intent in localStorage as a fallback for when Supabase redirects
+    // to Site URL (homepage) instead of /auth/callback. AuthCodeInterceptor
+    // in the root layout reads this and forwards to the callback with next preserved.
+    if (safeNext) {
+      try { localStorage.setItem("rt_auth_next", safeNext); } catch { /* ok */ }
+    }
+
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: { emailRedirectTo: callbackUrl },
