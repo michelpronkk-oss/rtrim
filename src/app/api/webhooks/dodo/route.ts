@@ -259,14 +259,19 @@ export async function POST(request: Request) {
     return (row?.email as string | null) ?? null;
   };
 
-  if (eventType === "subscription.trialing") {
-    const trialEnd = data.subscription?.trial_end ?? data.subscription?.current_period_end ?? null;
+  // Send activation email for any event that starts a trial.
+  // Dodo may send subscription.created, subscription.active, or subscription.trialing —
+  // we send the email if the resolved plan_status is trialing.
+  const resultStatus = update.plan_status;
+  const trialEnd     = data.subscription?.trial_end ?? data.subscription?.current_period_end ?? null;
+
+  if (resultStatus === "trialing") {
     resolveEmail().then((addr) => {
       if (addr) sendTrialActivationEmail(addr, trialEnd).catch(() => {});
     }).catch(() => {});
   }
 
-  if (eventType === "subscription.expired") {
+  if (eventType === "subscription.expired" || (eventType === "subscription.cancelled" && resultStatus === "canceled")) {
     resolveEmail().then((addr) => {
       if (addr) sendTrialExpiredEmail(addr).catch(() => {});
     }).catch(() => {});
