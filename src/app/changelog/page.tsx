@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { RunTrimMark } from "@/components/app/runtrim-logo";
 import { ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
+import { PublicFooter } from "@/components/app/public-footer";
 
 export const metadata: Metadata = {
   title: "Changelog | RunTrim",
@@ -239,35 +239,7 @@ export default function ChangelogPage() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "40px 0 56px" }}>
-        <div
-          className="mx-auto grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-6"
-          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
-        >
-          <div style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 10 }}>
-            <RunTrimMark size={16} bg="#0c0e11" bgRadius={3} />
-              runtrim · changelog
-          </div>
-          <div className="flex gap-[18px]">
-            {[
-              { href: "/",          label: "Home"    },
-              { href: "/plans",     label: "Plans"   },
-              { href: "/status",    label: "Status"  },
-              { href: "/privacy",   label: "Privacy" },
-            ].map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
-                className="hover:text-[#f4f5f7]"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

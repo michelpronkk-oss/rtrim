@@ -5,7 +5,7 @@ import { Check, ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
   title: "Pricing | RunTrim",
   description:
-    "RunTrim free CLI is live. Pro, Builder, and Team are in early access. Start local, scale when it matters.",
+    "RunTrim free CLI is live. Pro, Builder, and Team are live plans. Start local, scale when it matters.",
   alternates: { canonical: "https://www.runtrim.com/pricing" },
 };
 
@@ -18,7 +18,7 @@ const PLANS = [
     highlight: false,
     badge:     null,
     bullets: [
-      "Local CLI — guard, check, report, history",
+      "Local CLI â€” guard, check, report, history",
       "Bridge Mode: 5 runs per month",
       "Local project memory",
       "Token and cost estimates",
@@ -38,11 +38,11 @@ const PLANS = [
     badge:     null,
     bullets: [
       "Unlimited Bridge Mode runs",
-      "Cloud sync — run history and memory",
+      "Cloud sync â€” run history and memory",
       "Continuation packs",
       "Weekly savings report",
       "Project memory across sessions",
-      "Agent early access",
+      "Agent features",
     ],
     cta:       "Request Pro access",
     ctaHref:   "/login",
@@ -114,7 +114,7 @@ export default function PricingPage() {
             Start local. Scale when it matters.
           </h1>
           <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-            Free CLI works without an account. Pro, Builder, and Team are entering early access with unlimited Bridge Mode and cloud sync.
+            Free CLI works without an account. Pro, Builder, and Team are live with unlimited Bridge Mode and cloud sync.
           </p>
         </div>
 

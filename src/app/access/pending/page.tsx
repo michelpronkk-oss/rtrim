@@ -1,27 +1,29 @@
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
+import { RunTrimLogo } from "@/components/app/runtrim-logo";
 
 export default function AccessPendingPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#07071A]">
-      <header className="border-b border-white/8 bg-[#07071A]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+    <div className="flex min-h-screen flex-col bg-[#08090b]">
+      <header
+        style={{
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(8,9,11,0.92)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between px-6">
+          <Link href="/" className="no-underline">
+            <RunTrimLogo size={20} />
           </Link>
-          <Link
-            href="/app/install"
-            className="rounded-md border border-white/10 px-3 py-1.5 text-[12px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-          >
-            Install CLI
+          <Link href="/app/install" className="text-[12px] text-[#8a8f98] transition-colors hover:text-[#f4f5f7]">
+            Install free CLI
           </Link>
         </div>
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-[460px] rounded-[10px] border border-white/10 bg-[#0c0e11] p-6 sm:p-7">
 
           <div className="mb-6 flex size-10 items-center justify-center rounded-xl border border-[#F0BF72]/22 bg-[#F0BF72]/8">
             <Clock className="size-5 text-[#F0BF72]/70" />
@@ -31,10 +33,10 @@ export default function AccessPendingPage() {
             Under review
           </p>
           <h1 className="mt-2 text-[1.7rem] font-bold tracking-[-0.03em] text-[#EDEEFF]">
-            Your request is under review.
+            Your plan setup is in progress.
           </h1>
           <p className="mt-3 text-[13px] leading-[1.75] text-[#5E6A88]">
-            We received your early access request. Approved builders will receive an email when dashboard access is enabled.
+            We are preparing your workspace. You will receive an email confirmation when setup is complete.
           </p>
 
           <div className="mt-6 rounded-xl border border-white/7 bg-[#0C0C20] px-5 py-4">

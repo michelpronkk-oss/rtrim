@@ -55,9 +55,9 @@ export function PublicNav() {
           className="hidden sm:inline-flex items-center gap-2 transition-colors hover:border-white/18"
           style={{
             ...MONO, fontSize: 11, color: "#8a8f98",
-            padding: "5px 10px",
+            height: 32, padding: "0 12px",
             border: "1px solid rgba(255,255,255,0.09)",
-            borderRadius: 999,
+            borderRadius: 6,
             background: "#0c0e11",
           }}
         >
@@ -69,7 +69,7 @@ export function PublicNav() {
               display: "inline-block",
             }}
           />
-          all systems normal
+          all systems operational
         </Link>
 
         {/* Primary CTA */}

@@ -1,27 +1,29 @@
 import Link from "next/link";
 import { ArrowRight, Terminal } from "lucide-react";
+import { RunTrimLogo } from "@/components/app/runtrim-logo";
 
 export default function AccessRejectedPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#07071A]">
-      <header className="border-b border-white/8 bg-[#07071A]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
+    <div className="flex min-h-screen flex-col bg-[#08090b]">
+      <header
+        style={{
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(8,9,11,0.92)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between px-6">
+          <Link href="/" className="no-underline">
+            <RunTrimLogo size={20} />
           </Link>
-          <Link
-            href="/app/install"
-            className="rounded-md border border-white/10 px-3 py-1.5 text-[12px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-          >
-            Install CLI
+          <Link href="/app/install" className="text-[12px] text-[#8a8f98] transition-colors hover:text-[#f4f5f7]">
+            Install free CLI
           </Link>
         </div>
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-[460px] rounded-[10px] border border-white/10 bg-[#0c0e11] p-6 sm:p-7">
 
           <div className="mb-6 flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5">
             <Terminal className="size-5 text-[#7F84AE]/70" />
@@ -34,7 +36,7 @@ export default function AccessRejectedPage() {
             We cannot open dashboard access yet.
           </h1>
           <p className="mt-3 text-[13px] leading-[1.75] text-[#5E6A88]">
-            RunTrim cloud access is limited while Agent early access is being rolled out. We are keeping the circle small for now.
+            RunTrim cloud plans are now live. If access is unavailable for your account right now, please try again shortly or contact support.
           </p>
           <p className="mt-2 text-[13px] leading-[1.75] text-[#5E6A88]">
             You can still use the free local CLI without an account.

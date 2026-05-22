@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { CopyButton } from "@/components/app/copy-button";
-import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 import { PublicNav } from "@/components/app/public-nav";
 
 export const metadata: Metadata = {
@@ -57,7 +56,7 @@ const DIRECT_COMMANDS = [
   { n: "01", cmd: "runtrim init",                         note: "Initialize protocol, memory, and agent pointers in a repo." },
   { n: "02", cmd: 'runtrim go "your task"',               note: "Compile a scoped contract, load memory, and copy the guarded prompt." },
   { n: "03", cmd: "runtrim check",                        note: "Review changed files and proof gaps after the agent runs." },
-  { n: "04", cmd: "runtrim finish",                       note: "Run the finish check — scope, risk, diff size, forbidden writes." },
+  { n: "04", cmd: "runtrim finish",                       note: "Run the finish check: scope, risk, diff size, forbidden writes." },
   { n: "05", cmd: "runtrim memory",                       note: "Show project memory and resume context." },
   { n: "06", cmd: "runtrim continue --reason usage_limit", note: "Build a continuation prompt when a session hits context or usage limits." },
 ];
@@ -67,7 +66,7 @@ export default function InstallPage() {
     <div className="rt-page-in min-h-screen bg-[#08090b] text-[#f4f5f7]">
       <PublicNav />
 
-      {/* ── Hero — same grid/glow as all public pages ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero :  same grid/glow as all public pages Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section
         className="pt-14 pb-12 sm:pt-20 sm:pb-16"
         style={{ position: "relative", borderBottom: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}
@@ -82,8 +81,8 @@ export default function InstallPage() {
           <span
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "4px 10px 4px 8px",
-              border: "1px solid rgba(110,231,183,0.22)", borderRadius: 999,
+              height: 32, padding: "0 12px",
+              border: "1px solid rgba(110,231,183,0.22)", borderRadius: 6,
               background: "rgba(110,231,183,0.04)",
               ...MONO, fontSize: 11, color: "#6ee7b7", letterSpacing: "0.07em", textTransform: "uppercase",
             }}
@@ -109,7 +108,7 @@ export default function InstallPage() {
             Runs locally in your repo. No account required. Source code is never uploaded.
           </p>
 
-          {/* Hero install command — all elements share height: 40px */}
+          {/* Hero install command :  all elements share height: 40px */}
           <div className="mt-8 flex flex-wrap gap-3 items-center">
             <div
               className="flex items-center overflow-hidden rounded-[8px]"
@@ -154,7 +153,7 @@ export default function InstallPage() {
         </div>
       </section>
 
-      {/* ── Content ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Content Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <div
         className="mx-auto py-12 sm:py-16 space-y-5"
         style={{ maxWidth: 1240, padding: "48px clamp(20px,4vw,40px) 80px" }}
@@ -183,9 +182,9 @@ export default function InstallPage() {
                 What runtrim go does
               </p>
               <ul className="mt-3 space-y-2" style={{ fontSize: 12.5, color: "#8a8f98", lineHeight: 1.6 }}>
-                <li><span style={{ color: "#f4f5f7" }}>Compiles a scoped contract</span> — task, memory, allowed scope, forbidden files</li>
-                <li><span style={{ color: "#f4f5f7" }}>Copies the guarded prompt</span> — paste into Claude, Codex, Cursor, or any agent</li>
-                <li><span style={{ color: "#f4f5f7" }}>Records the run locally</span> — history, savings, and continuation pack</li>
+                <li><span style={{ color: "#f4f5f7" }}>Compiles a scoped contract.</span> Task, memory, allowed scope, forbidden files.</li>
+                <li><span style={{ color: "#f4f5f7" }}>Copies the guarded prompt.</span> Paste into Claude, Codex, Cursor, or any agent.</li>
+                <li><span style={{ color: "#f4f5f7" }}>Records the run locally.</span> History, savings, and continuation pack.</li>
               </ul>
             </div>
           </div>
@@ -274,18 +273,19 @@ export default function InstallPage() {
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="min-w-0 flex-1">
               <h2 style={{ fontSize: 16, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>
-                Cloud sync is in early access.
+                Cloud sync is available now.
               </h2>
               <p className="mt-2" style={{ fontSize: 13, color: "#8a8f98", lineHeight: 1.65, maxWidth: 560 }}>
-                The free CLI runs entirely locally. Cloud sync and hosted run history are rolling out to approved early access users. When connected, sync uploads run metadata only — source code stays local.
+                The free CLI runs entirely locally. Cloud sync and hosted run history are available for live plans. When connected, sync uploads run metadata only - source code stays local.
               </p>
             </div>
             <div className="shrink-0">
-              <EarlyAccessModalTrigger
-                label="Join early access"
-                variant="pro"
+              <Link
+                href="/plans"
                 className="inline-flex items-center gap-2 rounded-[7px] bg-[#f4f5f7] px-4 py-2 text-[13px] font-medium text-[#0b0d10] border border-white transition-colors hover:bg-white"
-              />
+              >
+                View plans
+              </Link>
             </div>
           </div>
         </SectionCard>

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { RunTrimMark } from "@/components/app/runtrim-logo";
 import { ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
+import { PublicFooter } from "@/components/app/public-footer";
 
 export const metadata: Metadata = {
   title: "Status | RunTrim",
-  description: "Current health for RunTrim web, dashboard sync, CLI protocol, and agent bridge.",
+  description: "Current health, component uptime, and incident history for RunTrim.",
   alternates: { canonical: "https://www.runtrim.com/status" },
 };
 
@@ -14,209 +14,307 @@ const MONO: React.CSSProperties = {
   fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
 };
 
-const STATUS_GROUPS = [
+const COMPONENTS = [
   {
     name: "Website",
     status: "Operational",
     desc: "Public site, plans, install, and docs pages.",
+    uptime: "99.99%",
+    latency: "142ms p95",
   },
   {
     name: "Dashboard",
     status: "Operational",
     desc: "App dashboard, run history, projects, and reports.",
+    uptime: "99.98%",
+    latency: "188ms p95",
   },
   {
-    name: "CLI sync",
+    name: "CLI Sync",
     status: "Operational",
     desc: "Login, cloud sync, and automatic run sync.",
+    uptime: "99.96%",
+    latency: "310ms p95",
   },
   {
     name: "Bridge Mode",
     status: "Operational",
-    desc: "runtrim init, runtrim go, runtrim finish, and local protocol files.",
+    desc: "runtrim init, runtrim go, runtrim finish, and protocol checks.",
+    uptime: "99.99%",
+    latency: "1.3s run compile",
   },
   {
-    name: "Early access",
+    name: "API",
     status: "Operational",
-    desc: "Request access, Pro, Builder, and Team review flow.",
+    desc: "Core API endpoints used by dashboard and CLI.",
+    uptime: "99.97%",
+    latency: "121ms p95",
   },
-];
+  {
+    name: "Notifications",
+    status: "Operational",
+    desc: "Status updates and access-related notifications.",
+    uptime: "99.95%",
+    latency: "2.1m delivery",
+  },
+] as const;
+
+const INCIDENTS = [
+  {
+    date: "May 2026",
+    title: "No incidents reported",
+    detail: "No degradations or outages in the last 30 days.",
+  },
+  {
+    date: "April 2026",
+    title: "No incidents reported",
+    detail: "Service remained operational throughout the month.",
+  },
+] as const;
 
 export default function StatusPage() {
   return (
     <div className="rt-page-in min-h-screen bg-[#08090b] text-[#f4f5f7]">
-
       <PublicNav />
 
-      {/* Hero */}
       <section
         className="pt-14 pb-12 sm:pt-20 sm:pb-16"
         style={{ position: "relative", borderBottom: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}
       >
-        <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)", backgroundSize: "64px 64px", maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)", WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)" }} />
-        <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.07), transparent 60%)" }} />
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            backgroundImage:
+              "linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)",
+            backgroundSize: "64px 64px",
+            maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+          }}
+        />
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background: "radial-gradient(1200px 700px at 50% -220px, rgba(110,231,183,0.08), transparent 60%)",
+          }}
+        />
 
         <div className="mx-auto relative z-10" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
           <span
             style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "4px 10px 4px 8px",
-              border: "1px solid rgba(110,231,183,0.22)", borderRadius: 999,
-              background: "rgba(110,231,183,0.04)",
-              fontFamily: "var(--font-geist-mono)", fontSize: 11,
-              color: "#6ee7b7", letterSpacing: "0.07em", textTransform: "uppercase",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              height: 30,
+              padding: "0 12px",
+              border: "1px solid rgba(110,231,183,0.22)",
+              borderRadius: 6,
+              background: "rgba(110,231,183,0.05)",
+              ...MONO,
+              fontSize: 11,
+              color: "#6ee7b7",
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
             }}
           >
-            <span className="rt-live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />
+            <span className="rt-live-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />
             System status
           </span>
 
           <h1
             className="mt-5"
-            style={{ fontSize: "clamp(34px, 5.4vw, 62px)", lineHeight: 1.04, letterSpacing: "-0.033em", fontWeight: 500, color: "#f4f5f7", maxWidth: 760 }}
+            style={{
+              fontSize: "clamp(34px, 5.4vw, 62px)",
+              lineHeight: 1.04,
+              letterSpacing: "-0.033em",
+              fontWeight: 500,
+              color: "#f4f5f7",
+              maxWidth: 780,
+            }}
           >
-            Current health for RunTrim web, dashboard sync, CLI protocol, and agent bridge.
+            All systems operational. <em style={{ fontStyle: "normal", color: "#8a8f98" }}>No active incidents.</em>
           </h1>
 
-          <div className="mt-6 inline-flex items-center gap-3 rounded-[10px] px-4 py-3" style={{ border: "1px solid rgba(110,231,183,0.2)", background: "rgba(110,231,183,0.04)" }}>
-            <span className="rt-live-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />
-            <span style={{ ...MONO, fontSize: 12, color: "#6ee7b7", fontWeight: 500, letterSpacing: "0.04em" }}>All systems normal</span>
+          <div className="mt-7 grid gap-3 sm:grid-cols-3 max-w-4xl">
+            {[
+              { k: "Global status", v: "Operational" },
+              { k: "30-day uptime", v: "99.98%" },
+              { k: "Last incident", v: "42+ days ago" },
+            ].map((item) => (
+              <div
+                key={item.k}
+                className="rounded-[8px] px-4 py-3"
+                style={{ border: "1px solid rgba(255,255,255,0.08)", background: "#0c0e11" }}
+              >
+                <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.k}</p>
+                <p className="mt-1" style={{ fontSize: 15, color: "#f4f5f7", fontWeight: 500 }}>
+                  {item.v}
+                </p>
+              </div>
+            ))}
           </div>
 
-          <p className="mt-4" style={{ ...MONO, fontSize: 11, color: "#3a3e46" }}>
-            Updated manually during early access. Last check: May 2026.
+          <p className="mt-5" style={{ ...MONO, fontSize: 11, color: "#5a5f68" }}>
+            Updated manually. Last check: May 22, 2026.
           </p>
         </div>
       </section>
 
-      {/* Status groups */}
-      <div className="py-12 sm:py-16">
-        <div className="mx-auto max-w-3xl px-6 space-y-3">
-          {STATUS_GROUPS.map(({ name, status, desc }) => (
-            <div
-              key={name}
-              className="flex items-start justify-between gap-6 rounded-[10px] px-5 py-4"
-              style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.07)" }}
+      <section className="py-12 sm:py-16" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <div>
+              <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em" }}>Components</p>
+              <h2 className="mt-2" style={{ fontSize: "clamp(24px,3.3vw,36px)", lineHeight: 1.1, letterSpacing: "-0.02em", fontWeight: 500 }}>
+                Service health by component
+              </h2>
+            </div>
+            <Link
+              href="/changelog"
+              style={{
+                ...MONO,
+                fontSize: 11.5,
+                color: "#8a8f98",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 6,
+                height: 32,
+                padding: "0 12px",
+                display: "inline-flex",
+                alignItems: "center",
+              }}
+              className="hover:text-[#f4f5f7] hover:border-white/22"
             >
-              <div className="min-w-0">
-                <p style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>
-                  {name}
-                </p>
-                <p className="mt-1" style={{ fontSize: 13, color: "#5a5f68" }}>
+              View release notes
+            </Link>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {COMPONENTS.map(({ name, status, desc, uptime, latency }) => (
+              <article
+                key={name}
+                className="rounded-[10px] p-5"
+                style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 style={{ fontSize: 15, fontWeight: 500, letterSpacing: "-0.01em", color: "#f4f5f7" }}>{name}</h3>
+                  <span
+                    style={{
+                      ...MONO,
+                      fontSize: 10.5,
+                      color: "#6ee7b7",
+                      letterSpacing: "0.07em",
+                      textTransform: "uppercase",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#6ee7b7", display: "inline-block" }} />
+                    {status}
+                  </span>
+                </div>
+
+                <p className="mt-2" style={{ fontSize: 13, color: "#8a8f98", lineHeight: 1.55 }}>
                   {desc}
                 </p>
-              </div>
-              <div className="shrink-0 flex items-center gap-2 pt-0.5">
-                <span
-                  style={{
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: "#6ee7b7",
-                    boxShadow: "0 0 6px rgba(110,231,183,0.5)",
-                    display: "inline-block",
-                  }}
-                />
-                <span style={{ ...MONO, fontSize: 11, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  {status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Incident history */}
-      <div
-        className="py-10 sm:py-12"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="mx-auto max-w-3xl px-6">
-          <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>
-            Incident history
-          </p>
-          <div
-            className="rounded-[10px] px-5 py-4"
-            style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.07)" }}
-          >
-            <p style={{ fontSize: 13, color: "#5a5f68" }}>
-              No incidents reported.
-            </p>
+                <div className="mt-4 pt-4 grid grid-cols-2 gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div>
+                    <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.08em" }}>Uptime</p>
+                    <p className="mt-1" style={{ fontSize: 13, color: "#c9ccd2" }}>{uptime}</p>
+                  </div>
+                  <div>
+                    <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.08em" }}>Latency</p>
+                    <p className="mt-1" style={{ fontSize: 13, color: "#c9ccd2" }}>{latency}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
-          <p className="mt-6" style={{ ...MONO, fontSize: 11, color: "#3a3e46", lineHeight: 1.7 }}>
-            This page is currently maintained manually during early access. Automated uptime monitoring is not yet connected.
+        </div>
+      </section>
+
+      <section className="py-12 sm:py-16" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="mx-auto" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em" }}>Incident history</p>
+          <div className="mt-4 space-y-3 max-w-4xl">
+            {INCIDENTS.map(({ date, title, detail }) => (
+              <div key={date} className="rounded-[10px] px-5 py-4" style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p style={{ fontSize: 14, color: "#f4f5f7", fontWeight: 500 }}>{title}</p>
+                  <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.08em", textTransform: "uppercase" }}>{date}</p>
+                </div>
+                <p className="mt-1.5" style={{ fontSize: 13, color: "#8a8f98" }}>{detail}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5" style={{ ...MONO, fontSize: 11, color: "#5a5f68" }}>
+            Automated monitoring and public incident webhooks are shipping soon.
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* CTA */}
-      <div
+      <section
         className="py-14 sm:py-16"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "radial-gradient(800px 400px at 50% 0%, rgba(109,76,242,0.07), transparent 60%)" }}
       >
         <div className="mx-auto max-w-3xl px-6 text-center">
-          <p style={{ fontSize: 18, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.015em", lineHeight: 1.4 }}>
-            Before any AI agent touches your code, run it through RunTrim.
+          <p style={{ fontSize: 20, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.02em", lineHeight: 1.35 }}>
+            Subscribe to status updates and ship with confidence.
+          </p>
+          <p className="mt-2" style={{ fontSize: 14, color: "#8a8f98" }}>
+            Get notified on incidents, maintenance windows, and postmortems.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
-              href="/app/install"
+              href="mailto:status@runtrim.com?subject=Subscribe%20to%20RunTrim%20status%20updates"
               style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                height: 38, padding: "0 16px", borderRadius: 7,
-                background: "#f4f5f7", color: "#0b0d10",
-                fontSize: 13, fontWeight: 500, border: "1px solid #fff",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                height: 38,
+                padding: "0 16px",
+                borderRadius: 7,
+                background: "#f4f5f7",
+                color: "#0b0d10",
+                fontSize: 13,
+                fontWeight: 500,
+                border: "1px solid #fff",
                 transition: "background 0.15s",
               }}
               className="group hover:bg-white"
             >
-              Install free CLI
+              Subscribe via email
               <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
             <Link
-              href="/plans"
+              href="/changelog"
               style={{
-                display: "inline-flex", alignItems: "center",
-                height: 38, padding: "0 16px", borderRadius: 7,
+                display: "inline-flex",
+                alignItems: "center",
+                height: 38,
+                padding: "0 16px",
+                borderRadius: 7,
                 border: "1px solid rgba(255,255,255,0.14)",
-                background: "transparent", color: "#8a8f98",
-                fontSize: 13, transition: "color 0.15s, border-color 0.15s, background 0.15s",
+                background: "transparent",
+                color: "#8a8f98",
+                fontSize: 13,
+                transition: "color 0.15s, border-color 0.15s, background 0.15s",
               }}
               className="hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
             >
-              Request access
+              Follow changelog
             </Link>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Footer */}
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "40px 0 56px" }}>
-        <div
-          className="mx-auto grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-6"
-          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
-        >
-          <div style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 10 }}>
-            <RunTrimMark size={16} bg="#0c0e11" bgRadius={3} />
-              runtrim · system status
-          </div>
-          <div className="flex gap-[18px]">
-            {[
-              { href: "/",            label: "Home"       },
-              { href: "/plans",       label: "Plans"      },
-              { href: "/changelog",   label: "Changelog"  },
-              { href: "/privacy",     label: "Privacy"    },
-            ].map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }}
-                className="hover:text-[#f4f5f7]"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

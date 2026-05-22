@@ -7,10 +7,11 @@ import { SmartCta } from "@/components/app/smart-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 import { HeroRunContract, MobileContractCard } from "@/components/app/hero-run-contract";
 import { planOrder, plans } from "@/lib/plans";
-import { RunTrimLogo, RunTrimMark } from "@/components/app/runtrim-logo";
+import { PublicNav } from "@/components/app/public-nav";
+import { PublicFooter } from "@/components/app/public-footer";
 
 export const metadata: Metadata = {
-  title: "RunTrim — Control layer for AI coding agents",
+  title: "RunTrim - Control layer for AI coding agents",
   description:
     "RunTrim installs a protocol into your repo, gives every AI coding task memory, scope, forbidden files, and a finish check, then syncs the run to your dashboard. Fewer drifts, lower token burn, cleaner diffs.",
   alternates: {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
   },
 };
 
-/* ─── Section data ──────────────────────────────────────────────────────────── */
+/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Section data ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */
 
 const DRIFT_ITEMS = [
   {
@@ -51,14 +52,12 @@ const DRIFT_ITEMS = [
   },
   {
     tag:   "Unclear handoff",
-    title: "Is it actually done?",
     body:  'The agent says "complete." Tests are red, the diff is half-applied, and nobody flagged it. You find out at PR review.',
     glyph: "FINISH",
     code:  "checks: skipped",
   },
   {
     tag:   "No audit trail",
-    title: "What did it actually do?",
     body:  "Three runs, four branches, zero history of intent. You can read the diff, but you can't read the reasoning behind it.",
     glyph: "RUN_LOG",
     code:  "not found",
@@ -80,7 +79,7 @@ const PIPELINE_STAGES = [
   },
   {
     n:      "03 / execute",
-    cmd:    "› agent",
+    cmd:    "> agent",
     desc:   "Claude, Codex, Cursor or any agent runs the guarded prompt. Stop rules trigger if it strays.",
     active: true,
   },
@@ -92,18 +91,18 @@ const PIPELINE_STAGES = [
   },
   {
     n:      "05 / sync",
-    cmd:    "↗ dashboard",
+    cmd:    "dashboard",
     desc:   "Run, contract, diff, token spend, and verdict are written to your dashboard. Resumable next session.",
     active: false,
   },
 ];
 
 const BENEFITS = [
-  { n: "01", title: "Faster runs",        body: "Scoped context means the agent stops re-reading the world. Same task, less wandering.",                     stat: "avg run time",     delta: "↓ 41%" },
-  { n: "02", title: "Lower token burn",   body: "Memory recall replaces context dumping. You pay for the work, not the warmup.",                             stat: "tokens per task",  delta: "↓ 27%" },
-  { n: "03", title: "Stricter output",    body: "Diff caps, file allowlists, stop rules. The agent works inside lines you draw.",                             stat: "scope violations", delta: "↓ 96%" },
+  { n: "01", title: "Faster runs",        body: "Scoped context means the agent stops re-reading the world. Same task, less wandering.",                     stat: "avg run time",     delta: "down 41%" },
+  { n: "02", title: "Lower token burn",   body: "Memory recall replaces context dumping. You pay for the work, not the warmup.",                             stat: "tokens per task",  delta: "down 27%" },
+  { n: "03", title: "Stricter output",    body: "Diff caps, file allowlists, stop rules. The agent works inside lines you draw.",                             stat: "scope violations", delta: "down 96%" },
   { n: "04", title: "Less breakage",      body: "Forbidden files stay forbidden. .env, migrations, infrastructure are protected by default.",                stat: "forbidden writes", delta: "0"     },
-  { n: "05", title: "Clean continuation", body: "Memory survives sessions. Next run starts where the last one stopped, with intent intact.",                 stat: "cold-start tokens", delta: "↓ 64%" },
+  { n: "05", title: "Clean continuation", body: "Memory survives sessions. Next run starts where the last one stopped, with intent intact.",                 stat: "cold-start tokens", delta: "down 64%" },
   { n: "06", title: "Cloud run history",  body: "Every run is a record. Contract, diff, verdict, agent, model. Searchable, auditable, replayable.",          stat: "retention",        delta: "90 days" },
 ];
 
@@ -123,94 +122,19 @@ const AGENT_LIST = [
     iconColor: "#7898FF", iconBorder: "rgba(77,107,254,0.28)",   iconBg: "rgba(77,107,254,0.07)"  },
   { icon: "Oc",  name: "OpenClaw",     status: "beta",              beta: true,
     iconColor: "#f87171", iconBorder: "rgba(248,113,113,0.28)",  iconBg: "rgba(248,113,113,0.07)" },
-  { icon: "···", name: "Custom agent", status: "any prompt-runner", beta: false,
+  { icon: "...", name: "Custom agent", status: "any prompt-runner", beta: false,
     iconColor: "#5a5f68", iconBorder: "rgba(255,255,255,0.09)",  iconBg: "#16191e"                },
 ];
 
-/* ─── Page ──────────────────────────────────────────────────────────────────── */
+/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Page ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */
 
 export default function Home() {
   return (
     <div style={{ background: "#08090b", minHeight: "100vh", overflowX: "hidden", color: "#c9ccd2", fontFeatureSettings: '"ss01","ss02","cv11"' }}>
 
-      {/* ── NAV ── */}
-      <header
-        style={{
-          position: "sticky", top: 0, zIndex: 50,
-          background: "rgba(8,9,11,0.72)",
-          backdropFilter: "saturate(140%) blur(12px)",
-          WebkitBackdropFilter: "saturate(140%) blur(12px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div
-          className="mx-auto flex items-center gap-7"
-          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
-        >
-          <Link href="/" aria-label="RunTrim" className="no-underline">
-            <RunTrimLogo size={20} />
-          </Link>
+      <PublicNav />
 
-          <nav className="hidden md:flex items-center gap-1 ml-3">
-            {[
-              { href: "/app/install", label: "Install CLI" },
-              { href: "#protocol",    label: "Protocol"    },
-              { href: "#agents",      label: "Agents"      },
-              { href: "#plans",       label: "Plans"       },
-              { href: "/app/install", label: "Docs"        },
-            ].map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                style={{ fontSize: 13, color: "#8a8f98", padding: "7px 10px", borderRadius: 5, transition: "color 0.15s, background 0.15s" }}
-                className="hover:text-[#f4f5f7] hover:bg-white/6"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-
-          <div style={{ flex: 1 }} />
-
-          {/* Status badge — links to /status */}
-          <Link
-            href="/status"
-            className="hidden sm:inline-flex items-center gap-2 transition-colors hover:border-white/18"
-            style={{
-              fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8a8f98",
-              padding: "5px 10px", border: "1px solid rgba(255,255,255,0.09)",
-              borderRadius: 999, background: "#0c0e11",
-            }}
-          >
-            <span
-              className="rt-live-dot"
-              style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: "#6ee7b7",
-                display: "inline-block",
-              }}
-            />
-            all systems normal
-          </Link>
-
-          <Link
-            href="/app/install"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              height: 32, padding: "0 14px", borderRadius: 6,
-              background: "#f4f5f7", color: "#0b0d10",
-              fontSize: 13, fontWeight: 500,
-              border: "1px solid #fff",
-              transition: "background 0.15s",
-            }}
-            className="hover:bg-white"
-          >
-            Request access
-          </Link>
-        </div>
-      </header>
-
-      {/* ── HERO ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ HERO ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <section
         className="pt-9 pb-8 sm:pt-16 sm:pb-20 lg:pt-24 lg:pb-28"
         style={{
@@ -244,14 +168,14 @@ export default function Home() {
           className="mx-auto relative z-10"
           style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
         >
-          {/* Two-column grid — stacks on mobile */}
+          {/* Two-column grid ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â stacks on mobile */}
           <div
             className="grid gap-6 lg:gap-20 items-start"
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%,480px), 1fr))" }}
           >
             {/* Left: copy */}
             <div>
-              {/* Eyebrow — "Bridge Mode live" with pulsing mint dot */}
+              {/* Eyebrow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â "Bridge Mode live" with pulsing mint dot */}
               <MotionFade>
                 <span
                   style={{
@@ -297,7 +221,7 @@ export default function Home() {
               </MotionFade>
 
               <MotionFade delay={0.12}>
-                {/* Mobile sub — compact single statement */}
+                {/* Mobile sub ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â compact single statement */}
                 <p className="sm:hidden" style={{ marginTop: 12, fontSize: 15, lineHeight: 1.6, color: "#8a8f98", maxWidth: 340 }}>
                   Memory, scope, and finish checks for Claude, Codex, Cursor, and other coding agents.
                 </p>
@@ -336,7 +260,7 @@ export default function Home() {
               </MotionFade>
 
               <MotionFade delay={0.22}>
-                {/* Mobile: 2 items inline — no wrapping */}
+                {/* Mobile: 2 items inline ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no wrapping */}
                 <div
                   className="mt-4 flex sm:hidden items-center gap-x-4"
                   style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46", whiteSpace: "nowrap" }}
@@ -366,7 +290,7 @@ export default function Home() {
               </MotionFade>
             </div>
 
-            {/* Right: Run contract — compact card on mobile, full panel on desktop */}
+            {/* Right: Run contract ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â compact card on mobile, full panel on desktop */}
             <MotionFade delay={0.25} className="pt-1 sm:pt-4 lg:pt-2">
               <div className="sm:hidden">
                 <MobileContractCard />
@@ -379,7 +303,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── PROBLEM — The drift problem ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ PROBLEM ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â The drift problem ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <section
         id="problem"
         className="py-14 sm:py-16 lg:py-24"
@@ -424,12 +348,12 @@ export default function Home() {
             }}
           >
             {DRIFT_ITEMS.map(({ tag, title, body, glyph, code }, i) => (
-              <MotionFade key={tag} delay={0.05 * i}>
+              <MotionFade key={tag} delay={0.05 * i} className="h-full">
                 <div
                   className="p-5 sm:p-7"
                   style={{
+                    height: "100%",
                     background: "#0c0e11",
-                    minHeight: "auto",
                     display: "flex", flexDirection: "column",
                   }}
                 >
@@ -481,7 +405,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── SOLUTION — The RunTrim protocol ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ SOLUTION ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â The RunTrim protocol ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <section
         id="protocol"
         className="py-14 sm:py-16 lg:py-24"
@@ -522,7 +446,6 @@ export default function Home() {
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 14,
                   padding: "14px 16px",
-                  borderBottom: i < PIPELINE_STAGES.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
                 }}
               >
                 <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "#5a5f68", letterSpacing: "0.06em", flexShrink: 0, marginTop: 2 }}>
@@ -556,7 +479,6 @@ export default function Home() {
                 key={n}
                 style={{
                   padding: "24px 22px 22px",
-                  borderRight: i < 4 ? "1px solid rgba(255,255,255,0.06)" : "none",
                   position: "relative",
                   display: "flex", flexDirection: "column", gap: 10,
                 }}
@@ -585,7 +507,7 @@ export default function Home() {
                       style={{
                         flex: 1, height: 3, borderRadius: 2,
                         background: active
-                          ? (j === 3 ? "#6ee7b7" : "rgba(110,231,183,0.45)")
+                          ? "linear-gradient(90deg, rgba(124,58,237,0.85), rgba(167,139,250,0.9))"
                           : "#1c2026",
                       }}
                     />
@@ -599,8 +521,8 @@ export default function Home() {
           {/* Callout stats */}
           <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             {[
-              { label: "Avg run time",         val: "2m 14s", delta: "↓ 41% vs unguarded" },
-              { label: "Tokens per task",       val: "38.2k",  delta: "↓ 27% vs unguarded" },
+              { label: "Avg run time",         val: "2m 14s", delta: "down 41% vs unguarded" },
+              { label: "Tokens per task",       val: "38.2k",  delta: "down 27% vs unguarded" },
               { label: "Finish-check pass rate", val: "94.1%", delta: "first attempt"        },
             ].map(({ label, val, delta }) => (
               <div
@@ -628,7 +550,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── BENEFITS ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ BENEFITS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <section
         id="benefits"
         className="py-14 sm:py-16 lg:py-24"
@@ -668,10 +590,11 @@ export default function Home() {
             }}
           >
             {BENEFITS.map(({ n, title, body, stat, delta }, i) => (
-              <MotionFade key={n} delay={0.05 * i}>
+              <MotionFade key={n} delay={0.05 * i} className="h-full">
                 <div
                   className="p-5 sm:p-7"
                   style={{
+                    height: "100%",
                     background: "#0c0e11",
                     display: "flex", flexDirection: "column", gap: 10,
                   }}
@@ -702,7 +625,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── AGENTS ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ AGENTS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <section
         id="agents"
         className="py-14 sm:py-16 lg:py-24"
@@ -770,49 +693,59 @@ export default function Home() {
               className="grid grid-cols-2 md:grid-cols-4"
               style={{ gap: 1, background: "rgba(255,255,255,0.06)" }}
             >
-              {AGENT_LIST.map(({ icon, name, status, beta, iconColor, iconBorder, iconBg }, i) => (
-                <div
-                  key={name}
-                  className="p-4 sm:p-6"
-                  style={{
-                    background: "linear-gradient(180deg, #0e1116, #0a0c10)",
-                    display: "flex", flexDirection: "column", gap: 10,
-                  }}
-                >
+              {AGENT_LIST.map(({ icon, name, status, beta, iconColor, iconBorder, iconBg }, i) => {
+                const dotColor =
+                  status === "first-class" ? "#a78bfa"
+                  : status === "supported"  ? "#4DE8B0"
+                  : status === "beta"       ? "#F0BF72"
+                  : "#5a5f68";
+                return (
                   <div
+                    key={name}
+                    className="p-5 sm:p-6"
                     style={{
-                      width: 32, height: 32, borderRadius: 6,
-                      background: iconBg,
-                      border: `1px solid ${iconBorder}`,
-                      display: "grid", placeItems: "center",
-                      color: iconColor,
-                      fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600,
+                      background: "linear-gradient(180deg, #0e1116, #0a0c10)",
+                      display: "flex", flexDirection: "column", gap: 8,
                     }}
                   >
-                    {icon}
-                  </div>
-                  <span style={{ color: "#f4f5f7", fontSize: 14.5, fontWeight: 500, letterSpacing: "-0.005em" }}>
-                    {name}
-                  </span>
-                  <div
-                    style={{
-                      marginTop: "auto",
-                      fontFamily: "var(--font-geist-mono)", fontSize: 10.5,
-                      color: "#5a5f68", letterSpacing: "0.06em", textTransform: "uppercase",
-                      display: "flex", alignItems: "center", gap: 8,
-                    }}
-                  >
-                    <span
+                    {/* Icon */}
+                    <div
                       style={{
-                        width: 5, height: 5, borderRadius: "50%",
-                        background: beta ? "#f5a524" : "#6ee7b7",
-                        display: "inline-block",
+                        width: 32, height: 32, borderRadius: 6,
+                        background: iconBg,
+                        border: `1px solid ${iconBorder}`,
+                        display: "grid", placeItems: "center",
+                        color: iconColor,
+                        fontFamily: "var(--font-geist-mono)", fontSize: 13, fontWeight: 600,
+                        flexShrink: 0,
                       }}
-                    />
-                    {status}
+                    >
+                      {icon}
+                    </div>
+                    {/* Name */}
+                    <span style={{ color: "#f4f5f7", fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em" }}>
+                      {name}
+                    </span>
+                    {/* Status — aligned to icon/name column top, no auto margin */}
+                    <div
+                      style={{
+                        fontFamily: "var(--font-geist-mono)", fontSize: 10,
+                        color: "#5a5f68", letterSpacing: "0.08em", textTransform: "uppercase",
+                        display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 4, height: 4, borderRadius: "50%",
+                          background: dotColor,
+                          display: "inline-block", flexShrink: 0,
+                        }}
+                      />
+                      {status}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Shell footer */}
@@ -831,7 +764,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── PLANS ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ PLANS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <section
         id="plans"
         className="py-14 sm:py-16 lg:py-24"
@@ -863,7 +796,7 @@ export default function Home() {
             </div>
           </MotionFade>
 
-          {/* Cards — items-stretch (default) + h-full on wrapper+card = equal heights */}
+          {/* Cards ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â items-stretch (default) + h-full on wrapper+card = equal heights */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 items-stretch">
             {[
               {
@@ -923,10 +856,9 @@ export default function Home() {
                 <div
                   style={{
                     height: "100%",
-                    background: featured
-                      ? "radial-gradient(160% 80% at 0% 0%, rgba(167,139,250,0.08), transparent 60%), #0c0e11"
-                      : "#0c0e11",
+                    background: "#0c0e11",
                     border: `1px solid ${featured ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.09)"}`,
+                    borderTop: featured ? "2px solid rgba(167,139,250,0.7)" : "1px solid rgba(255,255,255,0.09)",
                     borderRadius: 10,
                     padding: "20px 18px 22px",
                     display: "flex", flexDirection: "column",
@@ -950,23 +882,26 @@ export default function Home() {
                     </span>
                     <span style={{ fontSize: 13, color: "#5a5f68", fontWeight: 400, marginLeft: 4 }}>{per}</span>
                   </div>
-                  {trial && (
-                    <span
-                      style={{
-                        display: "inline-block", marginTop: 6,
-                        fontFamily: "var(--font-geist-mono)", fontSize: 10,
-                        textTransform: "uppercase", letterSpacing: "0.1em",
-                        color: "#a78bfa",
-                        border: "1px solid rgba(167,139,250,0.25)",
-                        borderRadius: 4, padding: "2px 7px",
-                        background: "rgba(167,139,250,0.06)",
-                      }}
-                    >
-                      {trial}
-                    </span>
-                  )}
+                  {/* Fixed-height badge slot — reserves space in all cards so description aligns */}
+                  <div style={{ height: 22, marginTop: 6 }}>
+                    {trial && (
+                      <span
+                        style={{
+                          fontFamily: "var(--font-geist-mono)", fontSize: 10.5,
+                          letterSpacing: "0.04em",
+                          color: "#a78bfa",
+                          border: "1px solid rgba(167,139,250,0.25)",
+                          borderRadius: 4, padding: "2px 8px",
+                          background: "rgba(167,139,250,0.06)",
+                          display: "inline-block",
+                        }}
+                      >
+                        {trial}
+                      </span>
+                    )}
+                  </div>
 
-                  {/* Description — fixed height keeps cards aligned below price */}
+                  {/* Description ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â fixed height keeps cards aligned below price */}
                   <p style={{ marginTop: 8, marginBottom: 0, color: "#8a8f98", fontSize: 13, lineHeight: 1.55, minHeight: "3.2em" }}>
                     {desc}
                   </p>
@@ -984,7 +919,7 @@ export default function Home() {
                         <span
                           style={{
                             marginTop: 5, width: 6, height: 6,
-                            background: featured ? "#a78bfa" : "#5a5f68",
+                            background: featured ? "#a78bfa" : "#6b7280",
                             borderRadius: 1, display: "block",
                             flexShrink: 0,
                           }}
@@ -994,7 +929,7 @@ export default function Home() {
                     ))}
                   </ul>
 
-                  {/* CTA — pushed to bottom by flex-1 on the list above */}
+                  {/* CTA ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pushed to bottom by flex-1 on the list above */}
                   <div style={{ marginTop: 20 }}>
                     {id === "free" ? (
                       <Link
@@ -1013,13 +948,12 @@ export default function Home() {
                       </Link>
                     ) : id === "pro" ? (
                       <ProCheckoutButton
-                        label="Start 3-day Pro trial"
+                        label="Start free 3-day Pro trial"
                         className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white bg-[#f4f5f7] text-[#0b0d10] text-[13px] font-medium transition-colors hover:bg-white disabled:opacity-60"
                       />
                     ) : (
                       <SmartCta
                         label={id === "team" ? "Get Team" : "Get Builder"}
-                        variant={id === "builder" ? "builder" : "pro"}
                         loginRedirect
                         className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]"
                         openAppLabel="Open dashboard"
@@ -1061,7 +995,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── FINAL CTA ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ FINAL CTA ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <section
         id="install"
         className="py-16 sm:py-20 lg:py-32"
@@ -1131,7 +1065,7 @@ export default function Home() {
                 <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
               <SmartCta
-                label="Request early access"
+                label="Get started"
                 variant="pro"
                 className="inline-flex items-center h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
                 openAppLabel="Open dashboard"
@@ -1142,119 +1076,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div
-          className="mx-auto"
-          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
-        >
-
-          {/* ── Mobile layout: stacked sections ── Desktop: side by side ── */}
-          <div className="py-10 sm:py-12 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-10 items-start">
-
-            {/* Brand + install + status */}
-            <div>
-              {/* Wordmark */}
-              <RunTrimLogo size={20} />
-
-              {/* Descriptor */}
-              <p className="mt-2.5" style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", lineHeight: 1.65 }}>
-                The protocol layer for AI coding agents.
-              </p>
-
-              {/* Install command */}
-              <div
-                className="mt-4 flex items-center gap-2 rounded-[8px] px-3 py-2.5"
-                style={{
-                  background: "#0c0e11",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  display: "inline-flex",
-                }}
-              >
-                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#a78bfa", flexShrink: 0 }}>$</span>
-                <code style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8a8f98" }}>
-                  npm install -g runtrim
-                </code>
-              </div>
-
-              {/* Status badge — pill button */}
-              <Link
-                href="/status"
-                className="mt-4 inline-flex items-center gap-2 rounded-[999px] transition-colors hover:border-[rgba(110,231,183,0.35)] hover:bg-[rgba(110,231,183,0.06)]"
-                style={{
-                  fontFamily: "var(--font-geist-mono)", fontSize: 11,
-                  color: "#3a3e46", letterSpacing: "0.05em",
-                  padding: "4px 10px 4px 8px",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "#0c0e11",
-                  display: "inline-flex",
-                }}
-              >
-                <span
-                  className="rt-live-dot"
-                  style={{
-                    width: 5, height: 5, borderRadius: "50%",
-                    background: "#6ee7b7",
-                    display: "inline-block", flexShrink: 0,
-                  }}
-                />
-                All systems normal
-              </Link>
-            </div>
-
-            {/* Links */}
-            <div className="lg:flex lg:justify-end lg:items-start lg:pt-1">
-              {/* Mobile: 3-column grid — each link gets its own clean cell */}
-              <div className="grid grid-cols-3 gap-x-4 gap-y-4 lg:flex lg:flex-wrap lg:gap-x-8 lg:gap-y-3">
-                {[
-                  { href: "/app/install", label: "Docs"      },
-                  { href: "/plans",       label: "Plans"     },
-                  { href: "/changelog",   label: "Changelog" },
-                  { href: "/status",      label: "Status"    },
-                  { href: "https://github.com/michelpronkk-oss/rtrim", label: "GitHub", ext: true },
-                  { href: "/privacy",     label: "Privacy"   },
-                ].map(({ href, label, ext }) =>
-                  ext ? (
-                    <a
-                      key={label}
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ fontSize: 13, color: "#5a5f68", transition: "color 0.15s" }}
-                      className="hover:text-[#f4f5f7]"
-                    >
-                      {label}
-                    </a>
-                  ) : (
-                    <Link
-                      key={label}
-                      href={href}
-                      style={{ fontSize: 13, color: "#5a5f68", transition: "color 0.15s" }}
-                      className="hover:text-[#f4f5f7]"
-                    >
-                      {label}
-                    </Link>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom bar */}
-          <div
-            className="py-5 flex flex-wrap items-center justify-between gap-4"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
-          >
-            <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}>
-              &copy; {new Date().getFullYear()} RunTrim. Bring your own agent. Run it with memory, scope, and control.
-            </p>
-            <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}>
-              Free CLI. Source code never uploaded.
-            </p>
-          </div>
-
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

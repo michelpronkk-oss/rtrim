@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { RunTrimLogo } from "@/components/app/runtrim-logo";
 
 /**
  * /app/trial
@@ -12,9 +13,9 @@ import Link from "next/link";
  *
  * Flow:
  *   Logged-out user clicks "Start 3-day Pro trial"
- *   → /login?next=/app/trial
- *   → magic link → /auth/callback?next=/app/trial
- *   → lands here → POST /api/billing/checkout → Dodo checkout URL
+ *   â†’ /login?next=/app/trial
+ *   â†’ magic link â†’ /auth/callback?next=/app/trial
+ *   â†’ lands here â†’ POST /api/billing/checkout â†’ Dodo checkout URL
  */
 export default function TrialPage() {
   const [error, setError] = useState<string | null>(null);
@@ -38,46 +39,86 @@ export default function TrialPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-md space-y-4 pt-8">
-        <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.12em" }}>
-          Trial
-        </p>
-        <p style={{ fontSize: 14, fontWeight: 600, color: "#f4f5f7", letterSpacing: "-0.01em" }}>
-          Could not start trial.
-        </p>
-        <p style={{ fontSize: 13, color: "#8a8f98", lineHeight: 1.6 }}>
-          {error}
-        </p>
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={() => { setError(null); window.location.reload(); }}
-            className="rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
-          >
-            Try again
-          </button>
-          <Link
-            href="/plans"
-            className="rounded-lg px-4 py-2 text-[13px] text-[#5a5f68] transition-colors hover:text-[#8a8f98]"
-          >
-            Back to plans
-          </Link>
-        </div>
+      <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
+        <header
+          style={{
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(8,9,11,0.92)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between px-6">
+            <Link href="/" className="no-underline">
+              <RunTrimLogo size={20} />
+            </Link>
+            <Link href="/app/install" className="text-[12px] text-[#8a8f98] transition-colors hover:text-[#f4f5f7]">
+              Install free CLI
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto flex max-w-6xl px-6 py-16 sm:py-20 justify-center">
+          <div className="w-full max-w-md rounded-[10px] border border-white/10 bg-[#0c0e11] p-6 space-y-4">
+            <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+              Trial
+            </p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#f4f5f7", letterSpacing: "-0.01em" }}>
+              Could not start trial.
+            </p>
+            <p style={{ fontSize: 13, color: "#8a8f98", lineHeight: 1.6 }}>
+              {error}
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => { setError(null); window.location.reload(); }}
+                className="rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
+              >
+                Try again
+              </button>
+              <Link
+                href="/plans"
+                className="rounded-lg px-4 py-2 text-[13px] text-[#8a8f98] transition-colors hover:text-[#f4f5f7]"
+              >
+                Back to plans
+              </Link>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-md space-y-3 pt-8">
-      <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.12em" }}>
-        Trial
-      </p>
-      <p style={{ fontSize: 14, fontWeight: 600, color: "#f4f5f7", letterSpacing: "-0.01em" }}>
-        Starting your Pro trial...
-      </p>
-      <p style={{ fontSize: 13, color: "#8a8f98" }}>
-        Redirecting to checkout.
-      </p>
+    <div className="min-h-screen bg-[#08090b] text-[#f4f5f7]">
+      <header
+        style={{
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(8,9,11,0.92)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between px-6">
+          <Link href="/" className="no-underline">
+            <RunTrimLogo size={20} />
+          </Link>
+          <Link href="/app/install" className="text-[12px] text-[#8a8f98] transition-colors hover:text-[#f4f5f7]">
+            Install free CLI
+          </Link>
+        </div>
+      </header>
+      <main className="mx-auto flex max-w-6xl px-6 py-16 sm:py-20 justify-center">
+        <div className="w-full max-w-md rounded-[10px] border border-white/10 bg-[#0c0e11] p-6 space-y-3">
+          <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            Trial
+          </p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#f4f5f7", letterSpacing: "-0.01em" }}>
+            Starting your Pro trial...
+          </p>
+          <p style={{ fontSize: 13, color: "#8a8f98" }}>
+            Redirecting to checkout.
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

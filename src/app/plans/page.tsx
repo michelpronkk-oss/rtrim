@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { RunTrimMark } from "@/components/app/runtrim-logo";
 import { Check, ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
+import { PublicFooter } from "@/components/app/public-footer";
 import { SmartCta } from "@/components/app/smart-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
   title: "Plans | RunTrim",
   description:
-    "RunTrim plans. Free CLI runs locally. Pro starts with a 3-day trial — cloud sync, memory, unlimited Bridge Mode. Builder and Team are reviewed access.",
+    "RunTrim plans. Free CLI runs locally. Pro starts with a 3-day trial - cloud sync, memory, unlimited Bridge Mode. Builder and Team are reviewed access.",
   alternates: { canonical: "https://www.runtrim.com/plans" },
 };
 
-// ── Plan definitions ─────────────────────────────────────────────────────────
+// Plan definitions
 
 const PLANS = [
   {
@@ -48,8 +48,8 @@ const PLANS = [
     priceLabel: "$29 / month",
     badge: "Recommended",
     positioning: "Start a 3-day trial. Unlimited Bridge Mode, cloud sync, and reports for solo builders.",
-    microcopy: "3-day trial · cancel anytime",
-    ctaLabel: "Start 3-day Pro trial",
+    microcopy: "3-day trial - cancel anytime",
+    ctaLabel: "Start free 3-day Pro trial",
     ctaHref: null,
     ctaVariant: "primary" as const,
     features: [
@@ -106,7 +106,7 @@ const PLANS = [
   },
 ] as const;
 
-// ── Comparison table rows ─────────────────────────────────────────────────────
+// Comparison table rows
 
 const TABLE_ROWS = [
   { label: "Local CLI",               free: true,       pro: true,       builder: true,        team: true        },
@@ -128,7 +128,7 @@ const TABLE_ROWS = [
   { label: "GitHub checks",           free: false,      pro: false,      builder: false,       team: "planned"   },
 ];
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// Page
 
 export default function PlansPage() {
   return (
@@ -136,7 +136,7 @@ export default function PlansPage() {
 
       <PublicNav />
 
-      {/* Page hero — same visual treatment as homepage hero */}
+      {/* Page hero - same visual treatment as homepage hero */}
       <section
         className="pt-14 pb-12 sm:pt-20 sm:pb-16"
         style={{
@@ -210,7 +210,7 @@ export default function PlansPage() {
             style={{ border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.04)" }}
           >
             <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#a78bfa" }}>
-              Pro has a 3-day trial. Builder and Team are reviewed access.
+              Pro includes a free 3-day trial. Builder and Team are available on-demand.
             </p>
           </div>
         </div>
@@ -220,14 +220,14 @@ export default function PlansPage() {
       <div className="mx-auto max-w-6xl px-6 py-16">
         {/* align-items: stretch (default grid) makes all cards equal row height.
             Each card uses flex-col so features (flex-1) grow and CTA sits at bottom. */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 items-stretch">
           {PLANS.map((plan) => {
             const isPro = plan.id === "pro";
             const isFree = plan.id === "free";
             return (
               <div
                 key={plan.id}
-                className="relative flex flex-col rounded-[10px] overflow-hidden"
+                className="relative flex h-full flex-col rounded-[10px] overflow-hidden"
                 style={{
                   background: isPro
                     ? "radial-gradient(160% 80% at 0% 0%, rgba(167,139,250,0.08), transparent 60%), #0c0e11"
@@ -236,7 +236,7 @@ export default function PlansPage() {
                 }}
               >
                 {/* Card header */}
-                <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", minHeight: 176 }}>
                   <div className="flex items-start justify-between gap-2">
                     <span
                       style={{
@@ -268,7 +268,7 @@ export default function PlansPage() {
                   >
                     {plan.priceLabel}
                   </p>
-                  <p className="mt-2" style={{ fontSize: 13, lineHeight: 1.5, color: "#8a8f98" }}>{plan.positioning}</p>
+                  <p className="mt-2" style={{ fontSize: 13, lineHeight: 1.5, color: "#8a8f98", minHeight: 78 }}>{plan.positioning}</p>
                 </div>
 
                 {/* Features */}
@@ -276,18 +276,18 @@ export default function PlansPage() {
                   <ul className="space-y-2.5">
                     {plan.features.map((f) => (
                       <li key={f} className="flex items-start gap-2.5" style={{ fontSize: 12.5, color: "#c9ccd2" }}>
-                        <span style={{ marginTop: 5, width: 5, height: 5, borderRadius: 1, background: isPro ? "#a78bfa" : "#5a5f68", flexShrink: 0, display: "inline-block" }} />
+                        <span style={{ marginTop: 5, width: 5, height: 5, borderRadius: 1, background: isPro ? "#a78bfa" : "#6b7280", flexShrink: 0, display: "inline-block" }} />
                         {f}
                       </li>
                     ))}
                     {plan.missing && plan.missing.length > 0 && (
                       <>
                         <li className="pt-1">
-                          <div className="h-px bg-white/6" />
+                          <div className="h-px bg-white/10" />
                         </li>
                         {plan.missing.map((f) => (
                           <li key={f} className="flex items-start gap-2.5 text-[12px] text-[#3a3e46]">
-                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#2E3050]" />
+                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#3a3e46]" />
                             {f}
                           </li>
                         ))}
@@ -297,7 +297,7 @@ export default function PlansPage() {
                 </div>
 
                 {/* CTA */}
-                <div className="mt-auto px-5 pb-5">
+                <div className="mt-auto px-5 pb-5 min-h-[74px] flex flex-col justify-end">
                   {isFree ? (
                     <Link
                       href="/app/install"
@@ -322,9 +322,12 @@ export default function PlansPage() {
                       openAppClassName="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
                     />
                   )}
-                  {plan.microcopy && (
-                    <p className="mt-2 text-center font-mono text-[10px] text-[#3a3e46]">{plan.microcopy}</p>
-                  )}
+                  <p
+                    className={`mt-2 text-center font-mono text-[10px] ${plan.microcopy ? "text-[#3a3e46]" : "text-transparent"}`}
+                    aria-hidden={!plan.microcopy}
+                  >
+                    {plan.microcopy ?? "placeholder"}
+                  </p>
                 </div>
               </div>
             );
@@ -390,18 +393,33 @@ export default function PlansPage() {
                     {plan.id === "free" ? (
                       <Link
                         href="/app/install"
-                        className="rounded border border-white/10 px-3 py-1.5 text-[11px] text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
+                        className="inline-flex h-8 items-center justify-center rounded border border-white/10 px-3 text-[11px] text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
                       >
-                        Install
+                        Install Free CLI
                       </Link>
+                    ) : plan.id === "pro" ? (
+                      <ProCheckoutButton
+                        label="Start free 3-day Pro trial"
+                        className="inline-flex h-8 items-center justify-center rounded px-3 text-[11px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
+                      />
+                    ) : plan.id === "builder" ? (
+                      <SmartCta
+                        label="Get Builder"
+                        variant="builder"
+                        loginRedirect
+                        className="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
+                        openAppLabel="Open dashboard"
+                        openAppClassName="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
+                      />
                     ) : (
-                      <button
-                        disabled
-                        className="cursor-not-allowed rounded px-3 py-1.5 text-[11px] font-medium text-[#a78bfa] opacity-70"
-                        style={{ background: "rgba(124,109,250,0.10)", border: "1px solid rgba(124,109,250,0.20)" }}
-                      >
-                        Request
-                      </button>
+                      <SmartCta
+                        label="Get Team"
+                        variant="pro"
+                        loginRedirect
+                        className="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
+                        openAppLabel="Open dashboard"
+                        openAppClassName="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
+                      />
                     )}
                   </div>
                 ))}
@@ -418,7 +436,7 @@ export default function PlansPage() {
             {[
               {
                 q: "When will paid plans open?",
-                a: "Pro, Builder, and Team are being rolled out to early access users. Request access and we will follow up directly.",
+                a: "Pro, Builder, and Team plans are live and available now.",
               },
               {
                 q: "Does RunTrim upload my source code?",
@@ -442,30 +460,7 @@ export default function PlansPage() {
         </div>
       </div>
 
-      {/* Footer — matches homepage footer */}
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "40px 0 56px", color: "#5a5f68" }}>
-        <div
-          className="mx-auto grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-6"
-          style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}
-        >
-          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 10 }}>
-            <RunTrimMark size={16} bg="#0c0e11" bgRadius={3} />
-              runtrim · plans · local-first AI run control
-          </div>
-          <div className="flex gap-[18px]">
-            {[
-              { href: "/",            label: "Home"      },
-              { href: "/app/install", label: "Docs"      },
-              { href: "/app",         label: "Dashboard" },
-              { href: "/privacy",     label: "Privacy"   },
-            ].map(({ href, label }) => (
-              <Link key={label} href={href} style={{ fontSize: 12.5, color: "#5a5f68", transition: "color 0.15s" }} className="hover:text-[#f4f5f7]">
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
