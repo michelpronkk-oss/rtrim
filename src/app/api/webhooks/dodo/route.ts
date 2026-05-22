@@ -5,52 +5,47 @@ import { sendTrialActivationEmail, sendTrialExpiredEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
-/**
- * POST /api/webhooks/dodo
- *
- * Receives Dodo Payments subscription lifecycle events and updates
- * runtrim_profiles with the correct plan, plan_status, and billing dates.
- *
- * Required env vars:
- *   DODO_WEBHOOK_SECRET — from Dodo dashboard → Webhooks → signing secret
- *                         Format: whsec_<base64> or raw base64 string
- *
- * Required DB columns on runtrim_profiles (run migration if missing):
- *   payment_customer_id     text
- *   payment_subscription_id text
- *   current_period_start    timestamptz
- *   current_period_end      timestamptz
- *
- * Events handled:
- *   subscription.active     → plan=pro, plan_status=active
- *   subscription.trialing   → plan=pro, plan_status=trialing  (if Dodo fires this)
- *   subscription.renewed    → plan=pro, plan_status=active, refresh period dates
- *   subscription.on_hold    → plan_status=past_due (keep plan, deny access via gating)
- *   subscription.cancelled  → plan=free, plan_status=canceled
- *   subscription.expired    → plan=free, plan_status=canceled
- *   subscription.failed     → plan_status=past_due
- */
+type PlanId = "free" | "pro" | "builder" | "team";
 
-// ── Signature verification ────────────────────────────────────────────────────
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  plan: string | null;
+  plan_status: string | null;
+  payment_customer_id: string | null;
+  payment_subscription_id: string | null;
+};
 
-/**
- * Dodo sends webhooks with webhook-id / webhook-timestamp / webhook-signature headers.
- * Signed content: "{webhook-id}.{webhook-timestamp}.{raw_body}"
- * Signature format: "v1,<base64>" (comma-separated, space between multiple entries)
- * Secret format: "whsec_<base64_key>" or plain base64.
- */
-async function verifyDodoSignature(
-  rawBody: string,
-  headers: Headers,
-  secret: string
-): Promise<boolean> {
-  const msgId        = headers.get("webhook-id");
+type ExtractedFields = {
+  eventType: string;
+  customerId: string | null;
+  customerEmail: string | null;
+  subscriptionId: string | null;
+  productId: string | null;
+  status: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  trialEnd: string | null;
+  metadataUserId: string | null;
+};
+
+type ProfileUpdate = {
+  plan?: PlanId;
+  plan_status?: string;
+  current_period_start?: string;
+  current_period_end?: string;
+  payment_customer_id?: string;
+  payment_subscription_id?: string;
+  updated_at: string;
+};
+
+async function verifyDodoSignature(rawBody: string, headers: Headers, secret: string): Promise<boolean> {
+  const msgId = headers.get("webhook-id");
   const msgTimestamp = headers.get("webhook-timestamp");
   const msgSignature = headers.get("webhook-signature");
 
   if (!msgId || !msgTimestamp || !msgSignature) return false;
 
-  // Reject timestamps older than 5 minutes to prevent replay attacks
   const ts = parseInt(msgTimestamp, 10);
   if (Number.isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
 
@@ -59,11 +54,8 @@ async function verifyDodoSignature(
     : Buffer.from(secret, "base64");
 
   const signedContent = `${msgId}.${msgTimestamp}.${rawBody}`;
-  const computed = createHmac("sha256", secretKey)
-    .update(signedContent, "utf-8")
-    .digest("base64");
+  const computed = createHmac("sha256", secretKey).update(signedContent, "utf-8").digest("base64");
 
-  // webhook-signature may contain multiple space-separated "v1,<b64>" entries
   const signatures = msgSignature.split(" ");
   return signatures.some((sig) => {
     const [prefix, b64] = sig.split(",");
@@ -76,104 +68,165 @@ async function verifyDodoSignature(
   });
 }
 
-// ── Plan status mapping ───────────────────────────────────────────────────────
-
-type ProfileUpdate = {
-  plan?: string;
-  plan_status?: string;
-  current_period_start?: string | null;
-  current_period_end?: string | null;
-  payment_customer_id?: string;
-  payment_subscription_id?: string;
-};
-
-function resolvePlanFromProductId(productId: string | undefined): "pro" | "builder" | "team" {
-  if (!productId) return "pro";
-  const p = productId.toLowerCase();
-  if (p === (process.env.DODO_BUILDER_PRODUCT_ID ?? "").toLowerCase()) return "builder";
-  if (p === (process.env.DODO_TEAM_PRODUCT_ID    ?? "").toLowerCase()) return "team";
-  return "pro"; // default — covers DODO_PRO_PRODUCT_ID and unknown
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object") return {};
+  return value as Record<string, unknown>;
 }
 
-function buildProfileUpdate(eventType: string, data: DodoEventData): ProfileUpdate | null {
-  const sub      = data.subscription;
-  const custId   = data.customer?.id ?? sub?.customer_id ?? null;
-  const subId    = sub?.id ?? null;
-  const pStart   = sub?.current_period_start ?? null;
-  const pEnd     = sub?.current_period_end ?? null;
-  const trialEnd = sub?.trial_end ?? null;
+function pickString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return null;
+}
 
-  // Resolve which paid plan this subscription is for
-  const resolvedPlan = resolvePlanFromProductId(sub?.product_id);
+function extractFields(payload: Record<string, unknown>): ExtractedFields {
+  const data = asRecord(payload.data);
+  const customer = asRecord(data.customer);
+  const subscription = asRecord(data.subscription);
+  const product = asRecord(data.product);
+  const metadata = asRecord(data.metadata);
+  const subMetadata = asRecord(subscription.metadata);
+  const subCustomer = asRecord(subscription.customer);
+  const items = Array.isArray(data.items) ? data.items : [];
+  const item0 = asRecord(items[0]);
 
-  const base: ProfileUpdate = {};
-  if (custId) base.payment_customer_id    = custId;
-  if (subId)  base.payment_subscription_id = subId;
-  if (pStart) base.current_period_start   = pStart;
-  if (pEnd || trialEnd) base.current_period_end = trialEnd ?? pEnd ?? null;
+  const eventType = pickString(payload.type, payload.event_type)?.toLowerCase() ?? "";
+  const customerEmail = pickString(
+    customer.email,
+    data.email,
+    subCustomer.email
+  )?.toLowerCase() ?? null;
 
-  // Derive plan_status from the payload status field when possible
-  const subStatus = (data.subscription?.status ?? "").toLowerCase();
+  return {
+    eventType,
+    customerId: pickString(data.customer_id, customer.id, subscription.customer_id),
+    customerEmail,
+    subscriptionId: pickString(data.subscription_id, subscription.id),
+    productId: pickString(data.product_id, product.id, subscription.product_id, item0.product_id),
+    status: pickString(subscription.status, data.status)?.toLowerCase() ?? null,
+    currentPeriodStart: pickString(subscription.current_period_start),
+    currentPeriodEnd: pickString(subscription.current_period_end),
+    trialEnd: pickString(subscription.trial_end),
+    metadataUserId: pickString(metadata.user_id, subMetadata.user_id, subMetadata.supabase_user_id),
+  };
+}
 
+function resolvePlanFromProductId(productId: string | null, existingPlan: string | null): PlanId {
+  const pro = (process.env.DODO_PRO_PRODUCT_ID ?? "").toLowerCase();
+  const builder = (process.env.DODO_BUILDER_PRODUCT_ID ?? "").toLowerCase();
+  const team = (process.env.DODO_TEAM_PRODUCT_ID ?? "").toLowerCase();
+
+  const p = (productId ?? "").toLowerCase();
+  if (p && p === builder) return "builder";
+  if (p && p === team) return "team";
+  if (p && p === pro) return "pro";
+
+  if (existingPlan === "pro" || existingPlan === "builder" || existingPlan === "team") {
+    return existingPlan;
+  }
+  return "pro";
+}
+
+function isSubscriptionEvent(eventType: string): boolean {
+  return eventType.startsWith("subscription.");
+}
+
+function mapPlanStatus(eventType: string, extractedStatus: string | null, existingStatus: string | null): string | null {
   switch (eventType) {
-    case "subscription.created":
-      if (subStatus === "trialing" || trialEnd) {
-        return { ...base, plan: resolvedPlan, plan_status: "trialing", current_period_end: trialEnd ?? pEnd ?? null };
-      }
-      return { ...base, plan: resolvedPlan, plan_status: "active", current_period_end: pEnd ?? null };
-
     case "subscription.active":
-      if (trialEnd && new Date(trialEnd) > new Date()) {
-        return { ...base, plan: resolvedPlan, plan_status: "trialing", current_period_end: trialEnd };
-      }
-      return { ...base, plan: resolvedPlan, plan_status: "active", current_period_end: pEnd ?? trialEnd ?? null };
-
+      return "active";
     case "subscription.trialing":
-      return { ...base, plan: resolvedPlan, plan_status: "trialing", current_period_end: trialEnd ?? pEnd ?? null };
-
+      return "trialing";
     case "subscription.renewed":
-      return { ...base, plan: resolvedPlan, plan_status: "active" };
-
+      return "active";
     case "subscription.on_hold":
     case "subscription.failed":
-      return { ...base, plan_status: "past_due" };
-
+      return "past_due";
     case "subscription.cancelled":
     case "subscription.canceled":
+      return "canceled";
     case "subscription.expired":
-      return { ...base, plan: "free", plan_status: "canceled" };
-
+      return "canceled";
+    case "subscription.updated":
+      if (extractedStatus) return extractedStatus;
+      if (existingStatus === "active" || existingStatus === "trialing") return existingStatus;
+      return "active";
     default:
-      return null; // unhandled event — ignore
+      return null;
   }
 }
 
-// ── Dodo event shape ──────────────────────────────────────────────────────────
+async function resolveProfile(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
+  fields: ExtractedFields
+): Promise<{ row: ProfileRow | null; method: string }> {
+  const selectCols = "id,email,plan,plan_status,payment_customer_id,payment_subscription_id";
 
-type DodoEventData = {
-  subscription?: {
-    id?: string;
-    customer_id?: string;
-    product_id?: string;
-    status?: string;
-    current_period_start?: string;
-    current_period_end?: string;
-    trial_end?: string;
-    metadata?: Record<string, string>;
-  };
-  customer?: {
-    id?: string;
-    email?: string;
-  };
-};
+  if (fields.metadataUserId) {
+    const { data } = await supabase.from("runtrim_profiles").select(selectCols).eq("id", fields.metadataUserId).maybeSingle();
+    if (data) return { row: data as ProfileRow, method: "metadata.user_id" };
+  }
 
-type DodoWebhookPayload = {
-  type?: string;
-  event_type?: string;   // some Dodo versions use event_type
-  data?: DodoEventData;
-};
+  if (fields.customerEmail) {
+    const { data } = await supabase.from("runtrim_profiles").select(selectCols).ilike("email", fields.customerEmail).maybeSingle();
+    if (data) return { row: data as ProfileRow, method: "email" };
+  }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
+  if (fields.customerId) {
+    const { data } = await supabase
+      .from("runtrim_profiles")
+      .select(selectCols)
+      .eq("payment_customer_id", fields.customerId)
+      .maybeSingle();
+    if (data) return { row: data as ProfileRow, method: "payment_customer_id" };
+  }
+
+  if (fields.subscriptionId) {
+    const { data } = await supabase
+      .from("runtrim_profiles")
+      .select(selectCols)
+      .eq("payment_subscription_id", fields.subscriptionId)
+      .maybeSingle();
+    if (data) return { row: data as ProfileRow, method: "payment_subscription_id" };
+  }
+
+  return { row: null, method: "unresolved" };
+}
+
+function buildUpdate(fields: ExtractedFields, row: ProfileRow): ProfileUpdate | null {
+  const now = new Date().toISOString();
+  const update: ProfileUpdate = { updated_at: now };
+
+  if (fields.customerId) update.payment_customer_id = fields.customerId;
+  if (fields.subscriptionId) update.payment_subscription_id = fields.subscriptionId;
+  if (fields.currentPeriodStart) update.current_period_start = fields.currentPeriodStart;
+  if (fields.currentPeriodEnd || fields.trialEnd) {
+    update.current_period_end = fields.trialEnd ?? fields.currentPeriodEnd ?? undefined;
+  }
+
+  if (fields.eventType === "payment.succeeded") {
+    return update;
+  }
+
+  if (!isSubscriptionEvent(fields.eventType)) {
+    return null;
+  }
+
+  const mappedStatus = mapPlanStatus(fields.eventType, fields.status, row.plan_status);
+  if (mappedStatus) update.plan_status = mappedStatus;
+
+  if (fields.eventType === "subscription.expired") {
+    update.plan = "free";
+  } else {
+    update.plan = resolvePlanFromProductId(fields.productId, row.plan);
+  }
+
+  return update;
+}
 
 export async function POST(request: Request) {
   const webhookSecret = process.env.DODO_WEBHOOK_SECRET;
@@ -183,28 +236,45 @@ export async function POST(request: Request) {
   }
 
   const rawBody = await request.text();
-
   const valid = await verifyDodoSignature(rawBody, request.headers, webhookSecret);
   if (!valid) {
     console.warn("[/api/webhooks/dodo] Signature verification failed");
     return NextResponse.json({ ok: false, error: "Invalid signature." }, { status: 401 });
   }
 
-  let payload: DodoWebhookPayload;
+  let payload: Record<string, unknown>;
   try {
-    payload = JSON.parse(rawBody);
+    payload = JSON.parse(rawBody) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
   }
 
-  const eventType = (payload.type ?? payload.event_type ?? "").toLowerCase();
-  const data      = payload.data ?? {};
+  const debug = process.env.DEBUG_DODO_WEBHOOK === "true";
+  const fields = extractFields(payload);
+  if (debug) {
+    console.info("[/api/webhooks/dodo] debug payload:", payload);
+  }
 
-  console.info("[/api/webhooks/dodo] event:", eventType);
+  console.info("[/api/webhooks/dodo] event:", fields.eventType);
 
-  const update = buildProfileUpdate(eventType, data);
-  if (!update) {
-    // Unhandled event — acknowledge so Dodo stops retrying
+  if (!fields.eventType) {
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  const handledEvents = new Set([
+    "payment.succeeded",
+    "subscription.active",
+    "subscription.trialing",
+    "subscription.updated",
+    "subscription.renewed",
+    "subscription.on_hold",
+    "subscription.failed",
+    "subscription.cancelled",
+    "subscription.canceled",
+    "subscription.expired",
+  ]);
+
+  if (!handledEvents.has(fields.eventType)) {
     return NextResponse.json({ ok: true, skipped: true });
   }
 
@@ -214,67 +284,51 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "DB unavailable." }, { status: 503 });
   }
 
-  // Resolve which user to update.
-  // Priority: metadata.user_id → metadata.supabase_user_id → customer email
-  const meta      = data.subscription?.metadata ?? {};
-  const metaUserId = meta.user_id ?? meta.supabase_user_id ?? null;
-  const custEmail  = data.customer?.email ?? null;
+  const { row, method } = await resolveProfile(supabase, fields);
 
-  if (!metaUserId && !custEmail) {
-    console.error("[/api/webhooks/dodo] Cannot resolve user — no user_id in metadata and no customer email");
-    return NextResponse.json({ ok: false, error: "Cannot resolve user." }, { status: 422 });
+  console.info(
+    "[/api/webhooks/dodo] resolve:",
+    "method=", method,
+    "hasCustomerId=", Boolean(fields.customerId),
+    "hasSubscriptionId=", Boolean(fields.subscriptionId),
+    "hasEmail=", Boolean(fields.customerEmail)
+  );
+
+  if (!row) {
+    console.warn("[/api/webhooks/dodo] unresolved profile for event:", fields.eventType);
+    return NextResponse.json({ ok: true, unresolved: true });
   }
 
-  // Build and run the update
-  let query = supabase.from("runtrim_profiles").update(update);
-
-  if (metaUserId) {
-    query = query.eq("id", metaUserId);
-  } else {
-    // Fall back to email match — case-insensitive
-    query = query.eq("email", custEmail!.toLowerCase());
+  const update = buildUpdate(fields, row);
+  if (!update) {
+    return NextResponse.json({ ok: true, skipped: true });
   }
 
-  const { error } = await query;
+  const { error } = await supabase.from("runtrim_profiles").update(update).eq("id", row.id);
 
   if (error) {
     console.error("[/api/webhooks/dodo] Profile update failed:", error.message);
-    // Return 500 so Dodo retries
     return NextResponse.json({ ok: false, error: "DB write failed." }, { status: 500 });
   }
 
-  console.info("[/api/webhooks/dodo] Profile updated for event:", eventType, "user_id:", metaUserId ?? custEmail);
+  console.info(
+    "[/api/webhooks/dodo] updated profile",
+    "event=", fields.eventType,
+    "id=", row.id,
+    "plan=", update.plan ?? row.plan,
+    "status=", update.plan_status ?? row.plan_status
+  );
 
-  // ── Transactional emails — fire and forget after DB write succeeds ─────────
-  // Resolve the best email address available. The customer email comes from Dodo.
-  // If absent, fall back to fetching from the profile we just updated.
-  const resolveEmail = async (): Promise<string | null> => {
-    if (custEmail) return custEmail;
-    if (!metaUserId) return null;
-    const { data: row } = await supabase
-      .from("runtrim_profiles")
-      .select("email")
-      .eq("id", metaUserId)
-      .maybeSingle();
-    return (row?.email as string | null) ?? null;
-  };
+  const updatedStatus = update.plan_status ?? row.plan_status;
+  const trialEnd = fields.trialEnd ?? fields.currentPeriodEnd ?? null;
+  const targetEmail = fields.customerEmail ?? row.email;
 
-  // Send activation email for any event that starts a trial.
-  // Dodo may send subscription.created, subscription.active, or subscription.trialing —
-  // we send the email if the resolved plan_status is trialing.
-  const resultStatus = update.plan_status;
-  const trialEnd     = data.subscription?.trial_end ?? data.subscription?.current_period_end ?? null;
-
-  if (resultStatus === "trialing") {
-    resolveEmail().then((addr) => {
-      if (addr) sendTrialActivationEmail(addr, trialEnd).catch(() => {});
-    }).catch(() => {});
+  if (updatedStatus === "trialing" && targetEmail) {
+    sendTrialActivationEmail(targetEmail, trialEnd).catch(() => {});
   }
 
-  if (eventType === "subscription.expired" || (eventType === "subscription.cancelled" && resultStatus === "canceled")) {
-    resolveEmail().then((addr) => {
-      if (addr) sendTrialExpiredEmail(addr).catch(() => {});
-    }).catch(() => {});
+  if ((fields.eventType === "subscription.expired" || fields.eventType === "subscription.cancelled") && targetEmail) {
+    sendTrialExpiredEmail(targetEmail).catch(() => {});
   }
 
   return NextResponse.json({ ok: true });
