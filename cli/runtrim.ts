@@ -913,6 +913,37 @@ function updateLatestExecutionStatus(
   }
 }
 
+function deriveControlledExecutionRisk(
+  previewRisk: "low" | "medium" | "high" | "critical",
+  route: ProviderRoutingDecision["route"],
+  executionMode: ProviderRoutingDecision["executionMode"],
+  task: string
+): "low" | "medium" | "high" | "critical" {
+  const normalized = task.toLowerCase();
+  const criticalTerms = [
+    "dodo",
+    "webhook",
+    "billing",
+    "auth",
+    "database",
+    "migration",
+    "rls",
+    "middleware",
+    "env",
+    "secret",
+    "subscription",
+    "stripe",
+  ];
+  const hits = criticalTerms.filter((term) => normalized.includes(term)).length;
+  if (route === "split-required" || executionMode === "split-first") return "critical";
+  if (route === "high-reasoning" || executionMode === "confirmed-apply-only") {
+    return hits >= 2 ? "critical" : "high";
+  }
+  if (hits >= 2) return "critical";
+  if (hits === 1) return previewRisk === "low" ? "high" : previewRisk;
+  return previewRisk;
+}
+
 async function runAgentApply(task: string, mode: { apply: boolean; confirm: boolean }): Promise<void> {
   const cwd = process.cwd();
   const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
@@ -1047,6 +1078,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     routing.executionMode === "contract-recommended" && !hasExplicitScope
       ? "preview-first"
       : routing.executionMode;
+  const executionRisk = deriveControlledExecutionRisk(preview.risk, routing.route, executionMode, task);
 
   if (routing.route === "split-required" || executionMode === "split-first") {
     const splitExecution: ControlledExecutionArtifact = {
@@ -1057,7 +1089,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
       previewId: preview.id,
       contractPath: ".runtrim/contracts/latest.md",
       routing,
-      risk: preview.risk,
+      risk: executionRisk,
       approvalRequired: true,
       approved: false,
       executionMode: "split-first",
@@ -1100,7 +1132,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
       previewId: preview.id,
       contractPath: ".runtrim/contracts/latest.md",
       routing,
-      risk: preview.risk,
+      risk: executionRisk,
       approvalRequired: true,
       approved: false,
       executionMode,
@@ -1118,7 +1150,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     console.log("");
     console.log(chalk.red.bold("RunTrim controlled execution blocked"));
     console.log("");
-    console.log(DIM("  Risk       ") + chalk.red(preview.risk));
+    console.log(DIM("  Risk       ") + chalk.red(executionRisk));
     console.log(DIM("  Route      ") + chalk.white(routing.route));
     console.log(DIM("  Mode       ") + chalk.white(executionMode));
     console.log(DIM("  Reason     ") + chalk.white(routing.routingReason));
@@ -1151,7 +1183,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     previewId: preview.id,
     contractPath: ".runtrim/contracts/latest.md",
     routing,
-    risk: preview.risk,
+    risk: executionRisk,
     approvalRequired: approvalNeeded,
     approved: !approvalNeeded || mode.confirm,
     executionMode,
@@ -1185,7 +1217,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     console.log("");
     console.log(chalk.yellow.bold("RunTrim controlled execution blocked"));
     console.log("");
-    console.log(DIM("  Risk       ") + chalk.white(preview.risk));
+    console.log(DIM("  Risk       ") + chalk.white(executionRisk));
     console.log(DIM("  Route      ") + chalk.white(routing.route));
     console.log(DIM("  Mode       ") + chalk.white(executionMode));
     console.log(DIM("  Reason     ") + chalk.white(routing.routingReason));
@@ -1203,7 +1235,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     console.log("");
     console.log(GO_ACCENT.bold("RunTrim controlled execution"));
     console.log("");
-    console.log(DIM("  Risk       ") + chalk.white(preview.risk));
+    console.log(DIM("  Risk       ") + chalk.white(executionRisk));
     console.log(DIM("  Route      ") + chalk.white(routing.route));
     console.log(DIM("  Agent      ") + chalk.white(routing.recommendedAgent));
     console.log(DIM("  Mode       ") + chalk.white(executionMode));
@@ -1222,7 +1254,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
   console.log("");
   console.log(GO_ACCENT.bold("RunTrim controlled execution"));
   console.log("");
-  console.log(DIM("  Risk       ") + chalk.white(preview.risk));
+  console.log(DIM("  Risk       ") + chalk.white(executionRisk));
   console.log(DIM("  Route      ") + chalk.white(routing.route));
   console.log(DIM("  Agent      ") + chalk.white(routing.recommendedAgent));
   console.log(DIM("  Mode       ") + chalk.white(executionMode));
