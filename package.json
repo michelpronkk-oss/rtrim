@@ -32,9 +32,9 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:all",
     "build:web": "next build",
-    "build:cli": "tsup --config tsup.config.ts && node scripts/fix-cli-runtime.mjs",
+    "build:cli": "tsup --config tsup.config.ts",
     "build:all": "npm run build:cli && npm run build:web",
     "start": "next start",
     "lint": "eslint",
