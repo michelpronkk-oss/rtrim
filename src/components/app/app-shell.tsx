@@ -57,6 +57,12 @@ export function AppShell({ children, userEmail, plan = "free", planStatus }: App
   const badgeStyle = PLAN_BADGE_STYLE[plan] ?? PLAN_BADGE_STYLE.free;
   const badgeLabel = planBadgeLabel(plan, planStatus);
 
+  // Free users only see Billing — everything else is gated to Pro+
+  const isFree = plan === "free";
+  const visibleNavItems = isFree
+    ? NAV_ITEMS.filter(item => item.href === "/app/billing")
+    : NAV_ITEMS;
+
   function isActive(href: string) {
     return href === "/app" ? pathname === "/app" : pathname.startsWith(href);
   }
@@ -90,7 +96,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus }: App
 
           {/* Nav items */}
           <nav className="flex-1 space-y-0.5 px-3 py-3">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
@@ -167,7 +173,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus }: App
                 )}
 
                 <nav className="space-y-0.5">
-                  {NAV_ITEMS.map((item) => {
+                  {visibleNavItems.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
                     return (
