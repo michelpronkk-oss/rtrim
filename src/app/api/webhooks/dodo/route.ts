@@ -12,6 +12,7 @@ type ProfileRow = {
   email: string | null;
   plan: string | null;
   plan_status: string | null;
+  current_period_end: string | null;
   payment_customer_id: string | null;
   payment_subscription_id: string | null;
 };
@@ -170,7 +171,7 @@ async function resolveProfile(
   supabase: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
   fields: ExtractedFields
 ): Promise<{ row: ProfileRow | null; method: string }> {
-  const selectCols = "id,email,plan,plan_status,payment_customer_id,payment_subscription_id";
+  const selectCols = "id,email,plan,plan_status,current_period_end,payment_customer_id,payment_subscription_id";
 
   if (fields.metadataUserId) {
     const { data } = await supabase.from("runtrim_profiles").select(selectCols).eq("id", fields.metadataUserId).maybeSingle();
@@ -232,6 +233,11 @@ function buildUpdate(fields: ExtractedFields, row: ProfileRow): ProfileUpdate | 
   }
 
   return update;
+}
+
+function getTime(value: string | null | undefined): number {
+  if (!value) return NaN;
+  return new Date(value).getTime();
 }
 
 export async function POST(request: Request) {
@@ -310,6 +316,38 @@ export async function POST(request: Request) {
   const update = buildUpdate(fields, row);
   if (!update) {
     return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  // Duplicate subscription safety rule:
+  // Preserve the existing active/trialing/canceled-but-valid subscription unless
+  // the incoming event has a later period end, in which case we accept the incoming subscription id.
+  if (
+    (fields.eventType === "subscription.active" || fields.eventType === "subscription.trialing") &&
+    fields.subscriptionId &&
+    row.payment_subscription_id &&
+    fields.subscriptionId !== row.payment_subscription_id
+  ) {
+    const existingEndMs = getTime(row.current_period_end);
+    const incomingEndMs = getTime(fields.trialEnd ?? fields.currentPeriodEnd);
+    const existingValid = Number.isFinite(existingEndMs) && existingEndMs > Date.now();
+    const incomingLater = Number.isFinite(incomingEndMs) && incomingEndMs > existingEndMs;
+
+    if (existingValid && !incomingLater) {
+      console.warn("[/api/webhooks/dodo] duplicate_subscription_detected", {
+        profileId: row.id,
+        existingSubscriptionId: row.payment_subscription_id,
+        incomingSubscriptionId: fields.subscriptionId,
+        action: "preserve_existing",
+      });
+      delete update.payment_subscription_id;
+    } else {
+      console.warn("[/api/webhooks/dodo] duplicate_subscription_detected", {
+        profileId: row.id,
+        existingSubscriptionId: row.payment_subscription_id,
+        incomingSubscriptionId: fields.subscriptionId,
+        action: "accept_incoming_later_period",
+      });
+    }
   }
 
   const { error } = await supabase.from("runtrim_profiles").update(update).eq("id", row.id);

@@ -31,13 +31,30 @@ export async function GET() {
 
   const { data } = await supabase
     .from("runtrim_profiles")
-    .select("plan, plan_status")
+    .select("plan, plan_status, current_period_end, payment_subscription_id")
     .eq("id", user.id)
     .maybeSingle();
 
   const rawPlan    = (data?.plan    as string | null) ?? "free";
   const planStatus = (data?.plan_status as string | null) ?? null;
-  const plan       = effectivePlanId(rawPlan, planStatus);
+  const currentPeriodEnd = (data?.current_period_end as string | null) ?? null;
+  const paymentSubscriptionId = (data?.payment_subscription_id as string | null) ?? null;
+  const plan       = effectivePlanId(rawPlan, planStatus, currentPeriodEnd);
+  const periodEndMs = currentPeriodEnd ? new Date(currentPeriodEnd).getTime() : NaN;
+  const hasFuturePeriod = Number.isFinite(periodEndMs) && periodEndMs > Date.now();
+  const hasActiveAccess =
+    planStatus === "active" ||
+    planStatus === "trialing" ||
+    (planStatus === "canceled" && hasFuturePeriod) ||
+    (Boolean(paymentSubscriptionId) && hasFuturePeriod) ||
+    plan !== "free";
 
-  return NextResponse.json({ loggedIn: true, plan, planStatus });
+  return NextResponse.json({
+    loggedIn: true,
+    plan,
+    planStatus,
+    currentPeriodEnd,
+    paymentSubscriptionId,
+    hasActiveAccess,
+  });
 }

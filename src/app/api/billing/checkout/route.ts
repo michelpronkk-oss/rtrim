@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
+import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { effectivePlanId } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 const USER_FACING_CHECKOUT_ERROR =
@@ -42,11 +44,51 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
 
+  const supabase = getSupabaseServiceClient();
+  let rawPlan = "free";
+  let planStatus = null as string | null;
+  let currentPeriodEnd = null as string | null;
+  let paymentSubscriptionId = null as string | null;
+
+  if (supabase) {
+    const { data } = await supabase
+      .from("runtrim_profiles")
+      .select("plan, plan_status, current_period_end, payment_subscription_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    rawPlan = (data?.plan as string | null) ?? "free";
+    planStatus = (data?.plan_status as string | null) ?? null;
+    currentPeriodEnd = (data?.current_period_end as string | null) ?? null;
+    paymentSubscriptionId = (data?.payment_subscription_id as string | null) ?? null;
+  }
+
+  const effectivePlan = effectivePlanId(rawPlan, planStatus, currentPeriodEnd);
+  const periodEndMs = currentPeriodEnd ? new Date(currentPeriodEnd).getTime() : NaN;
+  const hasFuturePeriod = Number.isFinite(periodEndMs) && periodEndMs > Date.now();
+  const hasActiveAccess =
+    planStatus === "active" ||
+    planStatus === "trialing" ||
+    (planStatus === "canceled" && hasFuturePeriod) ||
+    (Boolean(paymentSubscriptionId) && hasFuturePeriod) ||
+    effectivePlan !== "free";
+
   const body   = await request.json().catch(() => ({})) as { planId?: string };
   const planId = (body.planId ?? "pro").toLowerCase();
 
   if (!["pro", "builder", "team"].includes(planId)) {
     return NextResponse.json({ ok: false, error: "Invalid plan." }, { status: 400 });
+  }
+
+  if (hasActiveAccess) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "already_subscribed",
+        message: "You already have an active RunTrim subscription. Manage billing to update or cancel your plan.",
+      },
+      { status: 409 }
+    );
   }
 
   // ── Fast path: static payment link (no API call) ─────────────────────────

@@ -21,14 +21,29 @@ export default function TrialPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/billing/checkout", { method: "POST" })
+    fetch("/api/billing/plan")
       .then((r) => r.json())
-      .then((data: { ok?: boolean; url?: string; error?: string }) => {
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          setError(data.error ?? "Could not start your trial. Please try again.");
+      .then((planData: { loggedIn?: boolean; hasActiveAccess?: boolean }) => {
+        if (planData.loggedIn && planData.hasActiveAccess) {
+          window.location.href = "/app/billing";
+          return;
         }
+        return fetch("/api/billing/checkout", { method: "POST" })
+          .then((r) => r.json())
+          .then((data: { ok?: boolean; url?: string; error?: string; message?: string }) => {
+            if (data.url) {
+              window.location.href = data.url;
+              return;
+            }
+            if (data.error === "already_subscribed") {
+              setError(
+                data.message ??
+                "You already have an active RunTrim subscription. Manage billing to update or cancel your plan."
+              );
+              return;
+            }
+            setError(data.error ?? "Could not start your trial. Please try again.");
+          });
       })
       .catch(() => setError("Could not reach checkout. Please try again."));
   }, []);
@@ -81,6 +96,14 @@ export default function TrialPage() {
               >
                 Back to plans
               </Link>
+              {error.includes("active RunTrim subscription") && (
+                <Link
+                  href="/app/billing"
+                  className="rounded-lg px-4 py-2 text-[13px] text-[#8a8f98] transition-colors hover:text-[#f4f5f7]"
+                >
+                  Manage billing
+                </Link>
+              )}
             </div>
           </div>
         </main>
