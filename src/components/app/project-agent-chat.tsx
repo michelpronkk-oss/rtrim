@@ -28,25 +28,13 @@ type Message = {
 };
 
 const SUGGESTIONS = [
-  "What should I do next?",
-  "Explain latest run",
-  "Missing proof",
-  "Safe contract",
-  "Claude handoff",
-  "Risky files",
+  { label: "Next safe step", prompt: "What should I do next?" },
+  { label: "Explain latest run", prompt: "Explain latest run" },
+  { label: "Missing proof", prompt: "What proof is missing?" },
+  { label: "Safe contract", prompt: "Create a safe contract" },
+  { label: "Claude handoff", prompt: "Create a Claude handoff" },
+  { label: "Risky files", prompt: "Which files are risky?" },
 ];
-
-function formatNumber(value: number): string {
-  if (value >= 1_000_000) return `~${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `~${(value / 1_000).toFixed(0)}k`;
-  return String(value);
-}
-
-function formatCost(value: number): string {
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
-  if (value >= 0.01) return `$${value.toFixed(2)}`;
-  return "$0.00";
-}
 
 function renderMessageText(text: string) {
   const lines = text.split("\n");
@@ -103,13 +91,10 @@ export function ProjectAgentChat({
   const hasConversation = messages.length > 0;
   const hasRuns = summary.recentRunsCount > 0;
 
-  const latestRunLabel = summary.latestRunTask ?? "none";
-
-  const contextStrip = useMemo(
-    () =>
-      `Recent runs ${summary.recentRunsCount} · Proof gaps ${summary.latestProofGaps} · Tokens saved ${formatNumber(summary.estimatedTokensSaved)} · Latest run ${latestRunLabel} · Cost saved ${formatCost(summary.estimatedCostSaved)}`,
-    [latestRunLabel, summary.estimatedCostSaved, summary.estimatedTokensSaved, summary.latestProofGaps, summary.recentRunsCount],
-  );
+  const contextLine = useMemo(() => {
+    if (hasRuns) return "Synced project context · Read-only · No code execution";
+    return "Read-only · No code execution · Waiting for first synced run";
+  }, [hasRuns]);
 
   async function sendMessage(message: string) {
     const trimmed = message.trim();
@@ -191,34 +176,12 @@ export function ProjectAgentChat({
               Ask about runs, risks, proof gaps, contracts, or your next safe action.
             </p>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 font-mono text-[10.5px] text-[#7f889b]">
-              <span>Synced context</span>
-              <span>·</span>
-              <span>Read-only</span>
-              <span>·</span>
-              <span>No code execution</span>
-              {!hasRuns && (
-                <>
-                  <span>·</span>
-                  <span>No synced runs yet</span>
-                  <span>·</span>
-                  <span>Connect CLI to unlock project memory</span>
-                </>
-              )}
-            </div>
-
-            <p className="mt-3 text-[11px] text-[#8690a3]">{contextStrip}</p>
+            <p className="mt-4 text-[11px] text-[#7f889b]">{contextLine}</p>
           </section>
         )}
 
         {hasConversation && (
-          <section className="mb-3 flex flex-wrap items-center gap-2 font-mono text-[10.5px] text-[#7f889b]">
-            <span>Synced context</span>
-            <span>·</span>
-            <span>Read-only</span>
-            <span>·</span>
-            <span>No code execution</span>
-          </section>
+          <section className="mb-3 font-mono text-[10.5px] text-[#7f889b]">{contextLine}</section>
         )}
 
         {!canUseAgent && (
@@ -237,7 +200,7 @@ export function ProjectAgentChat({
         )}
 
         <section className={`mt-5 flex-1 ${hasConversation ? "" : "flex flex-col"}`}>
-          <div className={`${hasConversation ? "space-y-5" : "hidden"}`}>
+          <div className={`${hasConversation ? "space-y-3.5" : "hidden"}`}>
             {messages.map((message) => {
               const isUser = message.role === "user";
 
@@ -258,14 +221,16 @@ export function ProjectAgentChat({
 
                     {message.actions && message.actions.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2 px-1">
-                        {message.actions.map((action, index) => (
-                          <span
-                            key={`${message.id}-action-${index}`}
-                            className="rounded-md border border-white/12 bg-[#111722] px-2.5 py-1 font-mono text-[11px] text-[#a7b0c0]"
-                          >
-                            {action}
-                          </span>
-                        ))}
+                        {message.actions
+                          .filter((action) => !message.text.toLowerCase().includes(action.toLowerCase()))
+                          .map((action, index) => (
+                            <span
+                              key={`${message.id}-action-${index}`}
+                              className="rounded-md border border-white/12 bg-[#111722] px-2.5 py-1 font-mono text-[11px] text-[#a7b0c0]"
+                            >
+                              {action}
+                            </span>
+                          ))}
                       </div>
                     )}
                   </div>
@@ -280,25 +245,11 @@ export function ProjectAgentChat({
 
           {!hasConversation && (
             <div className="mt-auto pt-7 sm:pt-10">
-              {!hasRuns && (
-                <div className="mb-3 text-center">
-                  <p className="text-[12.5px] text-[#9aa3b5]">
-                    No synced runs yet. Run your first guarded task to unlock project memory.
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-                    <code className="rounded-md border border-white/12 bg-[#101621] px-2.5 py-1.5 font-mono text-[11px] text-[#c6cedd]">
-                      runtrim go "your task"
-                    </code>
-                    <Link href="/app/connect" className="text-[12px] text-[#c3cbda] transition-colors hover:text-[#f2f5fb]">
-                      Connect CLI
-                    </Link>
-                  </div>
-                </div>
-              )}
+              
             </div>
           )}
 
-            <div className="mx-auto mt-8 w-full max-w-[940px]">
+            <div className="mx-auto mt-10 w-full max-w-[940px]">
               {error && <p className="mb-2 text-[12px] text-[#FFAC98]">{error}</p>}
 
             <form onSubmit={onSubmit}>
@@ -328,21 +279,38 @@ export function ProjectAgentChat({
               </div>
             </form>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            {!hasRuns && !hasConversation && (
+              <div className="mt-3 text-center">
+                <p className="text-[12px] text-[#9aa3b5]">No synced runs yet. Start with one guarded run.</p>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
+                  <code className="rounded-md border border-white/12 bg-[#101621] px-2.5 py-1 font-mono text-[10.5px] text-[#c6cedd]">
+                    runtrim go "your task"
+                  </code>
+                  <code className="rounded-md border border-white/12 bg-[#101621] px-2.5 py-1 font-mono text-[10.5px] text-[#c6cedd]">
+                    runtrim finish
+                  </code>
+                  <Link href="/app/connect" className="text-[11.5px] text-[#c3cbda] transition-colors hover:text-[#f2f5fb]">
+                    Connect CLI
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((suggestion) => (
                 <button
-                  key={suggestion}
+                  key={suggestion.label}
                   type="button"
                   disabled={!canUseAgent || loading}
                   onClick={() => {
-                    setInput(suggestion);
+                    setInput(suggestion.prompt);
                     if (canUseAgent) {
-                      void sendMessage(suggestion);
+                      void sendMessage(suggestion.prompt);
                     }
                   }}
                   className="rounded-full border border-white/10 bg-[#111722]/75 px-3 py-1 text-[11.5px] text-[#bac4d6] transition-colors hover:border-white/18 hover:bg-[#141c29]/85 disabled:cursor-not-allowed disabled:opacity-55"
                 >
-                  {suggestion}
+                  {suggestion.label}
                 </button>
               ))}
             </div>

@@ -83,6 +83,10 @@ import {
   loadLearning,
 } from "../src/lib/project-learning.ts";
 import { generatePlan } from "../src/lib/run-planner.ts";
+import {
+  recommendProviderRouting,
+  type ProviderRoutingDecision,
+} from "../src/lib/provider-routing.ts";
 
 const chalk = new Chalk();
 const oraFactory: typeof ora =
@@ -295,6 +299,7 @@ interface AgentPreviewArtifact {
   patchStrategy: string[];
   approvalRequired: "no" | "recommended" | "required";
   recommendedNextCommand: string;
+  providerRouting: ProviderRoutingDecision;
 }
 
 interface AgentPreviewBuildResult {
@@ -323,6 +328,30 @@ interface AgentApplyArtifact {
   verificationSteps: string[];
   nextCommand: string;
   finishRequired: boolean;
+  providerRouting: ProviderRoutingDecision;
+}
+
+interface ControlledExecutionArtifact {
+  id: string;
+  createdAt: string;
+  task: string;
+  status: "pending" | "blocked" | "ready-for-agent" | "split-required" | "completed";
+  previewId: string;
+  contractPath: string;
+  routing: ProviderRoutingDecision;
+  risk: "low" | "medium" | "high" | "critical";
+  approvalRequired: boolean;
+  approved: boolean;
+  executionMode: "fast-path" | "contract-recommended" | "preview-first" | "confirmed-apply-only" | "split-first" | "read-only-answer";
+  allowedScope: string[];
+  forbiddenScope: string[];
+  stopRules: string[];
+  proofRequired: string[];
+  verificationSteps: string[];
+  agentInstructions: string[];
+  finishRequired: true;
+  nextCommand: string;
+  providerCallMade: false;
 }
 
 function nowId(): string {
@@ -441,6 +470,12 @@ function writePreviewArtifacts(cwd: string, preview: AgentPreviewArtifact): { js
     "Risk:",
     preview.risk,
     "",
+    "Provider routing:",
+    `- Route: ${preview.providerRouting.route}`,
+    `- Agent: ${preview.providerRouting.recommendedAgent}`,
+    `- Mode: ${preview.providerRouting.executionMode}`,
+    `- Reason: ${preview.providerRouting.routingReason}`,
+    "",
     "Contract required:",
     preview.contractRequired ? "yes" : "no",
     "",
@@ -479,6 +514,7 @@ async function runAgentPreview(task: string): Promise<void> {
   console.log("");
   console.log(DIM("  Task               ") + chalk.white(preview.task));
   console.log(DIM("  Risk               ") + riskColor(preview.risk));
+  console.log(DIM("  Routing            ") + chalk.white(`${preview.providerRouting.route} · ${preview.providerRouting.recommendedAgent} · ${preview.providerRouting.executionMode}`));
   console.log(DIM("  Contract required  ") + chalk.white(preview.contractRequired ? "yes" : "no"));
   console.log(DIM("  Guard mode         ") + chalk.white(preview.guardMode));
   console.log(DIM("  Approval           ") + chalk.white(preview.approvalRequired));
@@ -499,6 +535,9 @@ async function runAgentPreview(task: string): Promise<void> {
   console.log("");
   console.log(GO_ACCENT.bold("Next"));
   console.log(chalk.white(`  ${preview.recommendedNextCommand}`));
+  console.log("");
+  console.log(chalk.white("Preview created."));
+  console.log(chalk.white("No active contract changed."));
   console.log("");
   console.log(DIM("  Artifacts          ") + chalk.white(path.relative(process.cwd(), artifacts.markdownPath)));
   console.log(DIM("                     ") + chalk.white(path.relative(process.cwd(), artifacts.jsonPath)));
@@ -524,7 +563,22 @@ async function buildAgentPreview(task: string): Promise<AgentPreviewBuildResult>
   );
   const similarRuns = buildSimilarRunsForPreview(task, plan.category, plan.risk, runs);
   const approvalRequired = buildApprovalLevel(plan.risk, task, plan.category);
-  const recommendedNextCommand = buildRecommendedNextCommand(task, approvalRequired, filesToInspect);
+  const providerRouting = recommendProviderRouting({
+    task,
+    category: plan.category,
+    risk: plan.risk,
+    guardMode: plan.guardMode,
+    allowedScope: contract.contract.relevantScope,
+    forbiddenScope: contract.contract.forbiddenScope,
+    proofRequired: plan.proofRequired,
+    sensitiveAreas: [...contract.contract.sensitiveScope, ...plan.sensitiveAreas],
+    changedFiles,
+    similarRunsCount: similarRuns.length,
+    learnedContext: plan.learnedContext,
+    explicitScope: audit.explicitPaths.length > 0 || audit.onlyMode || audit.mustIncludeMode,
+    splitRequired: contract.isBlocked,
+  });
+  const recommendedNextCommand = providerRouting.nextCommand || buildRecommendedNextCommand(task, approvalRequired, filesToInspect);
   const learnedContext = plan.learnedContext.length > 0
     ? plan.learnedContext
     : ["Learning not available yet. Run a few guarded runs and finish reports to build project memory."];
@@ -550,6 +604,7 @@ async function buildAgentPreview(task: string): Promise<AgentPreviewBuildResult>
     patchStrategy: buildPatchStrategy(plan.category, filesToInspect, contract.contract.forbiddenScope),
     approvalRequired,
     recommendedNextCommand,
+    providerRouting,
   };
 
   const artifacts = writePreviewArtifacts(cwd, preview);
@@ -602,6 +657,13 @@ function writeAgentHandoffArtifacts(
     `Risk: ${apply.risk}`,
     `Approval required: ${apply.approvalRequired}`,
     `Approved: ${apply.approved ? "yes" : "no"}`,
+    "",
+    "Provider routing:",
+    `- Route: ${apply.providerRouting.route}`,
+    `- Agent: ${apply.providerRouting.recommendedAgent}`,
+    `- Model tier: ${apply.providerRouting.modelTier}`,
+    `- Mode: ${apply.providerRouting.executionMode}`,
+    `- Reason: ${apply.providerRouting.routingReason}`,
     `Active contract path: ${apply.contractPath}`,
     `Preview path: ${previewPath.replace(/\\/g, "/")}`,
     "",
@@ -640,6 +702,215 @@ function writeAgentHandoffArtifacts(
   return { jsonPath, markdownPath, promptText: promptLines.join("\n") };
 }
 
+function writeAgentPlanningHandoffFromPreview(
+  cwd: string,
+  preview: AgentPreviewArtifact,
+  previewPath: string
+): { jsonPath: string; markdownPath: string; promptText: string } {
+  const dir = path.join(cwd, ".runtrim", "agent");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const id = nowId();
+  const jsonPath = path.join(dir, `${id}.json`);
+  const markdownPath = path.join(dir, "latest.md");
+  const promptLines = [
+    "You are working inside a RunTrim planning handoff.",
+    "",
+    "Before editing:",
+    "- read .runtrim/previews/latest.md",
+    "- stay inside preview allowed scope",
+    "- do not touch preview forbidden scope",
+    "- stop if scope expansion is required",
+    "- produce proof",
+    "- after edits, ask the user to run runtrim finish",
+  ];
+  const json = {
+    id,
+    createdAt: new Date().toISOString(),
+    task: preview.task,
+    previewId: preview.id,
+    risk: preview.risk,
+    approvalRequired: preview.approvalRequired,
+    allowedScope: preview.allowedScope,
+    forbiddenScope: preview.forbiddenScope,
+    stopRules: preview.stopRules,
+    proofRequired: preview.proofRequired,
+    verificationSteps: preview.verificationSteps,
+    providerRouting: preview.providerRouting,
+    finishRequired: true,
+    nextCommand: "runtrim finish",
+    activeContractChanged: false,
+  };
+  fs.writeFileSync(jsonPath, JSON.stringify(json, null, 2), "utf-8");
+
+  const md = [
+    "RunTrim Agent Handoff",
+    "",
+    `Task: ${preview.task}`,
+    `Risk: ${preview.risk}`,
+    "Approval:",
+    `${preview.approvalRequired}`,
+    "",
+    "Preview path:",
+    previewPath.replace(/\\/g, "/"),
+    "",
+    "Provider routing:",
+    `- Route: ${preview.providerRouting.route}`,
+    `- Agent: ${preview.providerRouting.recommendedAgent}`,
+    `- Mode: ${preview.providerRouting.executionMode}`,
+    `- Reason: ${preview.providerRouting.routingReason}`,
+    "",
+    "Allowed scope:",
+    ...preview.allowedScope.map((s) => `- ${s}`),
+    "",
+    "Forbidden scope:",
+    ...preview.forbiddenScope.map((s) => `- ${s}`),
+    "",
+    "Stop rules:",
+    ...preview.stopRules.map((s) => `- ${s}`),
+    "",
+    "Proof required:",
+    ...preview.proofRequired.map((s) => `- ${s}`),
+    "",
+    "Agent instructions:",
+    ...promptLines,
+    "",
+    "Next command:",
+    "runtrim finish",
+    "",
+    "No active contract changed.",
+  ].join("\n");
+  fs.writeFileSync(markdownPath, md, "utf-8");
+  return { jsonPath, markdownPath, promptText: promptLines.join("\n") };
+}
+
+function getExecutionPromptLines(): string[] {
+  return [
+    "You are working inside a RunTrim controlled execution.",
+    "",
+    "Before editing:",
+    "1. Read .runtrim/contracts/latest.md.",
+    "2. Read .runtrim/executions/latest.md.",
+    "3. Stay inside allowed scope.",
+    "4. Do not touch forbidden scope.",
+    "5. Stop if the task requires scope expansion.",
+    "6. Preserve the task objective.",
+    "7. Make the smallest safe change.",
+    "8. Provide proof of what changed.",
+    "9. After edits, tell the user to run:",
+    "   runtrim finish",
+    "",
+    "Do not:",
+    "- edit outside allowed scope",
+    "- touch auth/billing/webhooks/database unless explicitly allowed",
+    "- weaken tests or verification",
+    "- change env/secrets",
+    "- deploy",
+    "- commit/push",
+  ];
+}
+
+function writeExecutionArtifacts(
+  cwd: string,
+  execution: ControlledExecutionArtifact,
+  previewPath: string
+): { jsonPath: string; markdownPath: string } {
+  const dir = path.join(cwd, ".runtrim", "executions");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const jsonPath = path.join(dir, `${execution.id}.json`);
+  const markdownPath = path.join(dir, "latest.md");
+  fs.writeFileSync(jsonPath, JSON.stringify(execution, null, 2), "utf-8");
+
+  const md = [
+    "RunTrim controlled execution",
+    "",
+    `Task: ${execution.task}`,
+    `Risk: ${execution.risk}`,
+    `Status: ${execution.status}`,
+    "",
+    "Routing:",
+    `- Route: ${execution.routing.route}`,
+    `- Agent: ${execution.routing.recommendedAgent}`,
+    `- Model tier: ${execution.routing.modelTier}`,
+    `- Mode: ${execution.executionMode}`,
+    `- Reason: ${execution.routing.routingReason}`,
+    "",
+    `Approval required: ${execution.approvalRequired ? "yes" : "no"}`,
+    `Approved: ${execution.approved ? "yes" : "no"}`,
+    `Active contract: ${execution.contractPath}`,
+    `Preview: ${previewPath.replace(/\\/g, "/")}`,
+    "",
+    "Allowed scope:",
+    ...execution.allowedScope.map((s) => `- ${s}`),
+    "",
+    "Forbidden scope:",
+    ...execution.forbiddenScope.map((s) => `- ${s}`),
+    "",
+    "Stop rules:",
+    ...execution.stopRules.map((s) => `- ${s}`),
+    "",
+    "Proof required:",
+    ...execution.proofRequired.map((s) => `- ${s}`),
+    "",
+    "Verification steps:",
+    ...execution.verificationSteps.map((s) => `- ${s}`),
+    "",
+    "Agent instructions:",
+    ...execution.agentInstructions,
+    "",
+    "Finish requirement:",
+    "- After edits are done, run: runtrim finish",
+    "",
+    "Next command:",
+    execution.nextCommand,
+  ].join("\n");
+  fs.writeFileSync(markdownPath, md, "utf-8");
+  return { jsonPath, markdownPath };
+}
+
+function readLatestExecution(cwd: string): ControlledExecutionArtifact | null {
+  const p = path.join(cwd, ".runtrim", "executions", "latest.md");
+  const dir = path.join(cwd, ".runtrim", "executions");
+  if (!fs.existsSync(dir)) return null;
+  const latestJson = fs
+    .readdirSync(dir)
+    .filter((f) => /^\d{8}-\d{6}\.json$/.test(f))
+    .map((f) => ({ f, t: fs.statSync(path.join(dir, f)).mtime.getTime() }))
+    .sort((a, b) => b.t - a.t)[0];
+  if (!latestJson) return null;
+  try {
+    return JSON.parse(fs.readFileSync(path.join(dir, latestJson.f), "utf-8")) as ControlledExecutionArtifact;
+  } catch {
+    void p;
+    return null;
+  }
+}
+
+function updateLatestExecutionStatus(
+  cwd: string,
+  status: ControlledExecutionArtifact["status"] | "completed"
+): void {
+  const dir = path.join(cwd, ".runtrim", "executions");
+  if (!fs.existsSync(dir)) return;
+  const latestJson = fs
+    .readdirSync(dir)
+    .filter((f) => /^\d{8}-\d{6}\.json$/.test(f))
+    .map((f) => ({ f, t: fs.statSync(path.join(dir, f)).mtime.getTime() }))
+    .sort((a, b) => b.t - a.t)[0];
+  if (!latestJson) return;
+  const full = path.join(dir, latestJson.f);
+  try {
+    const parsed = JSON.parse(fs.readFileSync(full, "utf-8")) as ControlledExecutionArtifact;
+    const updated = {
+      ...parsed,
+      status,
+      nextCommand: "runtrim finish",
+    };
+    fs.writeFileSync(full, JSON.stringify(updated, null, 2), "utf-8");
+  } catch {
+    return;
+  }
+}
+
 async function runAgentApply(task: string, mode: { apply: boolean; confirm: boolean }): Promise<void> {
   const cwd = process.cwd();
   const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
@@ -666,7 +937,7 @@ async function runAgentApply(task: string, mode: { apply: boolean; confirm: bool
     console.log("");
     console.log(DIM("  Risk       ") + chalk.red(risk));
     console.log(DIM("  Approval   ") + chalk.red("required"));
-    console.log(DIM("  Reason     ") + chalk.white("This task touches high-risk systems."));
+    console.log(DIM("  Reason     ") + chalk.white(preview.providerRouting.routingReason));
     console.log("");
     console.log(chalk.white("No apply handoff created."));
     console.log(chalk.white("To continue:"));
@@ -695,6 +966,7 @@ async function runAgentApply(task: string, mode: { apply: boolean; confirm: bool
     verificationSteps: preview.verificationSteps,
     nextCommand: "runtrim finish",
     finishRequired: true,
+    providerRouting: preview.providerRouting,
   };
   const handoff = writeAgentHandoffArtifacts(cwd, apply, path.relative(cwd, previewPath));
 
@@ -707,6 +979,7 @@ async function runAgentApply(task: string, mode: { apply: boolean; confirm: bool
   console.log(GO_ACCENT.bold("RunTrim Agent Apply"));
   console.log("");
   console.log(DIM("  Risk         ") + riskColor(risk));
+  console.log(DIM("  Routing      ") + chalk.white(`${preview.providerRouting.route} · ${preview.providerRouting.recommendedAgent} · ${preview.providerRouting.executionMode}`));
   console.log(DIM("  Approval     ") + chalk.white(approvalRequired === "no" ? "not required" : approvalRequired));
   console.log(DIM("  Contract     ") + chalk.white(path.relative(cwd, contractPath)));
   console.log(DIM("  Handoff      ") + chalk.white(path.relative(cwd, handoff.markdownPath)));
@@ -716,6 +989,171 @@ async function runAgentApply(task: string, mode: { apply: boolean; confirm: bool
   console.log(chalk.white("Next:"));
   console.log(chalk.white("Paste the Agent Apply prompt into Claude Code, Codex, Cursor, or your agent."));
   console.log(chalk.white("After edits are done:"));
+  console.log(chalk.white("runtrim finish"));
+  console.log("");
+}
+
+async function runAgentDefaultPreviewHandoff(task: string): Promise<void> {
+  const cwd = process.cwd();
+  const previewResult = await buildAgentPreview(task);
+  const { preview, markdownPath: previewPath } = previewResult;
+  const handoff = writeAgentPlanningHandoffFromPreview(cwd, preview, path.relative(cwd, previewPath));
+  const copied = await copyToClipboardSafe(fs.readFileSync(handoff.markdownPath, "utf-8"));
+
+  console.log("");
+  console.log(GO_ACCENT.bold("RunTrim Agent"));
+  console.log("");
+  console.log(DIM("  Preview      ") + chalk.white(path.relative(cwd, previewPath)));
+  console.log(DIM("  Handoff      ") + chalk.white(path.relative(cwd, handoff.markdownPath)));
+  console.log(DIM("  Routing      ") + chalk.white(`${preview.providerRouting.route} · ${preview.providerRouting.recommendedAgent} · ${preview.providerRouting.executionMode}`));
+  if (copied) console.log(DIM("  Clipboard    ") + chalk.white("Agent handoff copied"));
+  console.log("");
+  console.log(chalk.white("Preview created."));
+  console.log(chalk.white("No active contract changed."));
+  console.log("");
+  console.log(chalk.white("Next:"));
+  console.log(chalk.white("Paste the handoff into your coding agent."));
+  console.log(chalk.white("After edits:"));
+  console.log(chalk.white("runtrim finish"));
+  console.log("");
+}
+
+async function runControlledExecution(task: string, mode: { confirm: boolean; dryRun: boolean }): Promise<void> {
+  const cwd = process.cwd();
+  const changed = dedupeFiles(await getGitDiff(cwd)).filter((f) => {
+    const n = f.replace(/\\/g, "/").toLowerCase();
+    return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+  });
+
+  if (changed.length > 0) {
+    console.log("");
+    console.log(chalk.yellow("Unfinished changes detected."));
+    console.log(chalk.white("Finish the current run before starting another execution:"));
+    console.log(chalk.white("runtrim finish"));
+    console.log("");
+    return;
+  }
+
+  const previewResult = await buildAgentPreview(task);
+  const { preview, contract, markdownPath: previewPath } = previewResult;
+  const routing = preview.providerRouting;
+  const hasExplicitScope =
+    previewResult.audit.explicitPaths.length > 0 ||
+    previewResult.audit.onlyMode ||
+    previewResult.audit.mustIncludeMode;
+  const executionMode =
+    routing.executionMode === "contract-recommended" && !hasExplicitScope
+      ? "preview-first"
+      : routing.executionMode;
+
+  if (routing.route === "split-required" || executionMode === "split-first") {
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim split required"));
+    console.log("");
+    console.log(chalk.white("This task crosses multiple critical systems."));
+    console.log(chalk.white("Run it as:"));
+    console.log(chalk.white('1. runtrim go "Audit one system only. No edits."'));
+    console.log(chalk.white('2. runtrim go "Implement one isolated fix only."'));
+    console.log(chalk.white('3. runtrim go "Verify behavior only."'));
+    console.log("");
+    return;
+  }
+
+  const approvalNeeded =
+    routing.approvalRequired ||
+    executionMode === "confirmed-apply-only" ||
+    preview.approvalRequired === "required";
+  if (approvalNeeded && !mode.confirm) {
+    console.log("");
+    console.log(chalk.red.bold("RunTrim controlled execution blocked"));
+    console.log("");
+    console.log(DIM("  Risk       ") + chalk.red(preview.risk));
+    console.log(DIM("  Route      ") + chalk.white(routing.route));
+    console.log(DIM("  Mode       ") + chalk.white(executionMode));
+    console.log(DIM("  Reason     ") + chalk.white(routing.routingReason));
+    console.log("");
+    console.log(chalk.white("Approval required."));
+    console.log(chalk.white("This task touches high-risk areas."));
+    console.log(chalk.white("To continue:"));
+    console.log(chalk.white(`runtrim agent "${task}" --execute --confirm`));
+    console.log(chalk.white("No active contract changed."));
+    console.log("");
+    return;
+  }
+
+  const id = nowId();
+  const status: ControlledExecutionArtifact["status"] =
+    executionMode === "preview-first" ? "blocked" : mode.dryRun ? "pending" : "ready-for-agent";
+  const execution: ControlledExecutionArtifact = {
+    id,
+    createdAt: new Date().toISOString(),
+    task,
+    status,
+    previewId: preview.id,
+    contractPath: ".runtrim/contracts/latest.md",
+    routing,
+    risk: preview.risk,
+    approvalRequired: approvalNeeded,
+    approved: !approvalNeeded || mode.confirm,
+    executionMode,
+    allowedScope: preview.allowedScope,
+    forbiddenScope: preview.forbiddenScope,
+    stopRules: preview.stopRules,
+    proofRequired: preview.proofRequired,
+    verificationSteps: preview.verificationSteps,
+    agentInstructions: getExecutionPromptLines(),
+    finishRequired: true,
+    nextCommand: "runtrim finish",
+    providerCallMade: false,
+  };
+
+  const contractPath = writeAgentContract(cwd, contract.contractText);
+  const artifacts = writeExecutionArtifacts(cwd, execution, path.relative(cwd, previewPath));
+  const promptText = fs.readFileSync(artifacts.markdownPath, "utf-8");
+  const copied = await copyToClipboardSafe(promptText);
+
+  const run = saveRun(task, previewResult.audit, previewResult.contract, cwd);
+  updateRun(run.id, {
+    status: "guarded",
+    providerRouting: routing,
+    controlledExecutionId: id,
+    controlledExecutionStatus: status,
+  }, cwd);
+
+  if (status === "blocked") {
+    console.log("");
+    console.log(chalk.yellow.bold("RunTrim controlled execution blocked"));
+    console.log("");
+    console.log(DIM("  Risk       ") + chalk.white(preview.risk));
+    console.log(DIM("  Route      ") + chalk.white(routing.route));
+    console.log(DIM("  Mode       ") + chalk.white(executionMode));
+    console.log(DIM("  Reason     ") + chalk.white(routing.routingReason));
+    console.log(DIM("  Handoff    ") + chalk.white(path.relative(cwd, artifacts.markdownPath)));
+    console.log("");
+    console.log(chalk.white("Narrow the task scope or run preview first."));
+    console.log(chalk.white(`runtrim agent "${task}" --preview`));
+    console.log(chalk.white("No active contract changed."));
+    console.log("");
+    return;
+  }
+
+  console.log("");
+  console.log(GO_ACCENT.bold("RunTrim controlled execution"));
+  console.log("");
+  console.log(DIM("  Risk       ") + chalk.white(preview.risk));
+  console.log(DIM("  Route      ") + chalk.white(routing.route));
+  console.log(DIM("  Agent      ") + chalk.white(routing.recommendedAgent));
+  console.log(DIM("  Mode       ") + chalk.white(executionMode));
+  console.log(DIM("  Status     ") + chalk.white(status));
+  console.log(DIM("  Contract   ") + chalk.white(path.relative(cwd, contractPath)));
+  console.log(DIM("  Handoff    ") + chalk.white(path.relative(cwd, artifacts.markdownPath)));
+  console.log(DIM("  Active contract created ") + chalk.white("yes"));
+  if (copied) console.log(DIM("  Clipboard  ") + chalk.white("Execution prompt copied"));
+  console.log("");
+  console.log(chalk.white("Controlled execution prepared."));
+  console.log(chalk.white("Next"));
+  console.log(chalk.white("Paste the controlled execution prompt into your agent."));
+  console.log(chalk.white("After edits:"));
   console.log(chalk.white("runtrim finish"));
   console.log("");
 }
@@ -2525,6 +2963,7 @@ program
     const allRuns   = loadAllRuns(cwd);
     const activeRun = allRuns.find((r) => r.status === "guarded" || r.status === "checked");
     const latestRun = loadLatestRun(cwd);
+    const latestExecution = readLatestExecution(cwd);
 
     if (activeRun) {
       console.log(DIM("  Active run  ") + chalk.white(truncate(activeRun.task, 50)));
@@ -2560,12 +2999,18 @@ program
     } else {
       console.log(DIM("  Learning    ") + DIM("none (run runtrim finish to build)"));
     }
+    if (latestExecution) {
+      console.log(DIM("  Execution   ") + chalk.white(`${latestExecution.id} (${latestExecution.status})`));
+      console.log(DIM("  Finish req  ") + chalk.white(latestExecution.finishRequired ? "yes" : "no"));
+    }
 
     console.log("");
 
     // Next action
     let next: string;
     if (hasUnfinished) {
+      next = "runtrim finish";
+    } else if (latestExecution && latestExecution.finishRequired && latestExecution.status !== "completed") {
       next = "runtrim finish";
     } else if (activeRun) {
       next = "runtrim finish (after agent edits are done)";
@@ -2694,6 +3139,9 @@ program
       console.log(chalk.white("  runtrim finish"));
     }
     console.log("");
+    console.log(chalk.white("Preview created."));
+    console.log(chalk.white("No active contract changed."));
+    console.log("");
   });
 
 program
@@ -2703,6 +3151,18 @@ program
     await runAgentPreview(task);
   });
 
+program
+  .command("execute <task>")
+  .description("Create a controlled execution packet without provider calls or code execution")
+  .option("--confirm", "Confirm high-risk controlled execution packet creation")
+  .option("--dry-run", "Create execution packet in pending mode")
+  .action(async (task: string, options?: { confirm?: boolean; dryRun?: boolean }) => {
+    await runControlledExecution(task, {
+      confirm: options?.confirm === true,
+      dryRun: options?.dryRun === true,
+    });
+  });
+
 // Agent config
 const agentCommand = program.command("agent").description("Show or configure local agent execution settings");
 
@@ -2710,18 +3170,32 @@ agentCommand
   .argument("[task]")
   .option("--preview", "Generate an execution preview instead of running any agent")
   .option("--apply", "Generate Agent Apply handoff artifacts")
+  .option("--execute", "Create a controlled execution packet and handoff")
+  .option("--run", "Alias for --execute")
+  .option("--dry-run", "Create execution packet in pending mode without ready status")
   .option("--confirm", "Confirm high-risk apply handoff creation")
-  .action(async (task?: string, options?: { preview?: boolean; apply?: boolean; confirm?: boolean }) => {
+  .action(async (task?: string, options?: { preview?: boolean; apply?: boolean; execute?: boolean; run?: boolean; dryRun?: boolean; confirm?: boolean }) => {
     if (task?.trim()) {
       const normalizedTask = (task ?? "").trim();
       if (options?.preview) {
         await runAgentPreview(normalizedTask);
         return;
       }
-      await runAgentApply(normalizedTask, {
-        apply: options?.apply === true,
-        confirm: options?.confirm === true,
-      });
+      if (options?.execute || options?.run) {
+        await runControlledExecution(normalizedTask, {
+          confirm: options?.confirm === true,
+          dryRun: options?.dryRun === true,
+        });
+        return;
+      }
+      if (options?.apply) {
+        await runAgentApply(normalizedTask, {
+          apply: options?.apply === true,
+          confirm: options?.confirm === true,
+        });
+        return;
+      }
+      await runAgentDefaultPreviewHandoff(normalizedTask);
       return;
     }
 
@@ -3872,6 +4346,24 @@ program
     const projectName = projectAudit?.projectName ?? path.basename(cwd);
     const memoryMarkdown = (() => { try { return readMemory(cwd); } catch { return null; } })();
     const memoryUsed = Boolean(memoryMarkdown && memoryMarkdown.trim().length > 50);
+    const changedFilesForRouting = dedupeFiles(await getGitDiff(cwd)).filter((f) => {
+      const n = f.replace(/\\/g, "/").toLowerCase();
+      return !n.startsWith(".runtrim/") && n !== "runtrim.md";
+    });
+    const providerRouting = recommendProviderRouting({
+      task,
+      category: audit.taskCategory,
+      risk: contract.wasteRiskAfter,
+      guardMode: (config as Record<string, unknown>).autoGuardMode as string | undefined,
+      allowedScope: contract.contract.relevantScope,
+      forbiddenScope: contract.contract.forbiddenScope,
+      proofRequired: contract.contract.successCriteria,
+      sensitiveAreas: contract.contract.sensitiveScope,
+      changedFiles: changedFilesForRouting,
+      learnedContext: [],
+      explicitScope: audit.explicitPaths.length > 0 || audit.onlyMode || audit.mustIncludeMode,
+      splitRequired: contract.isBlocked,
+    });
 
     const run = saveRun(task, audit, contract, cwd);
     updateRun(run.id, {
@@ -3879,6 +4371,7 @@ program
       bridgeMode: true,
       tokenBudget: deriveBridgeContext(task, contract, runs, projectName).tokenBudget,
       memoryUsed,
+      providerRouting,
     }, cwd);
 
     // ── Bridge files ──────────────────────────────────────────────────────
@@ -3942,6 +4435,7 @@ program
     console.log(GO_ACCENT.bold("Contract"));
     console.log(DIM("  Risk          ") + riskColor(bridgeCtx.riskLevel));
     console.log(DIM("  Category      ") + chalk.white(audit.taskCategory ?? "unknown"));
+    console.log(DIM("  Routing       ") + chalk.white(`${providerRouting.route} · ${providerRouting.recommendedAgent} · ${providerRouting.executionMode}`));
     console.log(DIM("  Token budget  ") + chalk.white("~" + bridgeCtx.tokenBudget.toLocaleString()));
     // Show explicit paths prominently if present
     if (audit.explicitPaths && audit.explicitPaths.length > 0) {
@@ -3957,6 +4451,7 @@ program
       console.log(DIM("  Stop rule     ") + chalk.white(truncate(contract.contract.stopRules[contract.contract.stopRules.length - 1] ?? "", 60)));
     }
     console.log(DIM("  Run saved     ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+    console.log(DIM("  Contract      ") + chalk.white("created"));
     console.log("");
     if (bridgeWritten.length > 0) {
       console.log(GO_ACCENT.bold("Bridge"));
@@ -5473,7 +5968,11 @@ program
       watchStatus: scope.status,
       watchWarnings: scope.warnings,
       watchChangedFiles: agentFiles, // only agent changes, not RunTrim protocol files
+      controlledExecutionStatus: activeRun.controlledExecutionId ? "completed" : activeRun.controlledExecutionStatus,
     }, cwd);
+    if (activeRun.controlledExecutionId) {
+      updateLatestExecutionStatus(cwd, "completed");
+    }
 
     // Write memory from updated runs
     const freshRuns = loadAllRuns(cwd);

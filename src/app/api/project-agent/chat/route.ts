@@ -49,6 +49,10 @@ type Intent =
   | "scope"
   | "summary";
 
+type ConversationIntent = "greeting" | "capabilities" | "identity" | "testing" | "short" | "none";
+
+type Language = "en" | "nl";
+
 type Context = {
   plan: string;
   runCount: number;
@@ -82,6 +86,24 @@ function parseChangedPath(entry: ChangedFileRow): string | null {
   return entry.path?.trim() || null;
 }
 
+function detectLanguage(message: string): Language {
+  const text = message.toLowerCase();
+  const dutchHints = ["wat", "kan", "ik", "doen", "wie ben jij", "hoe", "hallo", "hoi", "goedemorgen", "dit"];
+  const score = dutchHints.reduce((count, hint) => (text.includes(hint) ? count + 1 : count), 0);
+  return score >= 2 ? "nl" : "en";
+}
+
+function classifyConversationIntent(message: string): ConversationIntent {
+  const text = message.trim().toLowerCase();
+  const greetings = ["hi", "hello", "hey", "yo", "hoi", "hallo", "goedemorgen", "good morning"];
+  if (greetings.includes(text)) return "greeting";
+  if (text === "test" || text === "testing" || text.includes("just testing") || text.includes("check")) return "testing";
+  if (text.includes("what can you do") || text.includes("help") || text.includes("wat kan je doen") || text.includes("wat kan ik doen") || text.includes("hoe werkt dit")) return "capabilities";
+  if (text.includes("who are you") || text.includes("what are you") || text.includes("wie ben jij")) return "identity";
+  if (text.length <= 2) return "short";
+  return "none";
+}
+
 function classifyIntent(message: string): Intent {
   const text = message.toLowerCase();
   if (text === "test" || text === "testing" || text.includes("just testing")) return "testing";
@@ -102,7 +124,30 @@ function formatRunDate(run: RunRow): string {
   return new Date(when).toLocaleString();
 }
 
-function noRunsGuidance(opening: string): { answer: string; actions: string[] } {
+function starterActions(lang: Language): string[] {
+  return lang === "nl"
+    ? ['runtrim go "your task"', "runtrim finish", "Vraag: wat kan ik doen?"]
+    : ['runtrim go "your task"', "runtrim finish", "Ask: what can you help with?"];
+}
+
+function noRunsGuidance(opening: string, lang: Language): { answer: string; actions: string[] } {
+  if (lang === "nl") {
+    return {
+      answer: [
+        opening,
+        "",
+        "Aanbevolen start:",
+        'runtrim go "your task"',
+        "",
+        "Na je edits:",
+        "runtrim finish",
+        "",
+        "Zodra dat gesynct is, kan ik risico's, proof gaps, gewijzigde bestanden en je volgende veilige stap uitleggen.",
+      ].join("\n"),
+      actions: ['runtrim go "your task"', "runtrim finish"],
+    };
+  }
+
   return {
     answer: [
       opening,
@@ -116,6 +161,119 @@ function noRunsGuidance(opening: string): { answer: string; actions: string[] } 
       "Once that is synced, I can explain risks, proof gaps, changed files, and your next safe step.",
     ].join("\n"),
     actions: ['runtrim go "your task"', "runtrim finish"],
+  };
+}
+
+function buildConversationResponse(convIntent: ConversationIntent, lang: Language, hasRuns: boolean): { answer: string; actions: string[] } | null {
+  if (convIntent === "none") return null;
+
+  if (lang === "nl") {
+    if (convIntent === "greeting") {
+      return {
+        answer: hasRuns
+          ? "Hoi. Ik ben er. Ik kan je helpen met runs uitleggen, proof gaps vinden, veilige contracts maken en handoffs voorbereiden."
+          : "Hoi. Ik ben er. Ik kan je helpen met runs uitleggen, proof gaps vinden, veilige contracts maken en handoffs voorbereiden. Ik heb nog geen synced rungeschiedenis, dus ik start nu met setup-begeleiding.",
+        actions: hasRuns ? ["Vraag: wat kan ik nu het beste doen?", "Vraag: leg mijn laatste run uit"] : starterActions("nl"),
+      };
+    }
+
+    if (convIntent === "testing") {
+      return {
+        answer: [
+          "Project Agent werkt. Ik heb nog geen gesyncte rungeschiedenis voor dit project, dus ik kan nu alleen setup-begeleiding geven.",
+          "",
+          "Start met één guarded run en rond die af, dan kan ik redeneren op basis van je echte projectcontext.",
+          "",
+          "Aanbevolen start:",
+          'runtrim go "your task"',
+          "",
+          "Na je edits:",
+          "runtrim finish",
+        ].join("\n"),
+        actions: ['runtrim go "your task"', "runtrim finish"],
+      };
+    }
+
+    if (convIntent === "capabilities") {
+      return {
+        answer: [
+          "Ik kan je nu met vier dingen helpen: runs uitleggen, proof gaps vinden, veilige contracts maken en handoffs voor Claude/Codex voorbereiden.",
+          hasRuns
+            ? ""
+            : "",
+          hasRuns
+            ? "Als je wilt, kan ik meteen je volgende veilige stap voorstellen."
+            : "Er is nog geen synced run. De beste eerste stap is één guarded run starten en afronden.",
+          hasRuns ? "" : 'runtrim go "your task"',
+          hasRuns ? "" : "runtrim finish",
+        ].filter(Boolean).join("\n"),
+        actions: hasRuns ? ["Vraag: wat is mijn volgende veilige stap?", "Vraag: maak een veilig contract"] : ['runtrim go "your task"', "runtrim finish"],
+      };
+    }
+
+    if (convIntent === "identity") {
+      return {
+        answer: "Ik ben RunTrim Project Agent. Ik gebruik je gesyncte RunTrim-runs, contracts, proof gaps en project memory om je volgende veilige actie te bepalen.",
+        actions: hasRuns ? ["Vraag: leg mijn laatste run uit"] : starterActions("nl"),
+      };
+    }
+
+    if (convIntent === "short") {
+      return {
+        answer: "Wil je dat ik je help met je eerste guarded run, een veilig contract maak, of uitleg wat Project Agent kan doen?",
+        actions: hasRuns ? ["Leg mijn laatste run uit", "Maak een veilig contract"] : starterActions("nl"),
+      };
+    }
+  }
+
+  if (convIntent === "greeting") {
+    return {
+      answer: hasRuns
+        ? "Hey. I am here. I can help you understand your RunTrim project, create safe contracts, prepare handoffs, and decide the next safe step."
+        : "Hey. I am here. I can help you understand your RunTrim project, create safe contracts, prepare handoffs, and decide the next safe step. I do not have synced run history yet, so I will start with setup guidance.",
+      actions: hasRuns ? ["Ask: what should I do next?", "Ask: explain my latest run"] : starterActions("en"),
+    };
+  }
+
+  if (convIntent === "testing") {
+    return {
+      answer: [
+        "Project Agent is working. I do not have synced run history for this project yet, so I can only give setup guidance for now.",
+        "",
+        "Once a run is synced, I can reason from your actual project context.",
+        "",
+        "Suggested first run:",
+        'runtrim go "your task"',
+        "",
+        "After edits:",
+        "runtrim finish",
+      ].join("\n"),
+      actions: ['runtrim go "your task"', "runtrim finish"],
+    };
+  }
+
+  if (convIntent === "capabilities") {
+    return {
+      answer: [
+        "I can help with four things right now: understand runs, find proof gaps, create safe contracts, and prepare handoffs for Claude/Codex.",
+        hasRuns ? "" : "Since there are no synced runs yet, the best first step is to create one guarded run.",
+        hasRuns ? "" : 'runtrim go "your task"',
+        hasRuns ? "" : "runtrim finish",
+      ].filter(Boolean).join("\n"),
+      actions: hasRuns ? ["Ask: what should I do next?", "Ask: create a safe contract"] : ['runtrim go "your task"', "runtrim finish"],
+    };
+  }
+
+  if (convIntent === "identity") {
+    return {
+      answer: "I am RunTrim Project Agent. I use your synced RunTrim runs, contracts, proof gaps, and project memory to help you decide the next safe action.",
+      actions: hasRuns ? ["Ask: explain my latest run"] : starterActions("en"),
+    };
+  }
+
+  return {
+    answer: "Want me to help you start your first guarded run, create a safe contract, or explain what Project Agent can do?",
+    actions: hasRuns ? ["Create a safe contract", "Explain latest run"] : starterActions("en"),
   };
 }
 
@@ -134,21 +292,9 @@ function buildContractSuggestion(message: string): { answer: string; actions: st
       "Suggested command:",
       command,
       "",
-      "Allowed scope:",
-      "- Files directly related to the target task",
-      "- Small adjacent helpers only when required",
-      "",
-      "Forbidden:",
-      "- Auth internals",
-      "- Billing/payments",
-      "- Webhooks",
-      "- Database schema and migrations",
-      "- Environment/secrets",
-      "",
-      "Stop rules:",
-      "- Stop if more than 5 files are required",
-      "- Stop before touching forbidden areas",
-      "- Stop if root cause is ambiguous",
+      "Why this is safe:",
+      "- It keeps scope narrow",
+      "- It protects auth, billing, webhooks, database, and env paths",
       "",
       "Proof required:",
       "- npm run build",
@@ -169,9 +315,6 @@ function buildHandoff(context: Context): { answer: string; actions: string[] } {
       `- Risk: ${latest?.risk_after ?? latest?.risk_before ?? "not captured"}`,
       `- Recent runs: ${context.runCount}`,
       "",
-      "Objective:",
-      "- Complete the requested task while staying in contract scope",
-      "",
       "Scope:",
       "- Read .runtrim/contracts/latest.md before editing",
       "- Stay in allowed scope only",
@@ -180,7 +323,7 @@ function buildHandoff(context: Context): { answer: string; actions: string[] } {
       "Proof required:",
       "- npm run build",
       "- Manual verification for changed behavior",
-      "- Document any remaining proof gaps",
+      "- Document remaining proof gaps",
       "",
       "After edits:",
       "runtrim finish",
@@ -189,42 +332,85 @@ function buildHandoff(context: Context): { answer: string; actions: string[] } {
   };
 }
 
-function buildAnswer(intent: Intent, context: Context, originalMessage: string): { answer: string; actions: string[] } {
+function buildAnswer(intent: Intent, context: Context, originalMessage: string, lang: Language): { answer: string; actions: string[] } {
   const latest = context.latestRun;
 
   if (!latest) {
     if (intent === "testing") {
-      return noRunsGuidance(
-        "Project Agent is working. I do not have synced run history for this project yet, so I can only give setup guidance right now.",
-      );
+      return buildConversationResponse("testing", lang, false) ?? noRunsGuidance("Project Agent is working.", lang);
     }
 
     if (intent === "next_action") {
-      return noRunsGuidance(
-        "The best next step is to create the first synced run. Without run history, I cannot safely infer project risk yet.",
-      );
+      if (lang === "nl") {
+        return {
+          answer: [
+            "De beste volgende stap is je eerste synced run maken. Zonder rungeschiedenis kan ik projectrisico nog niet veilig inschatten.",
+            "",
+            "Aanbevolen:",
+            'runtrim go "your task"',
+            "runtrim finish",
+            "",
+            "Zodra dit gesynct is, kan ik een echte volgende stap adviseren op basis van gewijzigde bestanden, proof gaps en risico.",
+          ].join("\n"),
+          actions: ['runtrim go "your task"', "runtrim finish"],
+        };
+      }
+
+      return {
+        answer: [
+          "The best next step is to create your first synced run. Without run history, I cannot safely infer project risk yet.",
+          "",
+          "Suggested:",
+          'runtrim go "your task"',
+          "runtrim finish",
+          "",
+          "Once synced, I can give a real next-step recommendation based on changed files, proof gaps, and run risk.",
+        ].join("\n"),
+        actions: ['runtrim go "your task"', "runtrim finish"],
+      };
     }
 
     if (intent === "latest_run") {
       return noRunsGuidance(
-        "I do not have a synced latest run yet. Create one guarded run first so I can explain task, scope, changed files, proof gaps, and next action.",
+        lang === "nl"
+          ? "Ik heb nog geen gesyncte laatste run. Maak eerst één guarded run, dan kan ik taak, scope, gewijzigde bestanden, proof gaps en volgende stap uitleggen."
+          : "I do not have a synced latest run yet. Create one guarded run first so I can explain task, scope, changed files, proof gaps, and next action.",
+        lang,
       );
     }
 
     if (intent === "proof_gaps") {
       return noRunsGuidance(
-        "I cannot inspect proof gaps until a run is synced. Once available, I will check build, tests, manual verification, logs, scope compliance, and finish evidence.",
+        lang === "nl"
+          ? "Ik kan proof gaps pas analyseren nadat een run is gesynct. Daarna controleer ik build, tests, handmatige verificatie, logs, scope-compliance en finish-evidence."
+          : "I cannot inspect proof gaps until a run is synced. Once available, I will check build, tests, manual verification, logs, scope compliance, and finish evidence.",
+        lang,
       );
     }
 
     if (intent === "risk") {
+      if (lang === "nl") {
+        return {
+          answer: [
+            "Ik heb nog geen projectspecifieke risicobestanden geleerd.",
+            "",
+            "Veelvoorkomende high-risk gebieden zijn auth, billing, webhooks, database, middleware, env-bestanden en migrations.",
+            "",
+            "Voor projectspecifieke risico's:",
+            'runtrim go "your task"',
+            "runtrim finish",
+          ].join("\n"),
+          actions: ['runtrim go "your task"', "runtrim finish"],
+        };
+      }
+
       return {
         answer: [
           "I have not learned project-specific risky files yet.",
           "",
           "Common high-risk areas are auth, billing, webhooks, database, middleware, environment files, and migrations.",
           "",
-          "To get project-specific risk mapping, run:",
+          "To get project-specific risk mapping:",
           'runtrim go "your task"',
           "runtrim finish",
         ].join("\n"),
@@ -236,7 +422,10 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string):
     if (intent === "handoff") return buildHandoff(context);
 
     return noRunsGuidance(
-      "I can help, but I do not have synced project history yet. Run one guarded task first, then I can reason from your real context.",
+      lang === "nl"
+        ? "Ik kan helpen, maar ik heb nog geen gesyncte projectgeschiedenis. Start eerst één guarded run, dan kan ik op je echte context redeneren."
+        : "I can help, but I do not have synced project history yet. Run one guarded task first, then I can reason from your real context.",
+      lang,
     );
   }
 
@@ -408,6 +597,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "missing_message" }, { status: 400 });
   }
 
+  const lang = detectLanguage(message);
+
   const lowerMessage = message.toLowerCase();
   if (
     lowerMessage.includes("deploy") ||
@@ -415,14 +606,17 @@ export async function POST(request: Request) {
     lowerMessage.includes("run this command") ||
     lowerMessage.includes("execute") ||
     lowerMessage.includes("bypass guard") ||
-    lowerMessage.includes("cancel subscription")
+    lowerMessage.includes("cancel subscription") ||
+    lowerMessage.includes("change billing")
   ) {
     return NextResponse.json({
       ok: true,
       answer:
-        "I cannot execute or deploy from Project Agent. I can prepare a safe contract or handoff you can run through RunTrim.",
-      actions: ['runtrim go "your task"', "Ask: Create a Claude handoff"],
-      contextUsed: { intent: "safety_redirect" },
+        lang === "nl"
+          ? "Ik kan dat niet direct uitvoeren vanuit Project Agent. Ik kan wel een veilig contract of handoff voorbereiden die je via RunTrim kunt gebruiken."
+          : "I cannot execute or deploy from Project Agent. I can prepare a safe contract or handoff you can run through RunTrim.",
+      actions: ['runtrim go "your task"', lang === "nl" ? "Vraag: maak een Claude handoff" : "Ask: Create a Claude handoff"],
+      contextUsed: { intent: "safety_redirect", language: lang },
     });
   }
 
@@ -459,6 +653,21 @@ export async function POST(request: Request) {
   const runs = ((runResult.data as RunRow[] | null) ?? []).sort((a, b) => runSortTime(b) - runSortTime(a));
   const latest = runs[0] ?? null;
 
+  const conversationIntent = classifyConversationIntent(message);
+  const preResponse = buildConversationResponse(conversationIntent, lang, Boolean(latest));
+  if (preResponse) {
+    return NextResponse.json({
+      ok: true,
+      answer: preResponse.answer,
+      actions: preResponse.actions,
+      contextUsed: {
+        intent: `conversation_${conversationIntent}`,
+        language: lang,
+        hasLatestRun: Boolean(latest),
+      },
+    });
+  }
+
   const unfinishedChanges = runs.some((run) => {
     const status = (run.status ?? "").toLowerCase();
     return status === "partial" || status === "in_progress";
@@ -483,7 +692,7 @@ export async function POST(request: Request) {
   };
 
   const intent = classifyIntent(message);
-  const { answer, actions } = buildAnswer(intent, context, message);
+  const { answer, actions } = buildAnswer(intent, context, message, lang);
 
   return NextResponse.json({
     ok: true,
@@ -491,6 +700,7 @@ export async function POST(request: Request) {
     actions,
     contextUsed: {
       intent,
+      language: lang,
       plan,
       runCount: context.runCount,
       latestRunId: context.latestRun?.id ?? null,

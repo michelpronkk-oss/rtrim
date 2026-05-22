@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import type { AuditResult } from "./run-audit";
 import type { ContractResult } from "./run-contract";
 import type { EvaluationResult } from "./run-evaluation";
+import type { ProviderRoutingDecision } from "./provider-routing";
 import { getRunsDir } from "./runtrim-config";
 
 export interface AgentExecutionRecord {
@@ -73,6 +74,9 @@ export interface RunRecord {
   reportSummary?: string;
   scopeDriftStatus?: string;
   pendingSync?: boolean;
+  providerRouting?: ProviderRoutingDecision;
+  controlledExecutionId?: string;
+  controlledExecutionStatus?: "pending" | "blocked" | "ready-for-agent" | "split-required" | "completed";
   /** Relative paths of files written/appended by RunTrim during this session. */
   bridgeManagedFiles?: string[];
 }
