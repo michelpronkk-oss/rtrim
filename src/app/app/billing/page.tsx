@@ -70,10 +70,17 @@ export default async function BillingPage() {
 
       {/* Header */}
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Billing</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">
+          {isFree ? "Get started" : "Billing"}
+        </p>
         <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">
-          Plan and billing
+          {isFree ? "Start your Pro trial." : "Plan and billing"}
         </h1>
+        {isFree && (
+          <p className="mt-1.5 text-[14px] text-[#8a8f98]">
+            The RunTrim dashboard is a Pro feature. Start your free 3-day trial to unlock cloud sync, run history, memory, and reports.
+          </p>
+        )}
       </div>
 
       {/* Current plan card */}

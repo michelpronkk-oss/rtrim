@@ -26,7 +26,7 @@ export default async function AppLayout({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  // Fetch plan for sidebar badge
+  // Fetch plan
   let plan       = "free";
   let planStatus: string | undefined;
   try {
@@ -38,14 +38,25 @@ export default async function AppLayout({
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
-        const rawPlan = (data.plan as string) || "free";
+        const rawPlan   = (data.plan as string) || "free";
         const rawStatus = (data.plan_status as string | null) ?? null;
         plan       = effectivePlanId(rawPlan, rawStatus);
         planStatus = rawStatus ?? undefined;
       }
     }
   } catch {
-    // Non-fatal — sidebar falls back to "free"
+    // Non-fatal — plan defaults to free
+  }
+
+  // ── Plan gate: dashboard is a Pro feature ────────────────────────────────
+  // Free users only reach /app/billing (upgrade) and /app/trial (checkout).
+  // All other dashboard routes require an active Pro/Builder/Team plan.
+  const isBillingOrTrial =
+    pathname.startsWith("/app/billing") ||
+    pathname.startsWith("/app/trial");
+
+  if (plan === "free" && !isBillingOrTrial) {
+    redirect("/app/billing");
   }
 
   return (
