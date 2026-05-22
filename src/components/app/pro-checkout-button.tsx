@@ -6,6 +6,8 @@ import Link from "next/link";
 interface ProCheckoutButtonProps {
   className?: string;
   label?: string;
+  /** Dodo plan to start checkout for. Defaults to "pro". */
+  planId?: "pro" | "builder" | "team";
 }
 
 type AuthPlan =
@@ -25,6 +27,7 @@ type AuthPlan =
 export function ProCheckoutButton({
   className,
   label = "Start 3-day Pro trial",
+  planId = "pro",
 }: ProCheckoutButtonProps) {
   const [authPlan,      setAuthPlan]      = useState<AuthPlan>("checking");
   const [checkoutState, setCheckoutState] = useState<"idle" | "loading" | "error">("idle");
@@ -96,7 +99,11 @@ export function ProCheckoutButton({
     setCheckoutState("loading");
     setErrMsg("");
 
-    const res = await fetch("/api/billing/checkout", { method: "POST" }).catch(() => null);
+    const res = await fetch("/api/billing/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ planId }),
+    }).catch(() => null);
     const data = await res?.json().catch(() => null) as {
       ok?: boolean; url?: string; error?: string;
     } | null;

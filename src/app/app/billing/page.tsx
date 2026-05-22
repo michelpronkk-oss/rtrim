@@ -235,19 +235,17 @@ export default async function BillingPage() {
                     </p>
                   ) : (
                     <ProCheckoutButton
-                      label={isFree ? "Start 3-day free trial" : "Start trial"}
+                      planId="pro"
+                      label="Start 3-day free trial"
                       className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-semibold transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
                     />
                   )
                 ) : (
-                  // Builder and Team are reviewed access — not self-serve checkout.
-                  // Direct users to contact for access.
-                  <a
-                    href={`mailto:hello@runtrim.com?subject=RunTrim ${p.name} access request&body=Hi, I'd like to get access to RunTrim ${p.name}. My account email is ${encodeURIComponent(user.email ?? "")}.`}
-                    className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                  >
-                    Request {p.name} access
-                  </a>
+                  <ProCheckoutButton
+                    planId={p.id}
+                    label={`Get ${p.name}`}
+                    className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e] disabled:opacity-60"
+                  />
                 )}
               </div>
             </div>

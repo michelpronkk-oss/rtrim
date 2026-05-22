@@ -15,22 +15,43 @@ export const runtime = "nodejs";
  *   DODO_PRO_PRODUCT_ID   — Product/plan ID for Pro in the Dodo dashboard
  *   NEXT_PUBLIC_SITE_URL  — e.g. https://www.runtrim.com (for redirect URLs)
  */
-export async function POST() {
+const PRODUCT_ID_MAP: Record<string, string | undefined> = {
+  pro:     process.env.DODO_PRO_PRODUCT_ID,
+  builder: process.env.DODO_BUILDER_PRODUCT_ID,
+  team:    process.env.DODO_TEAM_PRODUCT_ID,
+};
+
+export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
 
+  // planId defaults to "pro" for backwards compat
+  const body   = await request.json().catch(() => ({})) as { planId?: string };
+  const planId = (body.planId ?? "pro").toLowerCase();
+
+  if (!["pro", "builder", "team"].includes(planId)) {
+    return NextResponse.json({ ok: false, error: "Invalid plan." }, { status: 400 });
+  }
+
   const apiKey    = process.env.DODO_API_KEY;
-  const productId = process.env.DODO_PRO_PRODUCT_ID;
+  const productId = PRODUCT_ID_MAP[planId];
   const siteUrl   = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com").replace(/\/$/, "");
-  // Allow overriding the Dodo base URL via env var — useful if the endpoint changes
   const apiBase   = (process.env.DODO_API_BASE ?? "https://api.dodopayments.com").replace(/\/$/, "");
 
-  if (!apiKey || !productId) {
-    console.error("[/api/billing/checkout] Missing env vars. Set DODO_API_KEY and DODO_PRO_PRODUCT_ID in Vercel.");
+  if (!apiKey) {
+    console.error("[/api/billing/checkout] Missing DODO_API_KEY in Vercel env vars.");
     return NextResponse.json(
-      { ok: false, error: "Billing is not configured — missing API key or product ID. Contact support." },
+      { ok: false, error: "Billing is not configured — missing API key. Contact support." },
+      { status: 503 }
+    );
+  }
+
+  if (!productId) {
+    console.error(`[/api/billing/checkout] Missing DODO_${planId.toUpperCase()}_PRODUCT_ID in Vercel env vars.`);
+    return NextResponse.json(
+      { ok: false, error: `Billing not configured for ${planId} plan — missing product ID. Contact support.` },
       { status: 503 }
     );
   }
