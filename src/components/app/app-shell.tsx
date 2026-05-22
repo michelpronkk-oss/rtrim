@@ -7,7 +7,7 @@ import {
   LayoutGrid,
   FolderKanban,
   History,
-  Download,
+  CreditCard,
   Link2,
   Menu,
   X,
@@ -17,11 +17,11 @@ import { SignOutButton } from "@/components/app/sign-out-button";
 import { RunTrimLogo } from "@/components/app/runtrim-logo";
 
 const NAV_ITEMS = [
-  { href: "/app",          label: "Overview",    icon: LayoutGrid   },
-  { href: "/app/connect",  label: "Connect CLI", icon: Link2        },
-  { href: "/app/projects", label: "Projects",    icon: FolderKanban },
-  { href: "/app/runs",     label: "Runs",        icon: History      },
-  { href: "/app/install",  label: "Install",     icon: Download     },
+  { href: "/app",           label: "Overview",    icon: LayoutGrid   },
+  { href: "/app/connect",   label: "Connect CLI", icon: Link2        },
+  { href: "/app/projects",  label: "Projects",    icon: FolderKanban },
+  { href: "/app/runs",      label: "Runs",        icon: History      },
+  { href: "/app/billing",   label: "Billing",     icon: CreditCard   },
 ];
 
 const MONO: React.CSSProperties = {
@@ -77,7 +77,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus }: App
 
           {/* User row */}
           <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center gap-2 rounded-lg px-3 py-2.5" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#111317" }}>
+            <Link href="/app/billing" className="flex items-center gap-2 rounded-lg px-3 py-2.5 transition-colors hover:bg-white/[0.03]" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#111317" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 0 2px rgba(167,139,250,0.15)", display: "inline-block", flexShrink: 0 }} />
               <span className="min-w-0 flex-1 truncate" style={{ ...MONO, fontSize: 11.5, color: "#8a8f98" }}>
                 {userEmail ?? "Dashboard"}
@@ -85,7 +85,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus }: App
               <span className="shrink-0 rounded px-1.5 py-0.5" style={{ ...MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", ...badgeStyle }}>
                 {badgeLabel}
               </span>
-            </div>
+            </Link>
           </div>
 
           {/* Nav items */}
