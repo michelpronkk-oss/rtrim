@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId } from "@/lib/entitlements";
@@ -97,8 +97,9 @@ export default async function ProjectAgentPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1320px]">
+    <div className="w-full">
       <ProjectAgentChat canUseAgent={canUseAgent} summary={summary} />
     </div>
   );
 }
+
