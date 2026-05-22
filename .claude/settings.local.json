@@ -57,7 +57,14 @@
       "Bash(NEXT_DISABLE_SOURCEMAPS=1 npx next build)",
       "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); print\\(data[0]['text']\\)\")",
       "Bash(python3)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(cat vercel.json)",
+      "Bash(ls .vercel)",
+      "Bash(which vercel *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit -m 'Fix trial card: '\\\\''View plan'\\\\'' -> /app/billing, clearer copy about auto-convert *)"
     ]
   }
 }

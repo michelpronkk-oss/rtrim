@@ -80,17 +80,21 @@ export default async function BillingPage() {
   let rawPlan    = "free";
   let planStatus = null as string | null;
   let periodEnd  = null as string | null;
+  let paymentSubscriptionId = null as string | null;
+  let paymentCustomerId = null as string | null;
 
   if (supabase) {
     const { data } = await supabase
       .from("runtrim_profiles")
-      .select("plan, plan_status, current_period_end")
+      .select("plan, plan_status, current_period_end, payment_subscription_id, payment_customer_id")
       .eq("id", user.id)
       .maybeSingle();
     if (data) {
       rawPlan    = (data.plan as string) || "free";
       planStatus = (data.plan_status as string | null) ?? null;
       periodEnd  = (data.current_period_end as string | null) ?? null;
+      paymentSubscriptionId = (data.payment_subscription_id as string | null) ?? null;
+      paymentCustomerId = (data.payment_customer_id as string | null) ?? null;
     }
   }
 
@@ -102,8 +106,59 @@ export default async function BillingPage() {
   const canceledInPeriod = isCanceled && plan !== "free"; // access still active
   const trialEnd    = isTrialing && periodEnd ? formatDate(periodEnd) : null;
   const periodEndFmt = periodEnd ? formatDate(periodEnd) : null;
+  const hasBillingIdentity = Boolean(paymentSubscriptionId || paymentCustomerId);
+  const portalUrl = process.env.DODO_CUSTOMER_PORTAL_URL?.trim() || null;
+  const teamCheckoutEnabled = Boolean(
+    process.env.DODO_TEAM_CHECKOUT_URL?.trim() || process.env.DODO_TEAM_PRODUCT_ID?.trim()
+  );
 
   const MONO: React.CSSProperties = { fontFamily: "var(--font-geist-mono), ui-monospace, monospace" };
+
+  function planLabel(planId: "pro" | "builder" | "team") {
+    return planId.charAt(0).toUpperCase() + planId.slice(1);
+  }
+
+  function getPlanCta(targetPlanId: "pro" | "builder" | "team") {
+    const currentPlan = plan as "free" | "pro" | "builder" | "team";
+    if (currentPlan === targetPlanId) return { kind: "current" as const, label: "Open dashboard" };
+
+    if (currentPlan === "free") {
+      if (targetPlanId === "pro") return { kind: "checkout" as const, label: "Start 3-day Pro trial" };
+      if (targetPlanId === "builder") return { kind: "checkout" as const, label: "Get Builder" };
+      if (targetPlanId === "team" && !teamCheckoutEnabled) return { kind: "contact" as const, label: "Contact for Team" };
+      return { kind: "checkout" as const, label: `Get ${planLabel(targetPlanId)}` };
+    }
+
+    const canManageBilling = Boolean(portalUrl && hasBillingIdentity);
+    if (currentPlan === "pro") {
+      if (targetPlanId === "builder") {
+        return canManageBilling
+          ? { kind: "manage" as const, label: "Manage billing to upgrade" }
+          : { kind: "contact" as const, label: "Contact to upgrade" };
+      }
+      if (targetPlanId === "team") {
+        return canManageBilling
+          ? { kind: "manage" as const, label: "Manage billing to upgrade" }
+          : { kind: "contact" as const, label: "Contact for Team" };
+      }
+    }
+
+    if (currentPlan === "builder") {
+      if (targetPlanId === "pro") return { kind: "manage" as const, label: "Manage billing" };
+      if (targetPlanId === "team") {
+        if (!teamCheckoutEnabled) return { kind: "contact" as const, label: "Contact for Team" };
+        return canManageBilling
+          ? { kind: "manage" as const, label: "Manage billing to upgrade" }
+          : { kind: "contact" as const, label: "Contact for Team" };
+      }
+    }
+
+    if (currentPlan === "team") {
+      return { kind: "manage" as const, label: "Manage billing" };
+    }
+
+    return { kind: "contact" as const, label: "Contact support" };
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -254,30 +309,61 @@ export default async function BillingPage() {
 
               {/* CTA */}
               <div className="mt-auto px-5 pb-5">
-                {isCurrentPlan ? (
-                  // Current plan — open dashboard (no checkout)
-                  <Link
-                    href="/app"
-                    className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                  >
-                    Open dashboard
-                  </Link>
-                ) : isPro ? (
-                  // Pro card, not current plan → start trial
-                  <ProCheckoutButton
-                    planId="pro"
-                    label="Start 3-day free trial"
-                    className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-semibold transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
-                  />
-                ) : (
-                  // Builder / Team — user is authenticated, skip plan check, go straight to checkout
-                  <ProCheckoutButton
-                    planId={p.id}
-                    label={`Upgrade to ${p.name}`}
-                    alwaysCheckout
-                    className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e] disabled:opacity-60"
-                  />
-                )}
+                {(() => {
+                  const cta = getPlanCta(p.id);
+                  if (cta.kind === "current") {
+                    return (
+                      <Link
+                        href="/app"
+                        className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                      >
+                        {cta.label}
+                      </Link>
+                    );
+                  }
+                  if (cta.kind === "checkout") {
+                    return (
+                      <ProCheckoutButton
+                        planId={p.id}
+                        label={cta.label}
+                        alwaysCheckout={plan === "free"}
+                        className={`inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] transition-colors disabled:opacity-60 ${
+                          p.id === "pro"
+                            ? "font-semibold bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white"
+                            : "font-medium border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                        }`}
+                      />
+                    );
+                  }
+                  if (cta.kind === "manage") {
+                    if (portalUrl) {
+                      return (
+                        <a
+                          href={portalUrl}
+                          className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                        >
+                          {cta.label}
+                        </a>
+                      );
+                    }
+                    return (
+                      <a
+                        href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
+                        className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                      >
+                        Contact support
+                      </a>
+                    );
+                  }
+                  return (
+                    <a
+                      href={`mailto:hello@runtrim.com?subject=${encodeURIComponent(`Upgrade RunTrim to ${p.name}`)}`}
+                      className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                    >
+                      {cta.label}
+                    </a>
+                  );
+                })()}
               </div>
             </div>
           );

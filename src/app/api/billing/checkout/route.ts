@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 
 export const runtime = "nodejs";
+const USER_FACING_CHECKOUT_ERROR =
+  "We could not start the upgrade flow. Manage billing or contact hello@runtrim.com.";
 
 /**
  * POST /api/billing/checkout
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
   if (!apiKey || !productId) {
     console.error(`[/api/billing/checkout] ${planId}: no checkout URL and no API key/product ID configured.`);
     return NextResponse.json(
-      { ok: false, error: `not_configured: ${planId} plan checkout not set up yet. Set DODO_${planId.toUpperCase()}_CHECKOUT_URL in Vercel.` },
+      { ok: false, error: USER_FACING_CHECKOUT_ERROR },
       { status: 503 }
     );
   }
@@ -105,7 +107,7 @@ export async function POST(request: Request) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[/api/billing/checkout] Fetch exception hitting", endpointUrl, "—", detail);
     return NextResponse.json(
-      { ok: false, error: `Payment provider unreachable (${detail}). Check DODO_API_BASE env var.` },
+      { ok: false, error: USER_FACING_CHECKOUT_ERROR },
       { status: 502 }
     );
   }
@@ -114,17 +116,10 @@ export async function POST(request: Request) {
     const rawBody = await dodoRes.text().catch(() => "");
     console.error("[/api/billing/checkout] Dodo API error:", dodoRes.status, rawBody);
 
-    // Forward the Dodo error message if parseable, so the UI can show it
-    let dodoMessage: string | undefined;
-    try {
-      const parsed = JSON.parse(rawBody) as { message?: string; error?: string; detail?: string };
-      dodoMessage = parsed.message ?? parsed.error ?? parsed.detail;
-    } catch { /* ignore */ }
-
     return NextResponse.json(
       {
         ok: false,
-        error: dodoMessage ?? `Payment provider error (${dodoRes.status}). Try again.`,
+        error: USER_FACING_CHECKOUT_ERROR,
         dodoStatus: dodoRes.status,
       },
       { status: 502 }
@@ -139,7 +134,7 @@ export async function POST(request: Request) {
   if (!url) {
     console.error("[/api/billing/checkout] No checkout URL in Dodo response:", JSON.stringify(data));
     return NextResponse.json(
-      { ok: false, error: "Checkout link missing from provider response. Try again." },
+      { ok: false, error: USER_FACING_CHECKOUT_ERROR },
       { status: 502 }
     );
   }
