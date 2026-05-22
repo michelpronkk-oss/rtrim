@@ -349,9 +349,9 @@ interface ControlledExecutionArtifact {
   proofRequired: string[];
   verificationSteps: string[];
   agentInstructions: string[];
-  finishRequired: true;
+  finishRequired: boolean;
   nextCommand: string;
-  providerCallMade: false;
+  providerCallMade: boolean;
 }
 
 function nowId(): string {
@@ -858,7 +858,9 @@ function writeExecutionArtifacts(
     ...execution.agentInstructions,
     "",
     "Finish requirement:",
-    "- After edits are done, run: runtrim finish",
+    ...(execution.finishRequired
+      ? ["- After edits are done, run: runtrim finish"]
+      : ["- No finish required for this execution state."]),
     "",
     "Next command:",
     execution.nextCommand,
@@ -1047,6 +1049,29 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
       : routing.executionMode;
 
   if (routing.route === "split-required" || executionMode === "split-first") {
+    const splitExecution: ControlledExecutionArtifact = {
+      id: nowId(),
+      createdAt: new Date().toISOString(),
+      task,
+      status: "split-required",
+      previewId: preview.id,
+      contractPath: ".runtrim/contracts/latest.md",
+      routing,
+      risk: preview.risk,
+      approvalRequired: true,
+      approved: false,
+      executionMode: "split-first",
+      allowedScope: preview.allowedScope,
+      forbiddenScope: preview.forbiddenScope,
+      stopRules: preview.stopRules,
+      proofRequired: preview.proofRequired,
+      verificationSteps: preview.verificationSteps,
+      agentInstructions: getExecutionPromptLines(),
+      finishRequired: false,
+      nextCommand: 'split into:\n1. audit only\n2. implementation only\n3. verification only',
+      providerCallMade: false,
+    };
+    const splitArtifacts = writeExecutionArtifacts(cwd, splitExecution, path.relative(cwd, previewPath));
     console.log("");
     console.log(GO_ACCENT.bold("RunTrim split required"));
     console.log("");
@@ -1055,6 +1080,9 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     console.log(chalk.white('1. runtrim go "Audit one system only. No edits."'));
     console.log(chalk.white('2. runtrim go "Implement one isolated fix only."'));
     console.log(chalk.white('3. runtrim go "Verify behavior only."'));
+    console.log(DIM("  Handoff    ") + chalk.white(path.relative(cwd, splitArtifacts.markdownPath)));
+    console.log(chalk.white("No active contract changed."));
+    console.log(chalk.white("No finish required."));
     console.log("");
     return;
   }
@@ -1064,6 +1092,29 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     executionMode === "confirmed-apply-only" ||
     preview.approvalRequired === "required";
   if (approvalNeeded && !mode.confirm) {
+    const blockedExecution: ControlledExecutionArtifact = {
+      id: nowId(),
+      createdAt: new Date().toISOString(),
+      task,
+      status: "blocked",
+      previewId: preview.id,
+      contractPath: ".runtrim/contracts/latest.md",
+      routing,
+      risk: preview.risk,
+      approvalRequired: true,
+      approved: false,
+      executionMode,
+      allowedScope: preview.allowedScope,
+      forbiddenScope: preview.forbiddenScope,
+      stopRules: preview.stopRules,
+      proofRequired: preview.proofRequired,
+      verificationSteps: preview.verificationSteps,
+      agentInstructions: getExecutionPromptLines(),
+      finishRequired: false,
+      nextCommand: `runtrim agent "${task}" --execute --confirm`,
+      providerCallMade: false,
+    };
+    writeExecutionArtifacts(cwd, blockedExecution, path.relative(cwd, previewPath));
     console.log("");
     console.log(chalk.red.bold("RunTrim controlled execution blocked"));
     console.log("");
@@ -1077,13 +1128,21 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     console.log(chalk.white("To continue:"));
     console.log(chalk.white(`runtrim agent "${task}" --execute --confirm`));
     console.log(chalk.white("No active contract changed."));
+    console.log(chalk.white("No finish required."));
     console.log("");
     return;
   }
 
   const id = nowId();
   const status: ControlledExecutionArtifact["status"] =
-    executionMode === "preview-first" ? "blocked" : mode.dryRun ? "pending" : "ready-for-agent";
+    mode.dryRun ? "pending" : executionMode === "preview-first" ? "blocked" : "ready-for-agent";
+  const finishRequired = status === "ready-for-agent";
+  const nextCommand =
+    status === "ready-for-agent"
+      ? "runtrim finish"
+      : status === "pending"
+      ? `runtrim agent "${task}" --execute`
+      : `runtrim agent "${task}" --preview`;
   const execution: ControlledExecutionArtifact = {
     id,
     createdAt: new Date().toISOString(),
@@ -1102,23 +1161,25 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     proofRequired: preview.proofRequired,
     verificationSteps: preview.verificationSteps,
     agentInstructions: getExecutionPromptLines(),
-    finishRequired: true,
-    nextCommand: "runtrim finish",
+    finishRequired,
+    nextCommand,
     providerCallMade: false,
   };
 
-  const contractPath = writeAgentContract(cwd, contract.contractText);
   const artifacts = writeExecutionArtifacts(cwd, execution, path.relative(cwd, previewPath));
   const promptText = fs.readFileSync(artifacts.markdownPath, "utf-8");
   const copied = await copyToClipboardSafe(promptText);
-
-  const run = saveRun(task, previewResult.audit, previewResult.contract, cwd);
-  updateRun(run.id, {
-    status: "guarded",
-    providerRouting: routing,
-    controlledExecutionId: id,
-    controlledExecutionStatus: status,
-  }, cwd);
+  let contractPath = ".runtrim/contracts/latest.md";
+  if (status === "ready-for-agent") {
+    contractPath = writeAgentContract(cwd, contract.contractText);
+    const run = saveRun(task, previewResult.audit, previewResult.contract, cwd);
+    updateRun(run.id, {
+      status: "guarded",
+      providerRouting: routing,
+      controlledExecutionId: id,
+      controlledExecutionStatus: status,
+    }, cwd);
+  }
 
   if (status === "blocked") {
     console.log("");
@@ -1133,6 +1194,27 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     console.log(chalk.white("Narrow the task scope or run preview first."));
     console.log(chalk.white(`runtrim agent "${task}" --preview`));
     console.log(chalk.white("No active contract changed."));
+    console.log(chalk.white("No finish required."));
+    console.log("");
+    return;
+  }
+
+  if (status === "pending") {
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim controlled execution"));
+    console.log("");
+    console.log(DIM("  Risk       ") + chalk.white(preview.risk));
+    console.log(DIM("  Route      ") + chalk.white(routing.route));
+    console.log(DIM("  Agent      ") + chalk.white(routing.recommendedAgent));
+    console.log(DIM("  Mode       ") + chalk.white(executionMode));
+    console.log(DIM("  Status     ") + chalk.white("pending (dry-run)"));
+    console.log(DIM("  Handoff    ") + chalk.white(path.relative(cwd, artifacts.markdownPath)));
+    console.log(DIM("  Active contract created ") + chalk.white("no"));
+    if (copied) console.log(DIM("  Clipboard  ") + chalk.white("Execution prompt copied"));
+    console.log("");
+    console.log(chalk.white("Dry run created."));
+    console.log(chalk.white("No active contract changed."));
+    console.log(chalk.white("No finish required."));
     console.log("");
     return;
   }
@@ -2961,16 +3043,18 @@ program
 
     // Active run
     const allRuns   = loadAllRuns(cwd);
-    const activeRun = allRuns.find((r) => r.status === "guarded" || r.status === "checked");
+    const detectedActiveRun = allRuns.find((r) => r.status === "guarded" || r.status === "checked");
     const latestRun = loadLatestRun(cwd);
     const latestExecution = readLatestExecution(cwd);
+    const activeRun = contractActive ? detectedActiveRun : null;
 
     if (activeRun) {
       console.log(DIM("  Active run  ") + chalk.white(truncate(activeRun.task, 50)));
-    } else if (latestRun) {
-      console.log(DIM("  Last run    ") + DIM(truncate(latestRun.task, 50)));
     } else {
       console.log(DIM("  Active run  ") + DIM("none"));
+    }
+    if (latestRun) {
+      console.log(DIM("  Last run    ") + DIM(truncate(latestRun.task, 50)));
     }
 
     // Changed files
