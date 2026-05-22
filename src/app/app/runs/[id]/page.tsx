@@ -57,6 +57,9 @@ type FullRunRow = {
   continuation_pack: unknown;
   next_safest_step: string | null;
   raw_report: string | null;
+  // agent and model may be present on newer runs
+  agent: string | null;
+  model: string | null;
 };
 
 type ProfileRow = {
@@ -159,9 +162,64 @@ function summarizeScopeDrift(status: string | null, forbiddenTouched: boolean): 
   if (forbiddenTouched) return "Forbidden area touched";
   if (!status) return "Needs review";
   const normalized = status.toLowerCase();
-  if (normalized === "passed" || normalized === "inside_scope") return "Inside scope";
+  if (normalized === "passed" || normalized === "inside_scope" || normalized === "clean") return "Inside scope";
   if (normalized.includes("forbidden")) return "Forbidden area touched";
+  if (normalized === "none" || normalized === "no_drift") return "No drift detected";
   return "Needs review";
+}
+
+// ── Color tokens for status/risk/drift ───────────────────────────────────────
+
+const RISK_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  low:    { border: "rgba(77,232,176,0.28)",  bg: "rgba(77,232,176,0.08)",  text: "#9EE6CD" },
+  medium: { border: "rgba(240,191,114,0.28)", bg: "rgba(240,191,114,0.08)", text: "#F2C88D" },
+  high:   { border: "rgba(255,123,92,0.30)",  bg: "rgba(255,123,92,0.08)",  text: "#FFAC98" },
+};
+
+const STATUS_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  guarded:     { border: "rgba(77,232,176,0.28)",  bg: "rgba(77,232,176,0.08)",  text: "#9EE6CD" },
+  passed:      { border: "rgba(77,232,176,0.28)",  bg: "rgba(77,232,176,0.08)",  text: "#9EE6CD" },
+  completed:   { border: "rgba(77,232,176,0.28)",  bg: "rgba(77,232,176,0.08)",  text: "#9EE6CD" },
+  partial:     { border: "rgba(240,191,114,0.28)", bg: "rgba(240,191,114,0.08)", text: "#F2C88D" },
+  in_progress: { border: "rgba(167,139,250,0.28)", bg: "rgba(167,139,250,0.08)", text: "#c7b9ff" },
+  failed:      { border: "rgba(255,123,92,0.30)",  bg: "rgba(255,123,92,0.08)",  text: "#FFAC98" },
+  split:       { border: "rgba(255,123,92,0.30)",  bg: "rgba(255,123,92,0.08)",  text: "#FFAC98" },
+};
+
+const DRIFT_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  "inside scope":           { border: "rgba(77,232,176,0.28)",  bg: "rgba(77,232,176,0.08)",  text: "#9EE6CD" },
+  "no drift detected":      { border: "rgba(77,232,176,0.28)",  bg: "rgba(77,232,176,0.08)",  text: "#9EE6CD" },
+  "needs review":           { border: "rgba(240,191,114,0.28)", bg: "rgba(240,191,114,0.08)", text: "#F2C88D" },
+  "proof missing":          { border: "rgba(255,255,255,0.12)", bg: "transparent",             text: "#a8afbc" },
+  "forbidden area touched": { border: "rgba(255,123,92,0.30)",  bg: "rgba(255,123,92,0.08)",  text: "#FFAC98" },
+};
+
+function coloredBadge(
+  label: string,
+  colorMap: Record<string, { border: string; bg: string; text: string }>,
+  fallback = { border: "rgba(255,255,255,0.12)", bg: "transparent", text: "#a8afbc" },
+) {
+  const key = label.toLowerCase();
+  const c = colorMap[key] ?? fallback;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        border: `1px solid ${c.border}`,
+        background: c.bg,
+        color: c.text,
+        fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+        fontSize: 10,
+        textTransform: "uppercase" as const,
+        letterSpacing: "0.08em",
+        borderRadius: 4,
+        padding: "2px 8px",
+        whiteSpace: "nowrap" as const,
+      }}
+    >
+      {label}
+    </span>
+  );
 }
 
 export default async function RunDetailPage({
@@ -253,51 +311,112 @@ export default async function RunDetailPage({
       </div>
 
       <Section title="Executive summary">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {summaryItems.map((item) => (
-            <div key={item.label} className="rounded-lg border border-white/8 bg-[#10141a] px-3 py-2.5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#626873]">{item.label}</p>
-              <p className="mt-1 text-[12px] text-[#d5dae3] break-words">{item.value}</p>
-            </div>
-          ))}
+        {/* Signal row — color-coded at a glance */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {coloredBadge(formatStatusLabel(r.status) || "Not captured", STATUS_COLORS)}
+          {coloredBadge(riskLevel.toLowerCase() !== "not captured" ? `Risk: ${riskLevel}` : "Risk: unknown", RISK_COLORS, { border: "rgba(255,255,255,0.12)", bg: "transparent", text: "#a8afbc" })}
+          {coloredBadge(scopeDriftLabel.toLowerCase(), DRIFT_COLORS)}
+          {proofGaps.length > 0 && coloredBadge(`${proofGaps.length} proof gap${proofGaps.length === 1 ? "" : "s"}`, {}, { border: "rgba(240,191,114,0.28)", bg: "rgba(240,191,114,0.08)", text: "#F2C88D" })}
+          {filesChangedCount > 0 && (
+            <span style={{ display: "inline-block", border: "1px solid rgba(255,255,255,0.10)", color: "#8a8f98", fontFamily: "var(--font-geist-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", borderRadius: 4, padding: "2px 8px" }}>
+              {filesChangedCount} file{filesChangedCount === 1 ? "" : "s"} changed
+            </span>
+          )}
+        </div>
+
+        {/* Report summary if available */}
+        {r.report_summary && (
+          <p className="mb-4 text-[12.5px] leading-[1.65] text-[#c5cad3]">{r.report_summary}</p>
+        )}
+
+        {/* Metrics grid */}
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-white/8 bg-[#10141a] px-3 py-2.5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#626873]">Tokens saved</p>
+            <p className="mt-1 text-[13px] font-semibold tabular-nums text-[#d5dae3]">{formatNumber(tokenSaved)}</p>
+          </div>
+          <div className="rounded-lg border border-white/8 bg-[#10141a] px-3 py-2.5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#626873]">Cost saved</p>
+            <p className="mt-1 text-[13px] font-semibold tabular-nums text-[#d5dae3]">{formatMoney(costSaved)}</p>
+          </div>
+          <div className="rounded-lg border border-white/8 bg-[#10141a] px-3 py-2.5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#626873]">Risk reduction</p>
+            <p className="mt-1 text-[13px] font-semibold tabular-nums text-[#d5dae3]">
+              {r.risk_reduction_percent != null ? `${r.risk_reduction_percent}%` : "Not captured"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-white/8 bg-[#10141a] px-3 py-2.5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#626873]">Next safest step</p>
+            <p className="mt-1 text-[12px] text-[#d5dae3] line-clamp-2">{nextSafestStep}</p>
+          </div>
         </div>
       </Section>
 
       <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
         <Section title="What happened">
           <div className="space-y-2 text-[12px] text-[#c5cad3]">
-            <p><span className="text-[#7d8491]">Original task:</span> {r.task ?? "Not captured"}</p>
-            <p><span className="text-[#7d8491]">Objective:</span> {r.goal ?? "Not captured"}</p>
-            <p><span className="text-[#7d8491]">Run status:</span> {formatStatusLabel(r.status)}</p>
+            <p><span className="text-[#7d8491]">Task:</span> {r.task ?? "Not captured"}</p>
+            {r.goal && r.goal !== r.task && (
+              <p><span className="text-[#7d8491]">Compiled objective:</span> {r.goal}</p>
+            )}
+            <p><span className="text-[#7d8491]">Status:</span> {formatStatusLabel(r.status)}</p>
             <p><span className="text-[#7d8491]">Created:</span> {r.created_at_local ?? r.created_at ?? "Not captured"}</p>
-            <p><span className="text-[#7d8491]">Evaluated:</span> {r.evaluated_at_local ?? "No evaluated timestamp yet"}</p>
-            <p><span className="text-[#7d8491]">Agent/mode:</span> {r.memory_summary ?? "No agent recorded"}</p>
+            <p><span className="text-[#7d8491]">Evaluated:</span> {r.evaluated_at_local ?? "Not evaluated yet"}</p>
+            <p><span className="text-[#7d8491]">Agent:</span> {r.agent ?? r.model ?? "Not recorded"}</p>
             <p><span className="text-[#7d8491]">Project:</span> {projectName ?? "Not captured"}</p>
+            {r.token_budget != null && (
+              <p><span className="text-[#7d8491]">Token budget:</span> {r.token_budget.toLocaleString()}</p>
+            )}
           </div>
         </Section>
 
         <Section title="Scope boundary">
-          <div className="space-y-3">
-            <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Allowed</p>
-              <ListOrFallback items={r.allowed_scope} fallback="Not captured" />
-            </div>
-            <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Forbidden</p>
-              <ListOrFallback items={r.forbidden_scope} fallback="Not captured" />
-            </div>
-            <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Stop rules</p>
-              <ListOrFallback items={r.stop_conditions} fallback="Not captured" />
-            </div>
-            <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Sensitive areas</p>
-              <ListOrFallback items={r.sensitive_areas} fallback="Not captured" />
-            </div>
-            <p className="text-[12px] text-[#c5cad3]">
-              <span className="text-[#7d8491]">Contract status:</span> {contractStatus}
-            </p>
-          </div>
+          {(() => {
+            const hasAny =
+              (r.allowed_scope?.length ?? 0) > 0 ||
+              (r.forbidden_scope?.length ?? 0) > 0 ||
+              (r.stop_conditions?.length ?? 0) > 0 ||
+              (r.sensitive_areas?.length ?? 0) > 0;
+            if (!hasAny) {
+              return (
+                <div className="rounded-lg border border-white/6 bg-[#10141a] px-3 py-3">
+                  <p className="text-[12px] text-[#6a707b]">No scope boundary was captured for this run.</p>
+                  <p className="mt-1 text-[11px] text-[#4a5060]">Pro reports capture allowed scope, forbidden paths, and stop rules from every guarded run.</p>
+                </div>
+              );
+            }
+            return (
+              <div className="space-y-3">
+                {(r.allowed_scope?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Allowed</p>
+                    <ListOrFallback items={r.allowed_scope} fallback="Not captured" />
+                  </div>
+                )}
+                {(r.forbidden_scope?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Forbidden</p>
+                    <ListOrFallback items={r.forbidden_scope} fallback="Not captured" />
+                  </div>
+                )}
+                {(r.stop_conditions?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Stop rules</p>
+                    <ListOrFallback items={r.stop_conditions} fallback="Not captured" />
+                  </div>
+                )}
+                {(r.sensitive_areas?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Sensitive areas</p>
+                    <ListOrFallback items={r.sensitive_areas} fallback="Not captured" />
+                  </div>
+                )}
+                <p className="text-[12px] text-[#c5cad3]">
+                  <span className="text-[#7d8491]">Contract status:</span> {contractStatus}
+                </p>
+              </div>
+            );
+          })()}
         </Section>
       </div>
 
@@ -334,25 +453,57 @@ export default async function RunDetailPage({
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Section title="Drift and risk">
-          <div className="space-y-2 text-[12px] text-[#c5cad3]">
-            <p><span className="text-[#7d8491]">Risk before:</span> {r.risk_before ?? "Not captured"}</p>
-            <p><span className="text-[#7d8491]">Risk after:</span> {r.risk_after ?? "Not captured"}</p>
-            <p><span className="text-[#7d8491]">Risk reduction:</span> {r.risk_reduction_percent != null ? `${r.risk_reduction_percent}%` : "Not captured"}</p>
-            <p><span className="text-[#7d8491]">Scope drift status:</span> {scopeDriftLabel}</p>
-            <p><span className="text-[#7d8491]">Watch status:</span> {r.watch_status ?? "Proof missing"}</p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <span className="rounded border border-[#4DE8B0]/20 bg-[#4DE8B0]/8 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#9EE6CD]">Inside scope</span>
-              <span className="rounded border border-[#F0BF72]/20 bg-[#F0BF72]/8 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#F2C88D]">Needs review</span>
-              <span className="rounded border border-[#FF7B5C]/30 bg-[#FF7B5C]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#FFAC98]">Forbidden area touched</span>
-              <span className="rounded border border-white/12 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#a8afbc]">Proof missing</span>
-              <span className="rounded border border-[#4DE8B0]/20 bg-[#4DE8B0]/8 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#9EE6CD]">No drift detected</span>
+          <div className="space-y-3">
+            {/* Actual drift verdict */}
+            <div className="flex flex-wrap items-center gap-2">
+              {coloredBadge(scopeDriftLabel.toLowerCase(), DRIFT_COLORS)}
+              {r.watch_status && r.watch_status.toLowerCase() !== "passed" && (
+                <span className="font-mono text-[10px] text-[#6a707b] uppercase tracking-[0.08em]">
+                  Watch: {r.watch_status}
+                </span>
+              )}
             </div>
-            <div className="pt-1">
-              <ListOrFallback items={r.detected_risks} fallback="No detected risks recorded." />
+
+            {/* Risk delta */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                { label: "Risk before", value: r.risk_before, map: RISK_COLORS },
+                { label: "Risk after",  value: r.risk_after,  map: RISK_COLORS },
+                { label: "Reduction",   value: r.risk_reduction_percent != null ? `${r.risk_reduction_percent}%` : null, map: {} },
+                { label: "Score after", value: r.score_after != null ? String(r.score_after) : null, map: {} },
+              ].map(({ label, value, map }) => (
+                <div key={label} className="rounded border border-white/8 bg-[#10141a] px-2.5 py-2">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[#5a5f68]">{label}</p>
+                  {value ? (
+                    Object.keys(map).length > 0
+                      ? <div className="mt-1">{coloredBadge(value.toLowerCase(), map as typeof RISK_COLORS)}</div>
+                      : <p className="mt-1 text-[12px] font-semibold tabular-nums text-[#d5dae3]">{value}</p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-[#4a5060]">Not captured</p>
+                  )}
+                </div>
+              ))}
             </div>
-            <div className="pt-1">
-              <ListOrFallback items={r.watch_warnings} fallback="No watch warnings recorded." />
-            </div>
+
+            {/* Detected risks */}
+            {(r.detected_risks?.length ?? 0) > 0 && (
+              <div>
+                <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Detected risks</p>
+                <ListOrFallback items={r.detected_risks} fallback="" />
+              </div>
+            )}
+
+            {/* Watch warnings */}
+            {(r.watch_warnings?.length ?? 0) > 0 && (
+              <div>
+                <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#5f6672]">Watch warnings</p>
+                <ListOrFallback items={r.watch_warnings} fallback="" />
+              </div>
+            )}
+
+            {(r.detected_risks?.length ?? 0) === 0 && (r.watch_warnings?.length ?? 0) === 0 && (
+              <p className="text-[12px] text-[#6a707b]">No risks or warnings recorded.</p>
+            )}
           </div>
         </Section>
 
@@ -376,7 +527,7 @@ export default async function RunDetailPage({
         <p className="text-[12px] text-[#c5cad3]"><span className="text-[#7d8491]">Next safest step:</span> {nextSafestStep}</p>
         {continuationPack || r.next_safe_prompt ? (
           <>
-            <pre className="mt-3 overflow-x-auto rounded-lg border border-white/8 bg-[#0b0e13] p-3 font-mono text-[11px] leading-[1.7] text-[#c8ced9]">
+            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-white/8 bg-[#0b0e13] p-3 font-mono text-[11px] leading-[1.7] text-[#c8ced9]">
               {continuationPack ?? r.next_safe_prompt}
             </pre>
             <div className="mt-3">
@@ -414,7 +565,7 @@ export default async function RunDetailPage({
 
       <Section title="Prompt evidence">
         {latestPrompt ? (
-          <pre className="overflow-x-auto rounded-lg border border-white/8 bg-[#0b0e13] p-3 font-mono text-[11px] leading-[1.7] text-[#c8ced9]">
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-white/8 bg-[#0b0e13] p-3 font-mono text-[11px] leading-[1.7] text-[#c8ced9]">
             {latestPrompt}
           </pre>
         ) : (
