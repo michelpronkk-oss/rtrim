@@ -86,6 +86,14 @@ type ProfileUpdate = {
   payment_subscription_id?: string;
 };
 
+function resolvePlanFromProductId(productId: string | undefined): "pro" | "builder" | "team" {
+  if (!productId) return "pro";
+  const p = productId.toLowerCase();
+  if (p === (process.env.DODO_BUILDER_PRODUCT_ID ?? "").toLowerCase()) return "builder";
+  if (p === (process.env.DODO_TEAM_PRODUCT_ID    ?? "").toLowerCase()) return "team";
+  return "pro"; // default — covers DODO_PRO_PRODUCT_ID and unknown
+}
+
 function buildProfileUpdate(eventType: string, data: DodoEventData): ProfileUpdate | null {
   const sub      = data.subscription;
   const custId   = data.customer?.id ?? sub?.customer_id ?? null;
@@ -94,22 +102,36 @@ function buildProfileUpdate(eventType: string, data: DodoEventData): ProfileUpda
   const pEnd     = sub?.current_period_end ?? null;
   const trialEnd = sub?.trial_end ?? null;
 
+  // Resolve which paid plan this subscription is for
+  const resolvedPlan = resolvePlanFromProductId(sub?.product_id);
+
   const base: ProfileUpdate = {};
   if (custId) base.payment_customer_id    = custId;
   if (subId)  base.payment_subscription_id = subId;
   if (pStart) base.current_period_start   = pStart;
-  // Trial-active users: period_end = trial_end so the dashboard can show it
   if (pEnd || trialEnd) base.current_period_end = trialEnd ?? pEnd ?? null;
 
+  // Derive plan_status from the payload status field when possible
+  const subStatus = (data.subscription?.status ?? "").toLowerCase();
+
   switch (eventType) {
+    case "subscription.created":
+      if (subStatus === "trialing" || trialEnd) {
+        return { ...base, plan: resolvedPlan, plan_status: "trialing", current_period_end: trialEnd ?? pEnd ?? null };
+      }
+      return { ...base, plan: resolvedPlan, plan_status: "active", current_period_end: pEnd ?? null };
+
     case "subscription.active":
-      return { ...base, plan: "pro", plan_status: "active", current_period_end: pEnd ?? trialEnd ?? null };
+      if (trialEnd && new Date(trialEnd) > new Date()) {
+        return { ...base, plan: resolvedPlan, plan_status: "trialing", current_period_end: trialEnd };
+      }
+      return { ...base, plan: resolvedPlan, plan_status: "active", current_period_end: pEnd ?? trialEnd ?? null };
 
     case "subscription.trialing":
-      return { ...base, plan: "pro", plan_status: "trialing", current_period_end: trialEnd ?? pEnd ?? null };
+      return { ...base, plan: resolvedPlan, plan_status: "trialing", current_period_end: trialEnd ?? pEnd ?? null };
 
     case "subscription.renewed":
-      return { ...base, plan: "pro", plan_status: "active" };
+      return { ...base, plan: resolvedPlan, plan_status: "active" };
 
     case "subscription.on_hold":
     case "subscription.failed":
@@ -131,6 +153,7 @@ type DodoEventData = {
   subscription?: {
     id?: string;
     customer_id?: string;
+    product_id?: string;
     status?: string;
     current_period_start?: string;
     current_period_end?: string;
