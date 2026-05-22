@@ -34,8 +34,9 @@ export const runtime = "nodejs";
 // ── Signature verification ────────────────────────────────────────────────────
 
 /**
- * Dodo delivers webhooks via Svix.
- * Signed content: "{svix-id}.{svix-timestamp}.{raw_body}"
+ * Dodo sends webhooks with webhook-id / webhook-timestamp / webhook-signature headers.
+ * Signed content: "{webhook-id}.{webhook-timestamp}.{raw_body}"
+ * Signature format: "v1,<base64>" (comma-separated, space between multiple entries)
  * Secret format: "whsec_<base64_key>" or plain base64.
  */
 async function verifyDodoSignature(
@@ -43,9 +44,9 @@ async function verifyDodoSignature(
   headers: Headers,
   secret: string
 ): Promise<boolean> {
-  const msgId        = headers.get("svix-id");
-  const msgTimestamp = headers.get("svix-timestamp");
-  const msgSignature = headers.get("svix-signature");
+  const msgId        = headers.get("webhook-id");
+  const msgTimestamp = headers.get("webhook-timestamp");
+  const msgSignature = headers.get("webhook-signature");
 
   if (!msgId || !msgTimestamp || !msgSignature) return false;
 
@@ -62,7 +63,7 @@ async function verifyDodoSignature(
     .update(signedContent, "utf-8")
     .digest("base64");
 
-  // svix-signature may contain multiple space-separated "v1,<b64>" entries
+  // webhook-signature may contain multiple space-separated "v1,<b64>" entries
   const signatures = msgSignature.split(" ");
   return signatures.some((sig) => {
     const [prefix, b64] = sig.split(",");
