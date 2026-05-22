@@ -73,6 +73,11 @@ const PLANS = [
   },
 ] as const;
 
+type BillingCta =
+  | { kind: "checkout"; label: string }
+  | { kind: "manage"; label: string }
+  | { kind: "contact"; label: string; helper?: string };
+
 export default async function BillingPage() {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -124,7 +129,7 @@ export default async function BillingPage() {
     return planId.charAt(0).toUpperCase() + planId.slice(1);
   }
 
-  function getPlanCta(targetPlanId: "pro" | "builder" | "team") {
+  function getPlanCta(targetPlanId: "pro" | "builder" | "team"): BillingCta {
     const currentPlan = plan as "free" | "pro" | "builder" | "team";
     if (currentPlan === targetPlanId) {
       if (canOpenBillingPortal) return { kind: "manage" as const, label: "Manage billing" };
@@ -320,61 +325,52 @@ export default async function BillingPage() {
               <div className="mt-auto px-5 pb-5">
                 {(() => {
                   const cta = getPlanCta(p.id);
-                  if (cta.kind === "checkout") {
-                    return (
-                      <ProCheckoutButton
-                        planId={p.id}
-                        label={cta.label}
-                        alwaysCheckout={plan === "free"}
-                        className={`inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] transition-colors disabled:opacity-60 ${
-                          p.id === "pro"
-                            ? "font-semibold bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white"
-                            : "font-medium border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                        }`}
-                      />
-                    );
-                  }
-                  if (cta.kind === "manage") {
-                    if (canOpenBillingPortal) {
+                  switch (cta.kind) {
+                    case "checkout":
                       return (
-                        <ManageBillingButton
-                          className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                        <ProCheckoutButton
+                          planId={p.id}
+                          label={cta.label}
+                          alwaysCheckout={plan === "free"}
+                          className={`inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] transition-colors disabled:opacity-60 ${
+                            p.id === "pro"
+                              ? "font-semibold bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white"
+                              : "font-medium border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                          }`}
                         />
                       );
-                    }
-                    return (
-                      <div className="space-y-1.5">
-                        <a
-                          href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
-                          className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                        >
-                          Contact support
-                        </a>
-                        <p className="text-center text-[11px] text-[#8a8f98]">Billing portal is available after checkout.</p>
-                      </div>
-                    );
+                    case "manage":
+                      if (canOpenBillingPortal) {
+                        return (
+                          <ManageBillingButton
+                            className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                          />
+                        );
+                      }
+                      return (
+                        <div className="space-y-1.5">
+                          <a
+                            href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
+                            className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                          >
+                            Contact support
+                          </a>
+                          <p className="text-center text-[11px] text-[#8a8f98]">Billing portal is available after checkout.</p>
+                        </div>
+                      );
+                    case "contact":
+                      return (
+                        <div className="space-y-1.5">
+                          <a
+                            href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
+                            className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                          >
+                            {cta.label}
+                          </a>
+                          {cta.helper && <p className="text-center text-[11px] text-[#8a8f98]">{cta.helper}</p>}
+                        </div>
+                      );
                   }
-                  if (cta.kind === "contact") {
-                    return (
-                      <div className="space-y-1.5">
-                        <a
-                          href="mailto:hello@runtrim.com?subject=Manage%20RunTrim%20billing"
-                          className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                        >
-                          {cta.label}
-                        </a>
-                        {cta.helper && <p className="text-center text-[11px] text-[#8a8f98]">{cta.helper}</p>}
-                      </div>
-                    );
-                  }
-                  return (
-                    <a
-                      href={`mailto:hello@runtrim.com?subject=${encodeURIComponent(`Upgrade RunTrim to ${p.name}`)}`}
-                      className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                    >
-                      {cta.label}
-                    </a>
-                  );
                 })()}
               </div>
             </div>
