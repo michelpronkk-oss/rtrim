@@ -1425,6 +1425,18 @@ type BridgePathCheckResult = {
   sensitive: boolean;
 };
 
+type McpToolDefinition = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+};
+
+type McpToolCallResult = {
+  content: Array<{ type: "text"; text: string }>;
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
+
 function getBridgeDir(cwd: string): string {
   return path.join(getConfigDir(cwd), "bridge");
 }
@@ -1860,6 +1872,283 @@ async function ensureBridgeRunningForAgent(cwd: string): Promise<{ ok: boolean; 
     if (health.ok) return { ok: true, url: `http://${host}:${port}` };
   }
   return { ok: false };
+}
+
+function buildMcpTools(): McpToolDefinition[] {
+  return [
+    {
+      name: "runtrim_status",
+      description: "Get RunTrim contract and run status summary for the current repository.",
+      inputSchema: { type: "object", additionalProperties: false, properties: {} },
+    },
+    {
+      name: "runtrim_get_contract",
+      description: "Get the active RunTrim contract summary including allowed and forbidden paths.",
+      inputSchema: { type: "object", additionalProperties: false, properties: {} },
+    },
+    {
+      name: "runtrim_check_path",
+      description: "Check whether a file path is allowed under the active RunTrim contract.",
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["path"],
+        properties: {
+          path: { type: "string", minLength: 1 },
+        },
+      },
+    },
+    {
+      name: "runtrim_suggest_approval",
+      description: "Suggest a safe runtrim approve command for out-of-scope path expansion.",
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["path"],
+        properties: {
+          path: { type: "string", minLength: 1 },
+          reason: { type: "string" },
+        },
+      },
+    },
+    {
+      name: "runtrim_finish_guidance",
+      description: "Get concise guidance on using runtrim finish and PASS/WARN/BLOCKED.",
+      inputSchema: { type: "object", additionalProperties: false, properties: {} },
+    },
+  ];
+}
+
+async function buildRuntrimStatusMcp(cwd: string): Promise<McpToolCallResult> {
+  const contract = parseContractSummary(cwd);
+  const latest = loadLatestRun(cwd);
+  const changes = await getBridgeChanges(cwd);
+  const next = await getBridgeNextAction(cwd);
+  const bridgeState = readBridgeState(cwd);
+  let bridge: Record<string, unknown> = { running: false, url: null };
+  if (bridgeState) {
+    const health = await bridgeHealth(bridgeState.host, bridgeState.port);
+    if (health.ok) {
+      bridge = { running: true, url: `http://${bridgeState.host}:${bridgeState.port}` };
+    }
+  }
+  const payload: Record<string, unknown> = {
+    activeContractExists: contract.exists && contract.active,
+    taskSummary: contract.summary || latest?.task || null,
+    risk: contract.risk,
+    amendmentsCount: contract.approvedAmendments.length,
+    bridge,
+    changedFileCount: changes.count,
+    verdict: latest?.status ?? "unknown",
+    nextRecommendedAction: next,
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+  };
+}
+
+function buildRuntrimContractMcp(cwd: string): McpToolCallResult {
+  const contract = parseContractSummary(cwd);
+  const payload: Record<string, unknown> = {
+    exists: contract.exists,
+    active: contract.active,
+    task: contract.summary || null,
+    goal: contract.summary || null,
+    allowedPaths: contract.allowedPaths,
+    forbiddenPaths: contract.forbiddenPaths,
+    approvedAmendments: contract.approvedAmendments,
+    stopConditions: contract.stopRules,
+    risk: contract.risk,
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+  };
+}
+
+function buildRuntrimCheckPathMcp(cwd: string, args: Record<string, unknown> | undefined): McpToolCallResult {
+  const inputPath = typeof args?.path === "string" ? args.path : "";
+  const result = evaluateBridgePathAgainstContract(cwd, inputPath);
+  const blocked = result.allowed === false;
+  const nextAction =
+    result.allowed === true
+      ? "Path appears in scope. Continue and run runtrim finish when done."
+      : 'Path may be out of scope. Ask user and run: runtrim approve "Allow <path> for this run only"';
+  const payload: Record<string, unknown> = {
+    path: inputPath,
+    allowed: result.allowed,
+    blocked,
+    reason: result.reason,
+    matchedRule: result.matchedForbiddenRule ?? result.matchedAllowedRule ?? null,
+    suggestedNextAction: nextAction,
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+  };
+}
+
+function buildRuntrimSuggestApprovalMcp(cwd: string, args: Record<string, unknown> | undefined): McpToolCallResult {
+  const inputPath = typeof args?.path === "string" ? args.path : "";
+  const reason = typeof args?.reason === "string" ? args.reason.trim() : "";
+  const check = evaluateBridgePathAgainstContract(cwd, inputPath);
+  if (check.sensitive || check.reason === "forbidden_path_match") {
+    const warningPayload: Record<string, unknown> = {
+      allowedToApprove: false,
+      warning: "Path appears sensitive or forbidden. Do not approve automatically.",
+      reason: check.reason,
+      suggestedCommand: null,
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(warningPayload, null, 2) }],
+      structuredContent: warningPayload,
+      isError: false,
+    };
+  }
+  const reasonText = reason || "User requested scoped expansion";
+  const suggestedCommand = `runtrim approve "Allow ${inputPath} for this run only because ${reasonText}"`;
+  const payload: Record<string, unknown> = {
+    allowedToApprove: true,
+    warning: null,
+    suggestedCommand,
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+  };
+}
+
+function buildRuntrimFinishGuidanceMcp(): McpToolCallResult {
+  const payload: Record<string, unknown> = {
+    command: "runtrim finish",
+    why: "runtrim finish verifies scope, sensitive files, and contract compliance before accepting a run.",
+    verdicts: ["PASS: safe to accept", "WARN: review needed", "BLOCKED: contract/safety violation"],
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+  };
+}
+
+function encodeMcpMessage(message: Record<string, unknown>): Buffer {
+  const body = Buffer.from(JSON.stringify(message), "utf8");
+  const header = Buffer.from(`Content-Length: ${body.length}\r\n\r\n`, "utf8");
+  return Buffer.concat([header, body]);
+}
+
+async function startMcpServerStdio(cwd: string): Promise<void> {
+  const version = resolveCliVersion();
+  const tools = buildMcpTools();
+  const input = process.stdin;
+  const output = process.stdout;
+  process.stderr.write("RunTrim MCP v1 started (stdio, local only).\n");
+  process.stderr.write("No source upload. No env file content reads.\n");
+  process.stderr.write(
+    "When using RunTrim, check path scope before editing files. If a requested file is outside scope, call runtrim_suggest_approval and ask the user before continuing.\n"
+  );
+
+  let buffer = Buffer.alloc(0);
+  const send = (message: Record<string, unknown>): void => {
+    output.write(encodeMcpMessage(message));
+  };
+
+  const handleRequest = async (msg: Record<string, unknown>): Promise<void> => {
+    const id = msg.id;
+    const method = typeof msg.method === "string" ? msg.method : "";
+    const params = (msg.params && typeof msg.params === "object" ? (msg.params as Record<string, unknown>) : {}) as Record<string, unknown>;
+    if (!id && method.startsWith("notifications/")) return;
+    if (method === "initialize") {
+      send({
+        jsonrpc: "2.0",
+        id,
+        result: {
+          protocolVersion: "2024-11-05",
+          capabilities: { tools: {} },
+          serverInfo: { name: "runtrim-mcp", version },
+        },
+      });
+      return;
+    }
+    if (method === "notifications/initialized") return;
+    if (method === "ping") {
+      send({ jsonrpc: "2.0", id, result: {} });
+      return;
+    }
+    if (method === "tools/list") {
+      send({
+        jsonrpc: "2.0",
+        id,
+        result: { tools },
+      });
+      return;
+    }
+    if (method === "tools/call") {
+      const name = typeof params.name === "string" ? params.name : "";
+      const args = params.arguments && typeof params.arguments === "object" ? (params.arguments as Record<string, unknown>) : undefined;
+      let result: McpToolCallResult | null = null;
+      if (name === "runtrim_status") result = await buildRuntrimStatusMcp(cwd);
+      if (name === "runtrim_get_contract") result = buildRuntrimContractMcp(cwd);
+      if (name === "runtrim_check_path") result = buildRuntrimCheckPathMcp(cwd, args);
+      if (name === "runtrim_suggest_approval") result = buildRuntrimSuggestApprovalMcp(cwd, args);
+      if (name === "runtrim_finish_guidance") result = buildRuntrimFinishGuidanceMcp();
+      if (!result) {
+        send({
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32602, message: "unknown_tool" },
+        });
+        return;
+      }
+      send({
+        jsonrpc: "2.0",
+        id,
+        result,
+      });
+      return;
+    }
+    send({
+      jsonrpc: "2.0",
+      id,
+      error: { code: -32601, message: "method_not_found" },
+    });
+  };
+
+  const processBuffer = async (): Promise<void> => {
+    while (true) {
+      const headerEnd = buffer.indexOf("\r\n\r\n");
+      if (headerEnd === -1) return;
+      const headerText = buffer.slice(0, headerEnd).toString("utf8");
+      const contentLengthLine = headerText
+        .split("\r\n")
+        .find((line) => line.toLowerCase().startsWith("content-length:"));
+      if (!contentLengthLine) {
+        buffer = Buffer.alloc(0);
+        return;
+      }
+      const contentLength = Number.parseInt(contentLengthLine.split(":")[1]?.trim() ?? "", 10);
+      if (!Number.isFinite(contentLength) || contentLength < 0) {
+        buffer = Buffer.alloc(0);
+        return;
+      }
+      const frameStart = headerEnd + 4;
+      const frameEnd = frameStart + contentLength;
+      if (buffer.length < frameEnd) return;
+      const payloadRaw = buffer.slice(frameStart, frameEnd).toString("utf8");
+      buffer = buffer.slice(frameEnd);
+      try {
+        const message = JSON.parse(payloadRaw) as Record<string, unknown>;
+        await handleRequest(message);
+      } catch {
+        // ignore malformed frame
+      }
+    }
+  };
+
+  input.on("data", async (chunk: Buffer) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    await processBuffer();
+  });
 }
 
 function jsonSend(res: http.ServerResponse, status: number, body: Record<string, unknown>): void {
@@ -3918,6 +4207,32 @@ function registerBridgeCommands(name: "bridge" | "daemon"): void {
 
 registerBridgeCommands("bridge");
 registerBridgeCommands("daemon");
+
+const mcpCommand = program.command("mcp").description("RunTrim local MCP server (stdio)");
+
+mcpCommand
+  .command("start")
+  .description("Start RunTrim MCP server over stdio")
+  .action(async () => {
+    const cwd = process.cwd();
+    await startMcpServerStdio(cwd);
+  });
+
+mcpCommand
+  .command("instructions")
+  .description("Print MCP usage note for agents")
+  .action(() => {
+    console.log("");
+    console.log("RunTrim MCP usage note");
+    console.log("When using RunTrim, check path scope before editing files.");
+    console.log("If a requested file is outside scope, call runtrim_suggest_approval and ask the user before continuing.");
+    console.log("");
+  });
+
+mcpCommand.action(async () => {
+  const cwd = process.cwd();
+  await startMcpServerStdio(cwd);
+});
 
 agentCommand
   .command("set <target> [commandText]")
