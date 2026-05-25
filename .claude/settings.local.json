@@ -70,7 +70,10 @@
       "Bash(grep -n \"saveGuardState\\(cwd, { lastFinishAt\" c:/Users/miche/Desktop/runtrim/cli/runtrim.ts)",
       "Bash(node scripts/prepare-cli-package-manifest.mjs)",
       "Bash(node -e \"const p=JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\); console.log\\('deps:', Object.keys\\(p.dependencies\\).join\\(', '\\)\\)\")",
-      "Bash(dir c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\app)"
+      "Bash(dir c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\app)",
+      "Bash(node dist-cli/runtrim.cjs doctor)",
+      "Bash(node dist-cli/runtrim.cjs --help)",
+      "Bash(node dist-cli/runtrim.cjs start)"
     ]
   }
 }

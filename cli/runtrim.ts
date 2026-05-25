@@ -3867,6 +3867,9 @@ program
     console.log(chalk.white("  runtrim mcp config --print"));
     console.log(chalk.white("  runtrim mcp start"));
     console.log("");
+    console.log(DIM("  Check readiness"));
+    console.log(chalk.white("  runtrim doctor"));
+    console.log("");
     console.log(DIM("  Adapters"));
     console.log(chalk.white("  runtrim adapters"));
     console.log(chalk.white("  runtrim adapters status"));
@@ -3963,7 +3966,7 @@ program
 
 program
   .command("doctor")
-  .description("Check project readiness for RunTrim agent auto-control")
+  .description("Check whether the current project is RunTrim-ready for agents, MCP, memory and finish verification")
   .action(async () => {
     const cwd = process.cwd();
     const repoCheck = await assertFreeRepoAllowed(cwd);

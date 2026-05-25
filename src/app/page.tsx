@@ -805,7 +805,7 @@ export default function Home() {
                   <em style={{ fontStyle: "normal", color: "#8a8f98" }}>Scale to a team.</em>
                 </h2>
                 <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
-                  The CLI is free forever. Cloud sync, advanced guardrails, and team governance unlock as you grow.
+                  The CLI is free forever. Upgrade when you need cloud history, synced memory, recovery metadata and team governance.
                 </p>
               </div>
             </div>
@@ -820,8 +820,8 @@ export default function Home() {
                 price: "$0",
                 per: "/ local",
                 trial: null as string | null,
-                desc: "The CLI, the protocol, and local run history. Forever.",
-                features: ["Unlimited local runs", "Memory, scope, finish checks", "All supported agents", "JSON run logs on disk"],
+                desc: "The CLI, local memory and recovery for individual AI coding runs.",
+                features: ["Unlimited local runs", "Memory, scope and finish checks", "All supported agents", "Local run history", "Local restore for latest run"],
                 featured: false,
               },
               {
@@ -830,13 +830,13 @@ export default function Home() {
                 price: "$29",
                 per: "/ month",
                 trial: "3-day trial" as string | null,
-                desc: "Guarded run handoff, cloud sync, memory, and savings reports.",
+                desc: "Personal agent control with cloud sync, memory and recovery history.",
                 features: [
                   "Unlimited guarded handoffs",
                   "Auto-sync dashboard",
                   "Cloud run history",
                   "Memory sync",
-                  "Continuation / handoff",
+                  "Synced restore metadata",
                   "Savings reports",
                 ],
                 featured: true,
@@ -847,12 +847,14 @@ export default function Home() {
                 price: "$49",
                 per: "/ month",
                 trial: null as string | null,
-                desc: "Advanced guardrails for founders shipping production code daily.",
+                desc: "Advanced guardrails for founders shipping production code with AI agents daily.",
                 features: [
                   "Everything in Pro",
                   "Unlimited projects",
                   "Proof / drift reports",
-                  "Priority Run Compiler access",
+                  "Priority guardrails",
+                  "Multi-project memory",
+                  "Advanced recovery history",
                 ],
                 featured: false,
               },
@@ -862,8 +864,8 @@ export default function Home() {
                 price: "From $24",
                 per: "/ seat / month",
                 trial: null as string | null,
-                desc: "Shared protocol, shared memory, shared accountability.",
-                features: ["Everything in Builder", "Shared team state", "Approvals and audit logs", "GitHub checks and policies (coming soon)"],
+                desc: "Shared control for teams using AI coding agents.",
+                features: ["Everything in Builder", "Shared team state", "Approvals and audit logs", "Shared recovery logs", "GitHub checks and policies (coming soon)"],
                 featured: false,
               },
             ].map(({ id, name, price, per, trial, desc, features, featured }) => (
