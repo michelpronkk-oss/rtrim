@@ -53,6 +53,28 @@ export interface RunPlan {
 
 const FAST_PATH_CATEGORIES = new Set(["ui", "docs", "tests", "unknown"]);
 const ALWAYS_CONTRACT_CATEGORIES = new Set(["auth", "billing", "payment", "webhook", "database", "env", "middleware"]);
+const RISK_ORDER: Array<"low" | "medium" | "high" | "critical"> = ["low", "medium", "high", "critical"];
+const NEGATION_PREFIX_RE =
+  /\b(do not|don't|dont|never|avoid|must not|should not|without changing|without touching|no changes to|keep .* untouched|leave .* untouched|keep .* unchanged)\b/i;
+
+function maxRisk(a: "low" | "medium" | "high" | "critical", b: "low" | "medium" | "high" | "critical"): "low" | "medium" | "high" | "critical" {
+  return RISK_ORDER[Math.max(RISK_ORDER.indexOf(a), RISK_ORDER.indexOf(b))];
+}
+
+function hasNegationNear(text: string, index: number): boolean {
+  const start = Math.max(0, index - 64);
+  const window = text.slice(start, index + 8);
+  return NEGATION_PREFIX_RE.test(window);
+}
+
+function hasPositiveKeywordMention(taskLower: string, keyword: string): boolean {
+  let idx = taskLower.indexOf(keyword.toLowerCase());
+  while (idx !== -1) {
+    if (!hasNegationNear(taskLower, idx)) return true;
+    idx = taskLower.indexOf(keyword.toLowerCase(), idx + keyword.length);
+  }
+  return false;
+}
 
 function isFastPathEligible(
   risk: "low" | "medium" | "high" | "critical",
@@ -86,13 +108,21 @@ export function generatePlan(
   const guardMode   = ((config as Record<string, unknown>).autoGuardMode as AutoGuardMode) ?? "smart";
   const adapters    = detectAdapters(cwd);
 
-  // Risk from explicit paths first; fall back to current changed files; then low
+  // Risk from explicit paths first. Avoid using unrelated working-tree changes
+  // so preview risk reflects the requested task scope.
   const riskFiles   = compiler.explicitPaths.length > 0
     ? compiler.explicitPaths
-    : currentChangedFiles.length > 0
-    ? currentChangedFiles
     : [];
-  const rawRisk     = classifyFileRisk(riskFiles);
+  let rawRisk: "low" | "medium" | "high" | "critical" = classifyFileRisk(riskFiles);
+  if (ALWAYS_CONTRACT_CATEGORIES.has(compiler.taskCategory)) {
+    rawRisk = maxRisk(rawRisk, "high");
+  }
+  const lowerTask = task.toLowerCase();
+  const criticalSystemMentions = ["auth", "billing", "payment", "webhook", "database", "migration", "middleware"]
+    .filter((k) => hasPositiveKeywordMention(lowerTask, k)).length;
+  if (criticalSystemMentions >= 2) {
+    rawRisk = maxRisk(rawRisk, "critical");
+  }
 
   // Category-specific scope, forbidden, stop, verification
   const catScope = buildCategoryScope(

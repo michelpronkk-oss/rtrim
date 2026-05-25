@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
 import { PublicFooter } from "@/components/app/public-footer";
-import { SmartCta } from "@/components/app/smart-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
@@ -315,27 +314,33 @@ export default function PlansPage() {
                 {/* CTA */}
                 <div className="mt-auto px-5 pb-5 min-h-[74px] flex flex-col justify-end">
                   {isFree ? (
-                    <SmartCta
-                      label={plan.ctaLabel}
-                      loggedOutHref="/app/install"
-                      openAppLabel="Open dashboard"
+                    <Link
+                      href="/app/install"
                       className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#8a8f98] hover:bg-[#16191e] hover:text-[#f4f5f7]"
-                      openAppClassName="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                    />
+                    >
+                      Set up local CLI
+                    </Link>
                   ) : isPro ? (
                     <ProCheckoutButton
                       label={plan.ctaLabel}
                       className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
                     />
                   ) : (
-                    <SmartCta
-                      label={plan.id === "builder" ? "Get Builder" : "Get Team"}
-                      variant={plan.id === "builder" ? "builder" : "pro"}
-                      loginRedirect
-                      className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                      openAppLabel="Open dashboard"
-                      openAppClassName="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                    />
+                    plan.id === "builder" ? (
+                      <Link
+                        href="/app/billing"
+                        className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                      >
+                        Upgrade to Builder
+                      </Link>
+                    ) : (
+                      <a
+                        href="mailto:hello@runtrim.com?subject=RunTrim%20Team%20plan"
+                        className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
+                      >
+                        Contact for Team
+                      </a>
+                    )
                   )}
                   <p
                     className={`mt-2 text-center font-mono text-[10px] ${plan.microcopy ? "text-[#3a3e46]" : "text-transparent"}`}
@@ -418,23 +423,19 @@ export default function PlansPage() {
                         className="inline-flex h-8 items-center justify-center rounded px-3 text-[11px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
                       />
                     ) : plan.id === "builder" ? (
-                      <SmartCta
-                        label="Get Builder"
-                        variant="builder"
-                        loginRedirect
+                      <Link
+                        href="/app/billing"
                         className="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
-                        openAppLabel="Open dashboard"
-                        openAppClassName="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
-                      />
+                      >
+                        Upgrade to Builder
+                      </Link>
                     ) : (
-                      <SmartCta
-                        label="Get Team"
-                        variant="pro"
-                        loginRedirect
+                      <a
+                        href="mailto:hello@runtrim.com?subject=RunTrim%20Team%20plan"
                         className="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
-                        openAppLabel="Open dashboard"
-                        openAppClassName="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
-                      />
+                      >
+                        Contact for Team
+                      </a>
                     )}
                   </div>
                 ))}

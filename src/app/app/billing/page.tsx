@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId } from "@/lib/entitlements";
-import { trialEligible } from "@/lib/billing-cta";
+import { needsPaymentUpdate, trialEligible } from "@/lib/billing-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 import { ManageBillingButton } from "./_components/manage-billing-button";
 
@@ -109,7 +109,7 @@ export default async function BillingPage() {
   const isFree      = plan === "free";
   const isTrialing  = plan !== "free" && planStatus === "trialing";
   const isCanceled  = (planStatus === "canceled" || planStatus === "cancelled");
-  const isPastDue   = planStatus === "past_due";
+  const isPastDue   = needsPaymentUpdate(planStatus);
   const canceledInPeriod = isCanceled && plan !== "free"; // access still active
   const trialEnd    = isTrialing && periodEnd ? formatDate(periodEnd) : null;
   const periodEndFmt = periodEnd ? formatDate(periodEnd) : null;
@@ -160,7 +160,7 @@ export default async function BillingPage() {
           label: isTrialEligible ? "Start 3-day Pro trial" : "Upgrade to Pro",
         };
       }
-      if (targetPlanId === "builder") return { kind: "checkout" as const, label: "Get Builder" };
+      if (targetPlanId === "builder") return { kind: "checkout" as const, label: "Upgrade to Builder" };
       if (targetPlanId === "team") return { kind: "contact" as const, label: "Contact for Team" };
       return { kind: "checkout" as const, label: `Get ${planLabel(targetPlanId)}` };
     }

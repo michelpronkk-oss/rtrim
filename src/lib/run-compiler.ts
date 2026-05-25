@@ -91,6 +91,26 @@ const MUST_INCLUDE_RE = /\ballowed\s+scope\s+(?:must\s+)?include\b|\bmust\s+(?:i
 const CLI_SCOPE_RE =
   /\b(cli|command routing|runtrim command|run compiler|contract generation|scope inference|preview command|agent preview command|agent apply|adapters?|auto-guard|bridge helpers?|daemon|local server|localhost|\.runtrim(?:\s+artifacts?)?)\b/i;
 
+const NEGATION_PREFIX_RE =
+  /\b(do not|don't|dont|never|avoid|must not|should not|without changing|without touching|no changes to|keep .* untouched|leave .* untouched|keep .* unchanged)\b/i;
+
+function hasNegationNear(text: string, index: number): boolean {
+  const start = Math.max(0, index - 64);
+  const window = text.slice(start, index + 8);
+  return NEGATION_PREFIX_RE.test(window);
+}
+
+function hasPositiveKeywordMention(task: string, keyword: string): boolean {
+  const lowerTask = task.toLowerCase();
+  const lowerKeyword = keyword.toLowerCase();
+  let idx = lowerTask.indexOf(lowerKeyword);
+  while (idx !== -1) {
+    if (!hasNegationNear(lowerTask, idx)) return true;
+    idx = lowerTask.indexOf(lowerKeyword, idx + lowerKeyword.length);
+  }
+  return false;
+}
+
 function extractScopePhrase(task: string, re: RegExp): string | null {
   const m = task.match(re);
   if (!m) return null;
@@ -160,18 +180,45 @@ function buildExplicitAllowedScope(task: string, explicitPaths: string[]): strin
 
 function buildExplicitForbiddenScope(task: string): string[] {
   const out: string[] = [];
-  const forbiddenPhrase = extractScopePhrase(task, /\bforbidden\s+scope\s+must\s+include\s+([^\n.]+)/i);
-  if (forbiddenPhrase) out.push(forbiddenPhrase);
-  const doNotTouch = extractScopePhrase(task, /\bdo\s+not\s+touch\s+([^\n.]+)/i);
-  if (doNotTouch) out.push(`Do not touch ${doNotTouch}`);
-  const doNotEdit = extractScopePhrase(task, /\bdo\s+not\s+edit\s+([^\n.]+)/i);
-  if (doNotEdit) out.push(`Do not edit ${doNotEdit}`);
-  const withoutTouching = extractScopePhrase(task, /\bwithout\s+touching\s+([^\n.]+)/i);
-  if (withoutTouching) out.push(`Without touching ${withoutTouching}`);
-  const exclude = extractScopePhrase(task, /\bexclude\s+([^\n.]+)/i);
-  if (exclude) out.push(`Exclude ${exclude}`);
-  const forbidden = extractScopePhrase(task, /\bforbidden\s+([^\n.]+)/i);
-  if (forbidden) out.push(`Forbidden ${forbidden}`);
+
+  const addBoundaryList = (raw: string | null | undefined): void => {
+    if (!raw) return;
+    const normalized = raw
+      .replace(/\b(logic|internals?|behavior|files?|systems?)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const parts = normalized
+      .split(/\s*(?:,|;|\band\b|\bor\b)\s*/i)
+      .map((p) => p.trim().replace(/[.]+$/, ""))
+      .filter(Boolean)
+      .slice(0, 12);
+    for (const p of parts) {
+      if (p.length < 2) continue;
+      out.push(`Do not touch ${p}`);
+    }
+  };
+
+  const explicitPhrases = [
+    /\bforbidden\s+scope\s+must\s+include\s+([^\n.]+)/i,
+    /\bdo\s+not\s+touch\s+([^\n.]+)/i,
+    /\bdo\s+not\s+edit\s+([^\n.]+)/i,
+    /\bdo\s+not\s+change\s+([^\n.]+)/i,
+    /\bmust\s+not\s+touch\s+([^\n.]+)/i,
+    /\bshould\s+not\s+touch\s+([^\n.]+)/i,
+    /\bwithout\s+changing\s+([^\n.]+)/i,
+    /\bwithout\s+touching\s+([^\n.]+)/i,
+    /\bno\s+changes\s+to\s+([^\n.]+)/i,
+    /\bkeep\s+([^\n.]+?)\s+(?:untouched|unchanged)\b/i,
+    /\bleave\s+([^\n.]+?)\s+untouched\b/i,
+    /\bavoid\s+changing\s+([^\n.]+)/i,
+    /\bexclude\s+([^\n.]+)/i,
+    /\bforbidden\s+([^\n.]+)/i,
+  ];
+
+  for (const re of explicitPhrases) {
+    addBoundaryList(extractScopePhrase(task, re));
+  }
+
   return [...new Set(out)];
 }
 
@@ -303,14 +350,13 @@ const CATEGORY_KEYWORDS: Array<[TaskCategory, string[]]> = [
 
 export function classifyTaskCategory(task: string, explicitPaths: string[]): TaskCategory {
   const lower = task.toLowerCase();
-  if (CLI_SCOPE_RE.test(task)) return "cli";
 
   // Let explicit paths provide hints
   const pathHints = explicitPaths.join(" ").toLowerCase();
 
   for (const [category, keywords] of CATEGORY_KEYWORDS) {
     const combined = lower + " " + pathHints;
-    if (keywords.some((kw) => combined.includes(kw))) {
+    if (keywords.some((kw) => hasPositiveKeywordMention(combined, kw))) {
       return category;
     }
   }

@@ -362,6 +362,7 @@ interface AgentPreviewArtifact {
   filesToInspect: string[];
   allowedScope: string[];
   forbiddenScope: string[];
+  boundariesDetected: string[];
   sensitiveAreas: string[];
   stopRules: string[];
   successCriteria: string[];
@@ -379,6 +380,20 @@ interface AgentPreviewArtifact {
   approvalRequired: "no" | "recommended" | "required";
   recommendedNextCommand: string;
   providerRouting: ProviderRoutingDecision;
+}
+
+function extractBoundaryLabels(forbiddenScope: string[]): string[] {
+  const labels = new Set<string>();
+  for (const line of forbiddenScope) {
+    const lower = line.toLowerCase();
+    if (lower.includes("billing") || lower.includes("subscription") || lower.includes("payment")) labels.add("billing");
+    if (lower.includes("auth") || lower.includes("session") || lower.includes("jwt")) labels.add("auth");
+    if (lower.includes("middleware") || lower.includes("proxy")) labels.add("middleware");
+    if (lower.includes(".env") || lower.includes("secret")) labels.add("env");
+    if (lower.includes("cli")) labels.add("cli");
+    if (lower.includes("mcp")) labels.add("mcp");
+  }
+  return [...labels];
 }
 
 interface AgentPreviewBuildResult {
@@ -517,8 +532,21 @@ function buildApprovalLevel(
 ): "no" | "recommended" | "required" {
   const text = `${task}\n${category}`.toLowerCase();
   const highSystems = ["auth", "billing", "payment", "dodo", "stripe", "webhook", "database", "migration", "rls", "middleware", "env", "secret"];
+  const hasNegationNear = (source: string, index: number): boolean => {
+    const start = Math.max(0, index - 64);
+    const window = source.slice(start, index + 8);
+    return /\b(do not|don't|dont|never|avoid|must not|should not|without changing|without touching|no changes to|keep .* untouched|leave .* untouched|keep .* unchanged)\b/i.test(window);
+  };
+  const hasPositiveKeyword = (source: string, keyword: string): boolean => {
+    let idx = source.indexOf(keyword);
+    while (idx !== -1) {
+      if (!hasNegationNear(source, idx)) return true;
+      idx = source.indexOf(keyword, idx + keyword.length);
+    }
+    return false;
+  };
   if (risk === "high" || risk === "critical") return "required";
-  if (highSystems.some((k) => text.includes(k))) return "required";
+  if (highSystems.some((k) => hasPositiveKeyword(text, k))) return "required";
   if (risk === "medium") return "recommended";
   return "no";
 }
@@ -563,6 +591,9 @@ function writePreviewArtifacts(cwd: string, preview: AgentPreviewArtifact): { js
     "",
     "Forbidden:",
     ...(preview.forbiddenScope.length > 0 ? preview.forbiddenScope.slice(0, 8).map((f) => `- ${f}`) : ["- none"]),
+    ...(preview.boundariesDetected.length > 0
+      ? ["", `Boundaries detected: ${preview.boundariesDetected.join(", ")} will be forbidden, not treated as active scope.`]
+      : []),
     "",
     "Learned context:",
     ...(preview.learnedContext.length > 0 ? preview.learnedContext.map((x) => `- ${x}`) : ["- learning not available yet"]),
@@ -603,6 +634,9 @@ async function runAgentPreview(task: string): Promise<void> {
   console.log("");
   console.log(GO_ACCENT.bold("Forbidden"));
   for (const item of preview.forbiddenScope.slice(0, 6)) console.log(DIM("  - ") + chalk.white(item));
+  if (preview.boundariesDetected.length > 0) {
+    console.log(DIM("  Boundaries detected: ") + chalk.white(`${preview.boundariesDetected.join(", ")} will be forbidden, not treated as active scope.`));
+  }
   console.log("");
   console.log(GO_ACCENT.bold("Patch strategy"));
   for (let i = 0; i < preview.patchStrategy.length; i += 1) {
@@ -673,6 +707,7 @@ async function buildAgentPreview(task: string): Promise<AgentPreviewBuildResult>
     filesToInspect,
     allowedScope: contract.contract.relevantScope,
     forbiddenScope: contract.contract.forbiddenScope,
+    boundariesDetected: extractBoundaryLabels(contract.contract.forbiddenScope),
     sensitiveAreas: [...contract.contract.sensitiveScope, ...plan.sensitiveAreas].slice(0, 10),
     stopRules: contract.contract.stopRules,
     successCriteria: contract.contract.successCriteria,

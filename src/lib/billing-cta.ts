@@ -27,3 +27,9 @@ export function trialEligible(opts: {
   if (status === "canceled" || status === "cancelled" || status === "expired") return false;
   return true;
 }
+
+/** Billing states that require payment recovery before new checkout flows. */
+export function needsPaymentUpdate(planStatus: string | null): boolean {
+  const status = (planStatus ?? "").toLowerCase();
+  return status === "past_due" || status === "payment_failed" || status === "incomplete";
+}

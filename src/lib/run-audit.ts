@@ -118,6 +118,33 @@ const LOOP_PATTERNS = [
   /\b(if it doesn.t work.{0,20}try again)\b/i,
 ];
 
+const NEGATION_PREFIX_RE =
+  /\b(do not|don't|dont|never|avoid|must not|should not|without changing|without touching|no changes to|keep .* untouched|leave .* untouched|keep .* unchanged)\b/i;
+
+function hasNegationNear(text: string, index: number): boolean {
+  const start = Math.max(0, index - 64);
+  const window = text.slice(start, index + 8);
+  return NEGATION_PREFIX_RE.test(window);
+}
+
+function hasPositiveKeywordMention(taskLower: string, keyword: string): boolean {
+  let idx = taskLower.indexOf(keyword.toLowerCase());
+  while (idx !== -1) {
+    if (!hasNegationNear(taskLower, idx)) return true;
+    idx = taskLower.indexOf(keyword.toLowerCase(), idx + keyword.length);
+  }
+  return false;
+}
+
+function hasNegatedKeywordMention(taskLower: string, keyword: string): boolean {
+  let idx = taskLower.indexOf(keyword.toLowerCase());
+  while (idx !== -1) {
+    if (hasNegationNear(taskLower, idx)) return true;
+    idx = taskLower.indexOf(keyword.toLowerCase(), idx + keyword.length);
+  }
+  return false;
+}
+
 function scoreTask(task: string, flags: AuditFlag[]): number {
   let score = 100;
   for (const flag of flags) {
@@ -194,7 +221,7 @@ function detectMegaRun(taskLower: string, task: string): {
 } {
   const found: string[] = [];
   for (const [system, keywords] of Object.entries(MEGA_RUN_SYSTEMS)) {
-    if (keywords.some((kw) => taskLower.includes(kw))) {
+    if (keywords.some((kw) => hasPositiveKeywordMention(taskLower, kw))) {
       found.push(system);
     }
   }
@@ -206,23 +233,31 @@ function detectMegaRun(taskLower: string, task: string): {
 function detectAreasTouched(taskLower: string): {
   forbidden: string[];
   sensitive: string[];
+  boundaries: string[];
 } {
   const forbidden: string[] = [];
   const sensitive: string[] = [];
+  const boundaries: string[] = [];
 
   for (const [area, keywords] of Object.entries(ALWAYS_FORBIDDEN_KEYWORDS)) {
-    if (keywords.some((kw) => taskLower.includes(kw))) {
+    if (keywords.some((kw) => hasPositiveKeywordMention(taskLower, kw))) {
       forbidden.push(area);
+    }
+    if (keywords.some((kw) => hasNegatedKeywordMention(taskLower, kw))) {
+      boundaries.push(area);
     }
   }
 
   for (const [area, keywords] of Object.entries(SENSITIVE_BILLING_KEYWORDS)) {
-    if (keywords.some((kw) => taskLower.includes(kw))) {
+    if (keywords.some((kw) => hasPositiveKeywordMention(taskLower, kw))) {
       sensitive.push(area);
+    }
+    if (keywords.some((kw) => hasNegatedKeywordMention(taskLower, kw))) {
+      boundaries.push(area);
     }
   }
 
-  return { forbidden, sensitive };
+  return { forbidden, sensitive, boundaries: [...new Set(boundaries)] };
 }
 
 export function auditTask(
@@ -342,7 +377,7 @@ export function auditTask(
   }
 
   // Detect areas by category
-  const { forbidden: forbiddenAreasTouched, sensitive: sensitiveAreasRelevant } =
+  const { forbidden: forbiddenAreasTouched, sensitive: sensitiveAreasRelevant, boundaries } =
     detectAreasTouched(taskLower);
 
   // Flag forbidden areas explicitly mentioned in the task (e.g. "touch auth")
@@ -362,6 +397,16 @@ export function auditTask(
       label: `Sensitive area: ${sensitiveAreasRelevant.join(", ")}`,
       severity: "warning",
       detail: `Task touches ${sensitiveAreasRelevant.join(", ")}. These are moved to SENSITIVE SCOPE: inspect allowed, editing requires explicit approval.`,
+    });
+  }
+
+  if (boundaries.length > 0) {
+    flags.push({
+      code: "forbidden_boundaries_detected",
+      label: `Boundaries detected: ${boundaries.join(", ")}`,
+      severity: "info",
+      detail:
+        "Sensitive systems in negated constraints are treated as forbidden boundaries, not active task scope.",
     });
   }
 

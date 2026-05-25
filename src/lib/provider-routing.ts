@@ -81,6 +81,26 @@ const FAST_LOCAL_KEYWORDS = [
   "ui polish",
 ];
 
+const NEGATION_PREFIX_RE =
+  /\b(do not|don't|dont|never|avoid|must not|should not|without changing|without touching|no changes to|keep .* untouched|leave .* untouched|keep .* unchanged)\b/i;
+
+function hasNegationNear(text: string, index: number): boolean {
+  const start = Math.max(0, index - 64);
+  const window = text.slice(start, index + 8);
+  return NEGATION_PREFIX_RE.test(window);
+}
+
+function hasPositiveKeywordMention(task: string, keyword: string): boolean {
+  const lowerTask = task.toLowerCase();
+  const lowerKeyword = keyword.toLowerCase();
+  let idx = lowerTask.indexOf(lowerKeyword);
+  while (idx !== -1) {
+    if (!hasNegationNear(lowerTask, idx)) return true;
+    idx = lowerTask.indexOf(lowerKeyword, idx + lowerKeyword.length);
+  }
+  return false;
+}
+
 function normalize(s: string | undefined): string {
   return (s ?? "").toLowerCase();
 }
@@ -140,10 +160,10 @@ export function recommendProviderRouting(ctx: ProviderRoutingContext): ProviderR
   const changedFiles = ctx.changedFiles ?? [];
   const learnedContext = ctx.learnedContext ?? [];
   const hasProofGapSignals = proofRequired.some((p) => /proof gap|missing|vercel log|manual verification/i.test(p));
-  const highRiskByKeyword = HIGH_RISK_KEYWORDS.some((k) => task.includes(k) || category.includes(k));
+  const highRiskByKeyword = HIGH_RISK_KEYWORDS.some((k) => hasPositiveKeywordMention(task, k) || hasPositiveKeywordMention(category, k));
   const fastKeyword = FAST_LOCAL_KEYWORDS.some((k) => task.includes(k));
   const multiCritical =
-    ["auth", "billing", "database", "webhook", "payment", "migration"].filter((k) => task.includes(k)).length >= 2;
+    ["auth", "billing", "database", "webhook", "payment", "migration"].filter((k) => hasPositiveKeywordMention(task, k)).length >= 2;
   const broadTask = !ctx.explicitScope && task.split(/\s+/).length > 16;
   const hasSensitiveFiles = sensitiveAreas.length > 0 || changedFiles.some((f) => HIGH_RISK_KEYWORDS.some((k) => normalize(f).includes(k)));
   const noLearning = learnedContext.length === 0 && (ctx.similarRunsCount ?? 0) === 0;

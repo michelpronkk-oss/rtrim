@@ -61,7 +61,7 @@ const PLANS = [
       "Savings and report history",
       "3-day trial",
     ],
-    cta:       "Start Pro trial",
+    cta:       "Start 3-day Pro trial",
     ctaHref:   "/app/trial",
     ctaStyle:  "fill",
   },
@@ -80,8 +80,8 @@ const PLANS = [
       "Higher run and history limits",
       "Early access to advanced integrations",
     ],
-    cta:       "Get Builder",
-    ctaHref:   "/login",
+    cta:       "Upgrade to Builder",
+    ctaHref:   "mailto:hello@runtrim.com?subject=RunTrim%20Team%20plan",
     ctaStyle:  "border",
   },
   {
@@ -99,7 +99,7 @@ const PLANS = [
       "Audit logs",
       "Team policies and GitHub checks (coming soon)",
     ],
-    cta:       "Join Team waitlist",
+    cta:       "Contact for Team",
     ctaHref:   "/login",
     ctaStyle:  "border",
   },
@@ -170,9 +170,17 @@ export default function PricingPage() {
                 {plan.id === "pro" ? (
                   <ProCheckoutButton
                     planId="pro"
-                    label="Start Pro trial"
+                    label="Start 3-day Pro trial"
                     className="inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all bg-[#7C6DFA] text-white hover:opacity-85 disabled:opacity-60"
                   />
+                ) : plan.id === "team" ? (
+                  <a
+                    href={plan.ctaHref}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all border border-white/10 text-[#9699BE] hover:border-white/20 hover:text-[#EDEEFF]"
+                  >
+                    {plan.cta}
+                    <ArrowRight className="size-3.5" />
+                  </a>
                 ) : (
                   <Link
                     href={plan.ctaHref}

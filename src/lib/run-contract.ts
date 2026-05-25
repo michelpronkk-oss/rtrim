@@ -82,6 +82,12 @@ function scoreToRisk(score: number): WasteRisk {
 export function cleanObjective(task: string): string {
   let t = task.trim();
 
+  // Strip common boundary clauses so objective stays focused.
+  t = t.replace(
+    /(?:^|[\s,.])(do not|don't|dont|must not|should not|without changing|without touching|no changes to|keep .*? unchanged|keep .*? untouched|leave .*? untouched|avoid changing)\b[^.]*\.?/gi,
+    " "
+  );
+
   // Remove "check everything [and]" - with optional trailing conjunction
   t = t.replace(/,?\s*check everything(\s+and\b)?/gi, "");
   t = t.replace(/,?\s*(look|search|scan)\s+everywhere(\s+and\b)?/gi, "");

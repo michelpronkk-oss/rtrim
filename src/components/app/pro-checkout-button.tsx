@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { trialEligible } from "@/lib/billing-cta";
+import { needsPaymentUpdate, trialEligible } from "@/lib/billing-cta";
 
 interface ProCheckoutButtonProps {
   className?: string;
@@ -65,7 +65,7 @@ export function ProCheckoutButton({
         if (hasPro) { setAuthPlan("pro"); return; }
 
         // Payment failed — user must fix billing first
-        if (d.planStatus === "past_due") { setAuthPlan("past_due"); return; }
+        if (needsPaymentUpdate(d.planStatus)) { setAuthPlan("past_due"); return; }
 
         // Trial eligibility check
         if (trialEligible({ plan: d.plan, planStatus: d.planStatus, paymentSubscriptionId: d.paymentSubscriptionId })) {
@@ -90,8 +90,8 @@ export function ProCheckoutButton({
   // ── Already has active paid plan → open dashboard ─────────────────────────
   if (authPlan === "pro") {
     return (
-      <Link href="/app" className={className}>
-        Open dashboard
+      <Link href="/app/billing" className={className}>
+        {planId === "pro" ? "Manage Pro" : "Manage billing"}
       </Link>
     );
   }
