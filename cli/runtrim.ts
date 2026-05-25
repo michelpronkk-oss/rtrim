@@ -1417,6 +1417,14 @@ type BridgeState = {
   startedAt: string;
 };
 
+type BridgePathCheckResult = {
+  allowed: boolean | "unknown";
+  reason: string;
+  matchedAllowedRule?: string | null;
+  matchedForbiddenRule?: string | null;
+  sensitive: boolean;
+};
+
 function getBridgeDir(cwd: string): string {
   return path.join(getConfigDir(cwd), "bridge");
 }
@@ -1731,6 +1739,70 @@ async function getBridgeNextAction(cwd: string): Promise<string> {
   return 'runtrim go "<task>"';
 }
 
+function evaluateBridgePathAgainstContract(cwd: string, inputPath: string): BridgePathCheckResult {
+  const normalizedPath = inputPath.replace(/\\/g, "/").replace(/^\.?\//, "").trim();
+  if (!normalizedPath) {
+    return {
+      allowed: "unknown",
+      reason: "path_missing",
+      matchedAllowedRule: null,
+      matchedForbiddenRule: null,
+      sensitive: false,
+    };
+  }
+
+  const sensitive = isSensitivePath(normalizedPath);
+  if (sensitive) {
+    return {
+      allowed: false,
+      reason: "sensitive_path_blocked",
+      matchedAllowedRule: null,
+      matchedForbiddenRule: "sensitive_filename_rule",
+      sensitive: true,
+    };
+  }
+
+  const contract = parseContractSummary(cwd);
+  const matchedForbiddenRule = contract.forbiddenPaths.find((rule) => matchesContractPattern(normalizedPath, rule)) ?? null;
+  if (matchedForbiddenRule) {
+    return {
+      allowed: false,
+      reason: "forbidden_path_match",
+      matchedAllowedRule: null,
+      matchedForbiddenRule,
+      sensitive: false,
+    };
+  }
+
+  if (contract.allowedPaths.length > 0) {
+    const matchedAllowedRule = contract.allowedPaths.find((rule) => matchesContractPattern(normalizedPath, rule)) ?? null;
+    if (!matchedAllowedRule) {
+      return {
+        allowed: false,
+        reason: "outside_allowed_paths",
+        matchedAllowedRule: null,
+        matchedForbiddenRule: null,
+        sensitive: false,
+      };
+    }
+    return {
+      allowed: true,
+      reason: "allowed_path_match",
+      matchedAllowedRule,
+      matchedForbiddenRule: null,
+      sensitive: false,
+    };
+  }
+
+  return {
+    allowed: "unknown",
+    reason: contract.exists ? "no_allowed_paths_defined" : "no_active_contract",
+    matchedAllowedRule: null,
+    matchedForbiddenRule: null,
+    sensitive: false,
+  };
+}
+
 function parseBridgePortArg(opts?: { port?: string }): number {
   if (!opts?.port) return detectBridgePort();
   const n = Number.parseInt(opts.port, 10);
@@ -1756,6 +1828,40 @@ function resolveBridgeSpawnArgs(port: number): { command: string; args: string[]
   return null;
 }
 
+async function ensureBridgeRunningForAgent(cwd: string): Promise<{ ok: boolean; url?: string }> {
+  const existing = readBridgeState(cwd);
+  if (existing) {
+    const health = await bridgeHealth(existing.host, existing.port);
+    if (health.ok) {
+      return { ok: true, url: `http://${existing.host}:${existing.port}` };
+    }
+    clearBridgeState(cwd);
+  }
+
+  const port = detectBridgePort();
+  const host = "127.0.0.1";
+  const spawn = resolveBridgeSpawnArgs(port);
+  if (!spawn) return { ok: false };
+  try {
+    const child = execa(spawn.command, spawn.args, {
+      cwd,
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.unref?.();
+  } catch {
+    return { ok: false };
+  }
+
+  for (let i = 0; i < 25; i += 1) {
+    await new Promise((r) => setTimeout(r, 120));
+    const health = await bridgeHealth(host, port);
+    if (health.ok) return { ok: true, url: `http://${host}:${port}` };
+  }
+  return { ok: false };
+}
+
 function jsonSend(res: http.ServerResponse, status: number, body: Record<string, unknown>): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -1774,10 +1880,16 @@ async function buildBridgeStatusPayload(cwd: string): Promise<Record<string, unk
   const guardMode = String(((config as Record<string, unknown>).autoGuardMode as string | undefined) ?? "smart");
   return {
     ok: true,
+    localOnly: true,
     autoGuardMode: guardMode,
     activeContract: contract.exists && contract.active,
+    contractPath: contract.exists ? contract.path : null,
+    task: contract.summary || latest?.task || null,
+    risk: contract.risk,
+    amendmentsCount: contract.approvedAmendments.length,
     unfinishedChanges: changes.count > 0,
     changedFilesCount: changes.count,
+    verdict: latest?.status ?? "unknown",
     latestRunId: latest?.id ?? null,
     learningPresent: learning.exists,
     previewPresent: preview.exists,
@@ -1791,17 +1903,21 @@ async function startBridgeServer(cwd: string, port: number): Promise<void> {
   const version = resolveCliVersion();
   const server = http.createServer(async (req, res) => {
     try {
-      const method = req.method ?? "GET";
+      const method = (req.method ?? "GET").toUpperCase();
       const pathname = new URL(req.url ?? "/", `http://${host}:${port}`).pathname;
-      if (method !== "GET") {
-        jsonSend(res, 405, { ok: false, error: "method_not_allowed" });
-        return;
-      }
       if (pathname === "/health") {
+        if (method !== "GET") {
+          jsonSend(res, 405, { ok: false, error: "method_not_allowed" });
+          return;
+        }
         jsonSend(res, 200, { ok: true, name: "RunTrim Bridge", version, localOnly: true });
         return;
       }
       if (pathname === "/status") {
+        if (method !== "GET") {
+          jsonSend(res, 405, { ok: false, error: "method_not_allowed" });
+          return;
+        }
         jsonSend(res, 200, await buildBridgeStatusPayload(cwd));
         return;
       }
@@ -1818,6 +1934,10 @@ async function startBridgeServer(cwd: string, port: number): Promise<void> {
         return;
       }
       if (pathname === "/contract") {
+        if (method !== "GET") {
+          jsonSend(res, 405, { ok: false, error: "method_not_allowed" });
+          return;
+        }
         const c = parseContractSummary(cwd);
         jsonSend(res, 200, {
           ok: true,
@@ -1826,8 +1946,36 @@ async function startBridgeServer(cwd: string, port: number): Promise<void> {
           summary: c.summary,
           allowedScope: c.allowedScope,
           forbiddenScope: c.forbiddenScope,
+          allowedPaths: c.allowedPaths,
+          forbiddenPaths: c.forbiddenPaths,
+          amendmentsCount: c.approvedAmendments.length,
           risk: c.risk,
           stopRules: c.stopRules,
+        });
+        return;
+      }
+      if (pathname === "/check-path") {
+        if (method !== "POST") {
+          jsonSend(res, 405, { ok: false, error: "method_not_allowed" });
+          return;
+        }
+        let rawBody = "";
+        req.on("data", (chunk) => {
+          if (rawBody.length < 8192) rawBody += chunk.toString();
+        });
+        req.on("end", () => {
+          try {
+            const parsed = JSON.parse(rawBody || "{}") as { path?: string };
+            const pathInput = typeof parsed.path === "string" ? parsed.path : "";
+            const result = evaluateBridgePathAgainstContract(cwd, pathInput);
+            jsonSend(res, 200, {
+              ok: true,
+              path: pathInput,
+              ...result,
+            });
+          } catch {
+            jsonSend(res, 400, { ok: false, error: "invalid_json_body" });
+          }
         });
         return;
       }
@@ -1865,6 +2013,17 @@ async function startBridgeServer(cwd: string, port: number): Promise<void> {
     } catch {
       jsonSend(res, 500, { ok: false, error: "bridge_internal_error" });
     }
+  });
+
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err?.code === "EADDRINUSE") {
+      console.log(chalk.yellow(`Port ${port} is already in use on 127.0.0.1.`));
+      console.log(chalk.white("Run: runtrim bridge status"));
+      process.exit(1);
+      return;
+    }
+    console.log(chalk.red("Bridge server failed to start."));
+    process.exit(1);
   });
 
   server.listen(port, host, () => {
@@ -3448,15 +3607,28 @@ const agentCommand = program.command("agent").description("Start a guarded AI co
 agentCommand
   .argument("[task]")
   .option("--copy", "Copy the handoff to clipboard")
+  .option("--bridge", "Ensure local bridge is running for this agent run")
   .option("--preview", "Generate an execution preview instead of running any agent")
   .option("--apply", "Generate Agent Apply handoff artifacts")
   .option("--execute", "Create a controlled execution packet and handoff")
   .option("--run", "Alias for --execute")
   .option("--dry-run", "Create execution packet in pending mode without ready status")
   .option("--confirm", "Confirm high-risk apply handoff creation")
-  .action(async (task?: string, options?: { copy?: boolean; preview?: boolean; apply?: boolean; execute?: boolean; run?: boolean; dryRun?: boolean; confirm?: boolean }) => {
+  .action(async (task?: string, options?: { copy?: boolean; bridge?: boolean; preview?: boolean; apply?: boolean; execute?: boolean; run?: boolean; dryRun?: boolean; confirm?: boolean }) => {
     if (task?.trim()) {
       const normalizedTask = (task ?? "").trim();
+      if (options?.bridge) {
+        const bridge = await ensureBridgeRunningForAgent(process.cwd());
+        console.log("");
+        if (bridge.ok && bridge.url) {
+          console.log(chalk.white(`RunTrim Bridge: ${bridge.url}`));
+          console.log(chalk.white("Localhost only. No source upload. No env file content reads."));
+        } else {
+          console.log(chalk.yellow("RunTrim Bridge could not be started automatically."));
+          console.log(chalk.white("You can continue, or run: runtrim bridge start"));
+        }
+        console.log("");
+      }
       if (options?.preview) {
         await runAgentPreview(normalizedTask);
         return;
@@ -3531,8 +3703,10 @@ function registerBridgeCommands(name: "bridge" | "daemon"): void {
         const health = await bridgeHealth(existing.host, existing.port);
         if (health.ok) {
           console.log("");
-          console.log(`RunTrim Bridge running on http://${existing.host}:${existing.port}`);
-          console.log("Local only.");
+          console.log("RunTrim Bridge");
+          console.log(`Local bridge started on http://${existing.host}:${existing.port}`);
+          console.log("Scope: localhost only");
+          console.log("Install-time daemon: disabled");
           console.log("");
           return;
         }
@@ -3593,13 +3767,20 @@ function registerBridgeCommands(name: "bridge" | "daemon"): void {
       }
 
       console.log("");
-      console.log(`RunTrim Bridge running on http://${host}:${port}`);
-      console.log("Local only.");
+      console.log("RunTrim Bridge");
+      console.log(`Local bridge started on http://${host}:${port}`);
+      console.log("Scope: localhost only");
+      console.log("Install-time daemon: disabled");
+      console.log("Security: no source upload, no env file content reads");
       console.log("Endpoints:");
+      console.log("GET /health");
       console.log("GET /status");
-      console.log("GET /next-action");
       console.log("GET /contract");
-      console.log("GET /changes");
+      console.log("POST /check-path");
+      console.log("Next:");
+      console.log('- runtrim agent "task" --bridge');
+      console.log("- runtrim bridge status");
+      console.log("- runtrim bridge stop");
       console.log("");
     });
 
@@ -3619,6 +3800,8 @@ function registerBridgeCommands(name: "bridge" | "daemon"): void {
           console.log(`URL: http://127.0.0.1:${fallbackPort}`);
           console.log("PID: unknown");
           console.log("Health: ok");
+          console.log("Scope: localhost only");
+          console.log("Security: no source upload, no env file content reads");
           console.log("");
           return;
         }
@@ -3650,6 +3833,9 @@ function registerBridgeCommands(name: "bridge" | "daemon"): void {
       console.log(`URL: http://${existing.host}:${existing.port}`);
       console.log(`PID: ${existing.pid}`);
       console.log(`Health: ok`);
+      console.log("Scope: localhost only");
+      console.log("Install-time daemon: disabled");
+      console.log("Security: no source upload, no env file content reads");
       if (status) {
         console.log(`Auto-guard: ${String(status.autoGuardMode ?? "unknown")}`);
         console.log(`Unfinished changes: ${Boolean(status.unfinishedChanges) ? "yes" : "no"}`);
