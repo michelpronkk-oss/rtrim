@@ -38,6 +38,8 @@
     "build:all": "npm run build:cli && npm run build:web",
     "verify:cli": "node scripts/verify-cli.mjs",
     "verify:package": "node scripts/verify-package.mjs",
+    "prepack": "node scripts/prepare-cli-package-manifest.mjs",
+    "postpack": "node scripts/restore-package-manifest.mjs",
     "start": "next start",
     "lint": "eslint",
     "prepublishOnly": "npm run build:cli",

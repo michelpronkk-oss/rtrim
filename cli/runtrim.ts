@@ -7267,7 +7267,7 @@ program
         console.log(chalk.red("  Warning     Sensitive file detected: ") + chalk.white(`${sensitiveUntracked[0]} (untracked).`) + chalk.red(" This file may contain secrets and should not be committed or exposed."));
       }
       if (sensitiveIgnored.length > 0) {
-        console.log(chalk.yellow("  Warning     Sensitive file detected: ") + chalk.white(`${sensitiveIgnored[0]} (ignored/untracked).`) + chalk.yellow(" It is currently ignored by git, but still requires secret-safe handling."));
+        console.log(chalk.yellow("  Warning     Sensitive ignored file detected: ") + chalk.white(`${sensitiveIgnored[0]}.`) + chalk.yellow(" This is ignored by git. RunTrim did not read it."));
       }
       console.log("");
       console.log(GO_ACCENT.bold("Proof gaps"));
@@ -7280,7 +7280,9 @@ program
           console.log(DIM("  Cloud sync  ") + chalk.green("synced"));
         } else if (cloudSync.status === "failed") {
           console.log(DIM("  Cloud sync  ") + chalk.yellow("failed — run runtrim sync to retry"));
-        } else if (cloudSync.status !== "skipped_no_token" && cloudSync.status !== "skipped_invalid_token") {
+        } else if (cloudSync.status === "skipped_no_token" || cloudSync.status === "skipped_invalid_token") {
+          console.log(DIM("  Cloud sync  ") + DIM("skipped - local run saved; sign in or upgrade for cloud sync"));
+        } else {
           console.log(DIM("  Cloud sync  ") + DIM("skipped"));
         }
       }
@@ -7480,13 +7482,14 @@ program
     }
 
     // ── Output ────────────────────────────────────────────────────────────
-    const blockedBySensitive = scope.sensitiveFiles.length > 0 || sensitiveUntracked.length > 0 || sensitiveIgnored.length > 0;
+    const blockedBySensitive = scope.sensitiveFiles.length > 0 || sensitiveUntracked.length > 0;
     const blockedByContract = outOfContractFiles.length > 0 || forbiddenPathFiles.length > 0;
     const blockedByExistingHard = scope.forbiddenFiles.length > 0 || scope.status === "limit_exceeded";
+    const warnBySensitiveIgnored = sensitiveIgnored.length > 0;
     const finishVerdict: "PASS" | "WARN" | "BLOCKED" =
       blockedBySensitive || blockedByContract || blockedByExistingHard
         ? "BLOCKED"
-        : scopeDriftStatus !== "passed" || evaluation.status === "needs_verification" || evaluation.status === "partial"
+        : warnBySensitiveIgnored || scopeDriftStatus !== "passed" || evaluation.status === "needs_verification" || evaluation.status === "partial"
           ? "WARN"
           : "PASS";
     const verdictColor = finishVerdict === "PASS" ? chalk.green : finishVerdict === "WARN" ? chalk.yellow : chalk.red;
@@ -7542,7 +7545,7 @@ program
     if (sensitiveIgnored.length > 0) {
       console.log(chalk.yellow.bold("Sensitive ignored file warning"));
       for (const file of sensitiveIgnored.slice(0, 3)) {
-        console.log(chalk.yellow("  Sensitive file detected: ") + chalk.white(`${file} (ignored/untracked).`) + chalk.yellow(" It is ignored by git, but still requires secret-safe handling."));
+        console.log(chalk.yellow("  Sensitive ignored file detected: ") + chalk.white(`${file}.`) + chalk.yellow(" This is ignored by git. RunTrim did not read it."));
       }
       if (sensitiveIgnored.length > 3) {
         console.log(chalk.yellow(`  ... and ${sensitiveIgnored.length - 3} more sensitive ignored files`));
@@ -7629,7 +7632,7 @@ program
       } else if (cloudSync.status === "failed") {
         console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
       } else if (cloudSync.status === "skipped_no_token" || cloudSync.status === "skipped_invalid_token") {
-        console.log(DIM("  Skipped. Run runtrim login to connect your dashboard."));
+        console.log(DIM("  Cloud sync skipped. Local run saved. Sign in or upgrade for cloud sync."));
       } else {
         console.log(DIM("  Skipped."));
       }
