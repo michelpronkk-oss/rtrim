@@ -2168,6 +2168,20 @@ async function ensureBridgeRunningForAgent(cwd: string): Promise<{ ok: boolean; 
 function buildMcpTools(): McpToolDefinition[] {
   return [
     {
+      name: "runtrim_create_contract",
+      description: "Create a guarded RunTrim contract and handoff for a task via MCP.",
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["task"],
+        properties: {
+          task: { type: "string", minLength: 1 },
+          constraints: { type: "string" },
+          risk_hint: { type: "string" },
+        },
+      },
+    },
+    {
       name: "runtrim_status",
       description: "Get RunTrim contract and run status summary for the current repository.",
       inputSchema: { type: "object", additionalProperties: false, properties: {} },
@@ -2208,6 +2222,98 @@ function buildMcpTools(): McpToolDefinition[] {
       inputSchema: { type: "object", additionalProperties: false, properties: {} },
     },
   ];
+}
+
+async function buildRuntrimCreateContractMcp(
+  cwd: string,
+  args: Record<string, unknown> | undefined
+): Promise<McpToolCallResult> {
+  const taskRaw = typeof args?.task === "string" ? args.task.trim() : "";
+  const constraints = typeof args?.constraints === "string" ? args.constraints.trim() : "";
+  const riskHint = typeof args?.risk_hint === "string" ? args.risk_hint.trim() : "";
+  if (!taskRaw) {
+    const badInput = {
+      contract_created: false,
+      error: "task_required",
+      next_action: 'Provide a non-empty task, then call runtrim_create_contract again.',
+      finish_command: "runtrim finish",
+      approval_command_example: 'runtrim approve "Allow <path> for this run only"',
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(badInput, null, 2) }],
+      structuredContent: badInput,
+      isError: true,
+    };
+  }
+
+  const latest = loadLatestRun(cwd);
+  if (latest?.status === "guarded") {
+    const blockedPayload = {
+      contract_created: false,
+      task: taskRaw,
+      risk: latest.contract?.audit?.wasteRiskBefore ?? "unknown",
+      contract_path: ".runtrim/contracts/latest.md",
+      handoff_path: ".runtrim/agent/latest.md",
+      allowed_scope_summary: [],
+      forbidden_scope_summary: [],
+      next_action: "Active guarded run already exists. Complete it with runtrim finish before creating a new contract.",
+      finish_command: "runtrim finish",
+      approval_command_example: 'runtrim approve "Allow <path> for this run only"',
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(blockedPayload, null, 2) }],
+      structuredContent: blockedPayload,
+    };
+  }
+
+  const mergedTask = constraints ? `${taskRaw}. Constraints: ${constraints}` : taskRaw;
+  const previewResult = await buildAgentPreview(mergedTask);
+  const { preview, contract, markdownPath: previewPath } = previewResult;
+  const contractPath = writeAgentContract(cwd, contract.contractText);
+  const applyId = nowId();
+  const apply: AgentApplyArtifact = {
+    id: applyId,
+    task: mergedTask,
+    createdAt: new Date().toISOString(),
+    risk: preview.risk,
+    approvalRequired: preview.approvalRequired,
+    approved: preview.approvalRequired !== "required",
+    previewId: preview.id,
+    contractPath: ".runtrim/contracts/latest.md",
+    allowedScope: preview.allowedScope,
+    forbiddenScope: preview.forbiddenScope,
+    stopRules: preview.stopRules,
+    filesToInspect: preview.filesToInspect,
+    patchStrategy: preview.patchStrategy,
+    proofRequired: preview.proofRequired,
+    verificationSteps: preview.verificationSteps,
+    nextCommand: "runtrim finish",
+    finishRequired: true,
+    providerRouting: preview.providerRouting,
+  };
+  const handoff = writeAgentHandoffArtifacts(cwd, apply, path.relative(cwd, previewPath));
+  const run = saveRun(mergedTask, previewResult.audit, previewResult.contract, cwd);
+  updateRun(run.id, { status: "guarded" }, cwd);
+
+  const payload = {
+    contract_created: true,
+    task: taskRaw,
+    constraints: constraints || null,
+    risk_hint: riskHint || null,
+    risk: preview.risk,
+    contract_path: path.relative(cwd, contractPath).replace(/\\/g, "/"),
+    handoff_path: path.relative(cwd, handoff.markdownPath).replace(/\\/g, "/"),
+    allowed_scope_summary: preview.allowedScope.slice(0, 8),
+    forbidden_scope_summary: preview.forbiddenScope.slice(0, 8),
+    next_action:
+      "Proceed inside this contract. Check path scope before edits, request approval if scope expands, and run finish when done.",
+    finish_command: "runtrim finish",
+    approval_command_example: 'runtrim approve "Allow <path> for this run only"',
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+  };
 }
 
 async function buildRuntrimStatusMcp(cwd: string): Promise<McpToolCallResult> {
@@ -2378,6 +2484,7 @@ async function startMcpServerStdio(cwd: string): Promise<void> {
       const name = typeof params.name === "string" ? params.name : "";
       const args = params.arguments && typeof params.arguments === "object" ? (params.arguments as Record<string, unknown>) : undefined;
       let result: McpToolCallResult | null = null;
+      if (name === "runtrim_create_contract") result = await buildRuntrimCreateContractMcp(cwd, args);
       if (name === "runtrim_status") result = await buildRuntrimStatusMcp(cwd);
       if (name === "runtrim_get_contract") result = buildRuntrimContractMcp(cwd);
       if (name === "runtrim_check_path") result = buildRuntrimCheckPathMcp(cwd, args);
