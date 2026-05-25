@@ -214,7 +214,7 @@ export default function ChangelogPage() {
               <ArrowRight style={{ width: 13, height: 13 }} />
             </Link>
             <Link
-              href="/how-it-works"
+              href="/app/install"
               style={{
                 display: "inline-flex", alignItems: "center",
                 height: 36, padding: "0 14px", borderRadius: 7,

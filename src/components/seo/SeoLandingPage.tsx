@@ -125,7 +125,7 @@ export function SeoLandingPage({ page }: SeoLandingPageProps) {
                 <ArrowRight className="size-3.5" />
               </Link>
               <Link
-                href="/how-it-works"
+                href="/app/install"
                 data-rt-event="how_it_works_clicked"
                 className="rounded-lg border border-white/10 px-5 py-2.5 text-[13px] font-medium text-[#8A97B4] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
               >
@@ -328,7 +328,7 @@ export function SeoLandingPage({ page }: SeoLandingPageProps) {
                 <ArrowRight className="size-3.5" />
               </Link>
               <Link
-                href="/how-it-works"
+                href="/app/install"
                 data-rt-event="how_it_works_clicked"
                 className="rounded-lg border border-white/10 px-5 py-2.5 text-[13px] font-medium text-[#8A97B4] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
               >
