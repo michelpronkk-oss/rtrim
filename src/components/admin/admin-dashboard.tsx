@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   RefreshCw, LogOut, Terminal, Globe, Check, X,
-  AlertCircle, ArrowRight, Users, Activity, BarChart2,
+  AlertCircle, ArrowRight, Users, Activity, BarChart2, ChevronDown,
 } from "lucide-react";
+import { AdminPlanningContent } from "@/components/admin/admin-planning-dashboard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,9 +40,11 @@ type MetricsResponse = {
   earlyAccess?: EarlyAccessEntry[];
   earlyAccessTableFound?: boolean;
   recentEvents?: Array<{ eventName: string; source: string; pagePath: string; createdAt: string }>;
+  conversionRates?: { visitToInstallCta: number; ctaToInstallCopy: number; copyToCli: number };
+  referrerBreakdown?: Array<{ source: string; count: number; isAI: boolean }>;
 };
 
-type Tab = "overview" | "early-access" | "activity";
+type Tab = "overview" | "early-access" | "activity" | "planning";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -113,6 +116,38 @@ function Stat({
       <p className="text-[11px] text-[#4D5070]">{label}</p>
       <p className="mt-1 text-[24px] font-bold tabular-nums tracking-tight text-[#EDEEFF]">{value}</p>
       {note && <p className="mt-0.5 font-mono text-[10px] text-[#2E3554]">{note}</p>}
+    </div>
+  );
+}
+
+// ─── Collapsible section header ────────────────────────────────────────────────
+
+function CollapseHeader({
+  label,
+  icon,
+  collapsed,
+  onToggle,
+  right,
+}: {
+  label: React.ReactNode;
+  icon?: React.ReactNode;
+  collapsed: boolean;
+  onToggle: () => void;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060] hover:text-[#7C6DFA] transition-colors"
+      >
+        {icon}
+        {label}
+        <ChevronDown
+          className={`size-3 transition-transform ${collapsed ? "-rotate-90" : ""}`}
+        />
+      </button>
+      {right}
     </div>
   );
 }
@@ -300,6 +335,15 @@ export function AdminDashboard() {
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [eaOverrides, setEaOverrides] = useState<Record<string, string>>({});
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  function toggleSection(key: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true); else setLoading(true);
@@ -333,19 +377,20 @@ export function AdminDashboard() {
     ...e,
     status: eaOverrides[e.id] ?? e.status,
   }));
-  const funnel     = data?.funnel ?? [];
-  const topPages   = data?.topPages ?? [];
-  const cliEvents  = data?.cliEvents ?? [];
-  const recent     = data?.recentEvents ?? [];
-  const daily      = data?.daily ?? [];
-  const funnelMax  = Math.max(...funnel.map((f) => f.count), 1);
+  const funnel          = data?.funnel ?? [];
+  const topPages        = data?.topPages ?? [];
+  const cliEvents       = data?.cliEvents ?? [];
+  const recent          = data?.recentEvents ?? [];
+  const daily           = data?.daily ?? [];
+  const funnelMax       = Math.max(...funnel.map((f) => f.count), 1);
+  const conversionRates = data?.conversionRates;
+  const referrerBreakdown = data?.referrerBreakdown ?? [];
 
-  const pending    = earlyAccess.filter((e) => e.status === "pending").length;
-  const approved   = earlyAccess.filter((e) => e.status === "approved").length;
-  const rejected   = earlyAccess.filter((e) => e.status === "rejected").length;
-  const total      = earlyAccess.length;
+  const pending  = earlyAccess.filter((e) => e.status === "pending").length;
+  const approved = earlyAccess.filter((e) => e.status === "approved").length;
+  const rejected = earlyAccess.filter((e) => e.status === "rejected").length;
+  const total    = earlyAccess.length;
 
-  // Pending first, then newest
   const eaSorted = [...earlyAccess].sort((a, b) => {
     const ap = a.status === "pending" ? 0 : 1;
     const bp = b.status === "pending" ? 0 : 1;
@@ -358,6 +403,7 @@ export function AdminDashboard() {
     { id: "overview",      label: "Overview" },
     { id: "early-access",  label: "Early Access", badge: pending || undefined },
     { id: "activity",      label: "Activity" },
+    { id: "planning",      label: "Planning" },
   ];
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
@@ -381,7 +427,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
+    <div className={`min-h-screen text-[#EDEEFF] ${tab === "planning" ? "bg-[#06070a]" : "bg-[#07071A]"}`}>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 border-b border-white/8 bg-[#07071A]/96 backdrop-blur-md">
@@ -395,12 +441,6 @@ export function AdminDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/admin/planning"
-              className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-[12px] text-[#5A6480] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-            >
-              Planning
-            </Link>
             {lastFetched && (
               <span className="hidden font-mono text-[10px] text-[#2E3554] sm:block">
                 {rel(lastFetched.toISOString())} ago
@@ -447,369 +487,472 @@ export function AdminDashboard() {
         </div>
       </header>
 
-      {/* ── Content ───────────────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-[1200px] px-5 py-6 sm:px-6">
+      {/* ── Planning tab (full-bleed, no inner padding wrapper) ───────────── */}
+      {tab === "planning" && (
+        <div className="flex" style={{ height: "calc(100vh - 97px)" }}>
+          <AdminPlanningContent />
+        </div>
+      )}
 
-        {fetchError && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#FF6B6B]/20 bg-[#FF6B6B]/6 px-4 py-3 text-[13px] text-[#FF8F8F]">
-            <AlertCircle className="size-4 shrink-0" />
-            {fetchError}
-          </div>
-        )}
+      {/* ── Padded content tabs ───────────────────────────────────────────── */}
+      {tab !== "planning" && (
+        <div className="mx-auto max-w-[1200px] px-5 py-6 sm:px-6">
 
-        {/* ══ OVERVIEW ══════════════════════════════════════════════════════ */}
-        {tab === "overview" && (
-          <div className="space-y-5">
-
-            {/* Pending banner */}
-            {pending > 0 && (
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-[#F0BF72]/20 bg-[#F0BF72]/6 px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                  <AlertCircle className="size-4 shrink-0 text-[#F0BF72]" />
-                  <p className="text-[13px] font-medium text-[#F0BF72]">
-                    {pending} request{pending !== 1 ? "s" : ""} pending review
-                  </p>
-                </div>
-                <button
-                  onClick={() => setTab("early-access")}
-                  className="flex items-center gap-1 text-[12px] font-medium text-[#F0BF72]/80 transition-colors hover:text-[#F0BF72]"
-                >
-                  Review <ArrowRight className="size-3.5" />
-                </button>
-              </div>
-            )}
-
-            {/* Stats — EA counts */}
-            <div>
-              <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                <Users className="size-3" /> Early access
-              </p>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <Stat label="Pending review"  value={pending}  accent="#F0BF72" />
-                <Stat label="Approved"        value={approved} accent="#4DE8B0" />
-                <Stat label="Rejected"        value={rejected} accent="#FF6B6B" />
-                <Stat label="Total requests"  value={total}    accent="#7C6DFA" />
-              </div>
+          {fetchError && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#FF6B6B]/20 bg-[#FF6B6B]/6 px-4 py-3 text-[13px] text-[#FF8F8F]">
+              <AlertCircle className="size-4 shrink-0" />
+              {fetchError}
             </div>
+          )}
 
-            {/* Stats — traffic + CLI */}
-            <div>
-              <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                <Activity className="size-3" /> Traction (7d)
-              </p>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <Stat label="Unique visitors"   value={summary.uniqueVisitors7d ?? 0} accent="#5B8BFF" note="7d" />
-                <Stat label="Install copies"    value={summary.installCopies7d ?? 0}  accent="#4DE8B0" note="7d" />
-                <Stat label="CLI starts"        value={summary.cliStarts7d ?? 0}       accent="#7C6DFA" note="7d" />
-                <Stat label="Synced projects"   value={summary.syncedProjects30d ?? 0} accent="#9966FF" note="30d" />
-              </div>
-            </div>
+          {/* ══ OVERVIEW ══════════════════════════════════════════════════════ */}
+          {tab === "overview" && (
+            <div className="space-y-5">
 
-            {/* Recent EA requests */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                  <Users className="size-3" /> Recent requests
-                </p>
-                {earlyAccess.length > 5 && (
+              {/* Pending banner */}
+              {pending > 0 && (
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-[#F0BF72]/20 bg-[#F0BF72]/6 px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="size-4 shrink-0 text-[#F0BF72]" />
+                    <p className="text-[13px] font-medium text-[#F0BF72]">
+                      {pending} request{pending !== 1 ? "s" : ""} pending review
+                    </p>
+                  </div>
                   <button
                     onClick={() => setTab("early-access")}
-                    className="flex items-center gap-1 font-mono text-[10px] text-[#4D5070] transition-colors hover:text-[#9E91FF]"
+                    className="flex items-center gap-1 text-[12px] font-medium text-[#F0BF72]/80 transition-colors hover:text-[#F0BF72]"
                   >
-                    All {earlyAccess.length} <ArrowRight className="size-3" />
+                    Review <ArrowRight className="size-3.5" />
                   </button>
-                )}
-              </div>
-              <div className="rounded-lg border border-white/7 bg-[#0C0D22] overflow-hidden">
-                {eaSorted.slice(0, 6).length === 0 ? (
-                  <p className="px-4 py-5 text-[12px] text-[#3A4060]">No requests yet.</p>
-                ) : (
-                  eaSorted.slice(0, 6).map((e, i) => (
-                    <div
-                      key={e.id}
-                      className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/[0.02] ${i > 0 ? "border-t border-white/6" : ""}`}
-                    >
-                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-[#C8D4E0]">{e.email}</span>
-                      <span className="hidden shrink-0 text-[11px] text-[#4D5070] sm:block">
-                        {e.plan_interest || e.role || "—"}
-                      </span>
-                      <StatusPill status={e.status} />
-                      <span className="w-12 shrink-0 text-right font-mono text-[10px] text-[#2E3554]">{fmt(e.created_at)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+                </div>
+              )}
 
-            {/* Recent events */}
-            <div>
-              <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                <Terminal className="size-3" /> Recent activity
-              </p>
-              <div className="rounded-lg border border-white/7 bg-[#0C0D22] overflow-hidden">
-                {recent.length === 0 ? (
-                  <p className="px-4 py-5 text-[12px] text-[#3A4060]">No activity yet.</p>
-                ) : (
-                  recent.slice(0, 10).map((e, i) => (
-                    <div
-                      key={`${e.eventName}-${i}`}
-                      className={`flex items-center gap-2.5 px-4 py-2 transition-colors hover:bg-white/[0.02] ${i > 0 ? "border-t border-white/6" : ""}`}
-                    >
-                      <SourcePill source={e.source} />
-                      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
-                      <span className="hidden shrink-0 max-w-[100px] truncate font-mono text-[10px] text-[#3A4060] sm:block">
-                        {e.pagePath || "—"}
-                      </span>
-                      <span className="shrink-0 font-mono text-[10px] text-[#2E3554]">{rel(e.createdAt)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ EARLY ACCESS ══════════════════════════════════════════════════ */}
-        {tab === "early-access" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
+              {/* Stats — EA counts */}
               <div>
-                <h2 className="text-[15px] font-semibold text-[#EDEEFF]">
-                  Early access requests
-                </h2>
-                <p className="mt-0.5 text-[12px] text-[#4D5070]">
-                  {pending > 0
-                    ? `${pending} pending review · ${approved} approved · ${rejected} rejected`
-                    : `${total} total · ${approved} approved · ${rejected} rejected`}
-                </p>
+                <CollapseHeader
+                  label="Early access"
+                  icon={<Users className="size-3" />}
+                  collapsed={collapsed.has("ea-counts")}
+                  onToggle={() => toggleSection("ea-counts")}
+                />
+                {!collapsed.has("ea-counts") && (
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                    <Stat label="Pending review"  value={pending}  accent="#F0BF72" />
+                    <Stat label="Approved"        value={approved} accent="#4DE8B0" />
+                    <Stat label="Rejected"        value={rejected} accent="#FF6B6B" />
+                    <Stat label="Total requests"  value={total}    accent="#7C6DFA" />
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2 font-mono text-[10px]">
-                <span className="flex items-center gap-1 rounded border border-[#F0BF72]/20 bg-[#F0BF72]/8 px-2 py-1 text-[#F0BF72]">
-                  {pending} pending
-                </span>
-                <span className="flex items-center gap-1 rounded border border-[#4DE8B0]/20 bg-[#4DE8B0]/8 px-2 py-1 text-[#4DE8B0]">
-                  {approved} approved
-                </span>
-              </div>
-            </div>
 
-            {/* Mobile cards */}
-            <div className="space-y-2 md:hidden">
-              {eaSorted.length === 0 ? (
-                <p className="py-8 text-center text-[12px] text-[#3A4060]">No requests yet.</p>
-              ) : eaSorted.map((e, i) => (
-                <div key={`${e.id}-${i}`} className="rounded-lg border border-white/7 bg-[#0C0D22] p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 truncate font-mono text-[12px] text-[#C8D4E0]">{e.email}</span>
-                    <StatusPill status={e.status} />
+              {/* Stats — traffic + CLI */}
+              <div>
+                <CollapseHeader
+                  label="Traction (7d)"
+                  icon={<Activity className="size-3" />}
+                  collapsed={collapsed.has("traction")}
+                  onToggle={() => toggleSection("traction")}
+                />
+                {!collapsed.has("traction") && (
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                    <Stat label="Unique visitors"   value={summary.uniqueVisitors7d ?? 0} accent="#5B8BFF" note="7d" />
+                    <Stat label="Install copies"    value={summary.installCopies7d ?? 0}  accent="#4DE8B0" note="7d" />
+                    <Stat label="CLI starts"        value={summary.cliStarts7d ?? 0}       accent="#7C6DFA" note="7d" />
+                    <Stat label="Synced projects"   value={summary.syncedProjects30d ?? 0} accent="#9966FF" note="30d" />
                   </div>
-                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[#4D5070]">
-                    {(e.plan_interest || e.role) && <span>{e.plan_interest || e.role}</span>}
-                    {(e.workflow || e.agent) && <span>· {e.workflow || e.agent}</span>}
-                    <span>· {fmt(e.created_at)}</span>
-                  </div>
-                  {(e.biggest_pain || e.notes) && (
-                    <p className="mt-1 truncate text-[11px] text-[#4D5070]">
-                      {e.biggest_pain || e.use_case}{e.notes ? ` · ${e.notes}` : ""}
-                    </p>
-                  )}
-                  {e.status === "pending" && (
-                    <p className="mt-2 text-[11px] text-[#4D5070]">
-                      Use desktop to approve / reject.
-                    </p>
+                )}
+              </div>
+
+              {/* Conversion rates */}
+              {conversionRates && (
+                <div>
+                  <CollapseHeader
+                    label="Conversion"
+                    icon={<BarChart2 className="size-3" />}
+                    collapsed={collapsed.has("conversion")}
+                    onToggle={() => toggleSection("conversion")}
+                  />
+                  {!collapsed.has("conversion") && (
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                      <Stat
+                        label="Visit → Install CTA"
+                        value={`${conversionRates.visitToInstallCta}%`}
+                        accent="#7C6DFA"
+                      />
+                      <Stat
+                        label="CTA → Install copy"
+                        value={`${conversionRates.ctaToInstallCopy}%`}
+                        accent="#9966FF"
+                      />
+                      <Stat
+                        label="Copy → CLI start"
+                        value={`${conversionRates.copyToCli}%`}
+                        accent="#4DE8B0"
+                      />
+                    </div>
                   )}
                 </div>
-              ))}
-            </div>
-
-            {/* Desktop table */}
-            <div className="hidden overflow-x-auto rounded-lg border border-white/7 bg-[#0C0D22] md:block">
-              {eaSorted.length === 0 ? (
-                <p className="px-6 py-10 text-center text-[12px] text-[#3A4060]">No requests yet.</p>
-              ) : (
-                <table className="w-full min-w-[900px] text-left text-[12px]">
-                  <thead>
-                    <tr>
-                      <Th>Email</Th>
-                      <Th>Plan</Th>
-                      <Th>Workflow</Th>
-                      <Th>Pain / notes</Th>
-                      <Th>Status</Th>
-                      <Th>Submitted</Th>
-                      <Th>Reviewed</Th>
-                      <Th>Actions</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eaSorted.map((e, i) => (
-                      <EARow key={`${e.id}-${i}`} entry={e} onDone={handleEaDone} />
-                    ))}
-                  </tbody>
-                </table>
               )}
-            </div>
-          </div>
-        )}
 
-        {/* ══ ACTIVITY ══════════════════════════════════════════════════════ */}
-        {tab === "activity" && (
-          <div className="space-y-5">
-
-            {/* Summary row */}
-            <div>
-              <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                <BarChart2 className="size-3" /> Traffic (7d)
-              </p>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                <Stat label="Unique visitors 24h" value={summary.uniqueVisitors24h ?? 0} accent="#5B8BFF" />
-                <Stat label="Unique visitors 7d"  value={summary.uniqueVisitors7d ?? 0}  accent="#5B8BFF" />
-                <Stat label="Page views 7d"        value={summary.pageViews7d ?? 0}        accent="#5B8BFF" />
-              </div>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-
-              {/* Funnel */}
-              <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                  Conversion funnel (7d)
-                </p>
-                {funnel.length === 0 ? (
-                  <p className="text-[12px] text-[#3A4060]">No data yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {funnel.map((f, i) => (
-                      <div key={f.step}>
-                        <div className="mb-1 flex items-center justify-between">
-                          <span className="font-mono text-[11px] text-[#8E95C3]">{f.step}</span>
-                          <span className="font-mono text-[11px] font-semibold text-[#EDEEFF]">{f.count.toLocaleString()}</span>
+              {/* Recent EA requests */}
+              <div>
+                <CollapseHeader
+                  label="Recent requests"
+                  icon={<Users className="size-3" />}
+                  collapsed={collapsed.has("recent-requests")}
+                  onToggle={() => toggleSection("recent-requests")}
+                  right={
+                    earlyAccess.length > 5 ? (
+                      <button
+                        onClick={() => setTab("early-access")}
+                        className="flex items-center gap-1 font-mono text-[10px] text-[#4D5070] transition-colors hover:text-[#9E91FF]"
+                      >
+                        All {earlyAccess.length} <ArrowRight className="size-3" />
+                      </button>
+                    ) : undefined
+                  }
+                />
+                {!collapsed.has("recent-requests") && (
+                  <div className="rounded-lg border border-white/7 bg-[#0C0D22] overflow-hidden">
+                    {eaSorted.slice(0, 6).length === 0 ? (
+                      <p className="px-4 py-5 text-[12px] text-[#3A4060]">No requests yet.</p>
+                    ) : (
+                      eaSorted.slice(0, 6).map((e, i) => (
+                        <div
+                          key={e.id}
+                          className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/[0.02] ${i > 0 ? "border-t border-white/6" : ""}`}
+                        >
+                          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-[#C8D4E0]">{e.email}</span>
+                          <span className="hidden shrink-0 text-[11px] text-[#4D5070] sm:block">
+                            {e.plan_interest || e.role || "—"}
+                          </span>
+                          <StatusPill status={e.status} />
+                          <span className="w-12 shrink-0 text-right font-mono text-[10px] text-[#2E3554]">{fmt(e.created_at)}</span>
                         </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-white/6">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.round((f.count / funnelMax) * 100)}%`,
-                              background: ["#5B8BFF", "#7C6DFA", "#9966FF", "#4DE8B0", "#F0BF72", "#FF7B5C"][i % 6],
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Top pages */}
-              <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Top pages (7d)</p>
-                {topPages.length === 0 ? (
-                  <p className="text-[12px] text-[#3A4060]">No data yet.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {topPages.map((p, i) => (
-                      <div key={p.pagePath} className="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-white/[0.02]">
-                        <span className="w-4 shrink-0 font-mono text-[10px] text-[#2E3554]">{i + 1}</span>
-                        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{p.pagePath || "/"}</span>
-                        <span className="shrink-0 font-mono text-[11px] text-[#EDEEFF]">{p.views}</span>
-                        <span className="w-14 shrink-0 text-right font-mono text-[10px] text-[#3A4060]">{p.uniqueUsers} uniq</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              {/* CLI events */}
-              <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">CLI events (7d)</p>
-                {cliEvents.length === 0 ? (
-                  <p className="text-[12px] text-[#3A4060]">No CLI events yet.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {cliEvents.map((e) => (
-                      <div key={e.eventName} className="flex items-center gap-2.5 rounded px-2 py-1.5 hover:bg-white/[0.02]">
-                        <Terminal className="size-3 shrink-0 text-[#7C6DFA]/40" />
-                        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
-                        <span className="shrink-0 font-mono text-[11px] font-semibold text-[#EDEEFF]">{e.count}</span>
-                        <span className="w-10 shrink-0 text-right font-mono text-[10px] text-[#2E3554]">{rel(e.lastSeen)}</span>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Recent events */}
-              <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Recent events</p>
-                {recent.length === 0 ? (
-                  <p className="text-[12px] text-[#3A4060]">No recent events.</p>
+              <div>
+                <CollapseHeader
+                  label="Recent activity"
+                  icon={<Terminal className="size-3" />}
+                  collapsed={collapsed.has("recent-activity")}
+                  onToggle={() => toggleSection("recent-activity")}
+                />
+                {!collapsed.has("recent-activity") && (
+                  <div className="rounded-lg border border-white/7 bg-[#0C0D22] overflow-hidden">
+                    {recent.length === 0 ? (
+                      <p className="px-4 py-5 text-[12px] text-[#3A4060]">No activity yet.</p>
+                    ) : (
+                      recent.slice(0, 10).map((e, i) => (
+                        <div
+                          key={`${e.eventName}-${i}`}
+                          className={`flex items-center gap-2.5 px-4 py-2 transition-colors hover:bg-white/[0.02] ${i > 0 ? "border-t border-white/6" : ""}`}
+                        >
+                          <SourcePill source={e.source} />
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
+                          <span className="hidden shrink-0 max-w-[100px] truncate font-mono text-[10px] text-[#3A4060] sm:block">
+                            {e.pagePath || "—"}
+                          </span>
+                          <span className="shrink-0 font-mono text-[10px] text-[#2E3554]">{rel(e.createdAt)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ══ EARLY ACCESS ══════════════════════════════════════════════════ */}
+          {tab === "early-access" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-[15px] font-semibold text-[#EDEEFF]">
+                    Early access requests
+                  </h2>
+                  <p className="mt-0.5 text-[12px] text-[#4D5070]">
+                    {pending > 0
+                      ? `${pending} pending review · ${approved} approved · ${rejected} rejected`
+                      : `${total} total · ${approved} approved · ${rejected} rejected`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[10px]">
+                  <span className="flex items-center gap-1 rounded border border-[#F0BF72]/20 bg-[#F0BF72]/8 px-2 py-1 text-[#F0BF72]">
+                    {pending} pending
+                  </span>
+                  <span className="flex items-center gap-1 rounded border border-[#4DE8B0]/20 bg-[#4DE8B0]/8 px-2 py-1 text-[#4DE8B0]">
+                    {approved} approved
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="space-y-2 md:hidden">
+                {eaSorted.length === 0 ? (
+                  <p className="py-8 text-center text-[12px] text-[#3A4060]">No requests yet.</p>
+                ) : eaSorted.map((e, i) => (
+                  <div key={`${e.id}-${i}`} className="rounded-lg border border-white/7 bg-[#0C0D22] p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 truncate font-mono text-[12px] text-[#C8D4E0]">{e.email}</span>
+                      <StatusPill status={e.status} />
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[#4D5070]">
+                      {(e.plan_interest || e.role) && <span>{e.plan_interest || e.role}</span>}
+                      {(e.workflow || e.agent) && <span>· {e.workflow || e.agent}</span>}
+                      <span>· {fmt(e.created_at)}</span>
+                    </div>
+                    {(e.biggest_pain || e.notes) && (
+                      <p className="mt-1 truncate text-[11px] text-[#4D5070]">
+                        {e.biggest_pain || e.use_case}{e.notes ? ` · ${e.notes}` : ""}
+                      </p>
+                    )}
+                    {e.status === "pending" && (
+                      <p className="mt-2 text-[11px] text-[#4D5070]">
+                        Use desktop to approve / reject.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto rounded-lg border border-white/7 bg-[#0C0D22] md:block">
+                {eaSorted.length === 0 ? (
+                  <p className="px-6 py-10 text-center text-[12px] text-[#3A4060]">No requests yet.</p>
                 ) : (
-                  <div className="space-y-0.5">
-                    {recent.slice(0, 15).map((e, i) => (
-                      <div key={`${e.eventName}-${i}`} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-white/[0.02]">
-                        <SourcePill source={e.source} />
-                        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
-                        <span className="hidden max-w-[80px] shrink-0 truncate font-mono text-[10px] text-[#3A4060] sm:block">{e.pagePath || "—"}</span>
-                        <span className="shrink-0 font-mono text-[10px] text-[#2E3554]">{rel(e.createdAt)}</span>
+                  <table className="w-full min-w-[900px] text-left text-[12px]">
+                    <thead>
+                      <tr>
+                        <Th>Email</Th>
+                        <Th>Plan</Th>
+                        <Th>Workflow</Th>
+                        <Th>Pain / notes</Th>
+                        <Th>Status</Th>
+                        <Th>Submitted</Th>
+                        <Th>Reviewed</Th>
+                        <Th>Actions</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eaSorted.map((e, i) => (
+                        <EARow key={`${e.id}-${i}`} entry={e} onDone={handleEaDone} />
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ══ ACTIVITY ══════════════════════════════════════════════════════ */}
+          {tab === "activity" && (
+            <div className="space-y-5">
+
+              {/* Summary row */}
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
+                  <BarChart2 className="size-3" /> Traffic (7d)
+                </p>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  <Stat label="Unique visitors 24h" value={summary.uniqueVisitors24h ?? 0} accent="#5B8BFF" />
+                  <Stat label="Unique visitors 7d"  value={summary.uniqueVisitors7d ?? 0}  accent="#5B8BFF" />
+                  <Stat label="Page views 7d"        value={summary.pageViews7d ?? 0}        accent="#5B8BFF" />
+                </div>
+              </div>
+
+              {/* CLI traction stats */}
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
+                  <Terminal className="size-3" /> CLI traction (7d)
+                </p>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                  <Stat label="Active CLI users 7d" value={summary.cliUniqueUsers7d ?? 0} accent="#7C6DFA" note="distinct IDs" />
+                  <Stat label="CLI finishes 7d"      value={summary.cliFinishes7d ?? 0}    accent="#4DE8B0" />
+                  <Stat label="Agent runs 7d"         value={summary.cliAgentRuns7d ?? 0}   accent="#9966FF" />
+                  <Stat label="Install CTA clicks 7d" value={summary.installCtaClicks7d ?? 0} accent="#F0BF72" />
+                </div>
+              </div>
+
+              {/* Traffic sources */}
+              <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
+                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
+                  Traffic sources (7d)
+                </p>
+                {referrerBreakdown.length === 0 ? (
+                  <p className="text-[12px] text-[#3A4060]">
+                    Referrer data will appear when available.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {referrerBreakdown.map((r) => (
+                      <div key={r.source} className="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-white/[0.02]">
+                        <span className={`min-w-0 flex-1 font-mono text-[11px] ${r.isAI ? "text-[#9E91FF]" : "text-[#8E95C3]"}`}>
+                          {r.source}
+                        </span>
+                        {r.isAI && (
+                          <span className="rounded border border-[#7C6DFA]/25 bg-[#7C6DFA]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#9E91FF]">
+                            AI
+                          </span>
+                        )}
+                        <span className="shrink-0 font-mono text-[11px] font-semibold text-[#EDEEFF]">
+                          {r.count}
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Daily table — active days only, newest first */}
-            {(() => {
-              const activeDays = [...daily]
-                .reverse()
-                .filter((d) =>
-                  [d.visitors, d.pageViews, d.installCopies, d.earlyAccess, d.cliStarts, d.cliPrepares, d.cliChecks]
-                    .some((v) => Number(v ?? 0) > 0)
-                );
-              return (
+              <div className="grid gap-4 lg:grid-cols-2">
+
+                {/* Funnel */}
                 <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Daily activity</p>
-                    <span className="font-mono text-[10px] text-[#2E3554]">
-                      {activeDays.length > 0 ? `${activeDays.length} day${activeDays.length !== 1 ? "s" : ""} with data` : "no data yet"}
-                    </span>
-                  </div>
-                  {activeDays.length === 0 ? (
-                    <p className="py-2 text-[12px] text-[#3A4060]">Activity will appear here once tracking events are connected.</p>
+                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
+                    Conversion funnel (7d)
+                  </p>
+                  {funnel.length === 0 ? (
+                    <p className="text-[12px] text-[#3A4060]">No data yet.</p>
                   ) : (
-                    <div className="-mx-5 overflow-x-auto px-5">
-                      <table className="w-full min-w-[640px] text-left text-[12px]">
-                        <thead>
-                          <tr>
-                            {["Date", "Visitors", "Views", "Installs", "EA", "CLI starts", "Prepares", "Checks"].map((h) => (
-                              <Th key={h}>{h}</Th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activeDays.map((d, i) => (
-                            <tr key={`${d.date}-${i}`} className="border-t border-white/6 hover:bg-white/[0.015]">
-                              <td className="py-2 pr-4 font-mono text-[11px] text-[#4D5070]">{String(d.date)}</td>
-                              <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.visitors ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                              <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.pageViews ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                              <td className="pr-4 tabular-nums text-[#4DE8B0]">{Number(d.installCopies ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                              <td className="pr-4 tabular-nums text-[#F0BF72]">{Number(d.earlyAccess ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                              <td className="pr-4 tabular-nums text-[#9E91FF]">{Number(d.cliStarts ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                              <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.cliPrepares ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                              <td className="tabular-nums text-[#8E95C3]">{Number(d.cliChecks ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="space-y-3">
+                      {funnel.map((f, i) => (
+                        <div key={f.step}>
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="font-mono text-[11px] text-[#8E95C3]">{f.step}</span>
+                            <span className="font-mono text-[11px] font-semibold text-[#EDEEFF]">{f.count.toLocaleString()}</span>
+                          </div>
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-white/6">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.round((f.count / funnelMax) * 100)}%`,
+                                background: ["#5B8BFF", "#7C6DFA", "#9966FF", "#4DE8B0", "#F0BF72", "#FF7B5C"][i % 6],
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-              );
-            })()}
-          </div>
-        )}
-      </div>
+
+                {/* Top pages */}
+                <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
+                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Top pages (7d)</p>
+                  {topPages.length === 0 ? (
+                    <p className="text-[12px] text-[#3A4060]">No data yet.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {topPages.map((p, i) => (
+                        <div key={p.pagePath} className="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-white/[0.02]">
+                          <span className="w-4 shrink-0 font-mono text-[10px] text-[#2E3554]">{i + 1}</span>
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{p.pagePath || "/"}</span>
+                          <span className="shrink-0 font-mono text-[11px] text-[#EDEEFF]">{p.views}</span>
+                          <span className="w-14 shrink-0 text-right font-mono text-[10px] text-[#3A4060]">{p.uniqueUsers} uniq</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {/* CLI events */}
+                <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
+                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">CLI events (7d)</p>
+                  {cliEvents.length === 0 ? (
+                    <p className="text-[12px] text-[#3A4060]">No CLI events yet.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {cliEvents.map((e) => (
+                        <div key={e.eventName} className="flex items-center gap-2.5 rounded px-2 py-1.5 hover:bg-white/[0.02]">
+                          <Terminal className="size-3 shrink-0 text-[#7C6DFA]/40" />
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
+                          <span className="shrink-0 font-mono text-[11px] font-semibold text-[#EDEEFF]">{e.count}</span>
+                          <span className="w-10 shrink-0 text-right font-mono text-[10px] text-[#2E3554]">{rel(e.lastSeen)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent events */}
+                <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
+                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Recent events</p>
+                  {recent.length === 0 ? (
+                    <p className="text-[12px] text-[#3A4060]">No recent events.</p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {recent.slice(0, 15).map((e, i) => (
+                        <div key={`${e.eventName}-${i}`} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-white/[0.02]">
+                          <SourcePill source={e.source} />
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
+                          <span className="hidden max-w-[80px] shrink-0 truncate font-mono text-[10px] text-[#3A4060] sm:block">{e.pagePath || "—"}</span>
+                          <span className="shrink-0 font-mono text-[10px] text-[#2E3554]">{rel(e.createdAt)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Daily table — active days only, newest first */}
+              {(() => {
+                const activeDays = [...daily]
+                  .reverse()
+                  .filter((d) =>
+                    [d.visitors, d.pageViews, d.installCopies, d.earlyAccess, d.cliStarts, d.cliPrepares, d.cliChecks]
+                      .some((v) => Number(v ?? 0) > 0)
+                  );
+                return (
+                  <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Daily activity</p>
+                      <span className="font-mono text-[10px] text-[#2E3554]">
+                        {activeDays.length > 0 ? `${activeDays.length} day${activeDays.length !== 1 ? "s" : ""} with data` : "no data yet"}
+                      </span>
+                    </div>
+                    {activeDays.length === 0 ? (
+                      <p className="py-2 text-[12px] text-[#3A4060]">Activity will appear here once tracking events are connected.</p>
+                    ) : (
+                      <div className="-mx-5 overflow-x-auto px-5">
+                        <table className="w-full min-w-[640px] text-left text-[12px]">
+                          <thead>
+                            <tr>
+                              {["Date", "Visitors", "Views", "Installs", "EA", "CLI starts", "Prepares", "Checks"].map((h) => (
+                                <Th key={h}>{h}</Th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeDays.map((d, i) => (
+                              <tr key={`${d.date}-${i}`} className="border-t border-white/6 hover:bg-white/[0.015]">
+                                <td className="py-2 pr-4 font-mono text-[11px] text-[#4D5070]">{String(d.date)}</td>
+                                <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.visitors ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
+                                <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.pageViews ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
+                                <td className="pr-4 tabular-nums text-[#4DE8B0]">{Number(d.installCopies ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
+                                <td className="pr-4 tabular-nums text-[#F0BF72]">{Number(d.earlyAccess ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
+                                <td className="pr-4 tabular-nums text-[#9E91FF]">{Number(d.cliStarts ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
+                                <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.cliPrepares ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
+                                <td className="tabular-nums text-[#8E95C3]">{Number(d.cliChecks ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

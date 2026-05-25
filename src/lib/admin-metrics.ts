@@ -44,6 +44,31 @@ function countDistinct(items: Array<string | null | undefined>): number {
   return new Set(items.filter((v): v is string => Boolean(v))).size;
 }
 
+function safePercent(num: number, den: number): number {
+  if (!den) return 0;
+  return Math.round((num / den) * 100 * 10) / 10;
+}
+
+const AI_REFERRER_SOURCES = new Set(["chatgpt", "claude.ai", "perplexity"]);
+
+function classifyReferrer(raw: string): { source: string; isAI: boolean } {
+  const r = raw.toLowerCase().trim();
+  if (r.includes("chatgpt") || r.includes("openai.com")) return { source: "ChatGPT", isAI: true };
+  if (r.includes("claude.ai") || r.includes("anthropic")) return { source: "Claude.ai", isAI: true };
+  if (r.includes("perplexity")) return { source: "Perplexity", isAI: true };
+  if (r.includes("google")) return { source: "Google", isAI: false };
+  if (r.includes("twitter") || r.includes("x.com") || r === "x") return { source: "X/Twitter", isAI: false };
+  if (r.includes("github")) return { source: "GitHub", isAI: false };
+  if (r.includes("news.ycombinator") || r.includes("hacker news") || r === "hn") return { source: "Hacker News", isAI: false };
+  if (r.includes("reddit")) return { source: "Reddit", isAI: false };
+  if (r.includes("linkedin")) return { source: "LinkedIn", isAI: false };
+  if (r === "" || r === "direct" || r === "(direct)") return { source: "(direct)", isAI: false };
+  return { source: "Other", isAI: false };
+}
+
+// Suppress unused-variable warning — AI_REFERRER_SOURCES is used implicitly via classifyReferrer
+void AI_REFERRER_SOURCES;
+
 export async function getAdminMetrics() {
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
@@ -57,6 +82,8 @@ export async function getAdminMetrics() {
       cliEvents: [],
       earlyAccess: [],
       recentEvents: [],
+      conversionRates: null,
+      referrerBreakdown: [],
     };
   }
 
@@ -79,6 +106,8 @@ export async function getAdminMetrics() {
       cliEvents: [],
       earlyAccess: [],
       recentEvents: [],
+      conversionRates: null,
+      referrerBreakdown: [],
     };
   }
 
@@ -88,6 +117,15 @@ export async function getAdminMetrics() {
 
   const last24 = events.filter((e) => e.created_at >= last24hIso);
   const last7 = events.filter((e) => e.created_at >= last7dIso);
+
+  // Extended summary fields
+  const cliLast7 = last7.filter((e) => e.source === "cli");
+  const cliUniqueUsers7d = countDistinct(cliLast7.map((e) => e.anonymous_id));
+  const cliFinishes7d = last7.filter((e) => e.event_name === "cli_finish").length;
+  const cliAgentRuns7d = last7.filter(
+    (e) => e.event_name === "cli_agent" || e.event_name === "cli_agent_run"
+  ).length;
+  const installCtaClicks7d = last7.filter((e) => e.event_name === "install_cta_clicked").length;
 
   const summary = {
     uniqueVisitors24h: countDistinct(last24.map((e) => e.anonymous_id)),
@@ -107,7 +145,41 @@ export async function getAdminMetrics() {
           return typeof pid === "string" ? pid : e.anonymous_id;
         })
     ),
+    // Extended
+    cliUniqueUsers7d,
+    cliFinishes7d,
+    cliAgentRuns7d,
+    installCtaClicks7d,
   };
+
+  // Conversion rates
+  const pageViews7d = summary.pageViews7d;
+  const installCtaClicks = installCtaClicks7d;
+  const installCopies = summary.installCopies7d;
+  const cliStarts = summary.cliStarts7d;
+
+  const conversionRates = {
+    visitToInstallCta: safePercent(installCtaClicks, pageViews7d),
+    ctaToInstallCopy: safePercent(installCopies, installCtaClicks),
+    copyToCli: safePercent(cliStarts, installCopies),
+  };
+
+  // Referrer breakdown from page_view events last 7d
+  const referrerMap = new Map<string, { count: number; isAI: boolean }>();
+  for (const e of last7.filter((x) => x.event_name === "page_view")) {
+    const rawRef =
+      typeof e.metadata?.referrer === "string" ? e.metadata.referrer : "";
+    const { source, isAI } = classifyReferrer(rawRef);
+    const existing = referrerMap.get(source);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      referrerMap.set(source, { count: 1, isAI });
+    }
+  }
+  const referrerBreakdown = [...referrerMap.entries()]
+    .map(([source, v]) => ({ source, count: v.count, isAI: v.isAI }))
+    .sort((a, b) => b.count - a.count);
 
   const dailyMap = new Map<
     string,
@@ -232,6 +304,7 @@ export async function getAdminMetrics() {
     earlyAccess,
     earlyAccessTableFound,
     recentEvents,
+    conversionRates,
+    referrerBreakdown,
   };
 }
-
