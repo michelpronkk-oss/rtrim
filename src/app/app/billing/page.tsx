@@ -26,16 +26,15 @@ const PLANS = [
     name:     "Pro",
     price:    "$29",
     per:      "/ month",
-    trial:    "3-day free trial",
-    desc:     "Personal agent control with cloud sync and memory history.",
+    trial:    "3-day trial",
+    desc:     "Personal agent control with synced memory, cloud history and recovery metadata.",
     features: [
       "Everything in Free",
       "Auto-sync dashboard",
       "Cloud run history",
       "Memory sync",
-      "Synced reports",
-      "Synced restore metadata history",
-      "Savings/history reports",
+      "Synced restore metadata",
+      "Savings and history reports",
     ],
     featured: true,
   },
@@ -45,15 +44,14 @@ const PLANS = [
     price:    "$49",
     per:      "/ month",
     trial:    null as string | null,
-    desc:     "For founders shipping production code with AI agents daily.",
+    desc:     "Advanced guardrails for founders shipping production code with AI agents daily.",
     features: [
       "Everything in Pro",
       "Unlimited projects",
-      "Advanced reports",
-      "Priority guardrails and Run Compiler access",
+      "Proof and drift reports",
+      "Priority guardrails",
       "Multi-project memory",
-      "Multi-project recovery history",
-      "Higher run/history limits",
+      "Advanced recovery history",
     ],
     featured: false,
   },
@@ -67,11 +65,9 @@ const PLANS = [
     features: [
       "Everything in Builder",
       "Shared team state",
-      "Approvals",
-      "Audit logs",
-      "Shared recovery and audit logs",
-      "Shared run history",
-      "Team policies and GitHub checks (coming soon)",
+      "Approvals and audit logs",
+      "Shared recovery logs",
+      "GitHub checks and policies, coming soon",
     ],
     featured: false,
   },
@@ -163,7 +159,7 @@ export default async function BillingPage() {
           label: isTrialEligible ? "Start 3-day Pro trial" : "Upgrade to Pro",
         };
       }
-      if (targetPlanId === "builder") return { kind: "checkout" as const, label: "Upgrade to Builder" };
+      if (targetPlanId === "builder") return { kind: "checkout" as const, label: "Get Builder" };
       if (targetPlanId === "team") return { kind: "contact" as const, label: "Contact for Team" };
       return { kind: "checkout" as const, label: `Get ${planLabel(targetPlanId)}` };
     }
@@ -171,7 +167,7 @@ export default async function BillingPage() {
     const canManageBilling = canOpenBillingPortal;
     if (currentPlan === "pro") {
       if (targetPlanId === "builder") {
-        return { kind: "contact" as const, label: "Contact to upgrade" };
+        return { kind: "checkout" as const, label: "Upgrade to Builder" };
       }
       if (targetPlanId === "team") {
         return { kind: "contact" as const, label: "Contact for Team" };
@@ -204,17 +200,19 @@ export default async function BillingPage() {
           {isFree && !isPastDue ? "Get started" : "Billing"}
         </p>
         <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">
-          {isFree && !isPastDue ? "Choose your plan." : "Plan and billing"}
+          {isPastDue
+            ? "Payment needs attention."
+            : isFree
+              ? "Unlock the RunTrim dashboard."
+              : "Plan and billing"}
         </h1>
         <p className="mt-1.5 text-[14px] text-[#8a8f98]">
           {isPastDue
-            ? "Update your payment method to restore access."
+            ? "Update your payment method to keep dashboard access and cloud sync active."
             : isFree
-              ? isTrialEligible
-                ? "The RunTrim dashboard is a Pro feature. Start a 3-day free trial, no commitment."
-                : "The RunTrim dashboard is a Pro feature. Upgrade to continue."
+              ? "The CLI stays free and local. Pro unlocks synced runs, cloud history, memory sync and restore metadata."
               : isTrialing
-                ? `Pro trial active${trialEnd ? ` — ends ${trialEnd}` : ""}. You have full Pro access.`
+                ? `Pro trial active${trialEnd ? `. Ends ${trialEnd}.` : ""}. Full Pro access until then.`
                 : `${plan.charAt(0).toUpperCase() + plan.slice(1)} plan active.`}
         </p>
       </div>

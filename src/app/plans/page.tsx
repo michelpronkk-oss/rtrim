@@ -4,6 +4,8 @@ import { Check, ArrowRight } from "lucide-react";
 import { PublicNav } from "@/components/app/public-nav";
 import { PublicFooter } from "@/components/app/public-footer";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
+import { BuilderCtaButton } from "@/components/app/builder-cta-button";
+import { MotionCard, MotionFade, MotionButton, CountUpPrice } from "@/components/app/motion-section";
 
 export const metadata: Metadata = {
   title: "Plans | RunTrim — Compare Free, Pro, Builder, Team",
@@ -36,24 +38,25 @@ const PLANS = [
     name: "Free",
     price: null,
     priceLabel: "Free",
+    countTo: undefined as number | undefined,
+    pricePrefix: "",
+    priceSuffix: "",
     badge: null,
     positioning: "Local control for individual AI coding runs.",
     microcopy: "No account required. Runs stay local.",
-    ctaLabel: "Install Free CLI",
+    ctaLabel: "Install free CLI",
     ctaHref: "/app/install",
     ctaVariant: "secondary" as const,
     features: [
-      "Local guarded runs",
-      "Project setup",
-      "Scope, memory and finish checks",
-      "Local restore for latest guarded run (CLI preview/apply)",
+      "Unlimited local runs",
+      "Memory, scope and finish checks",
+      "All supported agents",
       "Local run history",
-      "Sensitive file warnings",
-      "No account required",
+      "Local restore for latest run",
     ],
     missing: [
-      "No cloud dashboard",
       "No cloud sync",
+      "No dashboard history",
       "No team features",
     ],
   },
@@ -62,21 +65,22 @@ const PLANS = [
     name: "Pro",
     price: null,
     priceLabel: "$29 / month",
+    countTo: 29,
+    pricePrefix: "$",
+    priceSuffix: " / month",
     badge: "Recommended",
-    positioning: "Personal agent control with synced memory and cloud history.",
-    microcopy: "3-day trial - cancel anytime",
-    ctaLabel: "Start free 3-day Pro trial",
+    positioning: "Personal agent control with synced memory, cloud history and recovery metadata.",
+    microcopy: "3-day trial. Cancel anytime.",
+    ctaLabel: "Start 3-day Pro trial",
     ctaHref: null,
     ctaVariant: "primary" as const,
     features: [
       "Everything in Free",
       "Auto-sync dashboard",
       "Cloud run history",
-      "Synced restore metadata and recovery visibility",
       "Memory sync",
-      "Synced reports",
-      "Restore metadata history",
-      "Savings/history reports",
+      "Synced restore metadata",
+      "Savings and history reports",
     ],
     missing: [],
   },
@@ -85,20 +89,22 @@ const PLANS = [
     name: "Builder",
     price: null,
     priceLabel: "$49 / month",
+    countTo: 49,
+    pricePrefix: "$",
+    priceSuffix: " / month",
     badge: "Serious projects",
-    positioning: "For founders shipping production code with AI agents daily.",
+    positioning: "Advanced guardrails for founders shipping production code with AI agents daily.",
     microcopy: null,
-    ctaLabel: "Request Builder access",
+    ctaLabel: "Get Builder",
     ctaHref: null,
     ctaVariant: "secondary" as const,
     features: [
       "Everything in Pro",
       "Unlimited projects",
-      "Multi-project restore history and recovery direction",
-      "Pro reports",
-      "Priority Run Compiler + Agent Preview access",
-      "Advanced guardrails",
-      "Higher run/history limits",
+      "Proof and drift reports",
+      "Priority guardrails",
+      "Multi-project memory",
+      "Advanced recovery history",
     ],
     missing: [],
   },
@@ -107,20 +113,21 @@ const PLANS = [
     name: "Team",
     price: null,
     priceLabel: "From $24 / seat",
-    badge: "Team direction",
+    countTo: 24,
+    pricePrefix: "From $",
+    priceSuffix: " / seat",
+    badge: "Reviewed access",
     positioning: "Shared control for teams using AI coding agents.",
-    microcopy: null,
-    ctaLabel: "Request Team access",
+    microcopy: "Team access is reviewed.",
+    ctaLabel: "Contact for Team",
     ctaHref: null,
     ctaVariant: "secondary" as const,
     features: [
       "Everything in Builder",
       "Shared team state",
-      "Approvals",
-      "Shared restore logs and audit-ready recovery direction",
-      "Audit logs",
-      "Team policies and GitHub checks (coming soon)",
-      "Shared accountability controls",
+      "Approvals and audit logs",
+      "Shared recovery logs",
+      "GitHub checks and policies, coming soon",
     ],
     missing: [],
   },
@@ -190,51 +197,59 @@ export default function PlansPage() {
 
         <div className="mx-auto relative z-10 text-center" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
           {/* Eyebrow */}
-          <span
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "4px 10px 4px 8px",
-              border: "1px solid rgba(167,139,250,0.22)",
-              borderRadius: 999,
-              background: "rgba(167,139,250,0.06)",
-              fontFamily: "var(--font-geist-mono)", fontSize: 11,
-              color: "#a78bfa", letterSpacing: "0.07em", textTransform: "uppercase",
-            }}
-          >
+          <MotionFade delay={0}>
             <span
-              className="rt-violet-dot"
-              style={{ width: 5, height: 5, borderRadius: "50%", background: "#a78bfa", display: "inline-block", flexShrink: 0 }}
-            />
-            Plans
-          </span>
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "4px 10px 4px 8px",
+                border: "1px solid rgba(167,139,250,0.22)",
+                borderRadius: 999,
+                background: "rgba(167,139,250,0.06)",
+                fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                color: "#a78bfa", letterSpacing: "0.07em", textTransform: "uppercase",
+              }}
+            >
+              <span
+                className="rt-violet-dot"
+                style={{ width: 5, height: 5, borderRadius: "50%", background: "#a78bfa", display: "inline-block", flexShrink: 0 }}
+              />
+              Plans
+            </span>
+          </MotionFade>
 
-          <h1
-            className="mt-5"
-            style={{
-              fontSize: "clamp(34px, 5.4vw, 62px)",
-              lineHeight: 1.04, letterSpacing: "-0.033em",
-              fontWeight: 500, color: "#f4f5f7",
-            }}
-          >
-            Start local.{" "}
-            <em style={{ fontStyle: "normal", color: "#8a8f98" }}>Scale to a team.</em>
-          </h1>
+          <MotionFade delay={0.06}>
+            <h1
+              className="mt-5"
+              style={{
+                fontSize: "clamp(34px, 5.4vw, 62px)",
+                lineHeight: 1.04, letterSpacing: "-0.033em",
+                fontWeight: 500, color: "#f4f5f7",
+              }}
+            >
+              Start local.{" "}
+              <em style={{ fontStyle: "normal", color: "#8a8f98" }}>Scale to a team.</em>
+            </h1>
+          </MotionFade>
 
-          <p
-            className="mx-auto mt-5"
-            style={{ fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}
-          >
-            Free CLI works without an account. Pro starts with a 3-day trial. Builder is for high-volume founder workflows. Team adds shared controls with next-stage policies and checks.
-          </p>
-
-          <div
-            className="mx-auto mt-5 inline-flex rounded-[8px] px-4 py-2.5"
-            style={{ border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.04)" }}
-          >
-            <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#a78bfa" }}>
-              Pro includes a free 3-day trial. Builder and Team are available on-demand.
+          <MotionFade delay={0.12}>
+            <p
+              className="mx-auto mt-5"
+              style={{ fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}
+            >
+              Free CLI works without an account. Pro starts with a 3-day trial. Builder is for high-volume founder workflows. Team adds shared controls with next-stage policies and checks.
             </p>
-          </div>
+          </MotionFade>
+
+          <MotionFade delay={0.18}>
+            <div
+              className="mx-auto mt-5 inline-flex rounded-[8px] px-4 py-2.5"
+              style={{ border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.04)" }}
+            >
+              <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11.5, color: "#a78bfa" }}>
+                Pro includes a free 3-day trial. Builder and Team are available on-demand.
+              </p>
+            </div>
+          </MotionFade>
         </div>
       </section>
 
@@ -243,12 +258,13 @@ export default function PlansPage() {
         {/* align-items: stretch (default grid) makes all cards equal row height.
             Each card uses flex-col so features (flex-1) grow and CTA sits at bottom. */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 items-stretch">
-          {PLANS.map((plan) => {
+          {PLANS.map((plan, i) => {
             const isPro = plan.id === "pro";
             const isFree = plan.id === "free";
             return (
-              <div
+              <MotionCard
                 key={plan.id}
+                delay={i * 0.07}
                 className="relative flex h-full flex-col rounded-[10px] overflow-hidden"
                 style={{
                   background: isPro
@@ -288,7 +304,13 @@ export default function PlansPage() {
                     className="mt-2.5"
                     style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.015em", color: "#f4f5f7" }}
                   >
-                    {plan.priceLabel}
+                    <CountUpPrice
+                      to={plan.countTo}
+                      prefix={plan.pricePrefix}
+                      suffix={plan.priceSuffix}
+                      label={plan.countTo === undefined ? plan.priceLabel : undefined}
+                      delay={i * 0.07 + 0.1}
+                    />
                   </p>
                   <p className="mt-2" style={{ fontSize: 13, lineHeight: 1.5, color: "#8a8f98", minHeight: 78 }}>{plan.positioning}</p>
                 </div>
@@ -325,21 +347,16 @@ export default function PlansPage() {
                       href="/app/install"
                       className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#8a8f98] hover:bg-[#16191e] hover:text-[#f4f5f7]"
                     >
-                      Set up local CLI
+                      Install free CLI
                     </Link>
                   ) : isPro ? (
                     <ProCheckoutButton
-                      label={plan.ctaLabel}
+                      label="Start 3-day Pro trial"
                       className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
                     />
                   ) : (
                     plan.id === "builder" ? (
-                      <Link
-                        href="/app/billing"
-                        className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]"
-                      >
-                        Upgrade to Builder
-                      </Link>
+                      <BuilderCtaButton className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium transition-colors border border-white/14 text-[#f4f5f7] hover:bg-[#16191e]" />
                     ) : (
                       <a
                         href="mailto:hello@runtrim.com?subject=RunTrim%20Team%20plan"
@@ -356,13 +373,13 @@ export default function PlansPage() {
                     {plan.microcopy ?? "placeholder"}
                   </p>
                 </div>
-              </div>
+              </MotionCard>
             );
           })}
         </div>
 
         <p className="mt-5 text-center font-mono text-[11px] text-[#3a3e46]">
-          Pro is self-serve with a 3-day trial. Builder and Team are reviewed access.
+          Pro is self-serve with a 3-day trial. Builder requires active Pro. Team is reviewed access.
         </p>
       </div>
 
@@ -422,20 +439,15 @@ export default function PlansPage() {
                         href="/app/install"
                         className="inline-flex h-8 items-center justify-center rounded border border-white/10 px-3 text-[11px] text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
                       >
-                        Install Free CLI
+                        Install free CLI
                       </Link>
                     ) : plan.id === "pro" ? (
                       <ProCheckoutButton
-                        label="Start free 3-day Pro trial"
+                        label="Start 3-day Pro trial"
                         className="inline-flex h-8 items-center justify-center rounded px-3 text-[11px] font-medium transition-colors bg-[#f4f5f7] text-[#0b0d10] border border-white hover:bg-white disabled:opacity-60"
                       />
                     ) : plan.id === "builder" ? (
-                      <Link
-                        href="/app/billing"
-                        className="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]"
-                      >
-                        Upgrade to Builder
-                      </Link>
+                      <BuilderCtaButton className="inline-flex h-8 items-center justify-center rounded border border-white/14 px-3 text-[11px] font-medium text-[#f4f5f7] transition-colors hover:bg-[#16191e]" />
                     ) : (
                       <a
                         href="mailto:hello@runtrim.com?subject=RunTrim%20Team%20plan"

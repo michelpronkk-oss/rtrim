@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Activity } from "lucide-react";
 import { RunTrimLogo } from "@/components/app/runtrim-logo";
 import { needsPaymentUpdate, trialEligible } from "@/lib/billing-cta";
 
@@ -203,7 +204,7 @@ export function PublicNav() {
           </Link>
 
           {/* Desktop nav links — hidden below md (768 px) */}
-          <nav className="hidden md:flex items-center gap-1 ml-9">
+          <nav className="hidden md:flex items-center gap-0.5 ml-10">
             {NAV_LINKS.map(({ href, label }) => (
               <Link
                 key={label}
@@ -211,10 +212,11 @@ export function PublicNav() {
                 style={{
                   fontSize: 13,
                   color: "#8a8f98",
-                  padding: "7px 10px",
-                  borderRadius: 5,
+                  padding: "6px 11px",
+                  borderRadius: 6,
                   textDecoration: "none",
                   transition: "color 0.15s, background 0.15s",
+                  letterSpacing: "-0.01em",
                 }}
                 className="hover:text-[#f4f5f7] hover:bg-white/6"
               >
@@ -227,34 +229,19 @@ export function PublicNav() {
           <div style={{ flex: 1 }} />
 
           {/* Right-side action group — desktop only. Flex row with consistent gap. */}
-          <div className="hidden md:flex items-center gap-3">
-            {/* Status badge */}
+          <div className="hidden md:flex items-center gap-4">
+            {/* Status indicator — square icon only */}
             <Link
               href="/status"
-              className="inline-flex items-center gap-2 transition-colors"
-              style={{
-                ...MONO,
-                fontSize: 11,
-                color: "#8a8f98",
-                height: 32,
-                padding: "0 12px",
-                border: "1px solid rgba(255,255,255,0.09)",
-                borderRadius: 6,
-                background: "#0c0e11",
-                textDecoration: "none",
-              }}
+              aria-label="System status"
+              className="inline-flex items-center transition-opacity hover:opacity-60"
+              style={{ textDecoration: "none" }}
             >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: "#6ee7b7",
-                  display: "inline-block",
-                  flexShrink: 0,
-                }}
+              <Activity
+                size={13}
+                strokeWidth={2}
+                style={{ color: "#6ee7b7", filter: "drop-shadow(0 0 4px rgba(110,231,183,0.55))" }}
               />
-              all systems operational
             </Link>
 
             {/* "View plans" primary CTA */}
@@ -262,13 +249,14 @@ export function PublicNav() {
               href="/plans"
               className="inline-flex items-center hover:bg-white"
               style={{
-                height: 32,
-                padding: "0 16px",
-                borderRadius: 6,
+                height: 33,
+                padding: "0 17px",
+                borderRadius: 7,
                 background: "#f4f5f7",
                 color: "#0b0d10",
                 fontSize: 13,
                 fontWeight: 500,
+                letterSpacing: "-0.01em",
                 border: "1px solid #fff",
                 transition: "background 0.15s",
                 textDecoration: "none",
@@ -300,115 +288,156 @@ export function PublicNav() {
               transition: "background 0.15s",
             }}
           >
-            {open
-              ? <X size={17} strokeWidth={2} aria-hidden="true" />
-              : <Menu size={17} strokeWidth={2} aria-hidden="true" />
-            }
+            <AnimatePresence mode="wait" initial={false}>
+              {open ? (
+                <motion.span
+                  key="close"
+                  initial={{ rotate: -45, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 45, opacity: 0 }}
+                  transition={{ duration: 0.15, ease: "easeInOut" }}
+                  style={{ display: "flex" }}
+                >
+                  <X size={17} strokeWidth={2} aria-hidden="true" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="open"
+                  initial={{ rotate: 45, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: -45, opacity: 0 }}
+                  transition={{ duration: 0.15, ease: "easeInOut" }}
+                  style={{ display: "flex" }}
+                >
+                  <Menu size={17} strokeWidth={2} aria-hidden="true" />
+                </motion.span>
+              )}
+            </AnimatePresence>
           </button>
         </div>
       </header>
 
       {/* ── Mobile dropdown — fixed, directly below the header bar ────────── */}
-      {open && (
-        <div
-          id="mobile-nav-dropdown"
-          className="md:hidden"
-          style={{
-            position: "fixed",
-            top: HEADER_H,
-            left: 0,
-            right: 0,
-            zIndex: 199,        // one below header so header border renders on top
-            background: "#0a0b0e",  // solid near-black — no transparency, no blur bleed
-            borderBottom: "1px solid rgba(255,255,255,0.09)",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.8)",
-            padding: "22px clamp(20px, 4vw, 40px) 28px",
-            // Prevent content jumping when menu opens
-            overflowY: "auto",
-            maxHeight: "calc(100dvh - 60px)",
-          }}
-        >
-          {/* Nav links */}
-          <nav style={{ marginBottom: 24 }}>
-            {DROPDOWN_LINKS.map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                onClick={close}
-                style={{
-                  display: "block",
-                  padding: "11px 0",
-                  fontSize: 15,
-                  fontWeight: 500,
-                  color: "#c4c8d0",
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
-                  textDecoration: "none",
-                  transition: "color 0.12s",
-                }}
-                className="hover:text-[#f4f5f7]"
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            id="mobile-nav-dropdown"
+            className="md:hidden"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ type: "spring", stiffness: 400, damping: 32, mass: 0.8 }}
+            style={{
+              position: "fixed",
+              top: HEADER_H,
+              left: 0,
+              right: 0,
+              zIndex: 199,
+              background: "#0a0b0e",
+              borderBottom: "1px solid rgba(255,255,255,0.09)",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.8)",
+              padding: "22px clamp(20px, 4vw, 40px) 28px",
+              overflowY: "auto",
+              maxHeight: "calc(100dvh - 60px)",
+            }}
+          >
+            {/* Nav links — staggered entrance */}
+            <nav style={{ marginBottom: 24 }}>
+              {DROPDOWN_LINKS.map(({ href, label }, i) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.04 + i * 0.04, duration: 0.22, ease: "easeOut" }}
+                >
+                  <Link
+                    href={href}
+                    onClick={close}
+                    style={{
+                      display: "block",
+                      padding: "11px 0",
+                      fontSize: 15,
+                      fontWeight: 500,
+                      color: "#c4c8d0",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      textDecoration: "none",
+                      transition: "color 0.12s",
+                    }}
+                    className="hover:text-[#f4f5f7]"
+                  >
+                    {label}
+                  </Link>
+                </motion.div>
+              ))}
+            </nav>
+
+            {/* State-aware CTA buttons */}
+            {ctaState !== "checking" && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18, duration: 0.24, ease: "easeOut" }}
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
-                {label}
-              </Link>
-            ))}
-          </nav>
+                {primary && (
+                  <motion.div whileTap={{ scale: 0.97, transition: { type: "spring", stiffness: 700, damping: 30 } }}>
+                    <Link
+                      href={primary.href}
+                      onClick={close}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: 46,
+                        borderRadius: 8,
+                        background: "#f0f1f3",
+                        color: "#0b0d10",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        border: "1px solid rgba(255,255,255,0.9)",
+                        textDecoration: "none",
+                        transition: "background 0.15s",
+                      }}
+                    >
+                      {primary.label}
+                    </Link>
+                  </motion.div>
+                )}
+                {secondary && (
+                  <motion.div whileTap={{ scale: 0.97, transition: { type: "spring", stiffness: 700, damping: 30 } }}>
+                    <Link
+                      href={secondary.href}
+                      onClick={close}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: 46,
+                        borderRadius: 8,
+                        background: "#111417",
+                        color: "#b8bcc4",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        textDecoration: "none",
+                        transition: "background 0.15s, color 0.15s",
+                      }}
+                      className="hover:bg-white/8 hover:text-[#f4f5f7]"
+                    >
+                      {secondary.label}
+                    </Link>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
 
-          {/* State-aware CTA buttons */}
-          {ctaState !== "checking" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {primary && (
-                <Link
-                  href={primary.href}
-                  onClick={close}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: 46,
-                    borderRadius: 8,
-                    background: "#f0f1f3",
-                    color: "#0b0d10",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    border: "1px solid rgba(255,255,255,0.9)",
-                    textDecoration: "none",
-                    transition: "background 0.15s",
-                  }}
-                >
-                  {primary.label}
-                </Link>
-              )}
-              {secondary && (
-                <Link
-                  href={secondary.href}
-                  onClick={close}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: 46,
-                    borderRadius: 8,
-                    background: "#111417",
-                    color: "#b8bcc4",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    textDecoration: "none",
-                    transition: "background 0.15s, color 0.15s",
-                  }}
-                  className="hover:bg-white/8 hover:text-[#f4f5f7]"
-                >
-                  {secondary.label}
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Trust footnote */}
-          <p style={{ ...MONO, fontSize: 10, color: "#2e3138", marginTop: 22, textAlign: "center" }}>
-            Local-first. Source stays local.
-          </p>
-        </div>
-      )}
+            {/* Trust footnote */}
+            <p style={{ ...MONO, fontSize: 10, color: "#2e3138", marginTop: 22, textAlign: "center" }}>
+              Local-first. Source stays local.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

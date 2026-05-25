@@ -38,7 +38,7 @@ export function SmartCta({
   label,
   className,
   variant = "pro",
-  openAppLabel = "Open app",
+  openAppLabel = "Open dashboard",
   openAppClassName,
   loginRedirect = false,
   loggedOutHref,

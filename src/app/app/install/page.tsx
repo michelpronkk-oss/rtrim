@@ -41,12 +41,14 @@ function Cmd({ text, trackKey }: { text: string; trackKey?: string }) {
   return (
     <div
       className="flex items-center overflow-hidden rounded-[8px]"
-      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)" }}
+      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)", minWidth: 0, width: "100%" }}
     >
       <span style={{ ...MONO, fontSize: 11, color: "#a78bfa", padding: "0 6px 0 14px", flexShrink: 0 }}>$</span>
-      <code style={{ ...MONO, fontSize: 12, color: "#c9ccd2", flex: 1, padding: "10px 8px 10px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-        {text}
-      </code>
+      <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+        <code style={{ ...MONO, fontSize: 12, color: "#c9ccd2", display: "block", padding: "10px 8px 10px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+          {text}
+        </code>
+      </div>
       <div style={{ borderLeft: "1px solid rgba(255,255,255,0.07)", padding: "8px 12px", flexShrink: 0 }}>
         <CopyButton text={text} trackCommandKey={trackKey} />
       </div>
@@ -58,15 +60,15 @@ function SectionCard({ kicker, children }: { kicker: string; children: React.Rea
   return (
     <div
       className="overflow-hidden rounded-[10px]"
-      style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#0c0e11" }}
+      style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#0c0e11", minWidth: 0 }}
     >
       <div
-        className="px-5 py-3.5"
+        className="px-4 py-3.5 sm:px-5"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(180deg, #111317, #0c0e11)" }}
       >
         <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em" }}>{kicker}</p>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </div>
   );
 }
@@ -131,21 +133,23 @@ export default function InstallPage() {
             Runs locally in your repo. No account required. Source code is never uploaded.
           </p>
 
-          {/* Hero install command :  all elements share height: 40px */}
-          <div className="mt-8 flex flex-wrap gap-3 items-center">
+          {/* Hero install command */}
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <div
               className="flex items-center overflow-hidden rounded-[8px]"
               style={{
-                height: 40,
+                height: 40, minWidth: 0,
                 background: "#0c0e11",
                 border: "1px solid rgba(167,139,250,0.25)",
                 boxShadow: "0 0 0 1px rgba(167,139,250,0.06)",
               }}
             >
               <span style={{ ...MONO, fontSize: 12, color: "#a78bfa", padding: "0 6px 0 14px", flexShrink: 0 }}>$</span>
-              <code style={{ ...MONO, fontSize: 13, color: "#c9ccd2", padding: "0 10px 0 0" }}>
-                npm install -g runtrim
-              </code>
+              <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                <code style={{ ...MONO, fontSize: 13, color: "#c9ccd2", display: "block", padding: "0 8px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                  npm install -g runtrim
+                </code>
+              </div>
               <div style={{ borderLeft: "1px solid rgba(255,255,255,0.07)", padding: "0 12px", height: "100%", display: "flex", alignItems: "center", flexShrink: 0 }}>
                 <CopyButton text="npm install -g runtrim" trackCommandKey="npm_install_global" />
               </div>
@@ -153,11 +157,12 @@ export default function InstallPage() {
             <Link
               href="/plans"
               style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
                 height: 40, padding: "0 16px", borderRadius: 7,
                 border: "1px solid rgba(255,255,255,0.14)",
                 background: "transparent", color: "#8a8f98",
                 fontSize: 13, transition: "color 0.15s, border-color 0.15s, background 0.15s",
+                flexShrink: 0, textDecoration: "none",
               }}
               className="group hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
             >
@@ -283,8 +288,8 @@ export default function InstallPage() {
                 >
                   {item.n}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <code style={{ ...MONO, fontSize: 12.5, color: "#c9ccd2" }}>{item.cmd}</code>
+                <div className="min-w-0 flex-1" style={{ overflow: "hidden" }}>
+                  <code style={{ ...MONO, fontSize: 12.5, color: "#c9ccd2", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.cmd}</code>
                   <p className="mt-1" style={{ fontSize: 12, color: "#5a5f68" }}>{item.note}</p>
                 </div>
                 <div className="shrink-0">

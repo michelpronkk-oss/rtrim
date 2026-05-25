@@ -253,6 +253,21 @@
   animation: rt-live-dot 2.2s ease-in-out infinite;
 }
 
+/* CLI command box border pulse — slow violet breathe */
+@keyframes rt-cli-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(167,139,250,0.12), 0 2px 12px rgba(109,76,242,0.06);
+    border-color: rgba(255,255,255,0.09);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(167,139,250,0.28), 0 4px 24px rgba(109,76,242,0.16), 0 0 40px rgba(109,76,242,0.06);
+    border-color: rgba(167,139,250,0.22);
+  }
+}
+.rt-cli-pulse {
+  animation: rt-cli-pulse 4s ease-in-out infinite;
+}
+
 /* Primary CTA outer glow breathe — very slow, very restrained */
 @keyframes rt-cta-glow {
   0%, 100% {

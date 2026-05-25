@@ -37,7 +37,7 @@ type AuthPlan =
  */
 export function ProCheckoutButton({
   className,
-  label = "Start 3-day Pro trial",
+  label = "Start 3-day Pro trial",  // canonical default
   planId = "pro",
   alwaysCheckout = false,
 }: ProCheckoutButtonProps) {
@@ -87,11 +87,13 @@ export function ProCheckoutButton({
     );
   }
 
-  // ── Already has active paid plan → open dashboard ─────────────────────────
-  if (authPlan === "pro") {
+  // ── Already has active paid plan ─────────────────────────────────────────
+  // If targeting the same or lower plan → open dashboard.
+  // If targeting Builder → allow the checkout button to proceed (Pro can upgrade).
+  if (authPlan === "pro" && planId !== "builder") {
     return (
-      <Link href="/app/billing" className={className}>
-        {planId === "pro" ? "Manage Pro" : "Manage billing"}
+      <Link href="/app" className={className}>
+        Open dashboard
       </Link>
     );
   }

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
-import { MotionFade } from "@/components/app/motion-section";
+import { MotionFade, MotionButton, ProtocolBars, CtaBeams, CountUpPrice } from "@/components/app/motion-section";
 import { CopyButton } from "@/components/app/copy-button";
 import { SmartCta } from "@/components/app/smart-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
+import { BuilderCtaButton } from "@/components/app/builder-cta-button";
 import { HeroRunContract, MobileContractCard } from "@/components/app/hero-run-contract";
 import { planOrder, plans } from "@/lib/plans";
 import { PublicNav } from "@/components/app/public-nav";
@@ -255,27 +256,31 @@ export default function Home() {
 
               <MotionFade delay={0.17}>
                 <div className="mt-6 sm:mt-9 flex flex-wrap gap-2.5 sm:gap-3 items-center">
-                  <Link
-                    href="/app/install"
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 10,
-                      height: 41, padding: "0 17px", borderRadius: 7,
-                      fontSize: 14, fontWeight: 500,
-                      background: "#f4f5f7", color: "#0b0d10",
-                      border: "1px solid rgba(255,255,255,0.9)",
-                      transition: "background 0.15s",
-                    }}
-                    className="rt-cta-glow hover:bg-white group"
-                  >
-                    Install free CLI
-                    <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </Link>
-                  <Link
-                    href="/app/install"
-                    className="inline-flex items-center gap-2 h-[41px] px-[16px] sm:px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
-                  >
-                    See how it works
-                  </Link>
+                  <MotionButton>
+                    <Link
+                      href="/app/install"
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 10,
+                        height: 41, padding: "0 17px", borderRadius: 7,
+                        fontSize: 14, fontWeight: 500,
+                        background: "#f4f5f7", color: "#0b0d10",
+                        border: "1px solid rgba(255,255,255,0.9)",
+                        transition: "background 0.15s",
+                      }}
+                      className="rt-cta-glow hover:bg-white group"
+                    >
+                      Install free CLI
+                      <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                    </Link>
+                  </MotionButton>
+                  <MotionButton>
+                    <Link
+                      href="/app/install"
+                      className="inline-flex items-center gap-2 h-[41px] px-[16px] sm:px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
+                    >
+                      See how it works
+                    </Link>
+                  </MotionButton>
                 </div>
               </MotionFade>
 
@@ -506,20 +511,7 @@ export default function Home() {
                 <p style={{ color: "#8a8f98", fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
                   {desc}
                 </p>
-                {/* Progress bar */}
-                <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", gap: 4 }}>
-                  {[0,1,2,3].map((j) => (
-                    <span
-                      key={j}
-                      style={{
-                        flex: 1, height: 3, borderRadius: 2,
-                        background: active
-                          ? "linear-gradient(90deg, rgba(124,58,237,0.85), rgba(167,139,250,0.9))"
-                          : "#1c2026",
-                      }}
-                    />
-                  ))}
-                </div>
+                <ProtocolBars active={active} cardIndex={i} />
               </div>
             ))}
           </div>
@@ -830,7 +822,7 @@ export default function Home() {
                 price: "$29",
                 per: "/ month",
                 trial: "3-day trial" as string | null,
-                desc: "Personal agent control with cloud sync, memory and recovery history.",
+                desc: "Personal agent control with synced memory, cloud history and recovery metadata.",
                 features: [
                   "Unlimited guarded handoffs",
                   "Auto-sync dashboard",
@@ -868,7 +860,7 @@ export default function Home() {
                 features: ["Everything in Builder", "Shared team state", "Approvals and audit logs", "Shared recovery logs", "GitHub checks and policies (coming soon)"],
                 featured: false,
               },
-            ].map(({ id, name, price, per, trial, desc, features, featured }) => (
+            ].map(({ id, name, price, per, trial, desc, features, featured }, idx) => (
               <MotionFade key={id} delay={0.06} className="h-full">
                 <div
                   style={{
@@ -895,7 +887,10 @@ export default function Home() {
                   {/* Price */}
                   <div style={{ marginTop: 10 }}>
                     <span style={{ fontSize: 26, color: "#f4f5f7", letterSpacing: "-0.02em", fontWeight: 500 }}>
-                      {price}
+                      {id === "free"    && <CountUpPrice label="$0" delay={idx * 0.07} />}
+                      {id === "pro"     && <CountUpPrice to={29} prefix="$" delay={idx * 0.07} />}
+                      {id === "builder" && <CountUpPrice to={49} prefix="$" delay={idx * 0.07} />}
+                      {id === "team"    && <CountUpPrice to={24} prefix="From $" delay={idx * 0.07} />}
                     </span>
                     <span style={{ fontSize: 13, color: "#5a5f68", fontWeight: 400, marginLeft: 4 }}>{per}</span>
                   </div>
@@ -957,17 +952,12 @@ export default function Home() {
                       </Link>
                     ) : id === "pro" ? (
                       <ProCheckoutButton
-                        label="Start free 3-day Pro trial"
+                        label="Start 3-day Pro trial"
                         className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white bg-[#f4f5f7] text-[#0b0d10] text-[13px] font-medium transition-colors hover:bg-white disabled:opacity-60"
                       />
                     ) : (
                       id === "builder" ? (
-                        <Link
-                          href="/app/billing"
-                          className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]"
-                        >
-                          Upgrade to Builder
-                        </Link>
+                        <BuilderCtaButton className="flex items-center justify-center h-9 w-full rounded-[6px] border border-white/14 bg-transparent text-[#f4f5f7] text-[13px] transition-colors hover:bg-[#16191e]" />
                       ) : (
                         <a
                           href="mailto:hello@runtrim.com?subject=RunTrim%20Team%20plan"
@@ -1035,8 +1025,10 @@ export default function Home() {
           }}
         />
 
+        <CtaBeams />
+
         <div className="mx-auto relative z-10 text-center" style={{ maxWidth: 760, padding: "0 clamp(20px,4vw,40px)" }}>
-          <MotionFade>
+          <MotionFade delay={0.1}>
             <h2
               style={{
                 fontSize: "clamp(34px,5vw,56px)",
@@ -1046,13 +1038,17 @@ export default function Home() {
             >
               Before any AI agent touches your code, run it through RunTrim.
             </h2>
+          </MotionFade>
+          <MotionFade delay={0.2}>
             <p style={{ margin: "18px auto 0", color: "#8a8f98", fontSize: 17, maxWidth: 540 }}>
               One command installs the protocol. Every run after that is scoped, memorable, and on the record.
             </p>
+          </MotionFade>
 
-            {/* CLI command */}
+          {/* CLI command */}
+          <MotionFade delay={0.3}>
             <div
-              className="mx-auto mt-8 inline-flex items-center gap-3"
+              className="rt-cli-pulse mx-auto mt-8 inline-flex items-center gap-3"
               style={{
                 padding: "9px 12px 9px 14px",
                 border: "1px solid rgba(255,255,255,0.09)",
@@ -1064,29 +1060,35 @@ export default function Home() {
               <span>npm install -g runtrim</span>
               <CopyButton text="npm install -g runtrim" trackCommandKey="npm_install_global" />
             </div>
+          </MotionFade>
 
+          <MotionFade delay={0.42}>
             <div className="mt-8 flex flex-wrap gap-3 justify-center">
-              <Link
-                href="/app/install"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 10,
-                  height: 40, padding: "0 18px", borderRadius: 7,
-                  fontSize: 14, fontWeight: 500,
-                  background: "#f4f5f7", color: "#0b0d10",
-                  border: "1px solid #fff",
-                  transition: "background 0.15s",
-                }}
-                className="group hover:bg-white"
-              >
-                Install free CLI
-                <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </Link>
-              <Link
-                href="/app/install"
-                className="inline-flex items-center h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
-              >
-                See how it works
-              </Link>
+              <MotionButton>
+                <Link
+                  href="/app/install"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 10,
+                    height: 40, padding: "0 18px", borderRadius: 7,
+                    fontSize: 14, fontWeight: 500,
+                    background: "#f4f5f7", color: "#0b0d10",
+                    border: "1px solid #fff",
+                    transition: "background 0.15s",
+                  }}
+                  className="group hover:bg-white"
+                >
+                  Install free CLI
+                  <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Link>
+              </MotionButton>
+              <MotionButton>
+                <Link
+                  href="/app/install"
+                  className="inline-flex items-center h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
+                >
+                  See how it works
+                </Link>
+              </MotionButton>
             </div>
           </MotionFade>
         </div>
