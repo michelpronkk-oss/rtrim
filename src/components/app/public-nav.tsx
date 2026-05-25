@@ -74,7 +74,7 @@ export function PublicNav() {
 
         {/* Primary CTA */}
         <Link
-          href="/app/install"
+          href="/plans"
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             height: 32, padding: "0 14px", borderRadius: 6,
@@ -84,7 +84,7 @@ export function PublicNav() {
           }}
           className="hover:bg-white"
         >
-          Install CLI
+          View plans
         </Link>
       </div>
     </header>

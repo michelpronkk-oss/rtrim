@@ -32,17 +32,53 @@ export interface EvaluationResult {
   evaluatedAt: string;
 }
 
-export async function getGitDiff(cwd = process.cwd()): Promise<string[]> {
+export interface GitChangedFile {
+  path: string;
+  status: string;
+  untracked: boolean;
+}
+
+function parsePorcelainPath(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const renameParts = trimmed.split(" -> ");
+  const value = renameParts.length > 1 ? renameParts[renameParts.length - 1] : trimmed;
+  return value.replace(/^"+|"+$/g, "");
+}
+
+export async function getGitChangedFiles(cwd = process.cwd()): Promise<GitChangedFile[]> {
   try {
-    const [unstaged, staged] = await Promise.all([
-      execa("git", ["diff", "--name-only", "HEAD"], { cwd }),
-      execa("git", ["diff", "--name-only", "--cached"], { cwd }),
-    ]);
-    const files = [...unstaged.stdout.split("\n"), ...staged.stdout.split("\n")].filter(Boolean);
-    return [...new Set(files)];
+    const status = await execa("git", ["status", "--porcelain"], { cwd });
+    const lines = status.stdout.split("\n").map((line) => line.trimEnd()).filter(Boolean);
+    const out: GitChangedFile[] = [];
+
+    for (const line of lines) {
+      if (line.length < 3) continue;
+      const code = line.slice(0, 2);
+      const rawPath = line.slice(3);
+      const filePath = parsePorcelainPath(rawPath);
+      if (!filePath) continue;
+      out.push({
+        path: filePath,
+        status: code,
+        untracked: code === "??",
+      });
+    }
+
+    const deduped = new Map<string, GitChangedFile>();
+    for (const item of out) {
+      const prev = deduped.get(item.path);
+      if (!prev || (!prev.untracked && item.untracked)) deduped.set(item.path, item);
+    }
+    return [...deduped.values()];
   } catch {
     return [];
   }
+}
+
+export async function getGitDiff(cwd = process.cwd()): Promise<string[]> {
+  const files = await getGitChangedFiles(cwd);
+  return files.map((f) => f.path);
 }
 
 function normalizeScopeKeywords(scope: string[]): string[] {

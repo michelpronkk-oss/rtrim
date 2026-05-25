@@ -13,7 +13,7 @@ import { PublicFooter } from "@/components/app/public-footer";
 export const metadata: Metadata = {
   title: "RunTrim - Control layer for AI coding agents",
   description:
-    "RunTrim installs a protocol into your repo, gives every AI coding task memory, scope, forbidden files, and a finish check, then syncs the run to your dashboard. Fewer drifts, lower token burn, cleaner diffs.",
+    "RunTrim is the control layer for AI coding agents. It gives Claude, Codex, Cursor, ChatGPT, and other agents scoped instructions, project memory, forbidden-file rules, finish checks, and run history before they touch your code.",
   alternates: {
     canonical: "https://www.runtrim.com",
   },
@@ -80,7 +80,7 @@ const PIPELINE_STAGES = [
   {
     n:      "03 / execute",
     cmd:    "> agent",
-    desc:   "Claude, Codex, Cursor or any agent runs the guarded prompt. Stop rules trigger if it strays.",
+    desc:   "Claude, Codex, Cursor or any agent executes inside the run contract. Stop rules trigger if it strays.",
     active: true,
   },
   {
@@ -98,12 +98,12 @@ const PIPELINE_STAGES = [
 ];
 
 const BENEFITS = [
-  { n: "01", title: "Faster runs",        body: "Scoped context means the agent stops re-reading the world. Same task, less wandering.",                     stat: "avg run time",     delta: "down 41%" },
-  { n: "02", title: "Lower token burn",   body: "Memory recall replaces context dumping. You pay for the work, not the warmup.",                             stat: "tokens per task",  delta: "down 27%" },
-  { n: "03", title: "Stricter output",    body: "Diff caps, file allowlists, stop rules. The agent works inside lines you draw.",                             stat: "scope violations", delta: "down 96%" },
-  { n: "04", title: "Less breakage",      body: "Forbidden files stay forbidden. .env, migrations, infrastructure are protected by default.",                stat: "forbidden writes", delta: "0"     },
-  { n: "05", title: "Clean continuation", body: "Memory survives sessions. Next run starts where the last one stopped, with intent intact.",                 stat: "cold-start tokens", delta: "down 64%" },
-  { n: "06", title: "Cloud run history",  body: "Every run is a record. Contract, diff, verdict, agent, model. Searchable, auditable, replayable.",          stat: "retention",        delta: "90 days" },
+  { n: "01", title: "Run history", body: "Every guarded task records the agent, scope, changed files, and outcome.", stat: "history", delta: "every run logged" },
+  { n: "02", title: "Proof trail", body: "See scope, forbidden files, tests, diff size, and the finish verdict in one place.", stat: "finish state", delta: "visible and auditable" },
+  { n: "03", title: "Continuation", body: "Next session starts from what actually happened, not from memory loss.", stat: "handoff", delta: "contract-aware" },
+  { n: "04", title: "Team-ready accountability", body: "Shared state, approvals, and audit logs as your team workflow grows.", stat: "governance", delta: "built in" },
+  { n: "05", title: "Smaller, focused runs", body: "Scoped context keeps tasks focused and reduces repeated context loading.", stat: "context waste", delta: "lower" },
+  { n: "06", title: "Fewer out-of-scope edits", body: "Allowed paths and stop rules keep agents inside the contract boundaries.", stat: "scope control", delta: "stricter by default" },
 ];
 
 const AGENT_LIST = [
@@ -199,7 +199,7 @@ export default function Home() {
                     color: "#6ee7b7", letterSpacing: "0.07em",
                     textTransform: "uppercase",
                   }}>
-                    Bridge Mode live
+                    Control layer active
                   </span>
                 </span>
               </MotionFade>
@@ -213,22 +213,24 @@ export default function Home() {
                     fontWeight: 500, color: "#f4f5f7",
                   }}
                 >
-                  Run AI coding agents with{" "}
-                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>
-                    memory, scope, and control.
-                  </em>
+                  The control layer{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>for AI coding agents.</em>
                 </h1>
               </MotionFade>
 
               <MotionFade delay={0.12}>
                 {/* Mobile sub ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â compact single statement */}
                 <p className="sm:hidden" style={{ marginTop: 12, fontSize: 15, lineHeight: 1.6, color: "#8a8f98", maxWidth: 340 }}>
-                  Memory, scope, and finish checks for Claude, Codex, Cursor, and other coding agents.
+                  RunTrim scopes AI coding agents before they touch your repo.
                 </p>
                 {/* Desktop sub */}
                 <p className="hidden sm:block" style={{ marginTop: 20, fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}>
-                  RunTrim gives Claude, Codex, Cursor, and other coding agents the context,
-                  boundaries, and finish checks they need before they touch your code.
+                  RunTrim gives Claude, Codex, Cursor, ChatGPT, and other coding agents scoped instructions,
+                  project memory, forbidden-file rules, finish checks, and run history before they touch your code.
+                </p>
+                <p className="hidden sm:block" style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6, color: "#8a8f98", maxWidth: 560 }}>
+                  Agents are getting smarter. That makes control more important, not less. Native memory helps an agent remember.
+                  RunTrim defines what it can touch, what it must avoid, how the run is verified, and what carries into the next session.
                 </p>
               </MotionFade>
 
@@ -249,13 +251,12 @@ export default function Home() {
                     Install free CLI
                     <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </Link>
-                  <SmartCta
-                    label="Request access"
-                    variant="pro"
+                  <Link
+                    href="/plans"
                     className="inline-flex items-center gap-2 h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
-                    openAppLabel="Open dashboard"
-                    openAppClassName="inline-flex items-center gap-2 h-10 px-[18px] rounded-[7px] border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[14px] text-[#a78bfa] font-medium hover:bg-[rgba(167,139,250,0.12)] transition-colors"
-                  />
+                  >
+                    View plans
+                  </Link>
                 </div>
               </MotionFade>
 
@@ -275,8 +276,8 @@ export default function Home() {
                   style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}
                 >
                   {[
-                    "Works with Claude, Codex, Cursor",
-                    "Local first, cloud when connected",
+                    "Free CLI",
+                    "Local-first, source code stays local",
                     "No model lock-in",
                   ].map((t, i) => (
                     <span key={t} className="flex items-center gap-2">
@@ -427,12 +428,12 @@ export default function Home() {
               </div>
               <div>
                 <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
-                  AI coding,{" "}
-                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>turned into scoped execution.</em>
+                  Your agent should not start with a prompt.{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>It should start with a contract.</em>
                 </h2>
                 <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
-                  Five stages. One contract. Any agent. RunTrim wraps your model of choice with memory,
-                  scope, stop rules, and a finish check, then writes the run to your dashboard.
+                  Init defines conventions and boundaries. Go compiles task, memory, scope, and constraints.
+                  Your agent executes inside contract rules. Finish verifies scope, diff, tests, and forbidden writes.
                 </p>
               </div>
             </div>
@@ -547,6 +548,9 @@ export default function Home() {
               </div>
             ))}
           </div>
+          <p style={{ marginTop: 10, color: "#5a5f68", fontSize: 11.5, fontFamily: "var(--font-geist-mono)" }}>
+            Early internal benchmark across repeated guarded vs unguarded tasks. Public benchmark report coming soon.
+          </p>
         </div>
       </section>
 
@@ -568,13 +572,16 @@ export default function Home() {
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
               >
                 <span style={{ color: "#a78bfa", fontWeight: 500 }}>03</span>
-                What you get
+                Run visibility
               </div>
               <div>
                 <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
-                  Six things{" "}
-                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>that change the next run.</em>
+                  Every AI run{" "}
+                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>becomes visible.</em>
                 </h2>
+                <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
+                  See the task, contract, changed files, risk, finish verdict, continuation state, and run history in one place.
+                </p>
               </div>
             </div>
           </MotionFade>
@@ -758,7 +765,9 @@ export default function Home() {
               }}
             >
               <strong style={{ color: "#f4f5f7", fontWeight: 500 }}>Bring your own agent.</strong>
-              <span>If it reads a prompt or repo instructions, RunTrim wraps it. No SDK required.</span>
+              <span>
+                Bridge Mode packages task, scope, memory, constraints, and continuation context into one clean handoff for your preferred agent.
+              </span>
             </div>
           </div>
         </div>
@@ -815,9 +824,9 @@ export default function Home() {
                 price: "$29",
                 per: "/ month",
                 trial: "3-day trial" as string | null,
-                desc: "Unlimited Bridge Mode, cloud sync, memory, and savings reports.",
+                desc: "Bridge Mode handoff, cloud sync, memory, and savings reports.",
                 features: [
-                  "Unlimited Bridge Mode",
+                  "Unlimited Bridge Mode handoffs",
                   "Auto-sync dashboard",
                   "Cloud run history",
                   "Memory sync",
@@ -1057,13 +1066,12 @@ export default function Home() {
                 Install free CLI
                 <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
-              <SmartCta
-                label="Get started"
-                variant="pro"
+              <Link
+                href="/plans"
                 className="inline-flex items-center h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
-                openAppLabel="Open dashboard"
-                openAppClassName="inline-flex items-center h-10 px-[18px] rounded-[7px] border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.07)] text-[14px] text-[#a78bfa] font-medium hover:bg-[rgba(167,139,250,0.12)] transition-colors"
-              />
+              >
+                View plans
+              </Link>
             </div>
           </MotionFade>
         </div>

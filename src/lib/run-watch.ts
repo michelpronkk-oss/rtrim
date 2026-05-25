@@ -52,6 +52,13 @@ function matchesPathMarkers(file: string): { forbidden: boolean; sensitive: bool
     f.includes("middleware.ts") ||
     f.includes("proxy.ts") ||
     f.includes(".env") ||
+    f.endsWith(".env") ||
+    f.includes(".env.") ||
+    f.includes(".pem") ||
+    f.includes(".key") ||
+    f.includes("id_rsa") ||
+    f.includes("id_ed25519") ||
+    f.includes("private-key") ||
     f.includes("migration") ||
     f.includes("migrations") ||
     f.includes("jwt") ||

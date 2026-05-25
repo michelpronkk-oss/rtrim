@@ -24,7 +24,7 @@ import type { RunTrimConfig } from "../src/lib/runtrim-config.ts";
 import { auditTask, detectProjectContext } from "../src/lib/run-audit.ts";
 import { generateContract } from "../src/lib/run-contract.ts";
 import { saveRun, loadLatestRun, loadAllRuns, updateRun } from "../src/lib/run-storage.ts";
-import { getGitDiff, evaluateAgentOutput } from "../src/lib/run-evaluation.ts";
+import { getGitDiff, getGitChangedFiles, evaluateAgentOutput } from "../src/lib/run-evaluation.ts";
 import { formatRisk, formatStatus, formatScore, formatDate, truncate } from "../src/lib/format.ts";
 import type { RunEvaluationRecord, WatchEventRecord } from "../src/lib/run-storage.ts";
 import { readMemory, writeMemoryFromRuns } from "../src/lib/run-memory.ts";
@@ -269,6 +269,40 @@ function parseMemorySection(memory: string, title: string): string {
 
 function dedupeFiles(files: string[]): string[] {
   return [...new Set(files.filter(Boolean).map((f) => f.replace(/\\/g, "/")))];
+}
+
+type SensitivePathState = {
+  untracked: boolean;
+  ignored: boolean;
+};
+
+function parseGitStatusPath(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const renameParts = trimmed.split(" -> ");
+  const value = renameParts.length > 1 ? renameParts[renameParts.length - 1] : trimmed;
+  return value.replace(/^"+|"+$/g, "");
+}
+
+async function getSensitivePathStates(cwd: string): Promise<Map<string, SensitivePathState>> {
+  const pathspecs = [".env", ".env.*", "*.env", "*.pem", "*.key", "*private-key*", "id_rsa", "id_ed25519"];
+  try {
+    const res = await execa("git", ["status", "--porcelain", "--ignored", "--untracked-files=all", "--", ...pathspecs], { cwd });
+    const states = new Map<string, SensitivePathState>();
+    for (const line of res.stdout.split("\n").map((v) => v.trimEnd()).filter(Boolean)) {
+      if (line.length < 3) continue;
+      const code = line.slice(0, 2);
+      const filePath = parseGitStatusPath(line.slice(3));
+      if (!filePath) continue;
+      states.set(filePath, {
+        untracked: code === "??",
+        ignored: code === "!!",
+      });
+    }
+    return states;
+  } catch {
+    return new Map<string, SensitivePathState>();
+  }
 }
 
 interface AgentPreviewArtifact {
@@ -1629,7 +1663,7 @@ async function buildBridgeStatusPayload(cwd: string): Promise<Record<string, unk
 }
 
 async function startBridgeServer(cwd: string, port: number): Promise<void> {
-  const host: "127.0.0.1" = "127.0.0.1";
+  const host = "127.0.0.1" as const;
   const version = resolveCliVersion();
   const server = http.createServer(async (req, res) => {
     try {
@@ -5889,7 +5923,10 @@ program
     if (!activeRun) {
       // ── Fast Run Report path ──────────────────────────────────────────────
       // No pre-run contract. Detect changed files and create a fast run report.
-      const allChanged   = dedupeFiles(await getGitDiff(cwd));
+      const gitChanged = await getGitChangedFiles(cwd);
+      const sensitiveStates = await getSensitivePathStates(cwd);
+      const untrackedByPath = new Map(gitChanged.map((entry) => [entry.path, entry.untracked]));
+      const allChanged   = dedupeFiles(gitChanged.map((entry) => entry.path));
       const agentChanged = allChanged.filter((f) => {
         const n = f.replace(/\\/g, "/").toLowerCase();
         return !n.startsWith(".runtrim/") && n !== "runtrim.md";
@@ -5904,6 +5941,10 @@ program
 
       const risk         = classifyFileRisk(agentChanged);
       const sensitive    = agentChanged.filter(isSensitivePath);
+      const sensitiveUntracked = sensitive.filter((file) => untrackedByPath.get(file) === true);
+      const sensitiveIgnored = [...sensitiveStates.entries()]
+        .filter(([file, state]) => isSensitivePath(file) && state.ignored)
+        .map(([file]) => file);
       const riskColor    = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, typeof chalk>)[risk] ?? chalk.white;
 
       console.log(DIM("  No active RunTrim contract found."));
@@ -5941,7 +5982,11 @@ program
       console.log(DIM("  Changed files"));
       for (const f of agentChanged.slice(0, 8)) {
         const sens = isSensitivePath(f);
-        console.log(chalk.white("  - " + f) + (sens ? chalk.yellow(" [sensitive]") : ""));
+        const untracked = untrackedByPath.get(f) === true;
+        const marker = sens
+          ? chalk.yellow(untracked ? " [sensitive][untracked]" : " [sensitive]")
+          : untracked ? chalk.yellow(" [untracked]") : "";
+        console.log(chalk.white("  - " + f) + marker);
       }
       if (agentChanged.length > 8) {
         console.log(DIM(`  ... and ${agentChanged.length - 8} more`));
@@ -5950,6 +5995,12 @@ program
       console.log(DIM("  Risk        ") + riskColor(risk));
       if (sensitive.length > 0) {
         console.log(DIM("  Sensitive   ") + chalk.yellow(String(sensitive.length) + " path" + (sensitive.length === 1 ? "" : "s")));
+      }
+      if (sensitiveUntracked.length > 0) {
+        console.log(chalk.red("  Warning     Sensitive file detected: ") + chalk.white(`${sensitiveUntracked[0]} (untracked).`) + chalk.red(" This file may contain secrets and should not be committed or exposed."));
+      }
+      if (sensitiveIgnored.length > 0) {
+        console.log(chalk.yellow("  Warning     Sensitive file detected: ") + chalk.white(`${sensitiveIgnored[0]} (ignored/untracked).`) + chalk.yellow(" It is currently ignored by git, but still requires secret-safe handling."));
       }
       console.log("");
       console.log(GO_ACCENT.bold("Proof gaps"));
@@ -5977,7 +6028,10 @@ program
     console.log("");
 
     // ── Git diff ──────────────────────────────────────────────────────────
-    const allChangedFiles = dedupeFiles(await getGitDiff(cwd));
+    const gitChanged = await getGitChangedFiles(cwd);
+    const sensitiveStates = await getSensitivePathStates(cwd);
+    const untrackedByPath = new Map(gitChanged.map((entry) => [entry.path, entry.untracked]));
+    const allChangedFiles = dedupeFiles(gitChanged.map((entry) => entry.path));
 
     // ── Split RunTrim-owned files from agent files ─────────────────────────
     // RunTrim writes bridge/protocol files during `runtrim go`. These must not
@@ -6041,6 +6095,11 @@ program
 
     // ── Report summary ────────────────────────────────────────────────────
     const forbiddenCount = scope.forbiddenFiles.length;
+    const sensitiveCount = scope.sensitiveFiles.length;
+    const sensitiveUntracked = scope.sensitiveFiles.filter((file) => untrackedByPath.get(file) === true);
+    const sensitiveIgnored = [...sensitiveStates.entries()]
+      .filter(([file, state]) => isSensitivePath(file) && state.ignored)
+      .map(([file]) => file);
     const reportParts: string[] = [];
     if (changedFiles.length === 0) {
       reportParts.push("No agent changes detected.");
@@ -6051,6 +6110,15 @@ program
       reportParts.push(`${forbiddenCount} forbidden file${forbiddenCount === 1 ? "" : "s"} touched.`);
     } else if (changedFiles.length > 0) {
       reportParts.push("No forbidden systems touched.");
+    }
+    if (sensitiveCount > 0) {
+      reportParts.push(`${sensitiveCount} sensitive file${sensitiveCount === 1 ? "" : "s"} detected.`);
+    }
+    if (sensitiveUntracked.length > 0) {
+      reportParts.push(`${sensitiveUntracked.length} sensitive untracked file${sensitiveUntracked.length === 1 ? "" : "s"} detected.`);
+    }
+    if (sensitiveIgnored.length > 0) {
+      reportParts.push(`${sensitiveIgnored.length} sensitive ignored file${sensitiveIgnored.length === 1 ? "" : "s"} detected.`);
     }
     if (scopeDriftStatus === "passed" && changedFiles.length > 0) {
       reportParts.push("Changes within contract.");
@@ -6147,7 +6215,12 @@ program
       for (const f of changedFiles.slice(0, 8)) {
         const isForbidden = scope.forbiddenFiles.includes(f);
         const isSensitive = scope.sensitiveFiles.includes(f);
-        const marker = isForbidden ? chalk.red(" [forbidden]") : isSensitive ? chalk.yellow(" [sensitive]") : "";
+        const isUntracked = untrackedByPath.get(f) === true;
+        const marker = isForbidden
+          ? chalk.red(isUntracked ? " [forbidden][untracked]" : " [forbidden]")
+          : isSensitive
+            ? chalk.yellow(isUntracked ? " [sensitive][untracked]" : " [sensitive]")
+            : isUntracked ? chalk.yellow(" [untracked]") : "";
         console.log(chalk.white("  - " + f) + marker);
       }
       if (changedFiles.length > 8) {
@@ -6157,6 +6230,26 @@ program
     } else {
       console.log(GO_ACCENT.bold("Changed files"));
       console.log(DIM("  No agent changes detected."));
+      console.log("");
+    }
+    if (sensitiveUntracked.length > 0) {
+      console.log(chalk.red.bold("Sensitive file warning"));
+      for (const file of sensitiveUntracked.slice(0, 3)) {
+        console.log(chalk.red("  Sensitive file detected: ") + chalk.white(`${file} (untracked).`) + chalk.red(" This file may contain secrets and should not be committed or exposed."));
+      }
+      if (sensitiveUntracked.length > 3) {
+        console.log(chalk.red(`  ... and ${sensitiveUntracked.length - 3} more sensitive untracked files`));
+      }
+      console.log("");
+    }
+    if (sensitiveIgnored.length > 0) {
+      console.log(chalk.yellow.bold("Sensitive ignored file warning"));
+      for (const file of sensitiveIgnored.slice(0, 3)) {
+        console.log(chalk.yellow("  Sensitive file detected: ") + chalk.white(`${file} (ignored/untracked).`) + chalk.yellow(" It is ignored by git, but still requires secret-safe handling."));
+      }
+      if (sensitiveIgnored.length > 3) {
+        console.log(chalk.yellow(`  ... and ${sensitiveIgnored.length - 3} more sensitive ignored files`));
+      }
       console.log("");
     }
 

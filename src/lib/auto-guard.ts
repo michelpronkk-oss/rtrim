@@ -28,6 +28,7 @@ const CRITICAL_PATH_PATTERNS = [
   "middleware.ts", "middleware.js", "proxy.ts", "proxy.js",
   "dodo", "stripe", "checkout",
   ".env", "secrets", "credentials",
+  ".pem", ".key", "id_rsa", "id_ed25519", "private-key",
   "rls", "database/", "db/schema", "schema.sql", "seed.sql",
   "customer-portal", "/portal/",
 ];
