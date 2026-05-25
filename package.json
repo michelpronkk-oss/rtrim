@@ -1,6 +1,6 @@
 {
   "name": "runtrim",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "CLI guard layer that scopes AI coding runs before they waste tokens.",
   "license": "MIT",
   "author": "RunTrim",
