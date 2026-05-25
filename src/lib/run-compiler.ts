@@ -564,6 +564,29 @@ export function buildCategoryScope(
         ],
       };
 
+    case "docs":
+      return {
+        allowedHints: [
+          "README.md - project documentation",
+          "docs/ - documentation files",
+          "CHANGELOG.md or CONTRIBUTING.md if task-specific",
+        ],
+        forbiddenAdditions: [
+          "Do not touch auth internals, session logic, or JWT handling",
+          "Do not touch billing, subscription, payment, or webhook logic",
+          "Do not touch database schema or migrations",
+          "Do not touch .env files or secrets",
+        ],
+        stopRules: [
+          "Stop if the requested change requires code-path behavior changes outside docs",
+          "Stop if sensitive files or secrets are referenced",
+        ],
+        verificationSteps: [
+          "Confirm documentation text matches the requested task",
+          "Check markdown formatting renders correctly",
+        ],
+      };
+
     default:
       return {
         allowedHints: [],

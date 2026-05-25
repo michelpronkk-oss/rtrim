@@ -23,6 +23,28 @@ export interface WatchEvaluateResult {
 }
 
 function normalizeScopeKeywords(scope: string[]): string[] {
+  const genericStopwords = new Set([
+    "read",
+    "write",
+    "reference",
+    "touch",
+    "modify",
+    "change",
+    "update",
+    "allow",
+    "scope",
+    "paths",
+    "path",
+    "files",
+    "file",
+    "only",
+    "with",
+    "without",
+    "before",
+    "after",
+    "inside",
+    "outside",
+  ]);
   const words = new Set<string>();
   for (const line of scope) {
     const lower = line.toLowerCase();
@@ -35,7 +57,7 @@ function normalizeScopeKeywords(scope: string[]): string[] {
       .split(/\s+/)
       .filter(Boolean);
     for (const token of cleaned) {
-      if (token.length >= 4) words.add(token);
+      if (token.length >= 4 && !genericStopwords.has(token)) words.add(token);
     }
   }
   return [...words];

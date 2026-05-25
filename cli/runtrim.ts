@@ -56,6 +56,7 @@ import {
   assertFreeRepoAllowed,
   getCurrentRepoIdentity,
   loadGlobalRegistry,
+  repairGlobalRegistry,
   registerCurrentRepo,
   unlinkCurrentRepo,
 } from "../src/lib/global-registry.ts";
@@ -2365,6 +2366,28 @@ async function buildRuntrimCreateContractMcp(
     };
   }
 
+  const repoCheck = await assertFreeRepoAllowed(cwd);
+  if (!repoCheck.allowed) {
+    const guidance =
+      repoCheck.status === "blocked_repair"
+        ? "RunTrim local state needs repair. Free includes 1 tracked repo. The local repo registry changed unexpectedly. Repair the registry or upgrade to Builder for unlimited repos."
+        : "Free includes 1 tracked repo. This repo is not currently tracked. Continue in the tracked repo, unlink the tracked repo with runtrim repo unlink --force, or upgrade to Builder for unlimited repos.";
+    const blockedPayload = {
+      contract_created: false,
+      task: taskRaw,
+      error: repoCheck.status === "blocked_repair" ? "repo_registry_repair_required" : "repo_limit_blocked",
+      guidance,
+      next_action: guidance,
+      finish_command: "runtrim finish",
+      approval_command_example: 'runtrim approve "Allow <path> for this run only"',
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(blockedPayload, null, 2) }],
+      structuredContent: blockedPayload,
+      isError: true,
+    };
+  }
+
   const latest = loadLatestRun(cwd);
   if (latest?.status === "guarded") {
     const blockedPayload = {
@@ -3091,6 +3114,21 @@ function isInteractiveTerminal(): boolean {
 
 async function ensureRepoAllowedForFree(cwd: string): Promise<boolean> {
   const check = await assertFreeRepoAllowed(cwd);
+  if (check.status === "blocked_repair") {
+    console.log(chalk.yellow("  RunTrim local state needs repair."));
+    console.log(chalk.yellow("  Free includes 1 tracked repo."));
+    console.log(chalk.yellow("  Your local repo registry changed unexpectedly."));
+    console.log("");
+    console.log(DIM("  Next:"));
+    console.log(chalk.white("  - runtrim repo status"));
+    console.log(chalk.white("  - runtrim repo repair"));
+    console.log(chalk.white("  - runtrim repo repair --use-current"));
+    console.log(chalk.white("  - runtrim repo unlink --force"));
+    console.log(chalk.white("  - upgrade to Builder for unlimited repos"));
+    console.log(chalk.white("  - sign in to restore cloud entitlements"));
+    console.log("");
+    return false;
+  }
   if (check.allowed) {
     await registerCurrentRepo(cwd);
     return true;
@@ -3105,9 +3143,12 @@ async function ensureRepoAllowedForFree(cwd: string): Promise<boolean> {
   console.log(chalk.white(`  ${check.currentRepo.path}`));
   console.log("");
   console.log(DIM("  Next:"));
-  console.log(chalk.white("  - continue in the tracked repo"));
-  console.log(chalk.white("  - unlink the tracked repo with runtrim repo unlink --force"));
-  console.log(chalk.white("  - join Builder early access for unlimited repos"));
+  console.log(
+    chalk.white(
+      "  Free includes 1 tracked repo. This repo is not currently tracked. Continue in the tracked repo, unlink the tracked repo with runtrim repo unlink --force, or upgrade to Builder for unlimited repos."
+    )
+  );
+  console.log(chalk.white("  Agent instructions were not installed because this repo is not tracked."));
   console.log("");
   console.log(
     DIM(
@@ -3545,7 +3586,8 @@ const PROTOCOL_POINTER_BLOCK = `
 ${PROTOCOL_BLOCK_START}
 This repo uses RunTrim as the guarded AI coding protocol.
 Before editing code, read RUNTRIM.md.
-Start every task with: runtrim go "<task>"
+Start every task with: runtrim start
+Then run: runtrim agent "Your task" --copy
 Stay inside .runtrim/contracts/latest.md.
 After edits, ask the user to run: runtrim finish
 ${PROTOCOL_BLOCK_END}
@@ -4478,6 +4520,8 @@ agentCommand
   .option("--confirm", "Confirm high-risk apply handoff creation")
   .action(async (task?: string, options?: { copy?: boolean; bridge?: boolean; preview?: boolean; apply?: boolean; execute?: boolean; run?: boolean; dryRun?: boolean; confirm?: boolean }) => {
     if (task?.trim()) {
+      const allowed = await ensureRepoAllowedForFree(process.cwd());
+      if (!allowed) return;
       const normalizedTask = (task ?? "").trim();
       if (options?.bridge) {
         const bridge = await ensureBridgeRunningForAgent(process.cwd());
@@ -5025,11 +5069,63 @@ repoCommand
     console.log(DIM("  Current repo  ") + chalk.white(identity.path));
     console.log(DIM("  Tracked repo  ") + chalk.white(tracked?.path ?? "(none)"));
     console.log(DIM("  Allowed       ") + chalk.white(check.allowed ? "yes" : "no"));
+    console.log(DIM("  State         ") + chalk.white(check.status));
     console.log("");
+    if (check.status === "blocked_repair") {
+      console.log(chalk.yellow("  RunTrim local state needs repair."));
+      console.log(chalk.yellow("  Free includes 1 tracked repo."));
+      console.log(chalk.yellow("  The local repo registry changed unexpectedly."));
+      console.log(DIM("  Run: runtrim repo repair"));
+      console.log("");
+    }
     if (tracked) {
       console.log(DIM("  A tracked repo is one codebase with its own .runtrim workspace."));
       console.log("");
     }
+  });
+
+repoCommand
+  .command("repair")
+  .description("Repair local free-plan repo registry integrity")
+  .option("--use-current", "Repair and set the current repo as the single tracked Free repo")
+  .action(async (options: { useCurrent?: boolean }) => {
+    const cwd = process.cwd();
+    const before = await assertFreeRepoAllowed(cwd);
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  repo repair"));
+    console.log("");
+
+    if (!before.repairRequired) {
+      console.log(DIM("  Local state is healthy. No repair required."));
+      console.log("");
+      return;
+    }
+
+    if (!options.useCurrent) {
+      console.log(chalk.yellow("  RunTrim local state needs repair."));
+      console.log(chalk.yellow("  Free includes 1 tracked repo."));
+      console.log(chalk.yellow("  Your local repo registry changed unexpectedly."));
+      console.log("");
+      console.log(DIM("  Safe next actions:"));
+      console.log(chalk.white("  - runtrim repo repair --use-current"));
+      console.log(chalk.white("  - runtrim repo unlink --force"));
+      console.log(chalk.white("  - upgrade to Builder for unlimited repos"));
+      console.log(chalk.white("  - sign in to restore cloud entitlements"));
+      console.log("");
+      return;
+    }
+
+    const result = await repairGlobalRegistry(cwd, { useCurrentRepo: true });
+    if (result.repaired) {
+      console.log(ACCENT.bold("  Local registry repaired."));
+      console.log(DIM("  Current repo is now the tracked Free repo."));
+      console.log("");
+      return;
+    }
+
+    console.log(DIM("  No repair changes applied."));
+    console.log("");
   });
 
 repoCommand
@@ -7698,6 +7794,8 @@ program
   .option("--dry-run", "Show what would be synced without uploading")
   .action(async (opts: { dryRun?: boolean }) => {
     const cwd = process.cwd();
+    const allowed = await ensureRepoAllowedForFree(cwd);
+    if (!allowed) return;
 
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  cloud sync"));
