@@ -2865,11 +2865,13 @@ program
     const memory = readMemory(cwd);
     const latestRun = loadLatestRun(cwd);
     const latestStatus = latestRun?.evaluation?.status ?? latestRun?.status ?? "baseline_initialized";
+    const hasGuardedRun = latestRun?.status === "guarded";
     const suggestedNext =
       options.task
-        ? `runtrim prepare "${options.task}"`
-        : latestRun?.evaluation?.nextSafeAction ||
-          (latestRun ? "runtrim check" : 'runtrim prepare "describe your next AI coding task"');
+        ? `runtrim agent "${options.task}" --copy`
+        : hasGuardedRun
+          ? "runtrim finish"
+          : 'runtrim agent "describe your next AI coding task" --copy';
 
     console.log(DIM("  Current state"));
     console.log(DIM("  Status     ") + chalk.white(formatStatus(latestStatus)));
@@ -2883,14 +2885,38 @@ program
     console.log(DIM("  Next       ") + chalk.white(suggestedNext));
     console.log("");
 
-    console.log(DIM("  Next recommended actions"));
-    console.log(chalk.white("  1. Prepare your first AI run"));
-    console.log(chalk.white("  2. Open local panel with monitor"));
-    console.log(chalk.white("  3. Show daily loop"));
+    console.log(DIM("  Default flow"));
+    console.log(chalk.white('  runtrim agent "Your task" --copy'));
+    console.log("");
+    console.log(DIM("  Guarded loop"));
+    console.log(chalk.white("  1. Create guarded run with runtrim agent."));
+    console.log(chalk.white("  2. Paste handoff into Claude/Codex/Cursor."));
+    console.log(chalk.white("  3. Let the agent complete the scoped task."));
+    console.log(chalk.white("  4. Run runtrim finish."));
+    console.log(chalk.white('  5. If scope must expand, run: runtrim approve "..."'));
+    console.log("");
+    console.log(DIM("  Optional bridge flow"));
+    console.log(chalk.white('  runtrim agent "Your task" --copy --bridge'));
+    console.log(chalk.white("  runtrim bridge status"));
+    console.log("");
+    console.log(DIM("  Optional MCP flow"));
+    console.log(chalk.white("  runtrim mcp instructions"));
+    console.log(chalk.white("  runtrim mcp start"));
+    console.log("");
+    console.log(DIM("  Trust notes"));
+    console.log(chalk.white("  - local-first"));
+    console.log(chalk.white("  - no install-time daemon"));
+    console.log(chalk.white("  - no source upload by default"));
+    console.log(chalk.white("  - does not read env file contents"));
     console.log("");
 
     if (options.task) {
-      await runPrepareTask(options.task, { showHeader: false });
+      await runAgentApply(options.task.trim(), {
+        apply: false,
+        confirm: false,
+        copy: true,
+        primary: true,
+      });
       return;
     }
 
