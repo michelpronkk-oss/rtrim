@@ -314,14 +314,6 @@ export function PublicNav() {
             maxHeight: "calc(100dvh - 60px)",
           }}
         >
-          {/* Mini brand lockup */}
-          <div style={{ marginBottom: 24 }}>
-            <RunTrimLogo size={17} />
-            <p style={{ ...MONO, fontSize: 11, color: "#4e535e", marginTop: 7 }}>
-              Control layer for AI coding agents.
-            </p>
-          </div>
-
           {/* Nav links */}
           <nav style={{ marginBottom: 24 }}>
             {DROPDOWN_LINKS.map(({ href, label }) => (
