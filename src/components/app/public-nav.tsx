@@ -108,11 +108,16 @@ export function PublicNav() {
   const [hidden, setHidden] = useState(false);
   const ctaState = useMobileCtaState();
 
-  // Scroll: hide on down, reveal on up. Close menu when hiding.
+  // Scroll: hide on down, reveal on up — mobile only (< 768 px).
+  // Desktop header is always visible; no hide-on-scroll.
   useEffect(() => {
     let lastY = window.scrollY;
 
     function onScroll() {
+      if (window.innerWidth >= 768) {
+        setHidden(false);
+        return;
+      }
       const y = window.scrollY;
       if (y < 10) {
         setHidden(false);
@@ -125,8 +130,17 @@ export function PublicNav() {
       lastY = y;
     }
 
+    // When resizing to desktop, always restore the header.
+    function onResize() {
+      if (window.innerWidth >= 768) setHidden(false);
+    }
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
   }, []);
 
   // Escape closes menu
@@ -189,7 +203,7 @@ export function PublicNav() {
           </Link>
 
           {/* Desktop nav links — hidden below md (768 px) */}
-          <nav className="hidden md:flex items-center gap-1 ml-4">
+          <nav className="hidden md:flex items-center gap-1 ml-9">
             {NAV_LINKS.map(({ href, label }) => (
               <Link
                 key={label}
@@ -212,68 +226,69 @@ export function PublicNav() {
           {/* Push right-side items to far right */}
           <div style={{ flex: 1 }} />
 
-          {/* Status badge — desktop only */}
-          <Link
-            href="/status"
-            className="hidden md:inline-flex items-center gap-2 transition-colors"
-            style={{
-              ...MONO,
-              fontSize: 11,
-              color: "#8a8f98",
-              height: 32,
-              padding: "0 12px",
-              border: "1px solid rgba(255,255,255,0.09)",
-              borderRadius: 6,
-              background: "#0c0e11",
-              marginRight: 10,
-              textDecoration: "none",
-            }}
-          >
-            <span
+          {/* Right-side action group — desktop only. Flex row with consistent gap. */}
+          <div className="hidden md:flex items-center gap-3">
+            {/* Status badge */}
+            <Link
+              href="/status"
+              className="inline-flex items-center gap-2 transition-colors"
               style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: "#6ee7b7",
-                display: "inline-block",
-                flexShrink: 0,
+                ...MONO,
+                fontSize: 11,
+                color: "#8a8f98",
+                height: 32,
+                padding: "0 12px",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: 6,
+                background: "#0c0e11",
+                textDecoration: "none",
               }}
-            />
-            all systems operational
-          </Link>
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "#6ee7b7",
+                  display: "inline-block",
+                  flexShrink: 0,
+                }}
+              />
+              all systems operational
+            </Link>
 
-          {/* "View plans" CTA — desktop only (md+). Never shown on mobile. */}
-          <Link
-            href="/plans"
-            className="hidden md:inline-flex items-center"
-            style={{
-              height: 32,
-              padding: "0 14px",
-              borderRadius: 6,
-              background: "#f4f5f7",
-              color: "#0b0d10",
-              fontSize: 13,
-              fontWeight: 500,
-              border: "1px solid #fff",
-              transition: "background 0.15s",
-              textDecoration: "none",
-            }}
-          >
-            View plans
-          </Link>
+            {/* "View plans" primary CTA */}
+            <Link
+              href="/plans"
+              className="inline-flex items-center hover:bg-white"
+              style={{
+                height: 32,
+                padding: "0 16px",
+                borderRadius: 6,
+                background: "#f4f5f7",
+                color: "#0b0d10",
+                fontSize: 13,
+                fontWeight: 500,
+                border: "1px solid #fff",
+                transition: "background 0.15s",
+                textDecoration: "none",
+              }}
+            >
+              View plans
+            </Link>
+          </div>
 
-          {/* Hamburger — mobile only (below md). Solid dark button. */}
+          {/* Hamburger — mobile only (below md).
+              Display is controlled entirely by Tailwind so md:hidden can
+              override it. No inline display property here. */}
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="mobile-nav-dropdown"
             onClick={() => setOpen((v) => !v)}
-            className="md:hidden"
+            className="md:hidden flex items-center justify-center shrink-0"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
               width: 36,
               height: 36,
               borderRadius: 7,
@@ -282,7 +297,6 @@ export function PublicNav() {
               color: "#dde0e5",
               boxShadow: "0 1px 3px rgba(0,0,0,0.6)",
               cursor: "pointer",
-              flexShrink: 0,
               transition: "background 0.15s",
             }}
           >
