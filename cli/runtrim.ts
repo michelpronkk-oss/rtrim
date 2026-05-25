@@ -7014,6 +7014,9 @@ async function syncRunsToCloud(input: {
     };
 
     if (!res.ok || !body.ok) {
+      if (res.status === 401 || res.status === 403) {
+        return { status: "skipped_invalid_token" };
+      }
       if (markPendingRunIds && markPendingRunIds.length > 0) {
         for (const id of markPendingRunIds) updateRun(id, { pendingSync: true }, cwd);
       }
@@ -7716,18 +7719,25 @@ program
       });
 
       if (result.status !== "synced") {
-        spinner.fail("  Sync failed.");
-        console.log("");
         if (result.status === "skipped_no_token") {
-          console.log(chalk.yellow("  No CLI token found."));
+          spinner.stop();
+          console.log("");
+          console.log(DIM("  Cloud sync not configured."));
           console.log(DIM("  Run ") + GO_ACCENT("runtrim login") + DIM(" to connect cloud sync."));
           console.log(DIM("  Local CLI still works without a token."));
         } else if (result.status === "skipped_invalid_token") {
-          console.log(chalk.yellow("  Stored token format is invalid. Re-run: runtrim login"));
+          spinner.stop();
+          console.log("");
+          console.log(DIM("  Cloud sync not configured. Run saved locally."));
+          console.log(DIM("  Re-run: runtrim login"));
         } else if (result.error) {
+          spinner.fail("  Sync failed.");
+          console.log("");
           console.log(chalk.red("  Error: ") + chalk.white(result.error));
           if (result.details) console.log(chalk.red("  Details: ") + chalk.white(result.details));
         } else {
+          spinner.fail("  Sync failed.");
+          console.log("");
           console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
         }
         console.log("");

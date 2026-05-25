@@ -19,21 +19,25 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com"),
   title: {
-    default: "RunTrim | Scope AI coding runs before they waste tokens",
+    default: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
     template: "%s | RunTrim",
   },
   description:
-    "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
+    "RunTrim is the CLI control layer for AI coding agents. Give Claude Code, Cursor, Codex, and ChatGPT scoped contracts, project memory, forbidden-file rules, and finish checks before they touch your code. Free. Local-first. No account required.",
   keywords: [
-    "runtrim", "RunTrim CLI", "AI coding agent", "AI run control",
-    "Claude Code", "Claude Code context limit", "Claude Code token waste",
-    "Cursor", "Cursor context limit", "Cursor agent guardrails",
-    "Codex CLI", "Codex CLI continuation", "ChatGPT coding agent",
-    "AI coding agent guardrails", "AI agent scope drift", "AI coding token waste",
-    "AI coding continuation prompt", "AI coding run history", "AI coding verification",
-    "AI coding prompt reuse", "local first AI coding tool", "local AI coding",
-    "continue AI coding session", "AI token savings", "agent scope control",
-    "AI coding CLI", "AI run history", "AI run state", "coding agent memory",
+    "runtrim", "RunTrim CLI", "AI coding agent control layer",
+    "Claude Code guardrails", "Claude Code context limit", "Claude Code token waste",
+    "Claude Code run history", "Claude Code scope control", "Claude Code memory",
+    "Cursor agent guardrails", "Cursor context limit", "Cursor run history",
+    "Cursor AI scope control", "Cursor AI memory",
+    "Codex CLI guardrails", "Codex CLI continuation", "OpenAI Codex guardrails",
+    "AI coding agent guardrails", "AI agent scope drift", "AI coding run history",
+    "AI coding token waste", "AI coding continuation prompt", "AI coding verification",
+    "AI coding prompt reuse", "AI coding memory", "AI coding scoped tasks",
+    "local-first AI coding tool", "local AI coding", "no source code upload AI",
+    "AI coding workflow", "agent run control", "AI coding agent memory",
+    "forbidden file rules AI agent", "finish check AI coding",
+    "runtrim start", "runtrim agent", "runtrim finish", "runtrim mcp",
   ],
   authors: [{ name: "RunTrim" }],
   openGraph: {
@@ -41,31 +45,30 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.runtrim.com",
     siteName: "RunTrim",
-    title: "RunTrim | Scope AI coding runs before they waste tokens",
+    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
     description:
-      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
+      "Give AI coding agents scoped contracts, project memory, forbidden-file rules, and finish checks before they touch your code. Free CLI. Local-first. No account required.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "RunTrim",
+        alt: "RunTrim — CLI Control Layer for AI Coding Agents",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim | Scope AI coding runs before they waste tokens",
+    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
     description:
-      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents. Scope tasks, monitor drift, check results, and continue cleanly.",
+      "Give AI coding agents scoped contracts, project memory, forbidden-file rules, and finish checks before they touch your code. Free CLI. Local-first.",
     images: ["/opengraph-image"],
   },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/icon", type: "image/png", sizes: "32x32" },
     ],
-    shortcut: ["/favicon.ico"],
     apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
   },
 };
@@ -82,12 +85,49 @@ export default function RootLayout({
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Windows, macOS, Linux",
     description:
-      "RunTrim is a local-first CLI control layer for Claude, Codex, Cursor, and other AI coding agents.",
+      "RunTrim is the CLI control layer for AI coding agents. It gives Claude Code, Cursor, Codex, and ChatGPT scoped contracts, project memory, forbidden-file rules, finish checks, and run history before they touch your code.",
     url: "https://www.runtrim.com",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
+    downloadUrl: "https://www.npmjs.com/package/runtrim",
+    installUrl: "https://www.runtrim.com/app/install",
+    softwareVersion: "0.1.15",
+    featureList: [
+      "Scoped task contracts for AI coding agents",
+      "Project memory and agent file injection",
+      "Forbidden-file rules and sensitive file detection",
+      "Finish checks with PASS/WARN/BLOCKED verdicts",
+      "Local run history",
+      "MCP server for compatible agents",
+      "Cloud sync (Pro)",
+    ],
+    offers: [
+      {
+        "@type": "Offer",
+        name: "Free",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Local-first CLI with unlimited guarded runs, project memory, and local run history.",
+      },
+      {
+        "@type": "Offer",
+        name: "Pro",
+        price: "29",
+        priceCurrency: "USD",
+        billingIncrement: "P1M",
+        description: "Cloud sync, memory sync, and dashboard run history at $29/month.",
+      },
+    ],
+  };
+
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "RunTrim",
+    url: "https://www.runtrim.com",
+    logo: "https://www.runtrim.com/icon.svg",
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: "hello@runtrim.com",
+      contactType: "customer support",
     },
   };
 
@@ -100,6 +140,10 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         <SiteAnalytics />
         <AuthCodeInterceptor />

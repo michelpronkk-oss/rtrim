@@ -31,9 +31,7 @@ if (!fs.existsSync(backupDir)) {
   fs.mkdirSync(backupDir, { recursive: true });
 }
 
-if (!fs.existsSync(backupPath)) {
-  fs.copyFileSync(packageJsonPath, backupPath);
-}
+fs.copyFileSync(packageJsonPath, backupPath);
 
 const nextDependencies = {};
 for (const depName of CLI_RUNTIME_DEPENDENCIES) {

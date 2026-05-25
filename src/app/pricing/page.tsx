@@ -1,12 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
+import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
-  title: "Pricing | RunTrim",
+  title: "Pricing | RunTrim — Free CLI, Pro, Builder, Team",
   description:
-    "RunTrim plans for local-first AI agent control: Free, Pro, Builder, and Team.",
+    "RunTrim pricing: Free local CLI forever, Pro at $29/month for cloud sync and run history, Builder at $49/month for founders shipping daily with AI agents, Team from $24/seat. No account required to start.",
   alternates: { canonical: "https://www.runtrim.com/pricing" },
+  openGraph: {
+    title: "RunTrim Pricing — Free CLI, Pro, Builder, Team",
+    description:
+      "Start free with the local CLI. Upgrade to Pro for cloud sync and dashboard run history. Builder for founders. Team for shared governance and audit logs.",
+    url: "https://www.runtrim.com/pricing",
+    type: "website",
+    siteName: "RunTrim",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "RunTrim Pricing" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RunTrim Pricing — Free CLI, Pro, Builder, Team",
+    description:
+      "Start free with the local CLI. Upgrade to Pro for cloud sync and run history.",
+    images: ["/opengraph-image"],
+  },
 };
 
 const PLANS = [
@@ -150,18 +167,21 @@ export default function PricingPage() {
               </ul>
 
               <div className="mt-6">
-                <Link
-                  href={plan.ctaHref}
-                  className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all ${
-                    plan.ctaStyle === "fill"
-                      ? "bg-[#7C6DFA] text-white hover:opacity-85"
-                      : "border border-white/10 text-[#9699BE] hover:border-white/20 hover:text-[#EDEEFF]"
-                  }`}
-                  style={plan.ctaStyle === "fill" ? { boxShadow: "0 4px 14px rgba(124,109,250,0.28)" } : undefined}
-                >
-                  {plan.cta}
-                  <ArrowRight className="size-3.5" />
-                </Link>
+                {plan.id === "pro" ? (
+                  <ProCheckoutButton
+                    planId="pro"
+                    label="Start Pro trial"
+                    className="inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all bg-[#7C6DFA] text-white hover:opacity-85 disabled:opacity-60"
+                  />
+                ) : (
+                  <Link
+                    href={plan.ctaHref}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all border border-white/10 text-[#9699BE] hover:border-white/20 hover:text-[#EDEEFF]"
+                  >
+                    {plan.cta}
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                )}
               </div>
             </div>
           ))}

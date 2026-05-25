@@ -7,10 +7,26 @@ import { SmartCta } from "@/components/app/smart-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
-  title: "Plans | RunTrim",
+  title: "Plans | RunTrim — Compare Free, Pro, Builder, Team",
   description:
-    "RunTrim plans for the AI coding agent control layer. Start local, then scale to synced, founder, and team controls.",
+    "Compare RunTrim plans for AI coding agent control. Free CLI for local-only runs. Pro for cloud sync and run history. Builder for founders shipping production code daily with AI agents. Team for shared policies and audit logs.",
   alternates: { canonical: "https://www.runtrim.com/plans" },
+  openGraph: {
+    title: "RunTrim Plans — Free, Pro, Builder, Team",
+    description:
+      "Free CLI for local agent control. Pro for cloud sync and run history. Builder for production founders. Team for shared governance and audit logs.",
+    url: "https://www.runtrim.com/plans",
+    type: "website",
+    siteName: "RunTrim",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "RunTrim Plans" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RunTrim Plans — Free, Pro, Builder, Team",
+    description:
+      "Free CLI for local agent control. Pro for cloud sync. Builder for founders. Team for governance.",
+    images: ["/opengraph-image"],
+  },
 };
 
 // Plan definitions

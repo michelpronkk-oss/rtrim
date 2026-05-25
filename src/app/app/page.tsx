@@ -4,6 +4,8 @@ import { ArrowRight, Shield, Activity, Layers, TrendingDown, Zap, Clock } from "
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { getEntitlements, currentPeriod, effectivePlanId } from "@/lib/entitlements";
+import { planOrder } from "@/lib/plans";
+import { trialEligible } from "@/lib/billing-cta";
 import { OnboardingChecklist } from "@/components/app/onboarding-checklist";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
@@ -19,6 +21,7 @@ type ProfileRow = {
   bridge_runs_period: string | null;
   current_period_end: string | null;
   cli_token_created_at: string | null;
+  payment_subscription_id: string | null;
 };
 
 // Only the fields needed for the "Last guarded run" card
@@ -82,7 +85,7 @@ async function getDashboardData(userId: string) {
   ] = await Promise.all([
     supabase
       .from("runtrim_profiles")
-      .select("plan, plan_status, bridge_runs_used, bridge_runs_period, current_period_end, cli_token_created_at")
+      .select("plan, plan_status, bridge_runs_used, bridge_runs_period, current_period_end, cli_token_created_at, payment_subscription_id")
       .eq("id", userId)
       .maybeSingle(),
 
@@ -149,7 +152,9 @@ async function getDashboardData(userId: string) {
     recentRuns[0] ??
     null;
 
-  return { plan, planStatus, periodEnd, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun, hasConnectedCli, hasCompletedRun, recentRuns };
+  const hasSubscription = !!(profile?.payment_subscription_id);
+
+  return { plan, planStatus, periodEnd, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun, hasConnectedCli, hasCompletedRun, recentRuns, hasSubscription };
 }
 
 const RISK_BADGE: Record<string, string> = {
@@ -196,13 +201,16 @@ function StatePill({ ok, label }: { ok: boolean; label: string }) {
 }
 
 function gateLabel(currentPlan: string, requiredPlan: "pro" | "builder" | "team"): string {
-  const rank: Record<string, number> = { free: 0, pro: 1, builder: 2, team: 3 };
-  const current = rank[currentPlan] ?? 0;
-  const needed = rank[requiredPlan];
-  if (current >= needed) return "Included";
+  const currentIdx = planOrder.indexOf(currentPlan as (typeof planOrder)[number]);
+  const requiredIdx = planOrder.indexOf(requiredPlan);
+  if (currentIdx >= 0 && currentIdx >= requiredIdx) return "Included";
   if (requiredPlan === "pro") return "Pro required";
   if (requiredPlan === "builder") return "Builder required";
   return "Team required";
+}
+
+function gateLabelCls(label: string): string {
+  return label === "Included" ? "text-[#4DE8B0]" : "text-[#5a5f68]";
 }
 
 export default async function OverviewPage() {
@@ -222,6 +230,7 @@ export default async function OverviewPage() {
     : n >= 0.01 ? `$${n.toFixed(2)}`
     : "$0.00";
 
+  const planDataAvailable = data !== null;
   const plan            = data?.plan ?? "free";
   const planStatus      = data?.planStatus ?? null;
   const periodEnd       = data?.periodEnd ?? null;
@@ -229,6 +238,8 @@ export default async function OverviewPage() {
   const isCanceledInPeriod = plan !== "free" &&
     (planStatus === "canceled" || planStatus === "cancelled");
   const isPastDue       = planStatus === "past_due";
+  const hasSubscription = data?.hasSubscription ?? false;
+  const isTrialEligible = trialEligible({ plan, planStatus, paymentSubscriptionId: hasSubscription ? "present" : null });
 
   // Onboarding state
   const hasConnectedCli  = data?.hasConnectedCli  ?? false;
@@ -272,8 +283,8 @@ export default async function OverviewPage() {
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Overview</p>
           <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">Dashboard</h1>
         </div>
-        <span className={`rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] ${PLAN_BADGE[plan] ?? PLAN_BADGE.free}`}>
-          {isTrialing ? "Pro Trial" : plan}
+        <span className={`rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] ${isPastDue ? "border-[#FF7B5C]/30 bg-[#FF7B5C]/8 text-[#FF7B5C]" : PLAN_BADGE[plan] ?? PLAN_BADGE.free}`}>
+          {isPastDue ? "Payment failed" : isTrialing ? "Pro Trial" : plan}
         </span>
       </div>
 
@@ -347,10 +358,26 @@ export default async function OverviewPage() {
                 </p>
               )}
             </div>
-            <ProCheckoutButton
-              label="Start 3-day Pro trial"
-              className="shrink-0 rounded-lg bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-medium text-white transition-opacity hover:opacity-85 disabled:opacity-60"
-            />
+            {isPastDue ? (
+              <Link
+                href="/app/billing"
+                className="shrink-0 rounded-lg bg-[#FF7B5C] px-3.5 py-2 text-[12px] font-medium text-white transition-opacity hover:opacity-85"
+              >
+                Update payment method
+              </Link>
+            ) : isTrialEligible ? (
+              <ProCheckoutButton
+                label="Start 3-day Pro trial"
+                className="shrink-0 rounded-lg bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-medium text-white transition-opacity hover:opacity-85 disabled:opacity-60"
+              />
+            ) : (
+              <Link
+                href="/app/billing"
+                className="shrink-0 rounded-lg bg-[#7C6DFA] px-3.5 py-2 text-[12px] font-medium text-white transition-opacity hover:opacity-85"
+              >
+                Upgrade to Pro
+              </Link>
+            )}
           </div>
         </div>
       ) : isTrialing ? (
@@ -461,33 +488,32 @@ export default async function OverviewPage() {
 
       <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Cloud and governance access</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Cloud sync</p>
-            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
+        {!planDataAvailable ? (
+          <p className="mt-4 text-[12px] text-[#8a8f98]">
+            Plan status unavailable. Local features remain available. Sign in or refresh billing to check cloud sync access.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(["Cloud sync", "Auto-sync dashboard", "Cloud run history", "Memory sync"] as const).map((label) => {
+              const lbl = gateLabel(plan, "pro");
+              return (
+                <div key={label} className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+                  <p className="text-[12px] text-[#8a8f98]">{label}</p>
+                  <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>
+                </div>
+              );
+            })}
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+              <p className="text-[12px] text-[#8a8f98]">Advanced reports and multi-project</p>
+              {(() => { const lbl = gateLabel(plan, "builder"); return <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>; })()}
+            </div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+              <p className="text-[12px] text-[#8a8f98]">Team approvals and audit logs</p>
+              {(() => { const lbl = gateLabel(plan, "team"); return <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>; })()}
+              <p className="mt-1 text-[11px] text-[#5a5f68]">Team policies and GitHub checks: coming soon</p>
+            </div>
           </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Auto-sync dashboard</p>
-            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Cloud run history</p>
-            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Memory sync</p>
-            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Advanced reports and multi-project</p>
-            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "builder")}</p>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Team approvals and audit logs</p>
-            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "team")}</p>
-            <p className="mt-1 text-[11px] text-[#5a5f68]">Team policies and GitHub checks: coming soon</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {isEmpty ? (
@@ -552,11 +578,19 @@ export default async function OverviewPage() {
       <div className="rounded-xl border border-white/6 bg-[#0e1116] px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-semibold text-[#f4f5f7]">{plan === "free" ? "Cloud sync requires Pro." : "CLI cloud sync is available on your plan."}</p>
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">
+              {!planDataAvailable
+                ? "Sign in to check cloud sync access."
+                : plan === "free"
+                  ? "Cloud sync requires Pro."
+                  : "CLI cloud sync is available on your plan."}
+            </p>
             <p className="mt-0.5 text-[12px] leading-5 text-[#5a5f68]">
-              {plan === "free"
-                ? <>Free includes local setup, local memory, and local run history. Upgrade to Pro to unlock auto-sync dashboard, cloud run history, and memory sync.</>
-                : <>Connect your CLI with <code className="font-mono text-[#a78bfa]">runtrim login</code> then run <code className="font-mono text-[#a78bfa]">runtrim sync</code> from any project.</>}
+              {!planDataAvailable
+                ? "Plan status unavailable. Local features remain available. Sign in or refresh billing to check cloud sync access."
+                : plan === "free"
+                  ? "Free includes local setup, local memory, and local run history. Upgrade to Pro to unlock auto-sync dashboard, cloud run history, and memory sync."
+                  : <>Connect your CLI with <code className="font-mono text-[#a78bfa]">runtrim login</code> then run <code className="font-mono text-[#a78bfa]">runtrim sync</code> from any project.</>}
             </p>
           </div>
           <Link

@@ -5,13 +5,32 @@ import { CopyButton } from "@/components/app/copy-button";
 import { PublicNav } from "@/components/app/public-nav";
 
 export const metadata: Metadata = {
-  title: "Install RunTrim | Local-first AI run control",
+  title: "Install RunTrim | CLI Control Layer for AI Coding Agents",
   description:
-    "Install RunTrim, initialize your repo, and start guiding AI coding runs with local memory, scoped prompts, monitoring, and checks.",
-  alternates: {
-    canonical: "https://www.runtrim.com/app/install",
-  },
+    "Install RunTrim in one command. Set up your project with runtrim start, dispatch guarded runs with runtrim agent, and verify with runtrim finish. Free. Local-first. No account required.",
+  alternates: { canonical: "https://www.runtrim.com/app/install" },
   robots: { index: true, follow: true },
+  keywords: [
+    "install runtrim", "runtrim start", "runtrim agent", "runtrim finish",
+    "AI coding agent CLI", "local AI coding CLI", "Claude Code control layer",
+    "Cursor guardrails CLI", "AI coding guardrails install", "runtrim mcp",
+  ],
+  openGraph: {
+    title: "Install RunTrim — CLI Control Layer for AI Coding Agents",
+    description:
+      "Install in one command. Set up your project, dispatch guarded agent runs, verify with finish checks. Free. Local-first. No account required.",
+    url: "https://www.runtrim.com/app/install",
+    type: "website",
+    siteName: "RunTrim",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Install RunTrim" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Install RunTrim — CLI Control Layer for AI Coding Agents",
+    description:
+      "Install in one command. Set up your project, dispatch guarded agent runs, verify with finish checks.",
+    images: ["/opengraph-image"],
+  },
 };
 
 const MONO: React.CSSProperties = {
@@ -53,12 +72,14 @@ function SectionCard({ kicker, children }: { kicker: string; children: React.Rea
 }
 
 const DIRECT_COMMANDS = [
-  { n: "01", cmd: "runtrim init",                         note: "Initialize protocol, memory, and agent pointers in a repo." },
-  { n: "02", cmd: 'runtrim go "your task"',               note: "Compile a scoped contract, load memory, and copy the guarded prompt." },
-  { n: "03", cmd: "runtrim check",                        note: "Review changed files and proof gaps after the agent runs." },
-  { n: "04", cmd: "runtrim finish",                       note: "Run the finish check: scope, risk, diff size, forbidden writes." },
-  { n: "05", cmd: "runtrim memory",                       note: "Show project memory and resume context." },
-  { n: "06", cmd: "runtrim continue --reason usage_limit", note: "Build a continuation prompt when a session hits context or usage limits." },
+  { n: "01", cmd: "runtrim start",                          note: "Analyze the project, write memory, detect agent files, and prepare MCP snippets." },
+  { n: "02", cmd: 'runtrim agent "your task" --copy',       note: "Create a scoped contract, load memory, and copy the guarded handoff prompt." },
+  { n: "03", cmd: "runtrim finish",                         note: "Check changed files, scope, sensitive files, proof gaps, and finish verdict." },
+  { n: "04", cmd: 'runtrim approve "Allow <scope>"',        note: "Approve a scope extension for the current run only." },
+  { n: "05", cmd: "runtrim mcp instructions",               note: "Print MCP integration instructions for your agent." },
+  { n: "06", cmd: "runtrim mcp config --print",             note: "Print the MCP server config snippet." },
+  { n: "07", cmd: "runtrim mcp start",                      note: "Start the local MCP server." },
+  { n: "08", cmd: "runtrim bridge status",                  note: "Show Bridge Mode status and active contract." },
 ];
 
 export default function InstallPage() {
@@ -167,11 +188,13 @@ export default function InstallPage() {
                 Install once. Start in any repo.
               </h2>
               <p className="mt-1.5" style={{ fontSize: 13, color: "#5a5f68" }}>
-                Two commands cover the daily workflow.
+                Four commands cover the daily workflow.
               </p>
               <div className="mt-4 space-y-2.5">
                 <Cmd text="npm install -g runtrim" trackKey="npm_install_global" />
-                <Cmd text='runtrim go "your task"' trackKey="runtrim_go" />
+                <Cmd text="runtrim start" trackKey="runtrim_start" />
+                <Cmd text='runtrim agent "Fix the homepage copy" --copy' trackKey="runtrim_agent_copy" />
+                <Cmd text="runtrim finish" trackKey="runtrim_finish" />
               </div>
             </div>
             <div
@@ -179,24 +202,24 @@ export default function InstallPage() {
               style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#08090b" }}
             >
               <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                What runtrim go does
+                What runtrim agent --copy does
               </p>
               <ul className="mt-3 space-y-2" style={{ fontSize: 12.5, color: "#8a8f98", lineHeight: 1.6 }}>
-                <li><span style={{ color: "#f4f5f7" }}>Compiles a scoped contract.</span> Task, memory, allowed scope, forbidden files.</li>
-                <li><span style={{ color: "#f4f5f7" }}>Copies the guarded prompt.</span> Paste into Claude, Codex, Cursor, or any agent.</li>
-                <li><span style={{ color: "#f4f5f7" }}>Records the run locally.</span> History, savings, and continuation pack.</li>
+                <li><span style={{ color: "#f4f5f7" }}>Creates a scoped contract.</span> Task, memory, allowed scope, forbidden files.</li>
+                <li><span style={{ color: "#f4f5f7" }}>Copies the guarded handoff.</span> Paste into Claude, Codex, Cursor, or any agent.</li>
+                <li><span style={{ color: "#f4f5f7" }}>Records the run locally.</span> History and continuation pack.</li>
               </ul>
             </div>
           </div>
         </SectionCard>
 
-        {/* Agent mode */}
-        <SectionCard kicker="Agent mode">
+        {/* Dispatch and MCP */}
+        <SectionCard kicker="Dispatch and MCP">
           <h2 style={{ fontSize: 16, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>
-            Choose how RunTrim delivers the prompt.
+            Two ways to hand off to an agent.
           </h2>
           <p className="mt-1.5 mb-4" style={{ fontSize: 13, color: "#5a5f68" }}>
-            Copy mode works with every agent. Command mode wraps a local CLI directly.
+            Copy mode works with every agent. MCP mode works with compatible agents that support the Model Context Protocol.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <div
@@ -211,25 +234,26 @@ export default function InstallPage() {
                   Recommended
                 </span>
               </div>
-              <p style={{ fontSize: 12.5, color: "#8a8f98", marginBottom: 12 }}>Prepares the contract and copies it. Paste into any agent UI.</p>
-              <Cmd text='runtrim go "your task"' />
+              <p style={{ fontSize: 12.5, color: "#8a8f98", marginBottom: 12 }}>Creates a scoped contract and copies the guarded handoff. Paste into any agent UI.</p>
+              <Cmd text='runtrim agent "your task" --copy' trackKey="runtrim_agent_copy" />
             </div>
             <div
               className="rounded-[8px] p-4"
               style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#08090b" }}
             >
               <div className="flex items-center gap-2.5 mb-3">
-                <p style={{ fontSize: 13.5, fontWeight: 500, color: "#f4f5f7" }}>Command mode</p>
+                <p style={{ fontSize: 13.5, fontWeight: 500, color: "#f4f5f7" }}>MCP mode</p>
                 <span
                   style={{ ...MONO, fontSize: 10, color: "#5a5f68", border: "1px solid rgba(255,255,255,0.09)", padding: "1px 7px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.07em" }}
                 >
                   Optional
                 </span>
               </div>
-              <p style={{ fontSize: 12.5, color: "#8a8f98", marginBottom: 12 }}>Wraps a configured local agent CLI. Use only if you have one set up.</p>
+              <p style={{ fontSize: 12.5, color: "#8a8f98", marginBottom: 12 }}>Run a local MCP server that compatible agents like Claude Code can call directly.</p>
               <div className="space-y-2">
-                <Cmd text="runtrim agent set <agent>" />
-                <Cmd text='runtrim run "your task"' />
+                <Cmd text="runtrim mcp instructions" />
+                <Cmd text="runtrim mcp config --print" />
+                <Cmd text="runtrim mcp start" />
               </div>
             </div>
           </div>

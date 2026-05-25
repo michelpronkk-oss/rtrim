@@ -67,7 +67,10 @@
       "Bash(git commit -m 'Fix trial card: '\\\\''View plan'\\\\'' -> /app/billing, clearer copy about auto-convert *)",
       "Bash(node --loader tsx/esm -e ' *)",
       "Bash(grep -v \"//\")",
-      "Bash(grep -n \"saveGuardState\\(cwd, { lastFinishAt\" c:/Users/miche/Desktop/runtrim/cli/runtrim.ts)"
+      "Bash(grep -n \"saveGuardState\\(cwd, { lastFinishAt\" c:/Users/miche/Desktop/runtrim/cli/runtrim.ts)",
+      "Bash(node scripts/prepare-cli-package-manifest.mjs)",
+      "Bash(node -e \"const p=JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\); console.log\\('deps:', Object.keys\\(p.dependencies\\).join\\(', '\\)\\)\")",
+      "Bash(dir c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\app)"
     ]
   }
 }

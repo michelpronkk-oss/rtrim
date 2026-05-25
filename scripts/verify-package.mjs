@@ -14,14 +14,7 @@ function parsePackJson(raw) {
   return JSON.parse(trimmed.slice(start));
 }
 
-try {
-  run("npm run -s build");
-} catch (error) {
-  const stderr = String(error?.stderr ?? "");
-  if (!stderr.includes("Another next build process is already running")) throw error;
-  // Fallback for transient Next lock: still verify fresh CLI build + parity.
-  run("npm run -s build:cli");
-}
+run("npm run -s build:cli");
 run("npm run -s verify:cli");
 
 const packRaw = run("npm pack --dry-run --json");

@@ -7,7 +7,7 @@ export const contentType = "image/png";
 const RUNTRIM_ICON_DATA_URI =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="mark" x1="18" y1="18" x2="84" y2="86" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6E8DFF"/><stop offset="100%" stop-color="#7A4DFF"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="#0A0B1F"/><rect x="25" y="20" width="58" height="13" fill="url(#mark)"/><polygon points="83,20 56,47 83,33" fill="url(#mark)"/><rect x="25" y="20" width="13" height="68" fill="url(#mark)"/><polygon points="38,46 52,46 80,88 66,88" fill="url(#mark)"/></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="22" fill="#0c0e11"/><path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="#a78bfa"/><path fill-rule="evenodd" d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="#f4f5f7"/></svg>`
   );
 
 export default function OGImage() {

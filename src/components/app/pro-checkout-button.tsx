@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { trialEligible } from "@/lib/billing-cta";
 
 interface ProCheckoutButtonProps {
   className?: string;
@@ -17,18 +18,22 @@ interface ProCheckoutButtonProps {
 }
 
 type AuthPlan =
-  | "checking"      // resolving session + plan
-  | "logged-out"    // no session → send to /login?next=/app/trial
-  | "free"          // logged in, Free plan → start checkout
-  | "pro";          // logged in, active Pro/trial → open dashboard
+  | "checking"     // resolving session + plan
+  | "logged-out"   // no session → send to /login?next=/app/trial
+  | "free"         // logged in, Free plan, trial eligible → start trial checkout
+  | "trial_used"   // logged in, Free plan, trial already used → upgrade checkout
+  | "past_due"     // logged in, payment failed → billing page
+  | "pro";         // logged in, active paid plan → open dashboard
 
 /**
  * Plan-aware Pro CTA.
  *
  * checking     → shimmer skeleton
- * logged-out   → "Start 3-day Pro trial" → /login?next=/app/trial (intent preserved)
- * free         → "Start 3-day Pro trial" → POST /api/billing/checkout → Dodo
- * pro          → "Open dashboard"        → /app
+ * logged-out   → label prop             → /login?next=/app/trial
+ * free         → label prop             → POST /api/billing/checkout → Dodo (trial)
+ * trial_used   → "Upgrade to Pro"       → POST /api/billing/checkout → Dodo (upgrade)
+ * past_due     → "Update payment method"→ /app/billing
+ * pro          → "Open dashboard"       → /app
  */
 export function ProCheckoutButton({
   className,
@@ -45,12 +50,29 @@ export function ProCheckoutButton({
     if (alwaysCheckout) return;
     fetch("/api/billing/plan")
       .then((r) => r.json())
-      .then((d: { loggedIn: boolean; plan: string; planStatus: string | null }) => {
+      .then((d: {
+        loggedIn: boolean;
+        plan: string;
+        planStatus: string | null;
+        paymentSubscriptionId: string | null;
+      }) => {
         if (!d.loggedIn) { setAuthPlan("logged-out"); return; }
+
+        // Active paid plan
         const hasPro =
           d.plan !== "free" &&
           (d.planStatus === "active" || d.planStatus === "trialing");
-        setAuthPlan(hasPro ? "pro" : "free");
+        if (hasPro) { setAuthPlan("pro"); return; }
+
+        // Payment failed — user must fix billing first
+        if (d.planStatus === "past_due") { setAuthPlan("past_due"); return; }
+
+        // Trial eligibility check
+        if (trialEligible({ plan: d.plan, planStatus: d.planStatus, paymentSubscriptionId: d.paymentSubscriptionId })) {
+          setAuthPlan("free");
+        } else {
+          setAuthPlan("trial_used");
+        }
       })
       .catch(() => setAuthPlan("logged-out")); // fail-safe
   }, [alwaysCheckout]);
@@ -65,11 +87,20 @@ export function ProCheckoutButton({
     );
   }
 
-  // ── Already has Pro → open dashboard ──────────────────────────────────────
+  // ── Already has active paid plan → open dashboard ─────────────────────────
   if (authPlan === "pro") {
     return (
       <Link href="/app" className={className}>
         Open dashboard
+      </Link>
+    );
+  }
+
+  // ── Payment failed → send to billing to fix ───────────────────────────────
+  if (authPlan === "past_due") {
+    return (
+      <Link href="/app/billing" className={className}>
+        Update payment method
       </Link>
     );
   }
@@ -96,7 +127,7 @@ export function ProCheckoutButton({
     );
   }
 
-  // ── Checkout button ────────────────────────────────────────────────────────
+  // ── Checkout button (free → trial, trial_used → upgrade, logged-out → login) ─
   async function handleClick() {
     if (authPlan === "logged-out") {
       window.location.href = "/login?next=/app/trial";
@@ -130,7 +161,11 @@ export function ProCheckoutButton({
     }
   }
 
-  const loadingLabel = planId === "pro" ? "Starting trial…" : "Loading checkout…";
+  // trial_used shows "Upgrade to Pro" regardless of the label prop;
+  // the checkout flow is identical — only the copy changes.
+  const effectiveLabel = authPlan === "trial_used" ? "Upgrade to Pro" : label;
+  const isTrialFlow    = authPlan === "free" && planId === "pro";
+  const loadingLabel   = isTrialFlow ? "Starting trial…" : "Loading checkout…";
 
   return (
     <button
@@ -139,7 +174,7 @@ export function ProCheckoutButton({
       disabled={checkoutState === "loading"}
       className={checkoutState === "loading" ? `rt-btn-loading ${className ?? ""}` : className}
     >
-      {checkoutState === "loading" ? loadingLabel : label}
+      {checkoutState === "loading" ? loadingLabel : effectiveLabel}
     </button>
   );
 }

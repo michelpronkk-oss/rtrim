@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId } from "@/lib/entitlements";
+import { trialEligible } from "@/lib/billing-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 import { ManageBillingButton } from "./_components/manage-billing-button";
 
@@ -119,6 +120,7 @@ export default async function BillingPage() {
     planStatus === "past_due" ||
     canceledInPeriod;
   const canOpenBillingPortal = hasPaymentCustomerId && isPortalEligibleStatus;
+  const isTrialEligible = trialEligible({ plan, planStatus, paymentSubscriptionId });
   const teamCheckoutEnabled = Boolean(
     process.env.DODO_TEAM_CHECKOUT_URL?.trim() || process.env.DODO_TEAM_PRODUCT_ID?.trim()
   );
@@ -131,6 +133,17 @@ export default async function BillingPage() {
 
   function getPlanCta(targetPlanId: "pro" | "builder" | "team"): BillingCta {
     const currentPlan = plan as "free" | "pro" | "builder" | "team";
+
+    // Payment failed is the highest-priority state — direct to billing portal first
+    if (isPastDue) {
+      if (canOpenBillingPortal) return { kind: "manage" as const, label: "Update payment method" };
+      return {
+        kind: "contact" as const,
+        label: "Contact support",
+        helper: "Payment failed. Contact us to restore access.",
+      };
+    }
+
     if (currentPlan === targetPlanId) {
       if (canOpenBillingPortal) return { kind: "manage" as const, label: "Manage billing" };
       return {
@@ -141,7 +154,12 @@ export default async function BillingPage() {
     }
 
     if (currentPlan === "free") {
-      if (targetPlanId === "pro") return { kind: "checkout" as const, label: "Start 3-day Pro trial" };
+      if (targetPlanId === "pro") {
+        return {
+          kind: "checkout" as const,
+          label: isTrialEligible ? "Start 3-day Pro trial" : "Upgrade to Pro",
+        };
+      }
       if (targetPlanId === "builder") return { kind: "checkout" as const, label: "Get Builder" };
       if (targetPlanId === "team") return { kind: "contact" as const, label: "Contact for Team" };
       return { kind: "checkout" as const, label: `Get ${planLabel(targetPlanId)}` };
@@ -180,17 +198,21 @@ export default async function BillingPage() {
       {/* Header */}
       <div>
         <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.14em" }}>
-          {isFree ? "Get started" : "Billing"}
+          {isFree && !isPastDue ? "Get started" : "Billing"}
         </p>
         <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">
-          {isFree ? "Choose your plan." : "Plan and billing"}
+          {isFree && !isPastDue ? "Choose your plan." : "Plan and billing"}
         </h1>
         <p className="mt-1.5 text-[14px] text-[#8a8f98]">
-          {isFree
-            ? "The RunTrim dashboard is a Pro feature. Start a 3-day free trial, no commitment."
-            : isTrialing
-            ? `Pro trial active${trialEnd ? ` — ends ${trialEnd}` : ""}. You have full Pro access.`
-            : `${plan.charAt(0).toUpperCase() + plan.slice(1)} plan active.`}
+          {isPastDue
+            ? "Update your payment method to restore access."
+            : isFree
+              ? isTrialEligible
+                ? "The RunTrim dashboard is a Pro feature. Start a 3-day free trial, no commitment."
+                : "The RunTrim dashboard is a Pro feature. Upgrade to continue."
+              : isTrialing
+                ? `Pro trial active${trialEnd ? ` — ends ${trialEnd}` : ""}. You have full Pro access.`
+                : `${plan.charAt(0).toUpperCase() + plan.slice(1)} plan active.`}
         </p>
       </div>
 
@@ -288,7 +310,7 @@ export default async function BillingPage() {
                   <span className="text-[26px] font-bold tracking-[-0.02em] text-[#f4f5f7]">{p.price}</span>
                   <span className="text-[12px] text-[#5a5f68]">{p.per}</span>
                 </div>
-                {p.trial && (
+                {p.trial && isTrialEligible ? (
                   <div className="mt-2 inline-flex">
                     <span
                       style={{
@@ -301,8 +323,9 @@ export default async function BillingPage() {
                       {p.trial}
                     </span>
                   </div>
+                ) : (
+                  <div style={{ height: 22 }} />
                 )}
-                {!p.trial && <div style={{ height: 22 }} />}
                 <p className="mt-2 text-[12px] leading-[1.55] text-[#8a8f98]">{p.desc}</p>
               </div>
 

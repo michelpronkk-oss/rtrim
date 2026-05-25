@@ -60,11 +60,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim continuation workflow",
         commands: [
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check",
-          "runtrim continue --reason usage_limit",
-          "runtrim memory"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish",
+          "runtrim continue --reason usage_limit"
         ]
       }
     ],
@@ -133,9 +132,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim continuation prompt flow",
         commands: [
-          "runtrim check",
-          "runtrim continue --reason usage_limit",
-          "runtrim memory --prompt"
+          "runtrim finish",
+          "runtrim continue --reason usage_limit"
         ]
       }
     ],
@@ -163,8 +161,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         answer: "Yes. They reduce repeated context reconstruction and keep the next run focused on remaining work."
       },
       {
-        question: "What does runtrim memory --prompt do?",
-        answer: "It outputs a prompt-ready summary from local run memory for the next session."
+        question: "What does runtrim finish produce?",
+        answer: "A PASS / WARN / BLOCKED verdict with a structured report of the run: status, changed paths, risk indicators, verification debt, and recommended follow-up actions."
       }
     ],
     relatedSlugs: [
@@ -204,10 +202,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim run history flow",
         commands: [
-          'runtrim go "your task"',
-          "runtrim check",
-          "runtrim memory",
-          "runtrim report"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -273,7 +270,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
         title: "RunTrim local-first start",
         commands: [
           "npm install -g runtrim",
-          "runtrim go \"your task\""
+          "runtrim start",
+          'runtrim agent "your task" --copy'
         ]
       }
     ],
@@ -338,10 +336,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim guardrail workflow",
         commands: [
-          'runtrim guard "your task"',
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -406,12 +403,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim Cursor continuation workflow",
         commands: [
-          "runtrim agent set cursor",
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check",
-          "runtrim continue --reason usage_limit",
-          "runtrim memory"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish",
+          "runtrim continue --reason usage_limit"
         ]
       }
     ],
@@ -424,7 +419,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
     faqs: [
       {
         question: "Does RunTrim work with Cursor?",
-        answer: "Yes. Set copy mode with runtrim agent set cursor. RunTrim generates a scoped prompt to paste into Cursor and tracks the run locally."
+        answer: "Yes. Run runtrim start to set up your project, then runtrim agent \"your task\" --copy to get a scoped prompt. Paste it into Cursor and run runtrim finish after."
       },
       {
         question: "Does RunTrim upload source code?",
@@ -480,11 +475,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim Cursor run history flow",
         commands: [
-          "runtrim agent set cursor",
-          'runtrim go "your task"',
-          "runtrim check",
-          "runtrim memory",
-          "runtrim report"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -549,11 +542,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim Cursor guardrail workflow",
         commands: [
-          "runtrim agent set cursor",
-          'runtrim guard "your task"',
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -618,12 +609,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim Codex CLI continuation workflow",
         commands: [
-          "runtrim agent set codex",
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check",
-          "runtrim continue --reason usage_limit",
-          "runtrim memory"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish",
+          "runtrim continue --reason usage_limit"
         ]
       }
     ],
@@ -636,7 +625,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
     faqs: [
       {
         question: "Does RunTrim work with Codex CLI?",
-        answer: "Yes. Use runtrim agent set codex to configure command mode. RunTrim can wrap Codex CLI runs or generate prompts for copy mode."
+        answer: "Yes. Run runtrim start to set up your project, then runtrim agent \"your task\" --copy. RunTrim generates a scoped prompt you can paste into any agent including Codex CLI."
       },
       {
         question: "Does RunTrim upload source code?",
@@ -645,10 +634,6 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         question: "Can RunTrim reduce Codex token waste?",
         answer: "Yes. Continuation prompts carry run state forward so the next Codex run skips repeated context reconstruction."
-      },
-      {
-        question: "What does runtrim agent set codex do?",
-        answer: "It configures RunTrim to use Codex CLI in command mode for wrapped runs. Copy mode is available without this setting."
       },
       {
         question: "How is RunTrim different from Codex CLI memory features?",
@@ -692,11 +677,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim Codex CLI guardrail workflow",
         commands: [
-          "runtrim agent set codex",
-          'runtrim guard "your task"',
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -713,15 +696,15 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim interfere with Codex CLI directly?",
-        answer: "In command mode, RunTrim wraps Codex CLI runs. In copy mode, it generates a scoped prompt to paste. The agent runs normally with tighter input."
+        answer: "No. RunTrim generates a scoped prompt via runtrim agent \"your task\" --copy that you paste into Codex CLI. The agent runs normally with tighter input."
       },
       {
         question: "Can guardrails prevent every risky Codex change?",
         answer: "No tool can guarantee that. RunTrim reduces risk by making scope explicit before the run and checking changed paths after."
       },
       {
-        question: "What does runtrim agent set codex do?",
-        answer: "It configures RunTrim to use Codex CLI in command mode for wrapped runs."
+        question: "What is a guarded run contract?",
+        answer: "A scoped task description that defines the allowed file surface, protected systems, and verification requirements before Codex starts editing."
       }
     ],
     relatedSlugs: [
@@ -761,10 +744,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim Claude Code scoped run workflow",
         commands: [
-          'runtrim guard "your task"',
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check",
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish",
           "runtrim continue --reason usage_limit"
         ]
       }
@@ -834,10 +816,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim scope drift prevention workflow",
         commands: [
-          'runtrim guard "your task"',
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -906,12 +887,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim token waste reduction workflow",
         commands: [
-          'runtrim guard "your task"',
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check",
-          "runtrim continue --reason usage_limit",
-          "runtrim memory"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish",
+          "runtrim continue --reason usage_limit"
         ]
       }
     ],
@@ -980,10 +959,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim verification workflow",
         commands: [
-          'runtrim go "your task"',
-          "runtrim watch",
-          "runtrim check",
-          "runtrim report"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -995,8 +973,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
     ],
     faqs: [
       {
-        question: "What does runtrim check do?",
-        answer: "It evaluates the current run against the defined task, checks changed file paths against allowed scope, and surfaces verification debt and missing proof."
+        question: "What does runtrim finish do?",
+        answer: "It evaluates the run against the defined task, checks changed file paths against allowed scope, and surfaces verification debt and missing proof with a PASS / WARN / BLOCKED verdict."
       },
       {
         question: "What is verification debt?",
@@ -1022,7 +1000,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       "claude-code-token-waste"
     ],
     finalCtaTitle: "Check what actually changed",
-    finalCtaBody: "Run runtrim check after every agent session to surface scope violations and verification debt before they ship."
+    finalCtaBody: "Run runtrim finish after every agent session to surface scope violations and verification debt before they ship."
   },
   "ai-coding-prompt-reuse": {
     slug: "ai-coding-prompt-reuse",
@@ -1052,9 +1030,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       {
         title: "RunTrim prompt reuse workflow",
         commands: [
-          'runtrim go "your task"',
-          "runtrim memory",
-          "runtrim memory --prompt"
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "runtrim finish"
         ]
       }
     ],
@@ -1079,7 +1057,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim store manually written prompts?",
-        answer: "RunTrim saves the prompts it generates from runtrim go and runtrim prepare. Prompts written and pasted directly into agents are not captured."
+        answer: "RunTrim saves the contracts it generates from runtrim agent --copy. Prompts written and pasted directly into agents without using RunTrim are not captured."
       },
       {
         question: "Is prompt history stored locally or in the cloud?",

@@ -308,7 +308,11 @@ export function SeoLandingPage({ page }: SeoLandingPageProps) {
                 </div>
                 <div className="flex gap-2">
                   <span className="select-none text-[#7C6DFA]/45">$</span>
-                  <span className="text-[#C8D4E0]">runtrim go "your task"</span>
+                  <span className="text-[#C8D4E0]">runtrim start</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="select-none text-[#7C6DFA]/45">$</span>
+                  <span className="text-[#C8D4E0]">runtrim agent &quot;your task&quot; --copy</span>
                 </div>
               </div>
             </div>

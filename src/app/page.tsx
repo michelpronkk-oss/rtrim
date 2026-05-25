@@ -11,11 +11,25 @@ import { PublicNav } from "@/components/app/public-nav";
 import { PublicFooter } from "@/components/app/public-footer";
 
 export const metadata: Metadata = {
-  title: "RunTrim - Control layer for AI coding agents",
+  title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
   description:
-    "RunTrim is the control layer for AI coding agents. It gives Claude, Codex, Cursor, ChatGPT, and other agents scoped instructions, project memory, forbidden-file rules, finish checks, and run history before they touch your code.",
-  alternates: {
-    canonical: "https://www.runtrim.com",
+    "RunTrim gives Claude Code, Cursor, Codex, and ChatGPT scoped contracts, project memory, forbidden-file rules, finish checks, and run history before they touch your code. Free CLI. Local-first. No account required.",
+  alternates: { canonical: "https://www.runtrim.com" },
+  openGraph: {
+    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+    description:
+      "Scoped contracts, project memory, forbidden-file rules, and finish checks for every AI coding run. Free CLI. Local-first. No account required.",
+    url: "https://www.runtrim.com",
+    type: "website",
+    siteName: "RunTrim",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "RunTrim — Control Layer for AI Coding Agents" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+    description:
+      "Scoped contracts, project memory, forbidden-file rules, and finish checks for every AI coding run. Free CLI. Local-first.",
+    images: ["/opengraph-image"],
   },
 };
 
@@ -66,33 +80,33 @@ const DRIFT_ITEMS = [
 
 const PIPELINE_STAGES = [
   {
-    n:      "01 / install",
-    cmd:    "runtrim init",
-    desc:   "Drop the protocol into your repo. Conventions, allowed paths, forbidden files, finish checks.",
+    n:      "01 / setup",
+    cmd:    "runtrim start",
+    desc:   "Analyzes the project, writes memory, detects agent files, prepares MCP snippets and instructions.",
     active: true,
   },
   {
     n:      "02 / dispatch",
-    cmd:    'runtrim go "task"',
-    desc:   "Compile the run contract. Load memory, lock scope, set the token budget, attach the finish check.",
+    cmd:    'runtrim agent "task" --copy',
+    desc:   "Creates the scoped contract, loads memory, prepares the guarded handoff prompt.",
     active: true,
   },
   {
     n:      "03 / execute",
-    cmd:    "> agent",
-    desc:   "Claude, Codex, Cursor or any agent executes inside the run contract. Stop rules trigger if it strays.",
+    cmd:    "agent / MCP",
+    desc:   "Claude, Codex, Cursor or any agent works inside the scoped handoff. Compatible agents can use RunTrim MCP tools.",
     active: true,
   },
   {
     n:      "04 / verify",
     cmd:    "runtrim finish",
-    desc:   "Run the finish check. Tests, scope, diff size, forbidden writes. Pass or fail, no in-between.",
+    desc:   "Checks changed files, scope, sensitive files, proof gaps, and finish verdict.",
     active: false,
   },
   {
     n:      "05 / sync",
     cmd:    "dashboard",
-    desc:   "Run, contract, diff, token spend, and verdict are written to your dashboard. Resumable next session.",
+    desc:   "Cloud sync and dashboard run history are Pro+ features. Local run history is available for Free.",
     active: false,
   },
 ];
@@ -431,8 +445,8 @@ export default function Home() {
                   <em style={{ fontStyle: "normal", color: "#8a8f98" }}>It should start with a contract.</em>
                 </h2>
                 <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
-                  Init defines conventions and boundaries. Go compiles task, memory, scope, and constraints.
-                  Your agent executes inside contract rules. Finish verifies scope, diff, tests, and forbidden writes.
+                  Start prepares project memory and agent files. Agent dispatch compiles the task into a guarded handoff.
+                  Your agent executes inside contract boundaries. Finish verifies scope, diff, sensitive files, and proof gaps.
                 </p>
               </div>
             </div>
@@ -765,7 +779,7 @@ export default function Home() {
             >
               <strong style={{ color: "#f4f5f7", fontWeight: 500 }}>Bring your own agent.</strong>
               <span>
-                Bridge Mode packages task, scope, memory, constraints, and continuation context into one clean handoff for your preferred agent.
+                runtrim agent packages task, scope, memory, and constraints into a clean handoff prompt. Paste into any agent UI, or use MCP for compatible agents.
               </span>
             </div>
           </div>
@@ -856,7 +870,7 @@ export default function Home() {
                 per: "/ seat / month",
                 trial: null as string | null,
                 desc: "Shared protocol, shared memory, shared accountability.",
-                features: ["Everything in Builder", "Shared team state", "Approvals + GitHub checks", "Audit logs"],
+                features: ["Everything in Builder", "Shared team state", "Approvals and audit logs", "GitHub checks and policies (coming soon)"],
                 featured: false,
               },
             ].map(({ id, name, price, per, trial, desc, features, featured }) => (
