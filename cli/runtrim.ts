@@ -1437,12 +1437,32 @@ type McpToolCallResult = {
   isError?: boolean;
 };
 
+type StartProjectProfile = {
+  project_name: string;
+  framework: "nextjs" | "vite" | "remix" | "astro" | "node" | "unknown";
+  language: "typescript" | "javascript";
+  package_manager: "npm" | "pnpm" | "yarn" | "bun";
+  scripts: Partial<Record<"lint" | "build" | "test" | "typecheck" | "dev", string>>;
+  app_directories: string[];
+  suggested_allowed_path_groups: string[];
+  suggested_forbidden_sensitive_path_groups: string[];
+  detected_sensitive_paths: string[];
+  detected_high_risk_paths: string[];
+  generated_at: string;
+};
+
+type StartAgentFileState = "updated" | "found" | "not found";
+
 function getBridgeDir(cwd: string): string {
   return path.join(getConfigDir(cwd), "bridge");
 }
 
 function getBridgeStatePath(cwd: string): string {
   return path.join(getBridgeDir(cwd), "state.json");
+}
+
+function getProjectProfilePath(cwd: string): string {
+  return path.join(getConfigDir(cwd), "project-profile.json");
 }
 
 function readBridgeState(cwd: string): BridgeState | null {
@@ -1606,6 +1626,277 @@ function parseApprovalFileLimit(approvalText: string): number | null {
   const n = Number.parseInt(match[1], 10);
   if (!Number.isFinite(n) || n < 1 || n > 500) return null;
   return n;
+}
+
+function detectFrameworkFromAuditAndDeps(
+  stack: string[],
+  deps: Record<string, string>
+): "nextjs" | "vite" | "remix" | "astro" | "node" | "unknown" {
+  if (stack.includes("nextjs") || deps.next) return "nextjs";
+  if (deps.vite || stack.includes("vite")) return "vite";
+  if (deps["@remix-run/react"] || deps["@remix-run/node"] || stack.includes("remix")) return "remix";
+  if (deps.astro || stack.includes("astro")) return "astro";
+  if (stack.includes("node")) return "node";
+  return "unknown";
+}
+
+function scanProjectPathNames(cwd: string, maxItems = 8000): string[] {
+  const out: string[] = [];
+  const ignore = new Set(["node_modules", ".git", ".next", "dist", "dist-cli", "coverage", ".turbo", ".runtrim"]);
+  const walk = (dir: string, rel: string): void => {
+    if (out.length >= maxItems) return;
+    let entries: fs.Dirent[] = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (out.length >= maxItems) return;
+      const nextRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (ignore.has(entry.name)) continue;
+        walk(path.join(dir, entry.name), nextRel);
+      } else {
+        out.push(nextRel.replace(/\\/g, "/"));
+      }
+    }
+  };
+  walk(cwd, "");
+  return out;
+}
+
+function replaceManagedSection(existing: string, marker: string, body: string): string {
+  const begin = `<!-- ${marker}_BEGIN -->`;
+  const end = `<!-- ${marker}_END -->`;
+  const block = `${begin}\n${body.trim()}\n${end}`;
+  const rx = new RegExp(`${begin}[\\s\\S]*?${end}`, "m");
+  if (rx.test(existing)) return existing.replace(rx, block);
+  if (!existing.trim()) return `${block}\n`;
+  return `${existing.trimEnd()}\n\n${block}\n`;
+}
+
+function upsertRuntrimStartBlock(filePath: string, blockBody: string): StartAgentFileState {
+  if (!fs.existsSync(filePath)) return "not found";
+  const startMarker = "<!-- RUNTRIM:START -->";
+  const endMarker = "<!-- RUNTRIM:END -->";
+  const block = `${startMarker}\n${blockBody.trim()}\n${endMarker}`;
+  const current = fs.readFileSync(filePath, "utf-8");
+  const blockRx = /<!-- RUNTRIM:START -->[\s\S]*?<!-- RUNTRIM:END -->/m;
+  let next = current;
+  if (blockRx.test(current)) {
+    next = current.replace(blockRx, block);
+  } else {
+    next = `${current.trimEnd()}\n\n${block}\n`;
+  }
+  if (next === current) return "found";
+  fs.writeFileSync(filePath, next, "utf-8");
+  return "updated";
+}
+
+function buildRuntrimAgentBlockContent(): string {
+  return [
+    "RunTrim project instructions",
+    "- Use RunTrim project memory before editing.",
+    "- Stay inside the active RunTrim contract.",
+    "- If no active contract exists, ask the user to run runtrim agent \"task\" --copy or use MCP if configured.",
+    "- Check path scope before editing high-risk files.",
+    "- Never read or print env file contents.",
+    "- Do not touch sensitive files unless explicitly approved.",
+    "- If scope must expand, request: runtrim approve \"...\"",
+    "- At the end, run or ask for: runtrim finish",
+    "",
+    "RunTrim MCP:",
+    "- runtrim mcp instructions",
+    "- runtrim mcp start",
+  ].join("\n");
+}
+
+function syncStartAgentEnvironment(cwd: string): {
+  claudeInstructions: StartAgentFileState;
+  agentsMd: StartAgentFileState;
+  cursorRules: StartAgentFileState;
+  detectedDirs: string[];
+  updatedFiles: string[];
+} {
+  const detectedDirs = [".claude", ".cursor", ".cursor/rules", ".codex", ".vscode", ".runtrim/agent"]
+    .filter((rel) => fs.existsSync(path.join(cwd, rel)));
+  const blockBody = buildRuntrimAgentBlockContent();
+  const updatedFiles: string[] = [];
+
+  const claudePath = path.join(cwd, "CLAUDE.md");
+  const claudeState = upsertRuntrimStartBlock(claudePath, blockBody);
+  if (claudeState === "updated") updatedFiles.push(path.relative(cwd, claudePath));
+
+  const agentsPath = path.join(cwd, "AGENTS.md");
+  const agentsState = upsertRuntrimStartBlock(agentsPath, blockBody);
+  if (agentsState === "updated") updatedFiles.push(path.relative(cwd, agentsPath));
+
+  const cursorRulesDir = path.join(cwd, ".cursor", "rules");
+  let cursorState: StartAgentFileState = "not found";
+  if (fs.existsSync(cursorRulesDir) && fs.statSync(cursorRulesDir).isDirectory()) {
+    const cursorFilePath = path.join(cursorRulesDir, "runtrim.mdc");
+    const existing = fs.existsSync(cursorFilePath) ? fs.readFileSync(cursorFilePath, "utf-8") : "";
+    const next = replaceManagedSection(existing, "RUNTRIM_CURSOR_RULE", blockBody);
+    if (!fs.existsSync(cursorFilePath) || next !== existing) {
+      fs.writeFileSync(cursorFilePath, next, "utf-8");
+      cursorState = "updated";
+      updatedFiles.push(path.relative(cwd, cursorFilePath));
+    } else {
+      cursorState = "found";
+    }
+  }
+
+  return {
+    claudeInstructions: claudeState,
+    agentsMd: agentsState,
+    cursorRules: cursorState,
+    detectedDirs,
+    updatedFiles,
+  };
+}
+
+function buildStartProfile(cwd: string): StartProjectProfile {
+  const audit = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
+  const packageJsonPath = path.join(cwd, "package.json");
+  let packageDeps: Record<string, string> = {};
+  let scriptsRaw: Record<string, string> = {};
+  try {
+    if (fs.existsSync(packageJsonPath)) {
+      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8")) as {
+        scripts?: Record<string, string>;
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      packageDeps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+      scriptsRaw = pkg.scripts ?? {};
+    }
+  } catch {
+    packageDeps = {};
+    scriptsRaw = {};
+  }
+
+  const scripts: Partial<Record<"lint" | "build" | "test" | "typecheck" | "dev", string>> = {};
+  for (const key of ["lint", "build", "test", "typecheck", "dev"] as const) {
+    if (typeof scriptsRaw[key] === "string") scripts[key] = scriptsRaw[key];
+  }
+
+  const dirsToCheck = ["src/app", "app", "pages", "src/components", "components", "src/lib", "lib"];
+  const appDirs = dirsToCheck.filter((dir) => fs.existsSync(path.join(cwd, dir)));
+  const paths = scanProjectPathNames(cwd);
+  const lowerPaths = paths.map((p) => p.toLowerCase());
+  const sensitive = paths.filter((p) => isSensitivePath(p));
+  const highRiskPatterns = [
+    /^middleware\.(ts|js)$/i,
+    /^proxy\.(ts|js)$/i,
+    /(^|\/)app\/api\/billing\//i,
+    /(^|\/)src\/app\/api\/billing\//i,
+    /(^|\/)app\/api\/auth\//i,
+    /(^|\/)src\/app\/api\/auth\//i,
+    /(^|\/)auth\//i,
+    /(^|\/)supabase\/migrations\//i,
+    /(^|\/)prisma\/migrations\//i,
+    /(billing|payment|stripe|dodo|checkout|webhook)/i,
+  ];
+  const highRisk = paths.filter((p) => highRiskPatterns.some((rx) => rx.test(p)));
+
+  const defaultAllowed = appDirs.length > 0 ? appDirs.map((d) => `${d}/**`) : ["src/**"];
+  const defaultForbidden = [
+    "middleware.ts",
+    "proxy.ts",
+    "app/api/billing/**",
+    "app/api/auth/**",
+    "auth/**",
+    "supabase/migrations/**",
+    "prisma/migrations/**",
+    ".env*",
+    "**/*.pem",
+    "**/*.key",
+  ];
+
+  return {
+    project_name: audit.projectName,
+    framework: detectFrameworkFromAuditAndDeps(audit.detectedStack, packageDeps),
+    language: lowerPaths.some((p) => p.endsWith(".ts") || p.endsWith(".tsx")) ? "typescript" : "javascript",
+    package_manager: audit.packageManager,
+    scripts,
+    app_directories: appDirs,
+    suggested_allowed_path_groups: defaultAllowed,
+    suggested_forbidden_sensitive_path_groups: defaultForbidden,
+    detected_sensitive_paths: sensitive.slice(0, 60),
+    detected_high_risk_paths: highRisk.slice(0, 120),
+    generated_at: new Date().toISOString(),
+  };
+}
+
+function writeStartProjectProfile(cwd: string, profile: StartProjectProfile): string {
+  const configDir = getConfigDir(cwd);
+  if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+  const p = getProjectProfilePath(cwd);
+  let merged = profile as Record<string, unknown>;
+  if (fs.existsSync(p)) {
+    try {
+      const old = JSON.parse(fs.readFileSync(p, "utf-8")) as Record<string, unknown>;
+      merged = { ...old, ...profile };
+    } catch {
+      merged = profile as unknown as Record<string, unknown>;
+    }
+  }
+  fs.writeFileSync(p, JSON.stringify(merged, null, 2), "utf-8");
+  return p;
+}
+
+function updateStartMemory(cwd: string, profile: StartProjectProfile): string {
+  const memoryPath = path.join(getConfigDir(cwd), "memory", "current.md");
+  const memoryDir = path.dirname(memoryPath);
+  if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
+  const existing = fs.existsSync(memoryPath) ? fs.readFileSync(memoryPath, "utf-8") : "";
+  const body = [
+    "RunTrim start profile:",
+    `- Framework: ${profile.framework}`,
+    `- Package manager: ${profile.package_manager}`,
+    `- Language: ${profile.language}`,
+    `- App directories: ${profile.app_directories.join(", ") || "none detected"}`,
+    `- Safe commands: ${Object.keys(profile.scripts).length > 0 ? Object.keys(profile.scripts).join(", ") : "runtrim agent, runtrim finish"}`,
+    "",
+    "Sensitive paths (path-level only):",
+    ...(profile.detected_sensitive_paths.length > 0
+      ? profile.detected_sensitive_paths.slice(0, 20).map((p) => `- ${p}`)
+      : ["- none detected"]),
+    "",
+    "Default agent rules:",
+    "- Stay inside the active contract.",
+    "- Check scope before editing high-risk or sensitive paths.",
+    '- If scope must expand, use: runtrim approve "..."',
+    "- End with runtrim finish verification.",
+    "- Never read or print env file contents.",
+    "",
+    "MCP guidance:",
+    "- runtrim mcp instructions",
+    "- runtrim mcp start",
+  ].join("\n");
+  const updated = replaceManagedSection(existing, "RUNTRIM_START_PROFILE", body);
+  fs.writeFileSync(memoryPath, updated, "utf-8");
+  return memoryPath;
+}
+
+function updateStartAgentInstructions(cwd: string): string {
+  const instructionsPath = path.join(getConfigDir(cwd), "agent", "instructions.md");
+  const dir = path.dirname(instructionsPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const existing = fs.existsSync(instructionsPath) ? fs.readFileSync(instructionsPath, "utf-8") : "";
+  const body = [
+    "RunTrim agent instructions:",
+    "- Use RunTrim project memory before editing.",
+    "- Stay inside the active contract.",
+    "- Check path scope before editing sensitive or high-risk files.",
+    "- If user asks to expand scope, request approval instead of silently continuing.",
+    "- Run finish verification at the end.",
+    "- Never read or print env file contents.",
+  ].join("\n");
+  const updated = replaceManagedSection(existing, "RUNTRIM_AGENT_INSTRUCTIONS", body);
+  fs.writeFileSync(instructionsPath, updated, "utf-8");
+  return instructionsPath;
 }
 
 function appendContractAmendment(cwd: string, approvalText: string): { ok: boolean; reason?: string; fileLimit?: number } {
@@ -2862,46 +3153,62 @@ program
       console.log("");
     }
 
-    const memory = readMemory(cwd);
-    const latestRun = loadLatestRun(cwd);
-    const latestStatus = latestRun?.evaluation?.status ?? latestRun?.status ?? "baseline_initialized";
-    const hasGuardedRun = latestRun?.status === "guarded";
-    const suggestedNext =
-      options.task
-        ? `runtrim agent "${options.task}" --copy`
-        : hasGuardedRun
-          ? "runtrim finish"
-          : 'runtrim agent "describe your next AI coding task" --copy';
+    const profile = buildStartProfile(cwd);
+    const profilePath = writeStartProjectProfile(cwd, profile);
+    const memoryPath = updateStartMemory(cwd, profile);
+    const instructionsPath = updateStartAgentInstructions(cwd);
+    const agentEnv = syncStartAgentEnvironment(cwd);
 
-    console.log(DIM("  Current state"));
-    console.log(DIM("  Status     ") + chalk.white(formatStatus(latestStatus)));
-    if (latestRun?.task) {
-      console.log(DIM("  Last task  ") + chalk.white(truncate(latestRun.task, 80)));
-    }
-    if (memory) {
-      const stateLine = parseMemorySection(memory, "Current state");
-      if (stateLine) console.log(DIM("  Memory     ") + chalk.white(truncate(stateLine, 100)));
-    }
-    console.log(DIM("  Next       ") + chalk.white(suggestedNext));
+    console.log(BOLD("RunTrim project setup"));
     console.log("");
-
-    console.log(DIM("  Default flow"));
-    console.log(chalk.white('  runtrim agent "Your task" --copy'));
+    console.log(DIM("  Detected"));
+    console.log(chalk.white(`  - Framework: ${profile.framework}`));
+    console.log(chalk.white(`  - Package manager: ${profile.package_manager}`));
+    console.log(chalk.white(`  - Language: ${profile.language}`));
+    console.log(chalk.white(`  - Scripts: ${Object.keys(profile.scripts).join(", ") || "none detected"}`));
+    console.log(chalk.white("  - Memory: updated"));
+    console.log(chalk.white("  - Agent instructions: updated"));
+    console.log(chalk.white("  - MCP: available"));
+    console.log("");
+    console.log(DIM("  Detected agents"));
+    console.log(chalk.white(`  - Claude instructions: ${agentEnv.claudeInstructions}`));
+    console.log(chalk.white(`  - AGENTS.md: ${agentEnv.agentsMd}`));
+    console.log(chalk.white(`  - Cursor rules: ${agentEnv.cursorRules}`));
+    console.log(chalk.white("  - MCP: available"));
+    if (agentEnv.detectedDirs.length > 0) {
+      console.log(chalk.white(`  - Agent dirs: ${agentEnv.detectedDirs.join(", ")}`));
+    }
+    console.log("");
+    console.log(DIM("  Generated local files"));
+    console.log(chalk.white(`  - ${path.relative(cwd, profilePath)}`));
+    console.log(chalk.white(`  - ${path.relative(cwd, memoryPath)}`));
+    console.log(chalk.white(`  - ${path.relative(cwd, instructionsPath)}`));
+    for (const rel of agentEnv.updatedFiles) {
+      console.log(chalk.white(`  - ${rel}`));
+    }
+    console.log("");
+    console.log(DIM("  Recommended"));
+    console.log(chalk.white("  1. Open your agent in this project."));
+    console.log(chalk.white('  2. Use normal language: "Fix the homepage copy. Keep billing untouched."'));
+    console.log(chalk.white("  3. Let the agent use RunTrim MCP/context where configured."));
+    console.log(chalk.white("  4. Run runtrim finish when done."));
     console.log("");
     console.log(DIM("  Guarded loop"));
-    console.log(chalk.white("  1. Create guarded run with runtrim agent."));
-    console.log(chalk.white("  2. Paste handoff into Claude/Codex/Cursor."));
-    console.log(chalk.white("  3. Let the agent complete the scoped task."));
-    console.log(chalk.white("  4. Run runtrim finish."));
-    console.log(chalk.white('  5. If scope must expand, run: runtrim approve "..."'));
+    console.log(chalk.white('  runtrim agent "Your task" --copy'));
+    console.log(chalk.white("  runtrim finish"));
+    console.log(chalk.white('  runtrim approve "..."  (if scope must expand)'));
     console.log("");
-    console.log(DIM("  Optional bridge flow"));
+    console.log(DIM("  Optional bridge"));
     console.log(chalk.white('  runtrim agent "Your task" --copy --bridge'));
     console.log(chalk.white("  runtrim bridge status"));
     console.log("");
-    console.log(DIM("  Optional MCP flow"));
+    console.log(DIM("  Optional MCP"));
     console.log(chalk.white("  runtrim mcp instructions"));
     console.log(chalk.white("  runtrim mcp start"));
+    console.log("");
+    console.log(DIM("  Adapters"));
+    console.log(chalk.white("  runtrim adapters"));
+    console.log(chalk.white("  runtrim adapters status"));
     console.log("");
     console.log(DIM("  Trust notes"));
     console.log(chalk.white("  - local-first"));
