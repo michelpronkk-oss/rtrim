@@ -5,7 +5,7 @@
  * These helpers write the protocol files that guide the external agent.
  *
  * Lifecycle:
- *   runtrim init   → writeCanonicalRuntrimMd, writeRestingContract, writeRestingMemory
+ *   runtrim start   → writeCanonicalRuntrimMd, writeRestingContract, writeRestingMemory
  *   runtrim go     → writeContractFile, writeMemoryFile, writeBridgeInstructions
  *                    (RUNTRIM.md is NOT overwritten — it stays canonical)
  *   runtrim finish → archiveContract, archiveMemory, writeCanonicalRuntrimMd,
@@ -14,7 +14,7 @@
 
 import fs from "fs";
 import path from "path";
-import { getConfigDir } from "./runtrim-config";
+import { getConfigDir, getContractsArchiveDir } from "./runtrim-config";
 import type { ContractResult } from "./run-contract";
 
 // ── Block markers ─────────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ export function writeCanonicalRuntrimMd(cwd = process.cwd(), projectName?: strin
     "6. After editing, tell the user to run: `runtrim finish`",
     "",
     "---",
-    `Protocol: runtrim init. Updated: ${new Date().toISOString()}`,
+    `Protocol: runtrim start. Updated: ${new Date().toISOString()}`,
   ];
 
   fs.writeFileSync(path.join(cwd, "RUNTRIM.md"), lines.join("\n"), "utf-8");
@@ -214,7 +214,7 @@ export function archiveContract(cwd: string, runId: string): void {
   // Only archive if it was actually an active contract, not a resting-state file
   if (content.includes("Status: none")) return;
 
-  const archiveDir = path.join(contractsDir, "archive");
+  const archiveDir = getContractsArchiveDir(cwd);
   if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir, { recursive: true });
   fs.writeFileSync(path.join(archiveDir, `${runId}.md`), content, "utf-8");
 }
@@ -506,3 +506,4 @@ export function appendBridgeBlock(filePath: string): boolean {
 export function writeRootProtocolFile(ctx: BridgeContext, cwd = process.cwd()): void {
   writeCanonicalRuntrimMd(cwd, ctx.projectName || undefined);
 }
+

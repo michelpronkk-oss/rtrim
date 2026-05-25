@@ -13,12 +13,12 @@ import { PublicFooter } from "@/components/app/public-footer";
 export const metadata: Metadata = {
   title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
   description:
-    "RunTrim gives Claude Code, Cursor, Codex, and ChatGPT scoped contracts, project memory, forbidden-file rules, finish checks, and run history before they touch your code. Free CLI. Local-first. No account required.",
+    "Stop AI agents from drifting through your codebase. RunTrim gives Claude, Codex, Cursor and other coding agents scoped contracts, project memory, MCP tools, finish checks, CI gates and local restore points.",
   alternates: { canonical: "https://www.runtrim.com" },
   openGraph: {
     title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
     description:
-      "Scoped contracts, project memory, forbidden-file rules, and finish checks for every AI coding run. Free CLI. Local-first. No account required.",
+      "Stop AI agents from drifting through your codebase with scoped contracts, memory, finish verification, CI checks, and local restore points.",
     url: "https://www.runtrim.com",
     type: "website",
     siteName: "RunTrim",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
     description:
-      "Scoped contracts, project memory, forbidden-file rules, and finish checks for every AI coding run. Free CLI. Local-first.",
+      "Stop AI agents from drifting through your codebase with scoped contracts, memory, finish verification, CI checks, and local restore points.",
     images: ["/opengraph-image"],
   },
 };
@@ -37,44 +37,46 @@ export const metadata: Metadata = {
 
 const DRIFT_ITEMS = [
   {
-    tag:   "Context reset",
-    title: "Every session starts blind",
-    body:  "The agent forgets your conventions, the last run, and which files matter. You re-explain the codebase, again.",
-    glyph: "SESSION_NEW",
-    code:  "memory: null",
-  },
-  {
     tag:   "Scope creep",
-    title: "One task, twelve files",
-    body:  "You asked to fix a webhook. It touched the auth layer, two configs, and a migration nobody approved.",
-    glyph: "DELTA",
+    title: "One task becomes twelve files",
+    body:  "Small requests drift into unrelated files.",
+    glyph: "SESSION_NEW",
     code:  "files_touched: 12 / 3",
   },
   {
     tag:   "Token burn",
-    title: "Re-loading the same repo",
-    body:  "Without scoped memory, the agent reads the world to do anything. Token bills compound silently, run after run.",
+    title: "The agent rereads the repo",
+    body:  "Bad runs spend context before they solve anything.",
+    glyph: "DELTA",
+    code:  "usage: +38% vs scoped",
+  },
+  {
+    tag:   "Broken state",
+    title: "Small fixes break working code",
+    body:  "Checkout, auth or config can change without warning.",
     glyph: "USAGE",
-    code:  "+38% vs scoped",
+    code:  "risk: hidden",
   },
   {
-    tag:   "Forbidden writes",
-    title: "It edited .env",
-    body:  "Production secrets, migrations, and infrastructure should be off-limits by default. Most agents have no concept of off-limits.",
+    tag:   "No recovery",
+    title: "Git revert is too blunt",
+    body:  "RunTrim rewinds the AI run, not your whole branch.",
     glyph: "VIOLATION",
-    code:  "writes: .env.production",
+    code:  "restore: local",
   },
   {
-    tag:   "Unclear handoff",
-    body:  'The agent says "complete." Tests are red, the diff is half-applied, and nobody flagged it. You find out at PR review.',
+    tag:   "No proof",
+    title: "The agent says done",
+    body:  "RunTrim checks scope, diff and forbidden writes.",
     glyph: "FINISH",
-    code:  "checks: skipped",
+    code:  "finish: verified",
   },
   {
-    tag:   "No audit trail",
-    body:  "Three runs, four branches, zero history of intent. You can read the diff, but you can't read the reasoning behind it.",
+    tag:   "Context reset",
+    title: "Every session starts cold",
+    body:  "RunTrim carries project memory forward.",
     glyph: "RUN_LOG",
-    code:  "not found",
+    code:  "memory: loaded",
   },
 ];
 
@@ -82,31 +84,37 @@ const PIPELINE_STAGES = [
   {
     n:      "01 / setup",
     cmd:    "runtrim start",
-    desc:   "Analyzes the project, writes memory, detects agent files, prepares MCP snippets and instructions.",
+    desc:   "Creates memory, rules and MCP snippets.",
     active: true,
   },
   {
-    n:      "02 / dispatch",
+    n:      "02 / readiness",
+    cmd:    "runtrim doctor",
+    desc:   "Checks if your agent is RunTrim-ready.",
+    active: true,
+  },
+  {
+    n:      "03 / control",
     cmd:    'runtrim agent "task" --copy',
-    desc:   "Creates the scoped contract, loads memory, prepares the guarded handoff prompt.",
-    active: true,
-  },
-  {
-    n:      "03 / execute",
-    cmd:    "agent / MCP",
-    desc:   "Claude, Codex, Cursor or any agent works inside the scoped handoff. Compatible agents can use RunTrim MCP tools.",
+    desc:   "Creates a scoped handoff. MCP agents can create it directly.",
     active: true,
   },
   {
     n:      "04 / verify",
     cmd:    "runtrim finish",
-    desc:   "Checks changed files, scope, sensitive files, proof gaps, and finish verdict.",
+    desc:   "Checks scope, changed files and proof gaps.",
     active: false,
   },
   {
-    n:      "05 / sync",
-    cmd:    "dashboard",
-    desc:   "Cloud sync and dashboard run history are Pro+ features. Local run history is available for Free.",
+    n:      "05 / gate",
+    cmd:    "runtrim ci check",
+    desc:   "Blocks risky AI-generated PRs before merge.",
+    active: false,
+  },
+  {
+    n:      "06 / recover",
+    cmd:    "runtrim restore last --preview",
+    desc:   "Preview and rewind a broken AI run locally.",
     active: false,
   },
 ];
@@ -184,11 +192,11 @@ export default function Home() {
         >
           {/* Two-column grid ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â stacks on mobile */}
           <div
-            className="grid gap-6 lg:gap-20 items-start"
+            className="grid gap-7 lg:gap-16 items-start"
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%,480px), 1fr))" }}
           >
             {/* Left: copy */}
-            <div>
+            <div className="max-w-[620px]">
               {/* Eyebrow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â "Bridge Mode live" with pulsing mint dot */}
               <MotionFade>
                 <span
@@ -213,42 +221,45 @@ export default function Home() {
                     color: "#6ee7b7", letterSpacing: "0.07em",
                     textTransform: "uppercase",
                   }}>
-                    CONTROL LAYER ACTIVE
+                    AI AGENT CONTROL LAYER
                   </span>
                 </span>
               </MotionFade>
 
               <MotionFade delay={0.06}>
                 <h1
-                  className="mt-3 sm:mt-5 mb-0"
+                  className="mt-3 sm:mt-5 mb-0 max-w-[18ch]"
                   style={{
-                    fontSize: "clamp(34px, 5vw, 70px)",
-                    lineHeight: 1.04, letterSpacing: "-0.035em",
+                    fontSize: "clamp(34px, 4.6vw, 66px)",
+                    lineHeight: 1.06, letterSpacing: "-0.033em",
                     fontWeight: 500, color: "#f4f5f7",
                   }}
                 >
-                  The control layer for AI coding agents.
+                  Stop AI agents from drifting through your codebase.
                 </h1>
               </MotionFade>
 
-              <MotionFade delay={0.12}>
-                {/* Mobile sub ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â compact single statement */}
-                <p className="sm:hidden" style={{ marginTop: 12, fontSize: 14.5, lineHeight: 1.55, color: "#b8bcc4", maxWidth: 360 }}>
-                  Give coding agents scoped contracts, memory, forbidden-file rules and finish checks before they touch your code.
-                </p>
-                {/* Desktop sub */}
-                <p className="hidden sm:block" style={{ marginTop: 20, fontSize: 17, lineHeight: 1.58, color: "#c9ccd2", maxWidth: 590 }}>
-                  Give Claude, Codex, Cursor, ChatGPT and other coding agents scoped contracts, project memory, forbidden-file rules and finish checks before they touch your code.
+                            <MotionFade delay={0.12}>
+                <p
+                  style={{
+                    marginTop: 16,
+                    fontSize: "clamp(14.5px, 1.45vw, 16px)",
+                    lineHeight: 1.58,
+                    color: "#c9ccd2",
+                    maxWidth: 540,
+                  }}
+                >
+                  RunTrim gives coding agents scope, memory, finish checks and restore points, so you waste fewer tokens and recover faster when an agent breaks something.
                 </p>
               </MotionFade>
 
               <MotionFade delay={0.17}>
-                <div className="mt-5 sm:mt-8 flex flex-wrap gap-3 items-center">
+                <div className="mt-6 sm:mt-9 flex flex-wrap gap-2.5 sm:gap-3 items-center">
                   <Link
                     href="/app/install"
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 10,
-                      height: 42, padding: "0 18px", borderRadius: 7,
+                      height: 41, padding: "0 17px", borderRadius: 7,
                       fontSize: 14, fontWeight: 500,
                       background: "#f4f5f7", color: "#0b0d10",
                       border: "1px solid rgba(255,255,255,0.9)",
@@ -260,46 +271,26 @@ export default function Home() {
                     <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </Link>
                   <Link
-                    href="/plans"
-                    className="inline-flex items-center gap-2 h-[42px] px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
+                    href="/app/install"
+                    className="inline-flex items-center gap-2 h-[41px] px-[16px] sm:px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
                   >
-                    View plans
+                    See how it works
                   </Link>
                 </div>
               </MotionFade>
 
-              <MotionFade delay={0.22}>
-                {/* Mobile: 2 items inline ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no wrapping */}
+                            <MotionFade delay={0.22}>
                 <div
-                  className="mt-4 flex sm:hidden flex-wrap items-center gap-x-4 gap-y-1.5"
+                  className="mt-4 sm:mt-5 flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-1.5 sm:gap-y-2"
                   style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#4a4f59" }}
                 >
-                  <span>Free CLI</span>
-                  <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block", flexShrink: 0 }} />
                   <span>Local-first</span>
                   <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block", flexShrink: 0 }} />
-                  <span>Source code stays local</span>
+                  <span>Source stays local</span>
                   <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block", flexShrink: 0 }} />
-                  <span>No model lock-in</span>
-                </div>
-                {/* Desktop: all 3 */}
-                <div
-                  className="mt-6 hidden sm:flex flex-wrap gap-x-5 gap-y-2"
-                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#4a4f59" }}
-                >
-                  {[
-                    "Free CLI",
-                    "Local-first",
-                    "Source code stays local",
-                    "No model lock-in",
-                  ].map((t, i) => (
-                    <span key={t} className="flex items-center gap-2">
-                      {i > 0 && (
-                        <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block" }} />
-                      )}
-                      {t}
-                    </span>
-                  ))}
+                  <span>MCP-ready</span>
+                  <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block", flexShrink: 0 }} />
+                  <span>Restore points</span>
                 </div>
               </MotionFade>
             </div>
@@ -335,16 +326,17 @@ export default function Home() {
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
               >
                 <span style={{ color: "#a78bfa", fontWeight: 500 }}>01</span>
-                The drift problem
+                AI AGENT DRIFT
               </div>
               <div>
                 <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
-                  AI agents are fast.{" "}
+                  <span className="hidden sm:inline">AI coding agents are fast.{" "}</span>
+                  <span className="sm:hidden">AI agents are fast.{" "}</span>
                   <em style={{ fontStyle: "normal", color: "#8a8f98" }}>They also drift.</em>
                 </h2>
                 <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
-                  Without a protocol, every run is a coin flip. Context resets between sessions, scope creeps quietly,
-                  and the audit trail ends at a Slack message. Six failure modes show up again and again.
+                  <span className="hidden sm:inline">Without a control layer, one prompt can become twelve files, wasted tokens, broken state and no clear way back.</span>
+                  <span className="sm:hidden">One prompt can become twelve files, wasted tokens and broken state.</span>
                 </p>
               </div>
             </div>
@@ -437,16 +429,16 @@ export default function Home() {
                 style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#5a5f68", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 10 }}
               >
                 <span style={{ color: "#a78bfa", fontWeight: 500 }}>02</span>
-                The RunTrim protocol
+                THE RUNTRIM PROTOCOL
               </div>
               <div>
                 <h2 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-0.025em", fontWeight: 500, color: "#f4f5f7" }}>
-                  Your agent should not start with a prompt.{" "}
-                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>It should start with a contract.</em>
+                  <span className="hidden sm:inline">Your agent should start with a contract.</span>
+                  <span className="sm:hidden">Start every AI run with a contract.</span>
                 </h2>
                 <p style={{ marginTop: 14, color: "#8a8f98", fontSize: 16, maxWidth: 620 }}>
-                  Start prepares project memory and agent files. Agent dispatch compiles the task into a guarded handoff.
-                  Your agent executes inside contract boundaries. Finish verifies scope, diff, sensitive files, and proof gaps.
+                  <span className="hidden sm:inline">RunTrim turns a task into scope, memory and rules before edits begin. Finish checks the diff, sensitive files and proof gaps.</span>
+                  <span className="sm:hidden">Task, scope, memory, rules. Then finish checks the diff.</span>
                 </p>
               </div>
             </div>
@@ -454,22 +446,23 @@ export default function Home() {
 
           {/* Mobile: stacked step list */}
           <div className="sm:hidden overflow-hidden rounded-[10px]" style={{ border: "1px solid rgba(255,255,255,0.09)", background: "linear-gradient(180deg, #0e1116, #0a0c10)" }}>
-            {PIPELINE_STAGES.map(({ n, cmd, desc, active }, i) => (
+            {PIPELINE_STAGES.map(({ n, cmd, desc, active }, idx) => (
               <div
                 key={n}
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 14,
-                  padding: "14px 16px",
+                  padding: "12px 16px",
+                  borderBottom: idx < PIPELINE_STAGES.length - 1 ? "1px solid rgba(255,255,255,0.06)" : undefined,
                 }}
               >
                 <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "#5a5f68", letterSpacing: "0.06em", flexShrink: 0, marginTop: 2 }}>
                   {n.split(" / ")[0]}
                 </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: "#f4f5f7", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
-                    {active && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />}
-                    <span style={{ color: "#a78bfa" }}>$</span>
-                    {cmd}
+                <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 12, color: "#f4f5f7", fontWeight: 500, display: "flex", alignItems: "flex-start", gap: 5, flexWrap: "wrap", wordBreak: "break-all" }}>
+                    {active && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0, marginTop: 4 }} />}
+                    <span style={{ color: "#a78bfa", flexShrink: 0 }}>$</span>
+                    <span style={{ wordBreak: "break-all" }}>{cmd}</span>
                   </span>
                   <p style={{ margin: "4px 0 0", color: "#5a5f68", fontSize: 12, lineHeight: 1.5 }}>{desc}</p>
                 </div>
@@ -478,12 +471,12 @@ export default function Home() {
           </div>
 
           {/* Desktop: horizontal scrollable pipeline */}
-          <div className="hidden sm:block overflow-x-auto sm:mx-0 sm:px-0">
+          <div className="hidden sm:block">
           <div
-            className="min-w-[640px] overflow-hidden rounded-[10px]"
+            className="overflow-hidden rounded-[10px]"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
+              gridTemplateColumns: "repeat(3, 1fr)",
               border: "1px solid rgba(255,255,255,0.09)",
               background: "linear-gradient(180deg, #0e1116, #0a0c10)",
             }}
@@ -837,9 +830,9 @@ export default function Home() {
                 price: "$29",
                 per: "/ month",
                 trial: "3-day trial" as string | null,
-                desc: "Bridge Mode handoff, cloud sync, memory, and savings reports.",
+                desc: "Guarded run handoff, cloud sync, memory, and savings reports.",
                 features: [
-                  "Unlimited Bridge Mode handoffs",
+                  "Unlimited guarded handoffs",
                   "Auto-sync dashboard",
                   "Cloud run history",
                   "Memory sync",
@@ -1087,10 +1080,10 @@ export default function Home() {
                 <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
               <Link
-                href="/plans"
+                href="/app/install"
                 className="inline-flex items-center h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
               >
-                View plans
+                See how it works
               </Link>
             </div>
           </MotionFade>
@@ -1101,3 +1094,8 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+
+

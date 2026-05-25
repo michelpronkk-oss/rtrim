@@ -5,7 +5,7 @@ import type { AuditResult } from "./run-audit";
 import type { ContractResult } from "./run-contract";
 import type { EvaluationResult } from "./run-evaluation";
 import type { ProviderRoutingDecision } from "./provider-routing";
-import { getRunsDir } from "./runtrim-config";
+import { getLegacyRunsDir, getRunsDir } from "./runtrim-config";
 
 export interface AgentExecutionRecord {
   mode: "copy" | "command";
@@ -108,23 +108,26 @@ export function saveRun(
 }
 
 export function loadLatestRun(cwd = process.cwd()): RunRecord | null {
-  const runsDir = getRunsDir(cwd);
-  if (!fs.existsSync(runsDir)) return null;
-
-  const files = fs
-    .readdirSync(runsDir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => ({
-      name: f,
-      time: fs.statSync(path.join(runsDir, f)).mtime.getTime(),
-    }))
+  const candidateDirs = [getRunsDir(cwd), getLegacyRunsDir(cwd)].filter((dir, idx, arr) => arr.indexOf(dir) === idx);
+  const files = candidateDirs
+    .filter((dir) => fs.existsSync(dir))
+    .flatMap((dir) =>
+      fs
+        .readdirSync(dir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => ({
+          dir,
+          name: f,
+          time: fs.statSync(path.join(dir, f)).mtime.getTime(),
+        }))
+    )
     .sort((a, b) => b.time - a.time);
 
   if (files.length === 0) return null;
 
   try {
     return JSON.parse(
-      fs.readFileSync(path.join(runsDir, files[0].name), "utf-8")
+      fs.readFileSync(path.join(files[0].dir, files[0].name), "utf-8")
     ) as RunRecord;
   } catch {
     return null;
@@ -136,24 +139,25 @@ export function updateRun(
   updates: Partial<RunRecord>,
   cwd = process.cwd()
 ): void {
-  const filePath = path.join(getRunsDir(cwd), `${runId}.json`);
+  const preferredPath = path.join(getRunsDir(cwd), `${runId}.json`);
+  const legacyPath = path.join(getLegacyRunsDir(cwd), `${runId}.json`);
+  const filePath = fs.existsSync(preferredPath) ? preferredPath : legacyPath;
   if (!fs.existsSync(filePath)) return;
   const existing = JSON.parse(fs.readFileSync(filePath, "utf-8")) as RunRecord;
   fs.writeFileSync(filePath, JSON.stringify({ ...existing, ...updates }, null, 2));
 }
 
 export function loadAllRuns(cwd = process.cwd()): RunRecord[] {
-  const runsDir = getRunsDir(cwd);
-  if (!fs.existsSync(runsDir)) return [];
+  const candidateDirs = [getRunsDir(cwd), getLegacyRunsDir(cwd)].filter((dir, idx, arr) => arr.indexOf(dir) === idx);
+  const files = candidateDirs
+    .filter((dir) => fs.existsSync(dir))
+    .flatMap((dir) => fs.readdirSync(dir).filter((f) => f.endsWith(".json")).map((f) => path.join(dir, f)));
+  const deduped = [...new Set(files)];
 
-  return fs
-    .readdirSync(runsDir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => {
+  return deduped
+    .map((filePath) => {
       try {
-        return JSON.parse(
-          fs.readFileSync(path.join(runsDir, f), "utf-8")
-        ) as RunRecord;
+        return JSON.parse(fs.readFileSync(filePath, "utf-8")) as RunRecord;
       } catch {
         return null;
       }

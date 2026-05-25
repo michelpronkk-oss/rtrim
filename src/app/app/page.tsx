@@ -341,7 +341,7 @@ export default async function OverviewPage() {
               <div className="flex items-center gap-2">
                 <Zap className={`size-3.5 ${isAtLimit ? "text-[#FF7B5C]" : isNearLimit ? "text-[#F0BF72]" : "text-[#7C6DFA]/60"}`} />
                 <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">
-                  Bridge Mode usage
+                  Guarded run usage
                 </p>
               </div>
               <p className={`mt-1.5 text-[14px] font-semibold ${isAtLimit ? "text-[#FF8F8F]" : isNearLimit ? "text-[#F0BF72]" : "text-[#f4f5f7]"}`}>
@@ -417,7 +417,7 @@ export default async function OverviewPage() {
         <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-4">
           <div className="flex items-center gap-3">
             <Zap className="size-3.5 text-[#4DE8B0]/60" />
-            <p className="text-[13px] font-semibold text-[#f4f5f7]">Bridge Mode: Unlimited</p>
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">Guarded runs: Unlimited</p>
             <span className="font-mono text-[11px] text-[#5a5f68]">
               {plan === "pro" ? "Pro" : plan === "builder" ? "Builder" : "Team"} plan active
             </span>
@@ -511,6 +511,15 @@ export default async function OverviewPage() {
               <p className="text-[12px] text-[#8a8f98]">Team approvals and audit logs</p>
               {(() => { const lbl = gateLabel(plan, "team"); return <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>; })()}
               <p className="mt-1 text-[11px] text-[#5a5f68]">Team policies and GitHub checks: coming soon</p>
+            </div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+              <p className="text-[12px] text-[#8a8f98]">Recovery</p>
+              {(() => { const lbl = gateLabel(plan, "pro"); return <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>; })()}
+              <p className="mt-1 text-[11px] text-[#5a5f68]">
+                {plan === "free"
+                  ? "Local restore is available in CLI. Upgrade to Pro for synced restore metadata."
+                  : "Restore points are local-first. Preview with runtrim restore last --preview before apply."}
+              </p>
             </div>
           </div>
         )}

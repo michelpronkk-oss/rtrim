@@ -123,7 +123,7 @@ Before editing code:
 - If the task touches auth, billing, payments, webhooks, database, middleware,
   env vars, secrets, or subscriptions, stop and require an active RunTrim contract.
   Ask the user to run:
-  runtrim go "<task>"
+  runtrim agent "<task>" --copy
 - For low-risk work (UI polish, copy, docs, isolated component styling):
   Fast Path is allowed if no unfinished changes exist.
   Keep the change minimal.
@@ -147,7 +147,7 @@ No active RunTrim contract means no code edits.
 If no active contract exists at .runtrim/contracts/latest.md:
 - Do not edit any file.
 - Ask the user to start a guarded run:
-  runtrim go "<task>"
+  runtrim agent "<task>" --copy
 
 After every editing session:
 - Ask the user to run:
@@ -162,7 +162,7 @@ Fast Path is allowed for low and medium risk work.
 
 Critical systems (auth, billing, payments, webhooks, database, middleware,
 env vars, secrets, subscriptions) still require a RunTrim contract:
-  runtrim go "<task>"
+  runtrim agent "<task>" --copy
 
 After any edits:
 - runtrim finish is required before continuing to another task.
@@ -174,7 +174,7 @@ RunTrim Auto-guard: Off
 
 Auto-guard is disabled for this project.
 RunTrim can still be used manually:
-  runtrim go "<task>"
+  runtrim agent "<task>" --copy
   runtrim finish
 `.trim();
   }
@@ -231,8 +231,8 @@ export function saveFastRunRecord(
   reportParts.push("No pre-run contract was captured for this run.");
 
   const nextSafeAction = changedFiles.length > 0
-    ? 'Create a contract before the next change: runtrim go "<task>"'
-    : 'Start a guarded run: runtrim go "<task>"';
+    ? 'Create a contract before the next change: runtrim agent "<task>" --copy'
+    : 'Start a guarded run: runtrim agent "<task>" --copy';
 
   const summary: FastRunSummary = {
     id,
@@ -339,3 +339,4 @@ export function isContractActive(cwd: string): boolean {
     return false;
   }
 }
+

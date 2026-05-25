@@ -616,9 +616,15 @@ async function getPanelState(cwd: string, monitorMode: boolean) {
   let runs: ReturnType<typeof loadAllRuns> = [];
   let latest: ReturnType<typeof loadLatestRun> = null;
   let registry: ReturnType<typeof loadGlobalRegistry> = {
-    version: 1,
+    version: 2,
+    stateVersion: 2,
     plan: "free",
+    machineInstallId: "",
+    createdAt: "",
+    updatedAt: "",
     trackedRepos: [],
+    lastKnownRepo: null,
+    integrity: { algorithm: "sha256-local-seal-v1", seal: "" },
     telemetry: {
       enabled: false,
       anonymousId: "",
@@ -661,9 +667,15 @@ async function getPanelState(cwd: string, monitorMode: boolean) {
   } catch {
     warnings.push("global_registry_failed");
     registry = {
-      version: 1,
+      version: 2,
+      stateVersion: 2,
       plan: "free",
+      machineInstallId: "",
+      createdAt: "",
+      updatedAt: "",
       trackedRepos: [],
+      lastKnownRepo: null,
+      integrity: { algorithm: "sha256-local-seal-v1", seal: "" },
       telemetry: {
         enabled: false,
         anonymousId: "",

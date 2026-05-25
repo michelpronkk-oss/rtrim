@@ -73,13 +73,15 @@ function SectionCard({ kicker, children }: { kicker: string; children: React.Rea
 
 const DIRECT_COMMANDS = [
   { n: "01", cmd: "runtrim start",                          note: "Analyze the project, write memory, detect agent files, and prepare MCP snippets." },
-  { n: "02", cmd: 'runtrim agent "your task" --copy',       note: "Create a scoped contract, load memory, and copy the guarded handoff prompt." },
-  { n: "03", cmd: "runtrim finish",                         note: "Check changed files, scope, sensitive files, proof gaps, and finish verdict." },
-  { n: "04", cmd: 'runtrim approve "Allow <scope>"',        note: "Approve a scope extension for the current run only." },
-  { n: "05", cmd: "runtrim mcp instructions",               note: "Print MCP integration instructions for your agent." },
-  { n: "06", cmd: "runtrim mcp config --print",             note: "Print the MCP server config snippet." },
-  { n: "07", cmd: "runtrim mcp start",                      note: "Start the local MCP server." },
-  { n: "08", cmd: "runtrim bridge status",                  note: "Show Bridge Mode status and active contract." },
+  { n: "02", cmd: "runtrim doctor",                         note: "Check whether project setup, agent instructions, and MCP readiness are in place." },
+  { n: "03", cmd: 'runtrim agent "your task" --copy',       note: "Create a scoped contract, load memory, and copy the guarded handoff prompt." },
+  { n: "04", cmd: "runtrim finish",                         note: "Check changed files, scope, sensitive files, proof gaps, and finish verdict." },
+  { n: "05", cmd: 'runtrim approve "Allow <scope>"',        note: "Approve a scope extension for the current run only." },
+  { n: "06", cmd: "runtrim mcp instructions",               note: "Print MCP integration instructions for your agent." },
+  { n: "07", cmd: "runtrim mcp config --print",             note: "Print the MCP server config snippet." },
+  { n: "08", cmd: "runtrim mcp start",                      note: "Start the local MCP server." },
+  { n: "09", cmd: "runtrim ci check",                       note: "Run CLI-based CI safety checks for pull requests." },
+  { n: "10", cmd: "runtrim restore last --preview",         note: "Preview local restore before rewinding a broken AI run." },
 ];
 
 export default function InstallPage() {
@@ -193,6 +195,7 @@ export default function InstallPage() {
               <div className="mt-4 space-y-2.5">
                 <Cmd text="npm install -g runtrim" trackKey="npm_install_global" />
                 <Cmd text="runtrim start" trackKey="runtrim_start" />
+                <Cmd text="runtrim doctor" trackKey="runtrim_doctor" />
                 <Cmd text='runtrim agent "Fix the homepage copy" --copy' trackKey="runtrim_agent_copy" />
                 <Cmd text="runtrim finish" trackKey="runtrim_finish" />
               </div>

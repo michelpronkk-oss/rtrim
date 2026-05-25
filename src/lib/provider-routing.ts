@@ -210,7 +210,7 @@ export function recommendProviderRouting(ctx: ProviderRoutingContext): ProviderR
     routingReason = "This spans multiple critical systems, so RunTrim should split into audit, implementation, and verification.";
   }
 
-  let nextCommand = `runtrim go "${ctx.task}"`;
+  let nextCommand = `runtrim agent "${ctx.task}" --copy`;
   if (route === "split-required") {
     nextCommand = 'split into:\n1. audit only\n2. implementation only\n3. verification only';
   } else if (route === "preview-only") {
@@ -227,3 +227,4 @@ export function recommendProviderRouting(ctx: ProviderRoutingContext): ProviderR
     nextCommand,
   };
 }
+

@@ -28,28 +28,29 @@ export const metadata: Metadata = {
 
 const PROCESS_STEPS = [
   {
-    title: "Go",
-    command: 'runtrim go "your task"',
-    body: "Prepare a guarded prompt, copy it for your agent, and save the run locally.",
+    title: "Setup",
+    command: "runtrim start",
+    body: "Analyze the project, write memory, install agent instructions, and generate MCP snippets.",
+  },
+  {
+    title: "Readiness",
+    command: "runtrim doctor",
+    body: "Check whether Claude, Cursor, Codex, and MCP setup are RunTrim-ready.",
   },
   {
     title: "Paste into your agent",
-    body: "Use Claude, Codex, Cursor, ChatGPT, or your configured agent.",
+    command: 'runtrim agent "your task" --copy',
+    body: "Create a scoped contract and guarded handoff, then paste into Claude, Codex, Cursor, ChatGPT, or your configured agent.",
   },
   {
-    title: "Monitor",
-    command: "runtrim panel --monitor",
-    body: "Keep local state visible while the agent works.",
+    title: "Verify",
+    command: "runtrim finish",
+    body: "Check changed files, sensitive paths, scope drift, and proof gaps. Get PASS, WARN, or BLOCKED.",
   },
   {
-    title: "Check",
-    command: "runtrim check",
-    body: "Review changed files, proof gaps, and drift before continuing.",
-  },
-  {
-    title: "Continue",
-    command: "runtrim continue --reason usage_limit",
-    body: "Create a continuation prompt when context, usage, or the session runs out.",
+    title: "Recover",
+    command: "runtrim restore last --preview",
+    body: "Preview and rewind a broken AI run locally without rolling back your whole branch.",
   },
 ];
 
@@ -192,7 +193,7 @@ export default function HowItWorksPage() {
             Free local CLI works without an account. Cloud memory is rolling out through Pro early access.
           </p>
           <code className="mt-4 block max-w-full overflow-x-auto whitespace-pre rounded border border-white/8 bg-[#090918] px-3 py-2 font-mono text-[11px] text-[#D7DEE7]">
-            npm install -g runtrim{"\n"}runtrim go "your task"
+            npm install -g runtrim{"\n"}runtrim start{"\n"}runtrim doctor{"\n"}runtrim agent "your task" --copy{"\n"}runtrim finish
           </code>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Link
@@ -213,5 +214,4 @@ export default function HowItWorksPage() {
     </div>
   );
 }
-
 

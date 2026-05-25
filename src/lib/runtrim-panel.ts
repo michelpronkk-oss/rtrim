@@ -592,6 +592,7 @@ export function panelReadPaths(cwd: string): string[] {
     path.join(cwd, ".runtrim/latest-prompt.md"),
     path.join(cwd, ".runtrim/continuation-prompt.md"),
     path.join(cwd, ".runtrim/project-state.json"),
+    path.join(cwd, ".runtrim/internal/runs/*.json"),
     path.join(cwd, ".runtrim/runs/*.json"),
     "git diff file paths",
   ];

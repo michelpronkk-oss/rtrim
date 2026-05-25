@@ -33,15 +33,53 @@ const MONO: React.CSSProperties = {
 
 const RELEASES = [
   {
+    version: "0.1.18",
+    title: "Doctor readiness, CI check v1, and Restore v1",
+    date: "May 2026",
+    tag: "Latest",
+    items: [
+      "runtrim doctor: readiness report for project setup, instruction surfaces, MCP snippets, and tool availability",
+      "stronger generated agent instruction blocks for contract-first flow and finish verification",
+      "MCP readiness and status checks in doctor output",
+      "runtrim ci check and GitHub Action v1 example for CLI-based PR gating",
+      "Restore v1 local recovery: preview/apply restore points with source-safe handling",
+      "migration: primary onboarding is now runtrim start -> runtrim doctor -> runtrim agent --copy -> runtrim finish",
+    ],
+  },
+  {
+    version: "0.1.17",
+    title: "Local state integrity and repair wall",
+    date: "May 2026",
+    tag: null,
+    items: [
+      "local global state integrity model for fair-use repo tracking",
+      "repair wall when local repo registry is missing/corrupt/inconsistent",
+      "repo status/repair flow improvements for safer recovery",
+      "prompt and routing handling improvements for negative boundaries",
+    ],
+  },
+  {
+    version: "0.1.16",
+    title: "Repo-limit consistency and scope/risk fixes",
+    date: "May 2026",
+    tag: null,
+    items: [
+      "repo-limit consistency across start, agent, go compatibility, MCP contract creation, and sync messaging",
+      "README/docs task scope and risk classification fixes",
+      "modern command-flow cleanup across generated guidance",
+    ],
+  },
+  {
     version: "0.1.15",
     title: "CLI publish surface and sync messaging",
     date: "May 2026",
-    tag: "Latest",
+    tag: null,
     items: [
       "CLI-only publish manifest: installed package dependency surface reduced to CLI deps only",
       "runtrim install footprint reduced significantly vs prior versions",
       ".env.local ignored by RunTrim now warns instead of blocking safe runs",
       "cloud sync local/no-auth fallback now reads as skipped/not configured rather than failed",
+      "Restore v1: local restore points for guarded runs with CLI preview/apply; restore apply stays local and source-safe",
     ],
   },
   {
@@ -102,7 +140,7 @@ const RELEASES = [
     date: "May 2026",
     tag: null,
     items: [
-      "runtrim init installs RUNTRIM.md, project policies, memory baseline, and agent pointers",
+      "runtrim start installs RUNTRIM.md, project policies, memory baseline, and agent pointers",
       "supports CLAUDE.md, AGENTS.md, and Cursor rules",
       "repo becomes RunTrim-aware after one command",
     ],
@@ -423,3 +461,4 @@ export default function ChangelogPage() {
     </div>
   );
 }
+

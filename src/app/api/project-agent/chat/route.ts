@@ -126,8 +126,8 @@ function formatRunDate(run: RunRow): string {
 
 function starterActions(lang: Language): string[] {
   return lang === "nl"
-    ? ['runtrim go "your task"', "runtrim finish", "Vraag: wat kan ik doen?"]
-    : ['runtrim go "your task"', "runtrim finish", "Ask: what can you help with?"];
+    ? ['runtrim agent "your task" --copy', "runtrim finish", "Vraag: wat kan ik doen?"]
+    : ['runtrim agent "your task" --copy', "runtrim finish", "Ask: what can you help with?"];
 }
 
 function noRunsGuidance(opening: string, lang: Language): { answer: string; actions: string[] } {
@@ -137,14 +137,14 @@ function noRunsGuidance(opening: string, lang: Language): { answer: string; acti
         opening,
         "",
         "Aanbevolen start:",
-        'runtrim go "your task"',
+        'runtrim agent "your task" --copy',
         "",
         "Na je edits:",
         "runtrim finish",
         "",
         "Zodra dat gesynct is, kan ik risico's, proof gaps, gewijzigde bestanden en je volgende veilige stap uitleggen.",
       ].join("\n"),
-      actions: ['runtrim go "your task"', "runtrim finish"],
+      actions: ['runtrim agent "your task" --copy', "runtrim finish"],
     };
   }
 
@@ -153,14 +153,14 @@ function noRunsGuidance(opening: string, lang: Language): { answer: string; acti
       opening,
       "",
       "Suggested first run:",
-      'runtrim go "your task"',
+      'runtrim agent "your task" --copy',
       "",
       "After edits:",
       "runtrim finish",
       "",
       "Once that is synced, I can explain risks, proof gaps, changed files, and your next safe step.",
     ].join("\n"),
-    actions: ['runtrim go "your task"', "runtrim finish"],
+    actions: ['runtrim agent "your task" --copy', "runtrim finish"],
   };
 }
 
@@ -185,12 +185,12 @@ function buildConversationResponse(convIntent: ConversationIntent, lang: Languag
           "Start met één guarded run en rond die af, dan kan ik redeneren op basis van je echte projectcontext.",
           "",
           "Aanbevolen start:",
-          'runtrim go "your task"',
+          'runtrim agent "your task" --copy',
           "",
           "Na je edits:",
           "runtrim finish",
         ].join("\n"),
-        actions: ['runtrim go "your task"', "runtrim finish"],
+        actions: ['runtrim agent "your task" --copy', "runtrim finish"],
       };
     }
 
@@ -204,10 +204,10 @@ function buildConversationResponse(convIntent: ConversationIntent, lang: Languag
           hasRuns
             ? "Als je wilt, kan ik meteen je volgende veilige stap voorstellen."
             : "Er is nog geen synced run. De beste eerste stap is één guarded run starten en afronden.",
-          hasRuns ? "" : 'runtrim go "your task"',
+          hasRuns ? "" : 'runtrim agent "your task" --copy',
           hasRuns ? "" : "runtrim finish",
         ].filter(Boolean).join("\n"),
-        actions: hasRuns ? ["Vraag: wat is mijn volgende veilige stap?", "Vraag: maak een veilig contract"] : ['runtrim go "your task"', "runtrim finish"],
+        actions: hasRuns ? ["Vraag: wat is mijn volgende veilige stap?", "Vraag: maak een veilig contract"] : ['runtrim agent "your task" --copy', "runtrim finish"],
       };
     }
 
@@ -243,12 +243,12 @@ function buildConversationResponse(convIntent: ConversationIntent, lang: Languag
         "Once a run is synced, I can reason from your actual project context.",
         "",
         "Suggested first run:",
-        'runtrim go "your task"',
+        'runtrim agent "your task" --copy',
         "",
         "After edits:",
         "runtrim finish",
       ].join("\n"),
-      actions: ['runtrim go "your task"', "runtrim finish"],
+      actions: ['runtrim agent "your task" --copy', "runtrim finish"],
     };
   }
 
@@ -257,10 +257,10 @@ function buildConversationResponse(convIntent: ConversationIntent, lang: Languag
       answer: [
         "I can help with four things right now: understand runs, find proof gaps, create safe contracts, and prepare handoffs for Claude/Codex.",
         hasRuns ? "" : "Since there are no synced runs yet, the best first step is to create one guarded run.",
-        hasRuns ? "" : 'runtrim go "your task"',
+        hasRuns ? "" : 'runtrim agent "your task" --copy',
         hasRuns ? "" : "runtrim finish",
       ].filter(Boolean).join("\n"),
-      actions: hasRuns ? ["Ask: what should I do next?", "Ask: create a safe contract"] : ['runtrim go "your task"', "runtrim finish"],
+      actions: hasRuns ? ["Ask: what should I do next?", "Ask: create a safe contract"] : ['runtrim agent "your task" --copy', "runtrim finish"],
     };
   }
 
@@ -283,7 +283,7 @@ function buildContractSuggestion(message: string): { answer: string; actions: st
     .replace(/create\s+contract\s*(for)?/i, "")
     .trim() || "your scoped task";
 
-  const command = `runtrim go \"ONLY EDIT files directly tied to: ${objective}. Do not touch auth, billing, webhooks, database, or env.\"`;
+  const command = `runtrim agent \"ONLY EDIT files directly tied to: ${objective}. Do not touch auth, billing, webhooks, database, or env.\" --copy`;
 
   return {
     answer: [
@@ -347,12 +347,12 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string, 
             "De beste volgende stap is je eerste synced run maken. Zonder rungeschiedenis kan ik projectrisico nog niet veilig inschatten.",
             "",
             "Aanbevolen:",
-            'runtrim go "your task"',
+            'runtrim agent "your task" --copy',
             "runtrim finish",
             "",
             "Zodra dit gesynct is, kan ik een echte volgende stap adviseren op basis van gewijzigde bestanden, proof gaps en risico.",
           ].join("\n"),
-          actions: ['runtrim go "your task"', "runtrim finish"],
+          actions: ['runtrim agent "your task" --copy', "runtrim finish"],
         };
       }
 
@@ -361,12 +361,12 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string, 
           "The best next step is to create your first synced run. Without run history, I cannot safely infer project risk yet.",
           "",
           "Suggested:",
-          'runtrim go "your task"',
+          'runtrim agent "your task" --copy',
           "runtrim finish",
           "",
           "Once synced, I can give a real next-step recommendation based on changed files, proof gaps, and run risk.",
         ].join("\n"),
-        actions: ['runtrim go "your task"', "runtrim finish"],
+        actions: ['runtrim agent "your task" --copy', "runtrim finish"],
       };
     }
 
@@ -397,10 +397,10 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string, 
             "Veelvoorkomende high-risk gebieden zijn auth, billing, webhooks, database, middleware, env-bestanden en migrations.",
             "",
             "Voor projectspecifieke risico's:",
-            'runtrim go "your task"',
+            'runtrim agent "your task" --copy',
             "runtrim finish",
           ].join("\n"),
-          actions: ['runtrim go "your task"', "runtrim finish"],
+          actions: ['runtrim agent "your task" --copy', "runtrim finish"],
         };
       }
 
@@ -411,10 +411,10 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string, 
           "Common high-risk areas are auth, billing, webhooks, database, middleware, environment files, and migrations.",
           "",
           "To get project-specific risk mapping:",
-          'runtrim go "your task"',
+          'runtrim agent "your task" --copy',
           "runtrim finish",
         ].join("\n"),
-        actions: ['runtrim go "your task"', "runtrim finish"],
+        actions: ['runtrim agent "your task" --copy', "runtrim finish"],
       };
     }
 
@@ -481,7 +481,7 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string, 
           `- Proof gaps: ${proofGaps.length}`,
           `- Unfinished changes: ${context.unfinishedChanges ? "yes" : "no"}`,
         ].join("\n"),
-        actions: [context.unfinishedChanges ? "runtrim finish" : 'runtrim go "narrow scoped next task"'],
+        actions: [context.unfinishedChanges ? "runtrim finish" : 'runtrim agent "narrow scoped next task" --copy'],
       };
     }
 
@@ -526,7 +526,7 @@ function buildAnswer(intent: Intent, context: Context, originalMessage: string, 
           "",
           "Use narrow scope and strict stop rules when touching these areas.",
         ].join("\n"),
-        actions: ['runtrim go "audit-only task in risky area"'],
+        actions: ['runtrim agent "audit-only task in risky area" --copy'],
       };
     }
 
@@ -615,7 +615,7 @@ export async function POST(request: Request) {
         lang === "nl"
           ? "Ik kan dat niet direct uitvoeren vanuit Project Agent. Ik kan wel een veilig contract of handoff voorbereiden die je via RunTrim kunt gebruiken."
           : "I cannot execute or deploy from Project Agent. I can prepare a safe contract or handoff you can run through RunTrim.",
-      actions: ['runtrim go "your task"', lang === "nl" ? "Vraag: maak een Claude handoff" : "Ask: Create a Claude handoff"],
+      actions: ['runtrim agent "your task" --copy', lang === "nl" ? "Vraag: maak een Claude handoff" : "Ask: Create a Claude handoff"],
       contextUsed: { intent: "safety_redirect", language: lang },
     });
   }
@@ -711,3 +711,5 @@ export async function POST(request: Request) {
     },
   });
 }
+
+

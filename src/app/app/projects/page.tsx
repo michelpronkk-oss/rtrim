@@ -98,12 +98,13 @@ export default async function ProjectsPage() {
             No synced projects yet.
           </h2>
           <p className="mt-1.5 max-w-[440px] text-[13px] leading-[1.7] text-[#8a8f98]">
-            Run <code className="font-mono text-[#a78bfa]">runtrim init</code> in a repo, then start and finish a guarded run to sync your first project. Each project tracks its own memory, run history, risk, and savings.
+            Run <code className="font-mono text-[#a78bfa]">runtrim start</code> in a repo, check readiness with <code className="font-mono text-[#a78bfa]">runtrim doctor</code>, then run and finish your first guarded task to sync project history.
           </p>
           <div className="mt-5 space-y-2 max-w-[360px]">
             {[
-              "runtrim init",
-              'runtrim go "your first task"',
+              "runtrim start",
+              "runtrim doctor",
+              'runtrim agent "your first task" --copy',
               "runtrim finish",
             ].map((cmd) => (
               <div

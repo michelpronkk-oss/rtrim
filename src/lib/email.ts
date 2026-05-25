@@ -476,7 +476,7 @@ function formatTrialEndDate(isoString: string | null): string {
 
 function buildTrialFeatureRows(): string {
   const features: Array<[string, string]> = [
-    ["Unlimited Bridge Mode",  "No monthly run limit. Guard every task with runtrim go."],
+    ["Unlimited guarded runs",  "No monthly run limit. Guard every task with runtrim agent --copy."],
     ["Auto-sync dashboard",    "Run history, risk scores, and savings sync to the cloud after every finish."],
     ["Memory sync",            "Project memory and continuation prompts available across machines."],
     ["Savings reports",        "Estimated tokens and cost avoided tracked per project over time."],
@@ -556,7 +556,7 @@ function buildTrialActivationText(trialEndDate: string | null): string {
     `Full Pro access until ${endLabel}.`,
     "",
     "What is included:",
-    "  Unlimited Bridge Mode",
+    "  Unlimited guarded runs",
     "  Auto-sync dashboard",
     "  Memory sync",
     "  Savings reports",
@@ -589,7 +589,7 @@ function buildTrialExpiredHtml(checkoutUrl: string): string {
           Your Pro trial has ended.
         </h1>
         <p style="margin:0;font-family:${C.fontSans};font-size:15px;color:${C.muted};line-height:1.7;">
-          Your 3-day trial is over. To keep unlimited Bridge Mode, cloud sync, memory, and your run history, continue with Pro.
+          Your 3-day trial is over. To keep unlimited guarded runs, cloud sync, memory, and your run history, continue with Pro.
         </p>
 
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 28px;">
@@ -636,7 +636,7 @@ function buildTrialExpiredText(checkoutUrl: string): string {
   return [
     "Your RunTrim Pro trial has ended.",
     "",
-    "To keep unlimited Bridge Mode, cloud sync, memory, and your run history,",
+    "To keep unlimited guarded runs, cloud sync, memory, and your run history,",
     "continue with Pro at $29/month. Cancel anytime.",
     "",
     "Continue here:",
@@ -758,3 +758,5 @@ export async function sendEarlyAccessNotification(input: EarlyAccessEmailInput):
 
   return !error;
 }
+
+

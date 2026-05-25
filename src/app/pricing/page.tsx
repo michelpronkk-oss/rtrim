@@ -38,6 +38,7 @@ const PLANS = [
       "Local guarded runs",
       "Project setup",
       "Scope, memory and finish checks",
+      "Local restore for latest guarded run (CLI preview/apply)",
       "Local run history",
       "Sensitive file warnings",
       "No account required",
@@ -56,9 +57,11 @@ const PLANS = [
     bullets: [
       "Everything in Free",
       "Cloud sync dashboard",
+      "Synced restore metadata and recovery visibility",
       "Memory sync",
-      "Unlimited guarded handoffs",
-      "Savings and report history",
+      "Synced reports",
+      "Restore metadata history",
+      "Savings/history reports",
       "3-day trial",
     ],
     cta:       "Start 3-day Pro trial",
@@ -75,6 +78,7 @@ const PLANS = [
     bullets: [
       "Everything in Pro",
       "Unlimited projects",
+      "Multi-project restore history and recovery direction",
       "Pro reports",
       "Priority Run Compiler and advanced guardrails",
       "Higher run and history limits",
@@ -96,6 +100,7 @@ const PLANS = [
       "Shared team state",
       "Shared memory",
       "Approvals",
+      "Shared restore logs and audit-ready recovery direction",
       "Audit logs",
       "Team policies and GitHub checks (coming soon)",
     ],
@@ -198,6 +203,9 @@ export default function PricingPage() {
         <div className="mt-10 space-y-1.5 text-center">
           <p className="text-[12px] text-[#2E3554]">
             Cloud sync stores run metadata only. Source code never leaves your machine.
+          </p>
+          <p className="text-[12px] text-[#2E3554]">
+            Restore apply happens locally through the CLI. Dashboard shows restore metadata and recovery guidance.
           </p>
           <p className="text-[12px] text-[#2E3554]">
             Team policies, GitHub checks, and approval workflows are next-stage team controls.

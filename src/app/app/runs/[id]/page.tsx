@@ -168,6 +168,47 @@ function summarizeScopeDrift(status: string | null, forbiddenTouched: boolean): 
   return "Needs review";
 }
 
+type RestoreMetadata = {
+  available: boolean;
+  sensitiveSkippedByDefault: boolean;
+  source: "synced" | "local";
+};
+
+function parseRestoreMetadata(rawReport: string | null): RestoreMetadata {
+  if (!rawReport) {
+    return { available: false, sensitiveSkippedByDefault: true, source: "local" };
+  }
+  try {
+    const parsed = JSON.parse(rawReport) as Record<string, unknown>;
+    const restore =
+      (parsed.restore as Record<string, unknown> | undefined) ??
+      (parsed.restore_point as Record<string, unknown> | undefined) ??
+      (parsed.restorePoint as Record<string, unknown> | undefined) ??
+      null;
+    if (!restore) return { available: false, sensitiveSkippedByDefault: true, source: "local" };
+    return {
+      available: restore.available !== false,
+      sensitiveSkippedByDefault: restore.sensitiveSkipped !== false,
+      source: "synced",
+    };
+  } catch {
+    return { available: false, sensitiveSkippedByDefault: true, source: "local" };
+  }
+}
+
+function getRunVerdictTier(status: string | null): "pass" | "warn" | "blocked" {
+  const normalized = (status ?? "").toLowerCase();
+  if (
+    normalized.includes("blocked") ||
+    normalized.includes("failed") ||
+    normalized.includes("split")
+  ) {
+    return "blocked";
+  }
+  if (normalized.includes("warn") || normalized.includes("partial")) return "warn";
+  return "pass";
+}
+
 // ── Color tokens for status/risk/drift ───────────────────────────────────────
 
 const RISK_COLORS: Record<string, { border: string; bg: string; text: string }> = {
@@ -280,6 +321,10 @@ export default async function RunDetailPage({
   const isPro = plan !== "free";
   const isTrialing = isPro && planStatus === "trialing";
   const contractStatus = r.contract_status ?? "Not captured";
+  const restore = parseRestoreMetadata(r.raw_report);
+  const restorePreviewCommand = `runtrim restore ${r.id} --preview`;
+  const restoreApplyCommand = `runtrim restore ${r.id} --apply`;
+  const runVerdictTier = getRunVerdictTier(r.status);
 
   const summaryItems = [
     { label: "Task", value: r.task ?? "Not captured" },
@@ -451,6 +496,35 @@ export default async function RunDetailPage({
         )}
       </Section>
 
+      <Section title="Restore">
+        <div className="space-y-3 text-[12px] text-[#c5cad3]">
+          {restore.source === "synced" && restore.available ? (
+            <p>
+              <span className="text-[#7d8491]">Status:</span> Restore available for this run.
+            </p>
+          ) : (
+            <p>
+              <span className="text-[#7d8491]">Status:</span> Restore metadata was not synced for this run.
+              In the project, run <code className="font-mono text-[#c7b9ff]">runtrim restore last --preview</code>.
+            </p>
+          )}
+          <p>
+            <span className="text-[#7d8491]">Preview:</span>{" "}
+            <code className="font-mono text-[#c7b9ff]">{restorePreviewCommand}</code>
+          </p>
+          <p>
+            <span className="text-[#7d8491]">Apply:</span>{" "}
+            <code className="font-mono text-[#c7b9ff]">{restoreApplyCommand}</code>
+          </p>
+          <p>
+            <span className="text-[#7d8491]">Safety:</span>{" "}
+            {restore.sensitiveSkippedByDefault
+              ? "Sensitive and env paths are skipped by default. Restore apply is local CLI only."
+              : "Restore apply is local CLI only."}
+          </p>
+        </div>
+      </Section>
+
       <div className="grid gap-5 lg:grid-cols-2">
         <Section title="Drift and risk">
           <div className="space-y-3">
@@ -523,6 +597,18 @@ export default async function RunDetailPage({
         </Section>
       </div>
 
+      {(runVerdictTier === "warn" || runVerdictTier === "blocked") && (
+        <Section title="Recovery guidance">
+          <div className="space-y-2 text-[12px] text-[#d7dbe5]">
+            <p>Preview restore before continuing.</p>
+            <p>Undo the AI run, not your whole branch.</p>
+            <p>
+              <code className="font-mono text-[#c7b9ff]">{restorePreviewCommand}</code>
+            </p>
+          </div>
+        </Section>
+      )}
+
       <Section title="Next run context">
         <p className="text-[12px] text-[#c5cad3]"><span className="text-[#7d8491]">Next safest step:</span> {nextSafestStep}</p>
         {continuationPack || r.next_safe_prompt ? (
@@ -580,7 +666,7 @@ export default async function RunDetailPage({
             <div>
               <p className="text-[13px] font-semibold text-[#e3e8f2]">Pro report active</p>
               <p className="mt-1 text-[12px] text-[#8f96a3]">
-                Your run history, memory, savings, and next-run context are being synced.
+                Your run history, memory, savings, next-run context, and restore metadata are being synced.
                 {isTrialing ? " Trial status is active." : ""}
               </p>
             </div>
@@ -590,7 +676,7 @@ export default async function RunDetailPage({
             <div className="flex items-start gap-2">
               <XCircle className="mt-0.5 size-4 shrink-0 text-[#F0BF72]" />
               <p className="text-[12px] text-[#8f96a3] max-w-[52ch]">
-                Pro keeps synced run history, cloud memory, savings reports, and next-run context across projects.
+                Pro keeps synced run history, restore metadata, cloud memory, savings reports, and next-run context across projects.
               </p>
             </div>
             <Link

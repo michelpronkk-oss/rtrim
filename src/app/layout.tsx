@@ -89,7 +89,7 @@ export default function RootLayout({
     url: "https://www.runtrim.com",
     downloadUrl: "https://www.npmjs.com/package/runtrim",
     installUrl: "https://www.runtrim.com/app/install",
-    softwareVersion: "0.1.15",
+    softwareVersion: "0.1.18",
     featureList: [
       "Scoped task contracts for AI coding agents",
       "Project memory and agent file injection",

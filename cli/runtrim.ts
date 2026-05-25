@@ -16,7 +16,14 @@ import {
   saveConfig,
   DEFAULT_CONFIG,
   getConfigDir,
+  getContractsArchiveDir,
+  getLegacyPreviewsDir,
+  getLegacyRestoresDir,
+  getPreviewsDir,
+  getRestoresDir,
   getRunsDir,
+  getLegacyRunsDir,
+  ensureInternalArtifactDirs,
   configExists,
   detectProjectInfo,
 } from "../src/lib/runtrim-config.ts";
@@ -94,6 +101,7 @@ const oraFactory: typeof ora =
   (typeof ora === "function" ? ora : ((ora as unknown as { default?: typeof ora }).default ?? ora));
 const ACCENT = chalk.hex("#C8901A");
 const GO_ACCENT = chalk.hex("#8B7CFF");
+const RUNTRIM_AGENT_INSTRUCTIONS_VERSION = "2";
 const DIM = chalk.gray;
 const BOLD = chalk.white.bold;
 
@@ -270,6 +278,107 @@ function parseMemorySection(memory: string, title: string): string {
 
 function dedupeFiles(files: string[]): string[] {
   return [...new Set(files.filter(Boolean).map((f) => f.replace(/\\/g, "/")))];
+}
+
+const RUNTRIM_GITIGNORE_BLOCK_START = "# BEGIN RUNTRIM_ARTIFACTS";
+const RUNTRIM_GITIGNORE_BLOCK_END = "# END RUNTRIM_ARTIFACTS";
+
+function ensureRuntrimReadme(cwd: string): void {
+  const readmePath = path.join(getConfigDir(cwd), "README.md");
+  const content = [
+    "# RunTrim Local Files",
+    "",
+    "RunTrim stores local metadata in this folder.",
+    "",
+    "Human-facing files:",
+    "- `agent/instructions.md` and `agent/latest.md`",
+    "- `contracts/latest.md`",
+    "- `memory/current.md` and `memory/baseline.md`",
+    "- `mcp/*.json`",
+    "- `config.json`",
+    "",
+    "Internal artifacts:",
+    "- `.runtrim/internal/runs/`",
+    "- `.runtrim/internal/previews/`",
+    "- `.runtrim/internal/restores/`",
+    "- `.runtrim/internal/contracts-archive/`",
+    "- `.runtrim/internal/agent-archive/`",
+    "",
+    "Notes:",
+    "- Artifacts are local-first.",
+    "- Source code is not uploaded by local storage.",
+    "- Restore metadata is path-only and does not store secret contents.",
+  ].join("\n");
+  fs.writeFileSync(readmePath, content + "\n", "utf-8");
+}
+
+function ensureRuntrimGitignoreGuidance(cwd: string): void {
+  const gitignorePath = path.join(cwd, ".gitignore");
+  if (!fs.existsSync(gitignorePath)) return;
+  const desired = [
+    RUNTRIM_GITIGNORE_BLOCK_START,
+    "# RunTrim local artifacts",
+    ".runtrim/internal/",
+    ".runtrim/runs/",
+    ".runtrim/previews/",
+    ".runtrim/restores/",
+    ".runtrim/contracts/archive/",
+    ".runtrim/agent/*.json",
+    RUNTRIM_GITIGNORE_BLOCK_END,
+  ].join("\n");
+  const current = fs.readFileSync(gitignorePath, "utf-8");
+  const start = current.indexOf(RUNTRIM_GITIGNORE_BLOCK_START);
+  const end = current.indexOf(RUNTRIM_GITIGNORE_BLOCK_END);
+  if (start !== -1 && end !== -1 && end > start) {
+    const next = current.slice(0, start).trimEnd() + "\n\n" + desired + "\n" + current.slice(end + RUNTRIM_GITIGNORE_BLOCK_END.length).replace(/^\n+/, "\n");
+    if (next !== current) fs.writeFileSync(gitignorePath, next, "utf-8");
+    return;
+  }
+  if (!current.includes(".runtrim/internal/")) {
+    fs.writeFileSync(gitignorePath, current.trimEnd() + "\n\n" + desired + "\n", "utf-8");
+  }
+}
+
+function listFilesIfExists(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .map((name) => path.join(dir, name))
+    .filter((p) => fs.existsSync(p) && fs.statSync(p).isFile());
+}
+
+function listArtifactFiles(cwd: string): string[] {
+  const dirs = [
+    getRunsDir(cwd),
+    getPreviewsDir(cwd),
+    getRestoresDir(cwd),
+    getContractsArchiveDir(cwd),
+    path.join(getConfigDir(cwd), "internal", "agent-archive"),
+    getLegacyRunsDir(cwd),
+    getLegacyPreviewsDir(cwd),
+    getLegacyRestoresDir(cwd),
+    path.join(getConfigDir(cwd), "contracts", "archive"),
+    path.join(getConfigDir(cwd), "agent"),
+  ];
+  const files = dirs.flatMap((dir) => listFilesIfExists(dir));
+  return files.filter((filePath) => {
+    const base = path.basename(filePath).toLowerCase();
+    const rel = path.relative(cwd, filePath).replace(/\\/g, "/");
+    if (rel === ".runtrim/previews/latest.md") return false;
+    if (base === "latest.md" || base === "instructions.md" || base === "current.md" || base === "baseline.md") return false;
+    return true;
+  });
+}
+
+function parseRunIdFromArtifact(filePath: string): string | null {
+  const base = path.basename(filePath);
+  const direct = base.match(/^([a-zA-Z0-9_-]{6,})\.json$/);
+  if (direct) return direct[1];
+  const report = base.match(/^([a-zA-Z0-9_-]{6,})\.report\.\d+\.json$/);
+  if (report) return report[1];
+  const out = base.match(/^([a-zA-Z0-9_-]{6,})\.output\.txt$/);
+  if (out) return out[1];
+  return null;
 }
 
 function normalizeContractPathPattern(pattern: string): string {
@@ -562,11 +671,12 @@ function buildRecommendedNextCommand(task: string, approval: "no" | "recommended
 }
 
 function writePreviewArtifacts(cwd: string, preview: AgentPreviewArtifact): { jsonPath: string; markdownPath: string } {
-  const previewsDir = path.join(cwd, ".runtrim", "previews");
+  const previewsDir = getPreviewsDir(cwd);
   if (!fs.existsSync(previewsDir)) fs.mkdirSync(previewsDir, { recursive: true });
 
   const jsonPath = path.join(previewsDir, `${preview.id}.json`);
-  const markdownPath = path.join(previewsDir, "latest.md");
+  const markdownPath = path.join(getLegacyPreviewsDir(cwd), "latest.md");
+  if (!fs.existsSync(path.dirname(markdownPath))) fs.mkdirSync(path.dirname(markdownPath), { recursive: true });
   fs.writeFileSync(jsonPath, JSON.stringify(preview, null, 2), "utf-8");
 
   const lines: string[] = [
@@ -608,7 +718,7 @@ function writePreviewArtifacts(cwd: string, preview: AgentPreviewArtifact): { js
     "Next:",
     preview.recommendedNextCommand,
     "",
-    `Preview JSON: .runtrim/previews/${preview.id}.json`,
+    `Preview JSON: .runtrim/internal/previews/${preview.id}.json`,
   ];
   fs.writeFileSync(markdownPath, lines.join("\n"), "utf-8");
   return { jsonPath, markdownPath };
@@ -1121,6 +1231,7 @@ async function runAgentApply(task: string, mode: { apply: boolean; confirm: bool
   const copied = mode.copy ? await copyToClipboardSafe(fs.readFileSync(handoff.markdownPath, "utf-8")) : false;
   const run = saveRun(task, previewResult.audit, previewResult.contract, cwd);
   updateRun(run.id, { status: "guarded" }, cwd);
+  await captureRestorePoint(cwd, run.id, task);
 
   const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, ChalkInstance>)[risk] ?? chalk.white;
   if (mode.primary) {
@@ -1355,6 +1466,7 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
       controlledExecutionId: id,
       controlledExecutionStatus: status,
     }, cwd);
+    await captureRestorePoint(cwd, run.id, task);
   }
 
   if (status === "blocked") {
@@ -1738,14 +1850,18 @@ function upsertRuntrimStartBlock(filePath: string, blockBody: string): StartAgen
 function buildRuntrimAgentBlockContent(): string {
   return [
     "RunTrim project instructions",
+    `RUNTRIM_AGENT_INSTRUCTIONS_VERSION: ${RUNTRIM_AGENT_INSTRUCTIONS_VERSION}`,
     "- Before editing, read RunTrim project memory and profile context.",
-    "- Verify active contract first. If MCP is available and no contract is active, call runtrim_create_contract with the user's task.",
+    "- Before editing, create or verify an active RunTrim contract for the current user task.",
+    "- If MCP is available and no active contract exists, call runtrim_create_contract with the user's task.",
     "- If MCP is unavailable, ask the user to run: runtrim agent \"task\" --copy",
-    "- Stay inside active contract scope.",
-    "- Before high-risk edits (auth, billing, middleware/proxy, migrations, sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.",
+    "- Before touching risky paths (auth, billing, middleware/proxy, migrations, env/sensitive files, broad app-wide refactors), call runtrim_check_path when available.",
+    "- Use RunTrim project memory and stay inside active contract scope.",
+    "- Do not silently expand scope. Preserve existing project style and logic.",
     "- Never read or print env file contents.",
-    "- Do not continue outside scope silently. Request: runtrim approve \"Allow <path/scope> for this run only\"",
-    "- At the end, run or ask for runtrim finish. Do not claim completion before finish verification.",
+    "- If scope must expand, stop and request approval: runtrim approve \"Allow <path/scope> for this run only\"",
+    "- At the end, run runtrim finish if terminal execution is available, otherwise ask the user to run runtrim finish.",
+    "- Do not claim completion before finish verification when RunTrim is active.",
     "",
     "RunTrim MCP:",
     "- runtrim mcp instructions",
@@ -1930,12 +2046,16 @@ function updateStartAgentInstructions(cwd: string): string {
   const existing = fs.existsSync(instructionsPath) ? fs.readFileSync(instructionsPath, "utf-8") : "";
   const body = [
     "RunTrim agent instructions:",
+    `RUNTRIM_AGENT_INSTRUCTIONS_VERSION: ${RUNTRIM_AGENT_INSTRUCTIONS_VERSION}`,
     "- Use RunTrim project memory and profile before editing.",
-    "- Verify active contract before edits. If MCP is available and contract is missing, call runtrim_create_contract with the user's task.",
+    "- Create or verify an active RunTrim contract before edits.",
+    "- If MCP is available and contract is missing, call runtrim_create_contract with the user's task.",
     '- If MCP is unavailable, ask user to run: runtrim agent "task" --copy',
-    "- For high-risk paths (auth, billing, middleware/proxy, migrations, sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.",
+    "- For high-risk paths (auth, billing, middleware/proxy, migrations, env/sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.",
+    "- Stay inside active contract scope and preserve existing project style and logic.",
     '- If scope must expand, request: runtrim approve "Allow <path/scope> for this run only"',
-    "- Run finish verification at the end. Do not claim completion before runtrim finish.",
+    "- Run runtrim finish when terminal execution is available, otherwise ask the user to run runtrim finish.",
+    "- Do not claim completion before runtrim finish verification when RunTrim is active.",
     "- Never read or print env file contents.",
     "",
     "RunTrim MCP:",
@@ -2017,6 +2137,269 @@ function detectKnownMcpConfigPresence(): {
     cursorConfigPath: cursorMatch ?? (cursorCandidates[0] ?? null),
     cursorConfigFound: Boolean(cursorMatch),
   };
+}
+
+interface RestorePointRecord {
+  runId: string;
+  task: string;
+  createdAt: string;
+  preRun: {
+    commit: string | null;
+    dirty: boolean;
+    changedBeforeRun: string[];
+  };
+  postRun?: {
+    changedFiles: string[];
+    forbiddenFiles: string[];
+    sensitiveFiles: string[];
+    outOfScopeFiles: string[];
+    finishVerdict: "PASS" | "WARN" | "BLOCKED";
+    capturedAt: string;
+  };
+}
+
+function getRestorePointPath(cwd: string, runId: string): string {
+  return path.join(getRestoresDir(cwd), `${runId}.json`);
+}
+
+function getLegacyRestorePointPath(cwd: string, runId: string): string {
+  return path.join(getLegacyRestoresDir(cwd), `${runId}.json`);
+}
+
+async function isGitRepo(cwd: string): Promise<boolean> {
+  try {
+    await execa("git", ["rev-parse", "--is-inside-work-tree"], { cwd });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function captureRestorePoint(cwd: string, runId: string, task: string): Promise<void> {
+  const dir = getRestoresDir(cwd);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const existingPath = getRestorePointPath(cwd, runId);
+  if (fs.existsSync(existingPath) || fs.existsSync(getLegacyRestorePointPath(cwd, runId))) return;
+
+  let commit: string | null = null;
+  let changedBeforeRun: string[] = [];
+  if (await isGitRepo(cwd)) {
+    try {
+      const { stdout } = await execa("git", ["rev-parse", "HEAD"], { cwd });
+      commit = stdout.trim() || null;
+    } catch {
+      commit = null;
+    }
+    try {
+      const changed = await getGitChangedFiles(cwd);
+      changedBeforeRun = dedupeFiles(changed.map((c) => c.path));
+    } catch {
+      changedBeforeRun = [];
+    }
+  }
+  const record: RestorePointRecord = {
+    runId,
+    task,
+    createdAt: new Date().toISOString(),
+    preRun: {
+      commit,
+      dirty: changedBeforeRun.length > 0,
+      changedBeforeRun,
+    },
+  };
+  fs.writeFileSync(existingPath, JSON.stringify(record, null, 2), "utf-8");
+}
+
+function loadRestorePoint(cwd: string, runId: string): RestorePointRecord | null {
+  const preferred = getRestorePointPath(cwd, runId);
+  const legacy = getLegacyRestorePointPath(cwd, runId);
+  const p = fs.existsSync(preferred) ? preferred : legacy;
+  if (!fs.existsSync(p)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(p, "utf-8")) as RestorePointRecord;
+  } catch {
+    return null;
+  }
+}
+
+function saveRestorePoint(cwd: string, record: RestorePointRecord): void {
+  const dir = getRestoresDir(cwd);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(getRestorePointPath(cwd, record.runId), JSON.stringify(record, null, 2), "utf-8");
+}
+
+type CiVerdict = "PASS" | "WARN" | "BLOCKED";
+
+function isSecretLikePath(file: string): boolean {
+  const n = file.replace(/\\/g, "/").toLowerCase();
+  return (
+    n.includes(".env") ||
+    n.endsWith(".env") ||
+    n.endsWith(".pem") ||
+    n.endsWith(".key") ||
+    n.includes("id_rsa") ||
+    n.includes("id_ed25519") ||
+    n.includes("private-key")
+  );
+}
+
+function isDocsLikePath(file: string): boolean {
+  const n = file.replace(/\\/g, "/").toLowerCase();
+  return (
+    n === "readme.md" ||
+    n.startsWith("docs/") ||
+    n.endsWith(".md") ||
+    n.endsWith(".mdx") ||
+    n.includes("changelog")
+  );
+}
+
+function isUiCheckoutPath(file: string): boolean {
+  const n = file.replace(/\\/g, "/").toLowerCase();
+  return (
+    n.includes("/checkout/") &&
+    !n.includes("/api/") &&
+    !n.includes("webhook") &&
+    !n.includes("stripe") &&
+    !n.includes("dodo") &&
+    !n.includes("provider") &&
+    !n.includes("session")
+  );
+}
+
+function isHighRiskLogicPath(file: string): boolean {
+  const n = file.replace(/\\/g, "/").toLowerCase();
+  if (isSecretLikePath(n)) return true;
+  if (n.endsWith("middleware.ts") || n.endsWith("middleware.js") || n.endsWith("proxy.ts") || n.endsWith("proxy.js")) return true;
+  if (n.includes("supabase/migrations") || n.includes("prisma/migrations") || n.includes("/migrations/")) return true;
+  if (n.includes("/auth/") || n.includes("session") || n.includes("jwt")) return true;
+  if (n.includes("webhook")) return true;
+  if ((n.includes("billing") || n.includes("payment") || n.includes("stripe") || n.includes("dodo")) && (n.includes("/api/") || n.includes("/lib/") || n.includes("route.ts") || n.includes("route.js") || n.includes("server"))) return true;
+  if (n.includes("/checkout/") && !isUiCheckoutPath(n) && (n.includes("/api/") || n.includes("provider") || n.includes("session") || n.includes("route.ts") || n.includes("route.js"))) return true;
+  return false;
+}
+
+function matchesAnyContractRule(file: string, rules: string[]): boolean {
+  return rules.some((rule) => matchesContractPattern(file, rule));
+}
+
+async function detectCiChangedFiles(cwd: string, base?: string, head?: string): Promise<{ files: string[]; baseUsed: string; headUsed: string; warnings: string[] }> {
+  const warnings: string[] = [];
+  let baseUsed = base?.trim() || "";
+  let headUsed = head?.trim() || "";
+  if (!headUsed) {
+    try {
+      const { stdout } = await execa("git", ["rev-parse", "HEAD"], { cwd });
+      headUsed = stdout.trim();
+    } catch {
+      headUsed = "HEAD";
+    }
+  }
+  if (!baseUsed) {
+    const ghBase = process.env.GITHUB_BASE_REF?.trim();
+    if (ghBase) {
+      baseUsed = `origin/${ghBase}`;
+    }
+  }
+  if (!baseUsed) {
+    for (const candidate of ["origin/main", "origin/master", "main", "master", "HEAD~1"]) {
+      try {
+        await execa("git", ["rev-parse", "--verify", candidate], { cwd });
+        baseUsed = candidate;
+        break;
+      } catch {
+        continue;
+      }
+    }
+  }
+  if (!baseUsed) {
+    warnings.push("Could not infer a base ref. Using working tree changes only.");
+  }
+
+  let diffFiles: string[] = [];
+  if (baseUsed) {
+    try {
+      const { stdout } = await execa("git", ["diff", "--name-only", `${baseUsed}...${headUsed}`], { cwd });
+      diffFiles = stdout.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    } catch {
+      warnings.push(`Could not diff ${baseUsed}...${headUsed}. Falling back to local changes.`);
+    }
+  }
+  if (diffFiles.length === 0) {
+    try {
+      const { stdout } = await execa("git", ["diff", "--name-only"], { cwd });
+      diffFiles = stdout.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    } catch {
+      // no-op
+    }
+  }
+  try {
+    const { stdout } = await execa("git", ["status", "--porcelain"], { cwd });
+    const untracked = stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("?? "))
+      .map((line) => line.slice(3).trim());
+    diffFiles = dedupeFiles([...diffFiles, ...untracked]);
+  } catch {
+    // no-op
+  }
+
+  return {
+    files: dedupeFiles(diffFiles.map((f) => f.replace(/\\/g, "/"))),
+    baseUsed: baseUsed || "(local)",
+    headUsed,
+    warnings,
+  };
+}
+
+function detectMcpConfigState(configPath: string | null, found: boolean): "not found" | "configured" | "missing runtrim" {
+  if (!found || !configPath) return "not found";
+  try {
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf-8")) as Record<string, unknown>;
+    const servers = (raw.mcpServers && typeof raw.mcpServers === "object") ? (raw.mcpServers as Record<string, unknown>) : {};
+    return servers.runtrim ? "configured" : "missing runtrim";
+  } catch {
+    return "missing runtrim";
+  }
+}
+
+function hasCurrentRuntrimBlock(filePath: string): { exists: boolean; current: boolean } {
+  if (!fs.existsSync(filePath)) return { exists: false, current: false };
+  const content = fs.readFileSync(filePath, "utf-8");
+  const hasBlock = content.includes("<!-- RUNTRIM:START -->") && content.includes("<!-- RUNTRIM:END -->");
+  const hasVersion = content.includes(`RUNTRIM_AGENT_INSTRUCTIONS_VERSION: ${RUNTRIM_AGENT_INSTRUCTIONS_VERSION}`);
+  return { exists: hasBlock, current: hasBlock && hasVersion };
+}
+
+function readMcpLastUsed(cwd: string): { tracked: boolean; tool: string | null; usedAt: string | null } {
+  const p = path.join(getProjectMcpDir(cwd), "last-used.json");
+  if (!fs.existsSync(p)) return { tracked: false, tool: null, usedAt: null };
+  try {
+    const parsed = JSON.parse(fs.readFileSync(p, "utf-8")) as { tool?: string; usedAt?: string };
+    return {
+      tracked: true,
+      tool: typeof parsed.tool === "string" ? parsed.tool : null,
+      usedAt: typeof parsed.usedAt === "string" ? parsed.usedAt : null,
+    };
+  } catch {
+    return { tracked: false, tool: null, usedAt: null };
+  }
+}
+
+function writeMcpLastUsed(cwd: string, tool: string): void {
+  try {
+    const dir = getProjectMcpDir(cwd);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const payload = {
+      tool,
+      usedAt: new Date().toISOString(),
+      projectPath: cwd,
+    };
+    fs.writeFileSync(path.join(dir, "last-used.json"), `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+  } catch {
+    // non-critical marker
+  }
 }
 
 function appendContractAmendment(cwd: string, approvalText: string): { ok: boolean; reason?: string; fileLimit?: number } {
@@ -2436,6 +2819,7 @@ async function buildRuntrimCreateContractMcp(
   const handoff = writeAgentHandoffArtifacts(cwd, apply, path.relative(cwd, previewPath));
   const run = saveRun(mergedTask, previewResult.audit, previewResult.contract, cwd);
   updateRun(run.id, { status: "guarded" }, cwd);
+  await captureRestorePoint(cwd, run.id, mergedTask);
 
   const payload = {
     contract_created: true,
@@ -2640,6 +3024,7 @@ async function startMcpServerStdio(cwd: string): Promise<void> {
         });
         return;
       }
+      writeMcpLastUsed(cwd, name);
       send({
         jsonrpc: "2.0",
         id,
@@ -3188,6 +3573,7 @@ async function initializeRunTrim(
   const runsDir = getRunsDir(cwd);
   if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
   if (!fs.existsSync(runsDir)) fs.mkdirSync(runsDir, { recursive: true });
+  ensureInternalArtifactDirs(cwd);
 
   const existingConfig = hadConfig ? loadConfig(cwd) : null;
   const baseConfig = { ...DEFAULT_CONFIG, ...detectProjectInfo(cwd) };
@@ -3211,14 +3597,8 @@ async function initializeRunTrim(
   }
 
   ensureStarterPromptIfMissing(cwd);
-
-  const gitignorePath = path.join(cwd, ".gitignore");
-  if (fs.existsSync(gitignorePath)) {
-    const content = fs.readFileSync(gitignorePath, "utf-8");
-    if (!content.includes(".runtrim/runs")) {
-      fs.appendFileSync(gitignorePath, "\n# RunTrim run history\n.runtrim/runs/\n");
-    }
-  }
+  ensureRuntrimReadme(cwd);
+  ensureRuntrimGitignoreGuidance(cwd);
 
   return { ok: true };
 }
@@ -3268,7 +3648,7 @@ async function runPrepareTask(
     console.log("");
     console.log(DIM("  Task      ") + chalk.white(truncate(task, 70)));
     console.log(DIM("  Prompt    ") + chalk.white(promptPath));
-    console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+    console.log(DIM("  Run saved ") + chalk.white(`.runtrim/internal/runs/${run.id}.json`));
     console.log("");
     printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
     console.log("");
@@ -3289,6 +3669,7 @@ async function runPrepareTask(
   const promptPath = writeLatestPromptFile(contract.contractText, config, cwd);
   if (options.copy !== false) await copyToClipboardSafe(contract.contractText);
   updateRun(run.id, { status: "guarded" }, cwd);
+  await captureRestorePoint(cwd, run.id, task);
 
   const riskColors: Record<string, ChalkInstance> = {
     low: chalk.green,
@@ -3320,7 +3701,7 @@ async function runPrepareTask(
   );
   console.log(DIM("  Reduction ") + chalk.white(contract.riskReductionPercent + "%"));
   console.log(DIM("  Prompt    ") + chalk.white(promptPath));
-  console.log(DIM("  Run saved ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+  console.log(DIM("  Run saved ") + chalk.white(`.runtrim/internal/runs/${run.id}.json`));
   console.log("");
   printPrepareAgentInstructions(selectedAgent, config.lastPromptPath);
   console.log("");
@@ -3579,6 +3960,126 @@ program
 
 // ── Protocol installer helpers ────────────────────────────────────────────────
 
+
+program
+  .command("doctor")
+  .description("Check project readiness for RunTrim agent auto-control")
+  .action(async () => {
+    const cwd = process.cwd();
+    const repoCheck = await assertFreeRepoAllowed(cwd);
+    const profilePath = path.join(getConfigDir(cwd), "project-profile.json");
+    const memoryPath = path.join(getConfigDir(cwd), "memory", "current.md");
+    const instructionsPath = path.join(getConfigDir(cwd), "agent", "instructions.md");
+    const snippetsDir = getProjectMcpDir(cwd);
+    const snippetFiles = [
+      path.join(snippetsDir, "claude-desktop.json"),
+      path.join(snippetsDir, "cursor.json"),
+      path.join(snippetsDir, "generic.json"),
+    ];
+    const profileReady = fs.existsSync(profilePath);
+    const memoryReady = fs.existsSync(memoryPath) && fs.readFileSync(memoryPath, "utf-8").trim().length > 0;
+    const instructionsReady = fs.existsSync(instructionsPath) && fs.readFileSync(instructionsPath, "utf-8").trim().length > 0;
+    const claudeBlock = hasCurrentRuntrimBlock(path.join(cwd, "CLAUDE.md"));
+    const agentsBlock = hasCurrentRuntrimBlock(path.join(cwd, "AGENTS.md"));
+    const cursorRulePath = path.join(cwd, ".cursor", "rules", "runtrim.mdc");
+    const cursorRuleExists = fs.existsSync(cursorRulePath);
+    const cursorRuleCurrent = cursorRuleExists
+      ? fs.readFileSync(cursorRulePath, "utf-8").includes(`RUNTRIM_AGENT_INSTRUCTIONS_VERSION: ${RUNTRIM_AGENT_INSTRUCTIONS_VERSION}`)
+      : false;
+    const anySurfaceInstalled = claudeBlock.exists || agentsBlock.exists || cursorRuleExists;
+    const runtrimBlockCurrent = [claudeBlock.current, agentsBlock.current, cursorRuleCurrent].some(Boolean);
+    const snippetsGenerated = snippetFiles.every((p) => fs.existsSync(p));
+    const knownMcp = detectKnownMcpConfigPresence();
+    const claudeMcpState = detectMcpConfigState(knownMcp.claudeConfigPath, knownMcp.claudeConfigFound);
+    const cursorMcpState = detectMcpConfigState(knownMcp.cursorConfigPath, knownMcp.cursorConfigFound);
+    const genericReady = snippetsGenerated ? "ready" : "missing";
+    const tools = buildMcpTools();
+    const hasContractTool = tools.some((t) => t.name === "runtrim_create_contract");
+    const hasPathTool = tools.some((t) => t.name === "runtrim_check_path");
+    const hasApprovalTool = tools.some((t) => t.name === "runtrim_suggest_approval");
+    const hasFinishTool = tools.some((t) => t.name === "runtrim_finish_guidance");
+    const contract = parseContractSummary(cwd);
+    const lastMcp = readMcpLastUsed(cwd);
+    const setupCorrupt = configExists(cwd) && (!profileReady || !memoryReady || !instructionsReady);
+    const artifactFiles = listArtifactFiles(cwd);
+    const artifactCount = artifactFiles.length;
+
+    let readiness: "ready" | "partial" | "blocked" = "partial";
+    if (!repoCheck.allowed || setupCorrupt) {
+      readiness = "blocked";
+    } else if (
+      profileReady &&
+      memoryReady &&
+      instructionsReady &&
+      anySurfaceInstalled &&
+      snippetsGenerated &&
+      hasContractTool &&
+      hasPathTool &&
+      hasApprovalTool &&
+      hasFinishTool
+    ) {
+      readiness = "ready";
+    }
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  doctor"));
+    console.log("");
+    console.log(BOLD("Project"));
+    console.log(chalk.white(`- Project profile: ${profileReady ? "ready" : "missing"}`));
+    console.log(chalk.white(`- Project memory: ${memoryReady ? "ready" : "missing"}`));
+    console.log(chalk.white(`- Agent instructions: ${instructionsReady ? "ready" : "missing"}`));
+    console.log(chalk.white(`- Active contract: ${contract.active ? "active" : "none"}`));
+    console.log("");
+    console.log(BOLD("Agent rules"));
+    console.log(chalk.white(`- CLAUDE.md: ${claudeBlock.exists ? "installed" : "not found"}`));
+    console.log(chalk.white(`- AGENTS.md: ${agentsBlock.exists ? "installed" : "not found"}`));
+    console.log(chalk.white(`- Cursor rules: ${cursorRuleExists ? "installed" : "not found"}`));
+    console.log(chalk.white(`- RunTrim instruction block: ${runtrimBlockCurrent ? "current" : anySurfaceInstalled ? "stale" : "missing"}`));
+    console.log("");
+    console.log(BOLD("MCP"));
+    console.log(chalk.white("- MCP server: available"));
+    console.log(chalk.white(`- Project snippets: ${snippetsGenerated ? "generated" : "missing"}`));
+    console.log(chalk.white(`- Claude Desktop config: ${claudeMcpState}`));
+    console.log(chalk.white(`- Cursor MCP config: ${cursorMcpState}`));
+    console.log(chalk.white(`- Generic config: ${genericReady}`));
+    if (lastMcp.tracked && lastMcp.tool && lastMcp.usedAt) {
+      console.log(chalk.white(`- Last MCP tool call: ${lastMcp.tool}, ${lastMcp.usedAt}`));
+    } else {
+      console.log(chalk.white("- Last MCP tool call: not tracked yet"));
+    }
+    console.log("");
+    console.log(BOLD("Automation readiness"));
+    console.log(chalk.white(`- Contract creation tool: ${hasContractTool ? "available" : "missing"}`));
+    console.log(chalk.white(`- Path check tool: ${hasPathTool ? "available" : "missing"}`));
+    console.log(chalk.white(`- Approval tool: ${hasApprovalTool ? "available" : "missing"}`));
+    console.log(chalk.white(`- Finish guidance tool: ${hasFinishTool ? "available" : "missing"}`));
+    console.log(chalk.white(`- Local artifacts: ${artifactCount}`));
+    console.log("");
+    console.log(BOLD("Readiness"));
+    console.log(chalk.white(`- State: ${readiness}`));
+    console.log("");
+    console.log(BOLD("Next"));
+    if (repoCheck.status === "blocked_repair") {
+      console.log(chalk.yellow("- RunTrim local state needs repair. Run runtrim repo repair."));
+    } else if (repoCheck.status === "blocked_limit") {
+      console.log(chalk.yellow("- Free includes 1 tracked repo. Continue in tracked repo, unlink with runtrim repo unlink --force, or upgrade to Builder."));
+    } else if (readiness === "ready") {
+      if (claudeMcpState !== "configured" && cursorMcpState !== "configured") {
+        console.log(chalk.white("- Ready locally, MCP client not connected."));
+        console.log(chalk.white("- Run runtrim mcp instructions or copy .runtrim/mcp/cursor.json into your MCP client."));
+      } else {
+        console.log(chalk.white("- Your project is RunTrim-aware. Open Cursor/Claude/Codex and use normal language."));
+      }
+    } else {
+      console.log(chalk.white("- Run runtrim start."));
+      console.log(chalk.white("- Run runtrim mcp instructions."));
+      console.log(chalk.white("- Run runtrim mcp config --print."));
+    }
+    if (artifactCount > 25) {
+      console.log(chalk.white(`- Local artifacts: ${artifactCount}. Run runtrim clean --dry-run to review cleanup.`));
+    }
+    console.log("");
+  });
 const PROTOCOL_BLOCK_START = "<!-- RUNTRIM_PROTOCOL_START -->";
 const PROTOCOL_BLOCK_END   = "<!-- RUNTRIM_PROTOCOL_END -->";
 
@@ -4980,6 +5481,172 @@ agentCommand
     console.log("");
   });
 
+const ciCommand = program.command("ci").description("RunTrim CI checks for pull requests and merges");
+
+ciCommand
+  .command("check")
+  .description("Evaluate changed files and RunTrim context for CI-safe PASS/WARN/BLOCKED verdict")
+  .option("--base <ref>", "Base ref to diff from")
+  .option("--head <ref>", "Head ref to diff to")
+  .option("--strict", "Treat WARN as failing and require RunTrim context")
+  .option("--allow-warn", "Allow WARN even when --strict is set")
+  .option("--json", "Print machine-readable JSON output")
+  .option("--report", "Include extra diagnostic context in output")
+  .action(async (options: { base?: string; head?: string; strict?: boolean; allowWarn?: boolean; json?: boolean; report?: boolean }) => {
+    const cwd = process.cwd();
+    const strict = options.strict === true;
+    const allowWarn = options.allowWarn === true;
+    const outputJson = options.json === true;
+    const report = options.report === true;
+
+    const repoCheck = await assertFreeRepoAllowed(cwd);
+    const detection = await detectCiChangedFiles(cwd, options.base, options.head);
+    const changedFiles = detection.files;
+    const contract = parseContractSummary(cwd);
+    const latestRun = loadLatestRun(cwd);
+    const hasRuntrimContext = contract.exists || Boolean(latestRun);
+
+    const issues: string[] = [];
+    const warnings: string[] = [...detection.warnings];
+    const nextSteps: string[] = [];
+    let verdict: CiVerdict = "PASS";
+
+    if (repoCheck.status === "blocked_repair") {
+      issues.push("RunTrim local state needs repair before CI can trust local guard state.");
+      nextSteps.push("Run: runtrim repo repair");
+      verdict = "BLOCKED";
+    } else if (repoCheck.status === "blocked_limit") {
+      issues.push("Free includes 1 tracked repo and this repo is not currently tracked.");
+      nextSteps.push("Continue in tracked repo, unlink with runtrim repo unlink --force, or upgrade to Builder.");
+      verdict = "BLOCKED";
+    }
+
+    if (changedFiles.length === 0) {
+      warnings.push("No changed files detected for this diff.");
+    }
+
+    const secretFiles = changedFiles.filter(isSecretLikePath);
+    if (secretFiles.length > 0) {
+      issues.push(`Sensitive file path changed: ${secretFiles[0]}`);
+      nextSteps.push("Remove secret/env/key/cert files from this PR before merge.");
+      verdict = "BLOCKED";
+    }
+
+    const highRiskFiles = changedFiles.filter((f) => isHighRiskLogicPath(f) && !isSecretLikePath(f));
+    if (highRiskFiles.length > 0) {
+      if (!hasRuntrimContext) {
+        issues.push(`High-risk path changed without RunTrim context: ${highRiskFiles[0]}`);
+        nextSteps.push('Create a dedicated guarded run and finish it before merging.');
+        verdict = "BLOCKED";
+      } else if (contract.allowedPaths.length > 0 && !matchesAnyContractRule(highRiskFiles[0], contract.allowedPaths)) {
+        issues.push(`High-risk path is outside contract allowed scope: ${highRiskFiles[0]}`);
+        nextSteps.push(`Run: runtrim approve "Allow ${highRiskFiles[0]} for this run only"`);
+        verdict = "BLOCKED";
+      }
+    }
+
+    if (contract.forbiddenPaths.length > 0) {
+      const forbiddenTouched = changedFiles.filter((f) => matchesAnyContractRule(f, contract.forbiddenPaths));
+      if (forbiddenTouched.length > 0) {
+        issues.push(`Contract-forbidden path touched: ${forbiddenTouched[0]}`);
+        nextSteps.push("Split the task or get explicit scoped approval before merge.");
+        verdict = "BLOCKED";
+      }
+    }
+
+    if (contract.allowedPaths.length > 0) {
+      const outOfScope = changedFiles.filter((f) => !matchesAnyContractRule(f, contract.allowedPaths));
+      if (outOfScope.length > 0) {
+        issues.push(`Changed file is outside latest contract scope: ${outOfScope[0]}`);
+        nextSteps.push(`Run: runtrim approve "Allow ${outOfScope[0]} for this run only"`);
+        verdict = "BLOCKED";
+      }
+    }
+
+    const docsOnly = changedFiles.length > 0 && changedFiles.every((f) => isDocsLikePath(f));
+    if (!hasRuntrimContext && verdict !== "BLOCKED") {
+      if (docsOnly) {
+        warnings.push("No RunTrim contract/report found. Docs-only change treated as low risk.");
+        verdict = "WARN";
+      } else {
+        warnings.push("No RunTrim contract/report found. CI could not fully verify scope context.");
+        verdict = "WARN";
+      }
+    }
+
+    if (strict && !hasRuntrimContext && verdict !== "BLOCKED") {
+      issues.push("Strict mode requires RunTrim contract/report context.");
+      verdict = "BLOCKED";
+    }
+
+    if (verdict === "PASS" && warnings.length > 0) {
+      verdict = "WARN";
+    }
+
+    if (nextSteps.length === 0) {
+      if (verdict === "PASS") {
+        nextSteps.push("Safe to merge under current RunTrim CI policy.");
+      } else if (verdict === "WARN") {
+        nextSteps.push("Run runtrim finish locally to strengthen verification context.");
+      } else {
+        nextSteps.push("Resolve blocked issues, then rerun runtrim ci check.");
+      }
+    }
+
+    let exitCode = 0;
+    if (verdict === "BLOCKED") exitCode = 1;
+    if (verdict === "WARN" && strict && !allowWarn) exitCode = 1;
+
+    const jsonPayload = {
+      verdict: verdict.toLowerCase() as "pass" | "warn" | "blocked",
+      exitCode,
+      changedFiles,
+      issues,
+      warnings,
+      nextSteps,
+    };
+
+    if (outputJson) {
+      process.stdout.write(`${JSON.stringify(jsonPayload, null, 2)}\n`);
+      process.exit(exitCode);
+      return;
+    }
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  CI Check"));
+    console.log("");
+    const verdictColor = verdict === "PASS" ? chalk.green : verdict === "WARN" ? chalk.yellow : chalk.red;
+    console.log(DIM("  Verdict: ") + verdictColor(verdict));
+    console.log("");
+    console.log(DIM("  Changed files:"));
+    if (changedFiles.length === 0) console.log(chalk.white("  - (none detected)"));
+    for (const f of changedFiles.slice(0, 20)) console.log(chalk.white("  - " + f));
+    if (changedFiles.length > 20) console.log(DIM(`  ... and ${changedFiles.length - 20} more`));
+    console.log("");
+    if (issues.length > 0) {
+      console.log(DIM("  Issues:"));
+      for (const i of issues) console.log(chalk.red("  - " + i));
+      console.log("");
+    }
+    if (warnings.length > 0) {
+      console.log(DIM("  Warnings:"));
+      for (const w of warnings) console.log(chalk.yellow("  - " + w));
+      console.log("");
+    }
+    console.log(DIM("  Next:"));
+    for (const n of nextSteps) console.log(chalk.white("  - " + n));
+    if (report) {
+      console.log("");
+      console.log(DIM("  Report:"));
+      console.log(chalk.white(`  - Base: ${detection.baseUsed}`));
+      console.log(chalk.white(`  - Head: ${detection.headUsed}`));
+      console.log(chalk.white(`  - Contract: ${contract.exists ? (contract.active ? "active" : "present") : "none"}`));
+      console.log(chalk.white(`  - Latest run: ${latestRun ? latestRun.status : "none"}`));
+    }
+    console.log("");
+    process.exit(exitCode);
+  });
+
 const authCommand = program.command("auth").description("Configure sync token for dashboard sync");
 
 authCommand
@@ -5162,6 +5829,238 @@ repoCommand
   });
 
 program
+  .command("clean")
+  .description("Clean old local RunTrim artifacts while preserving active project state")
+  .option("--dry-run", "Preview files that would be removed")
+  .option("--keep <n>", "Number of latest run-linked artifacts to keep", "10")
+  .action(async (options?: { dryRun?: boolean; keep?: string }) => {
+    const cwd = process.cwd();
+    const dryRun = options?.dryRun === true;
+    const keep = Math.max(1, Number.parseInt(options?.keep ?? "10", 10) || 10);
+    ensureInternalArtifactDirs(cwd);
+
+    const runs = loadAllRuns(cwd);
+    const keepRunIds = new Set(runs.slice(0, keep).map((r) => r.id));
+    const files = listArtifactFiles(cwd);
+
+    const removable = files.filter((filePath) => {
+      const runId = parseRunIdFromArtifact(filePath);
+      if (!runId) return true;
+      return !keepRunIds.has(runId);
+    });
+
+    const byCategory = {
+      runs: 0,
+      previews: 0,
+      restores: 0,
+      archives: 0,
+      other: 0,
+    };
+    for (const filePath of removable) {
+      const rel = path.relative(cwd, filePath).replace(/\\/g, "/").toLowerCase();
+      if (rel.includes(".runtrim/internal/runs/") || rel.includes(".runtrim/runs/")) byCategory.runs += 1;
+      else if (rel.includes(".runtrim/internal/previews/") || rel.includes(".runtrim/previews/")) byCategory.previews += 1;
+      else if (rel.includes(".runtrim/internal/restores/") || rel.includes(".runtrim/restores/")) byCategory.restores += 1;
+      else if (rel.includes("archive")) byCategory.archives += 1;
+      else byCategory.other += 1;
+    }
+
+    if (!dryRun) {
+      for (const filePath of removable) {
+        try {
+          fs.rmSync(filePath, { force: true });
+        } catch {
+          // keep going for safety and best effort cleanup
+        }
+      }
+    }
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  clean"));
+    console.log("");
+    console.log(DIM("  Mode              ") + chalk.white(dryRun ? "dry-run" : "apply"));
+    console.log(DIM("  Keep latest runs  ") + chalk.white(String(keep)));
+    console.log(DIM("  Candidate files   ") + chalk.white(String(removable.length)));
+    console.log("");
+    console.log(DIM("  Cleanup summary"));
+    console.log(chalk.white(`  - runs: ${byCategory.runs}`));
+    console.log(chalk.white(`  - previews: ${byCategory.previews}`));
+    console.log(chalk.white(`  - restores: ${byCategory.restores}`));
+    console.log(chalk.white(`  - archives: ${byCategory.archives}`));
+    if (byCategory.other > 0) console.log(chalk.white(`  - other: ${byCategory.other}`));
+    console.log("");
+    if (removable.length > 0) {
+      const sample = removable.slice(0, 10).map((p) => path.relative(cwd, p).replace(/\\/g, "/"));
+      console.log(DIM("  Sample files"));
+      for (const rel of sample) console.log(chalk.white(`  - ${rel}`));
+      if (removable.length > sample.length) {
+        console.log(DIM(`  ... and ${removable.length - sample.length} more`));
+      }
+      console.log("");
+    }
+    if (dryRun) {
+      console.log(chalk.white("  No files were removed."));
+      console.log(chalk.white("  Re-run without --dry-run to apply cleanup."));
+    } else {
+      console.log(chalk.white("  Cleanup complete."));
+      console.log(chalk.white("  Active contract, latest files, memory current, and MCP snippets were preserved."));
+    }
+    console.log("");
+  });
+
+const restoreCommand = program.command("restore").description("Preview or apply local restore for guarded runs");
+
+restoreCommand
+  .argument("[runId]", "Run ID to restore, or use 'last'")
+  .option("--preview", "Preview restore plan")
+  .option("--apply", "Apply restore plan")
+  .option("--force", "Apply even if unrelated new changes are detected")
+  .action(async (runIdArg?: string, options?: { preview?: boolean; apply?: boolean; force?: boolean }) => {
+    const cwd = process.cwd();
+    const doPreview = options?.preview === true;
+    const doApply = options?.apply === true;
+    const force = options?.force === true;
+    if (!doPreview && !doApply) {
+      console.log("");
+      console.log(chalk.yellow("Choose --preview or --apply."));
+      console.log("");
+      return;
+    }
+    if (doPreview && doApply) {
+      console.log("");
+      console.log(chalk.yellow("Use either --preview or --apply, not both."));
+      console.log("");
+      return;
+    }
+
+    const runs = loadAllRuns(cwd);
+    const runIdInput = (runIdArg ?? "last").trim();
+    let targetRunId = runIdInput;
+    if (runIdInput === "last") {
+      const latest = runs.find((r) => r.status === "completed" || r.status === "guarded" || r.status === "executed" || r.status === "checked");
+      if (!latest) {
+        console.log("");
+        console.log(chalk.yellow("No runs available for restore."));
+        console.log("");
+        return;
+      }
+      targetRunId = latest.id;
+    }
+    const run = runs.find((r) => r.id === targetRunId);
+    if (!run) {
+      console.log("");
+      console.log(chalk.yellow(`Run not found: ${targetRunId}`));
+      console.log("");
+      return;
+    }
+    const restore = loadRestorePoint(cwd, targetRunId);
+    if (!restore) {
+      console.log("");
+      console.log(chalk.yellow("No restore point found for this run."));
+      console.log("");
+      return;
+    }
+
+    const postFiles = restore.postRun?.changedFiles ?? [];
+    const sensitive = postFiles.filter((f) => isSensitivePath(f) || isSecretLikePath(f));
+    const safeFiles = postFiles.filter((f) => !sensitive.includes(f));
+    const gitAvailable = await isGitRepo(cwd);
+    const method = gitAvailable && restore.preRun.commit ? "git checkout from pre-run commit" : "metadata-only (limited)";
+    const nowChanged = gitAvailable ? dedupeFiles((await getGitChangedFiles(cwd)).map((f) => f.path)) : [];
+    const unrelated = nowChanged.filter((f) => !postFiles.includes(f));
+
+    if (doPreview) {
+      console.log("");
+      console.log(BOLD("RunTrim") + DIM("  restore preview"));
+      console.log("");
+      console.log(DIM("  Run ID   ") + chalk.white(targetRunId));
+      console.log(DIM("  Task     ") + chalk.white(truncate(run.task, 80)));
+      console.log(DIM("  Method   ") + chalk.white(method));
+      console.log(DIM("  Verdict  ") + chalk.white(restore.postRun?.finishVerdict ?? "unknown"));
+      console.log("");
+      console.log(DIM("  Files to restore"));
+      if (safeFiles.length === 0) console.log(chalk.white("  - (none)"));
+      for (const f of safeFiles.slice(0, 20)) console.log(chalk.white("  - " + f));
+      if (safeFiles.length > 20) console.log(DIM(`  ... and ${safeFiles.length - 20} more`));
+      if (sensitive.length > 0) {
+        console.log("");
+        console.log(DIM("  Sensitive files (listed by path only)"));
+        for (const f of sensitive.slice(0, 20)) console.log(chalk.yellow("  - " + f));
+        console.log(chalk.yellow("  Sensitive files are skipped by default and not auto-restored."));
+      }
+      if (unrelated.length > 0) {
+        console.log("");
+        console.log(chalk.yellow("  Warning: repo has new changes after this run."));
+        console.log(chalk.yellow("  Use --apply --force or review manually before restore."));
+      }
+      console.log("");
+      return;
+    }
+
+    if (!doApply) return;
+    if (!gitAvailable || !restore.preRun.commit) {
+      console.log("");
+      console.log(chalk.red("Restore apply requires git and a pre-run commit restore point."));
+      console.log("");
+      process.exit(1);
+      return;
+    }
+    if (unrelated.length > 0 && !force) {
+      console.log("");
+      console.log(chalk.red("Restore blocked: new unrelated changes detected after this run."));
+      console.log(chalk.red("Re-run with --apply --force after manual review."));
+      console.log("");
+      process.exit(1);
+      return;
+    }
+
+    const restored: string[] = [];
+    const skippedSensitive: string[] = [...sensitive];
+    const failed: string[] = [];
+    for (const file of safeFiles) {
+      try {
+        let existedBefore = false;
+        try {
+          await execa("git", ["cat-file", "-e", `${restore.preRun.commit}:${file}`], { cwd });
+          existedBefore = true;
+        } catch {
+          existedBefore = false;
+        }
+        if (existedBefore) {
+          await execa("git", ["checkout", restore.preRun.commit, "--", file], { cwd });
+        } else if (fs.existsSync(path.join(cwd, file))) {
+          fs.rmSync(path.join(cwd, file), { force: true });
+        }
+        restored.push(file);
+      } catch {
+        failed.push(file);
+      }
+    }
+
+    const report = {
+      runId: targetRunId,
+      appliedAt: new Date().toISOString(),
+      restored,
+      skippedSensitive,
+      failed,
+      forced: force,
+    };
+    const reportPath = path.join(getRestoresDir(cwd), `${targetRunId}.report.${Date.now()}.json`);
+    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf-8");
+
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  restore apply"));
+    console.log("");
+    console.log(DIM("  Run ID             ") + chalk.white(targetRunId));
+    console.log(DIM("  Restored files     ") + chalk.white(String(restored.length)));
+    console.log(DIM("  Skipped sensitive  ") + chalk.white(String(skippedSensitive.length)));
+    console.log(DIM("  Failed             ") + chalk.white(String(failed.length)));
+    console.log(DIM("  Report             ") + chalk.white(path.relative(cwd, reportPath)));
+    console.log("");
+    if (failed.length > 0) process.exit(1);
+  });
+
+program
   .command("guard <task>")
   .description("Audit a task and generate a guarded run contract")
   .action(async (task: string) => {
@@ -5263,7 +6162,7 @@ program
       const run = saveRun(task, audit, contract, cwd);
       updateRun(run.id, { status: "blocked" }, cwd);
       console.log("");
-      console.log(DIM("  Run saved: .runtrim/runs/" + run.id + ".json  (status: blocked)"));
+      console.log(DIM("  Run saved: .runtrim/internal/runs/" + run.id + ".json  (status: blocked)"));
       console.log("");
       console.log(DIM("  Next:  ") + chalk.white('runtrim guard "<one system at a time>"'));
       console.log("");
@@ -5371,7 +6270,7 @@ program
 
     const run = saveRun(task, audit, contract, cwd);
     console.log("");
-    console.log(DIM("  Run saved: .runtrim/runs/" + run.id + ".json"));
+    console.log(DIM("  Run saved: .runtrim/internal/runs/" + run.id + ".json"));
     console.log("");
     console.log(DIM("  After your agent run:  ") + chalk.white("runtrim check"));
     console.log("");
@@ -5429,6 +6328,7 @@ program
         },
         cwd
       );
+      await captureRestorePoint(cwd, run.id, task);
       const copySavings = estimateSavingsFromTokens(
         parseEstimatedNumber(String(contract.estimatedTokensTrimmed))
       );
@@ -5534,6 +6434,7 @@ program
         },
         cwd
       );
+      await captureRestorePoint(cwd, run.id, task);
       console.log(DIM("  Execution cancelled. Guarded contract copied to clipboard."));
       console.log("");
       return;
@@ -5600,6 +6501,7 @@ program
           },
           cwd
         );
+        await captureRestorePoint(cwd, run.id, task);
         console.log("");
         console.log(chalk.yellow("  Agent command not found. Falling back to copy mode guidance."));
         console.log(DIM("  Configure with: npm run runtrim -- agent set claude|codex|custom"));
@@ -5635,6 +6537,7 @@ program
         },
         cwd
       );
+      await captureRestorePoint(cwd, run.id, task);
       console.log("");
       console.log(chalk.yellow("  Agent command not found. Falling back to copy mode guidance."));
       console.log(DIM("  Configure with: npm run runtrim -- agent set claude|codex|custom"));
@@ -5678,7 +6581,7 @@ program
           exitCode,
           stdoutPreview: stdout.slice(0, OUTPUT_PREVIEW_MAX),
           stderrPreview: stderr.slice(0, OUTPUT_PREVIEW_MAX),
-          outputPath: `.runtrim/runs/${run.id}.output.txt`,
+          outputPath: `.runtrim/internal/runs/${run.id}.output.txt`,
         },
         evaluation,
       },
@@ -5883,6 +6786,7 @@ program
       memoryUsed,
       providerRouting,
     }, cwd);
+    await captureRestorePoint(cwd, run.id, task);
 
     // ── Bridge files ──────────────────────────────────────────────────────
     const bridgeCtx: BridgeContext = deriveBridgeContext(task, contract, runs, projectName);
@@ -5960,7 +6864,7 @@ program
     if (contract.contract.stopRules.length > 0) {
       console.log(DIM("  Stop rule     ") + chalk.white(truncate(contract.contract.stopRules[contract.contract.stopRules.length - 1] ?? "", 60)));
     }
-    console.log(DIM("  Run saved     ") + chalk.white(`.runtrim/runs/${run.id}.json`));
+    console.log(DIM("  Run saved     ") + chalk.white(`.runtrim/internal/runs/${run.id}.json`));
     console.log(DIM("  Contract      ") + chalk.white("created"));
     console.log("");
     if (bridgeWritten.length > 0) {
@@ -7626,6 +8530,18 @@ program
         : warnBySensitiveIgnored || scopeDriftStatus !== "passed" || evaluation.status === "needs_verification" || evaluation.status === "partial"
           ? "WARN"
           : "PASS";
+    const restoreRecord = loadRestorePoint(cwd, activeRun.id);
+    if (restoreRecord) {
+      restoreRecord.postRun = {
+        changedFiles,
+        forbiddenFiles: [...scope.forbiddenFiles, ...forbiddenPathFiles],
+        sensitiveFiles: scope.sensitiveFiles,
+        outOfScopeFiles: [...outOfContractFiles, ...scope.outOfScopeFiles],
+        finishVerdict,
+        capturedAt: new Date().toISOString(),
+      };
+      saveRestorePoint(cwd, restoreRecord);
+    }
     const verdictColor = finishVerdict === "PASS" ? chalk.green : finishVerdict === "WARN" ? chalk.yellow : chalk.red;
 
     const scopeColor = scopeDriftStatus === "passed" ? chalk.green

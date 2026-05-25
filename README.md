@@ -15,8 +15,10 @@ npm install -g runtrim
 ## Quickstart
 
 ```bash
+npm install -g runtrim
 cd your-project
 runtrim start
+runtrim doctor
 runtrim agent "Fix the homepage copy" --copy
 runtrim finish
 ```
@@ -43,6 +45,7 @@ runtrim mcp start
 ```
 
 MCP lets compatible agents use RunTrim tools like contract creation, path checks, approval suggestions, and finish guidance.
+RunTrim does not silently modify global MCP config files. Use `runtrim mcp instructions` and `runtrim mcp config --print` to inspect snippets, and `runtrim doctor` to check readiness.
 
 ## Local-first trust model
 
@@ -57,19 +60,44 @@ MCP lets compatible agents use RunTrim tools like contract creation, path checks
 - Free: local control flow and local history.
 - Pro+: cloud sync and hosted dashboard history.
 
+## Restore and rewind (local)
+
+```bash
+runtrim restore last --preview
+runtrim restore last --apply
+```
+
+Restore points are local and source-safe. Apply happens locally through the CLI.
+
+## CI merge gate (GitHub Action v1)
+
+RunTrim can run as a CLI-based PR check:
+
+1. Add `.github/workflows/runtrim.yml.example` to your repo as a workflow.
+2. Run `runtrim ci check --strict` on pull requests.
+3. Set branch protection to require the RunTrim check.
+
+`runtrim ci check` returns `PASS`, `WARN`, or `BLOCKED`.
+- `BLOCKED` exits non-zero and can prevent merge.
+- `WARN` exits zero by default, or non-zero in `--strict` mode.
+
+GitHub App and team policy sync are coming later.
+
 ## Core commands
 
 ```bash
 runtrim start
+runtrim doctor
 runtrim agent "Your task" --copy
 runtrim finish
 runtrim approve "Allow <scope> for this run only"
 runtrim status
 runtrim mcp instructions
-runtrim bridge status
+runtrim ci check
+runtrim restore last --preview
 ```
 
-Advanced/lower-level command (still supported):
+Legacy bridge compatibility (still supported):
 
 ```bash
 runtrim go "Your task"

@@ -126,7 +126,7 @@ Before editing code:
 If no active RunTrim contract exists:
 - Do not edit code without one.
 - Ask the user to start a guarded run:
-  runtrim go "<task>"
+  runtrim agent "<task>" --copy
 
 If the task requires leaving the current scope:
 - Stop.
@@ -229,7 +229,7 @@ ${BASE_PROTOCOL}
 Before using any tool or executing any command:
 1. Confirm a RunTrim contract is active at .runtrim/contracts/latest.md.
 2. If no active contract exists, do not proceed. Ask for:
-   runtrim go "<task>"
+   runtrim agent "<task>" --copy
 3. Do not call shell commands, write files, or read env vars outside the contract.
 `.trim(),
 
@@ -285,7 +285,7 @@ function getCursorMdcContent(): string {
     "## If no active contract",
     "",
     "Ask the user to start a guarded run:",
-    '`runtrim go "<task>"`',
+    '`runtrim agent "<task>" --copy`',
     "",
     "Any agent. One run boundary.",
   ].join("\n");
@@ -504,3 +504,4 @@ export function refreshAdapterState(cwd: string): {
 
   return { detected, installed, uninstalled };
 }
+

@@ -24,6 +24,7 @@ type RunRow = {
   project_id: string | null;
   changed_files: string[] | null;
   missing_proof_items: string[] | null;
+  raw_report: string | null;
 };
 
 function toTimeMs(value: string | null | undefined): number | null {
@@ -98,6 +99,34 @@ function formatTokens(n: number | null) {
   return String(n);
 }
 
+type RestoreStatus = {
+  available: boolean;
+  hasSyncedMetadata: boolean;
+  sensitiveSkipped: boolean;
+};
+
+function parseRestoreStatus(rawReport: string | null): RestoreStatus {
+  if (!rawReport) {
+    return { available: false, hasSyncedMetadata: false, sensitiveSkipped: true };
+  }
+  try {
+    const parsed = JSON.parse(rawReport) as Record<string, unknown>;
+    const restore =
+      (parsed.restore as Record<string, unknown> | undefined) ??
+      (parsed.restore_point as Record<string, unknown> | undefined) ??
+      (parsed.restorePoint as Record<string, unknown> | undefined) ??
+      null;
+    if (!restore) {
+      return { available: false, hasSyncedMetadata: false, sensitiveSkipped: true };
+    }
+    const available = restore.available !== false;
+    const sensitiveSkipped = restore.sensitiveSkipped !== false;
+    return { available, hasSyncedMetadata: true, sensitiveSkipped };
+  } catch {
+    return { available: false, hasSyncedMetadata: false, sensitiveSkipped: true };
+  }
+}
+
 export default async function RunsPage() {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -110,7 +139,7 @@ export default async function RunsPage() {
     const { data } = await supabase
       .from("runtrim_runs")
       .select(
-        "id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_tokens_saved, created_at_local, evaluated_at_local, created_at, synced_at, project_id, changed_files, missing_proof_items"
+        "id, task, status, risk_before, risk_after, estimated_tokens_trimmed, estimated_tokens_saved, created_at_local, evaluated_at_local, created_at, synced_at, project_id, changed_files, missing_proof_items, raw_report"
       )
       .eq("user_id", user.id)
       .limit(100);
@@ -149,7 +178,7 @@ export default async function RunsPage() {
             Start with a task in any project. Finish it, then sync to see the contract, risk score, token savings, and continuation pack here.
           </p>
           <div className="mt-5 space-y-2 max-w-[360px]">
-            {["runtrim go \"fix a small bug\"", "runtrim finish"].map((cmd) => (
+            {["runtrim start", "runtrim doctor", "runtrim agent \"fix a small bug\" --copy", "runtrim finish"].map((cmd) => (
               <div
                 key={cmd}
                 className="flex items-center overflow-hidden rounded-[6px]"
@@ -193,9 +222,11 @@ export default async function RunsPage() {
             const dateStr = runDate(run);
             const projectName = run.project_id ? (projectMap[run.project_id] ?? null) : null;
             const statusLabel = formatStatusLabel(run.status);
+            const statusNormalized = (statusLabel ?? "").toLowerCase();
             const riskLabel = run.risk_after ?? run.risk_before;
             const filesChanged = run.changed_files?.length ?? 0;
             const proofGaps = run.missing_proof_items?.length ?? 0;
+            const restore = parseRestoreStatus(run.raw_report);
             const borderClass = i < runs.length - 1 ? "border-b border-white/6" : "";
             const bgStyle = { background: i % 2 === 0 ? "#0B0C1F" : "#090A1B" };
 
@@ -219,6 +250,14 @@ export default async function RunsPage() {
                     <p className="font-mono text-[#8a8f98]">Tokens: {tokens ?? "-"}</p>
                     <p className="font-mono text-[#8a8f98]">{dateStr}</p>
                   </div>
+                  <p className="font-mono text-[10px] text-[#6f7692]">
+                    {restore.hasSyncedMetadata && restore.available
+                      ? "Restore available (local apply via CLI)"
+                      : "Restore point is local. Use: runtrim restore last --preview"}
+                  </p>
+                  {(statusNormalized === "warn" || statusNormalized === "blocked") && (
+                    <p className="font-mono text-[10px] text-[#8a8f98]">Preview restore before continuing.</p>
+                  )}
                 </div>
 
                 <div className="hidden items-center gap-x-5 px-6 py-3 md:grid md:grid-cols-[minmax(0,4fr)_minmax(0,1.2fr)_max-content_max-content_max-content_max-content_minmax(0,1.2fr)_auto]">
@@ -230,6 +269,14 @@ export default async function RunsPage() {
                   <p className="font-mono text-[11px] text-[#8a8f98]">{proofGaps}</p>
                   <p className="font-mono text-[12px] text-[#8a8f98]">{tokens ?? "-"}</p>
                   <div className="flex items-center gap-2">
+                    <span className="rounded border border-white/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#8f96a3]">
+                      {restore.hasSyncedMetadata && restore.available ? "restore available" : "local restore"}
+                    </span>
+                    {(statusNormalized === "warn" || statusNormalized === "blocked") && (
+                      <span className="rounded border border-[#F0BF72]/20 bg-[#F0BF72]/8 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#F2C88D]">
+                        preview restore
+                      </span>
+                    )}
                     <p className="font-mono text-[11px] text-[#5a5f68]">{dateStr}</p>
                     <span className="rounded border border-white/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#9ca2ad]">Open report</span>
                     <ArrowRight className="size-3.5 text-[#5a5f68] transition-colors group-hover:text-[#7680AA]" />

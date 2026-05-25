@@ -26,14 +26,18 @@ Tell the user to run: `runtrim finish`
 
 <!-- RUNTRIM_CURSOR_RULE_BEGIN -->
 RunTrim project instructions
+RUNTRIM_AGENT_INSTRUCTIONS_VERSION: 2
 - Before editing, read RunTrim project memory and profile context.
-- Verify active contract first. If MCP is available and no contract is active, call runtrim_create_contract with the user's task.
+- Before editing, create or verify an active RunTrim contract for the current user task.
+- If MCP is available and no active contract exists, call runtrim_create_contract with the user's task.
 - If MCP is unavailable, ask the user to run: runtrim agent "task" --copy
-- Stay inside active contract scope.
-- Before high-risk edits (auth, billing, middleware/proxy, migrations, sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.
+- Before touching risky paths (auth, billing, middleware/proxy, migrations, env/sensitive files, broad app-wide refactors), call runtrim_check_path when available.
+- Use RunTrim project memory and stay inside active contract scope.
+- Do not silently expand scope. Preserve existing project style and logic.
 - Never read or print env file contents.
-- Do not continue outside scope silently. Request: runtrim approve "Allow <path/scope> for this run only"
-- At the end, run or ask for runtrim finish. Do not claim completion before finish verification.
+- If scope must expand, stop and request approval: runtrim approve "Allow <path/scope> for this run only"
+- At the end, run runtrim finish if terminal execution is available, otherwise ask the user to run runtrim finish.
+- Do not claim completion before finish verification when RunTrim is active.
 
 RunTrim MCP:
 - runtrim mcp instructions

@@ -74,7 +74,61 @@ export function getConfigPath(cwd = process.cwd()): string {
 }
 
 export function getRunsDir(cwd = process.cwd()): string {
+  return path.join(getInternalDir(cwd), "runs");
+}
+
+export function getLegacyRunsDir(cwd = process.cwd()): string {
   return path.join(getConfigDir(cwd), "runs");
+}
+
+export function getInternalDir(cwd = process.cwd()): string {
+  return path.join(getConfigDir(cwd), "internal");
+}
+
+export function getPreviewsDir(cwd = process.cwd()): string {
+  return path.join(getInternalDir(cwd), "previews");
+}
+
+export function getLegacyPreviewsDir(cwd = process.cwd()): string {
+  return path.join(getConfigDir(cwd), "previews");
+}
+
+export function getRestoresDir(cwd = process.cwd()): string {
+  return path.join(getInternalDir(cwd), "restores");
+}
+
+export function getLegacyRestoresDir(cwd = process.cwd()): string {
+  return path.join(getConfigDir(cwd), "restores");
+}
+
+export function getContractsArchiveDir(cwd = process.cwd()): string {
+  return path.join(getInternalDir(cwd), "contracts-archive");
+}
+
+export function getLegacyContractsArchiveDir(cwd = process.cwd()): string {
+  return path.join(getConfigDir(cwd), "contracts", "archive");
+}
+
+export function getAgentArchiveDir(cwd = process.cwd()): string {
+  return path.join(getInternalDir(cwd), "agent-archive");
+}
+
+export function getLegacyAgentDir(cwd = process.cwd()): string {
+  return path.join(getConfigDir(cwd), "agent");
+}
+
+export function ensureInternalArtifactDirs(cwd = process.cwd()): void {
+  const dirs = [
+    getInternalDir(cwd),
+    getRunsDir(cwd),
+    getPreviewsDir(cwd),
+    getRestoresDir(cwd),
+    getContractsArchiveDir(cwd),
+    getAgentArchiveDir(cwd),
+  ];
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  }
 }
 
 export function configExists(cwd = process.cwd()): boolean {

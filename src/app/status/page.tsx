@@ -37,9 +37,9 @@ const COMPONENTS = [
     latency: "310ms p95",
   },
   {
-    name: "Bridge Mode",
+    name: "Agent control flow",
     status: "Operational",
-    desc: "runtrim init, runtrim go, runtrim finish, and protocol checks.",
+    desc: "runtrim start, runtrim doctor, runtrim agent, runtrim finish, and protocol checks.",
     uptime: "99.99%",
     latency: "1.3s run compile",
   },
