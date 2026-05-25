@@ -74,7 +74,8 @@
       "Bash(node dist-cli/runtrim.cjs doctor)",
       "Bash(node dist-cli/runtrim.cjs --help)",
       "Bash(node dist-cli/runtrim.cjs start)",
-      "Bash(node dist-cli/runtrim.cjs repo status)"
+      "Bash(node dist-cli/runtrim.cjs repo status)",
+      "Read(//c/Users/miche/.claude/projects/c--Users-miche-Desktop-runtrim/memory/**)"
     ]
   }
 }
