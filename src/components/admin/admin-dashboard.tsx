@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   RefreshCw, LogOut, Terminal, Globe, Check, X,
   AlertCircle, ArrowRight, Users, Activity, BarChart2,
@@ -394,6 +395,12 @@ export function AdminDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/planning"
+              className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-[12px] text-[#5A6480] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+            >
+              Planning
+            </Link>
             {lastFetched && (
               <span className="hidden font-mono text-[10px] text-[#2E3554] sm:block">
                 {rel(lastFetched.toISOString())} ago

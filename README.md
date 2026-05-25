@@ -84,6 +84,19 @@ npm run runtrim -- init
 npm run runtrim -- start
 ```
 
+## CLI release checklist
+
+Before publishing to npm:
+
+1. `npm run build`
+2. `npm run verify:cli`
+3. `npm run verify:package`
+4. `npm link`
+5. `runtrim agent --help`
+6. `runtrim go "test task" --no-sync`
+7. `npm version patch`
+8. `npm publish`
+
 ## What RunTrim does
 
 - audits task scope before execution
