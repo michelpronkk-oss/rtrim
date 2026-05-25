@@ -1,10 +1,10 @@
 {
   "name": "runtrim",
   "version": "0.1.15",
-  "description": "CLI guard layer that scopes AI coding runs before they waste tokens.",
+  "description": "The control layer for AI coding agents.",
   "license": "MIT",
   "author": "RunTrim",
-  "homepage": "https://runtrim.dev",
+  "homepage": "https://www.runtrim.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/michelpronkk-oss/rtrim.git"
@@ -15,11 +15,15 @@
   "keywords": [
     "cli",
     "ai-coding",
+    "coding-agents",
     "codex",
     "claude",
     "cursor",
+    "mcp",
     "developer-tools",
-    "prompt-guard"
+    "agent-control",
+    "code-safety",
+    "ai-agents"
   ],
   "bin": {
     "runtrim": "dist-cli/runtrim.cjs"
