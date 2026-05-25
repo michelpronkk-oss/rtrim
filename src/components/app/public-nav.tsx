@@ -76,22 +76,22 @@ type Cta = { label: string; href: string; style: "primary" | "secondary" };
 function getPrimary(state: MobileCtaState): Cta | null {
   switch (state) {
     case "checking":        return null;
-    case "payment-issue":   return { label: "Update payment method", href: "/app/billing",   style: "primary"   };
-    case "logged-out":      return { label: "Install free CLI",       href: "/app/install",   style: "primary"   };
-    case "free":            return { label: "Install free CLI",       href: "/app/install",   style: "primary"   };
-    case "free-trial-used": return { label: "Install free CLI",       href: "/app/install",   style: "primary"   };
-    case "active-pro":      return { label: "Open dashboard",         href: "/app",           style: "primary"   };
-    case "active-builder":  return { label: "Open dashboard",         href: "/app",           style: "primary"   };
-    case "active-team":     return { label: "Open dashboard",         href: "/app",           style: "primary"   };
+    case "payment-issue":   return { label: "Update payment method", href: "/app/billing",  style: "primary" };
+    case "logged-out":      return { label: "Install free CLI",      href: "/app/install",  style: "primary" };
+    case "free":            return { label: "Upgrade to Pro",        href: "/app/trial",    style: "primary" };
+    case "free-trial-used": return { label: "Upgrade to Pro",        href: "/app/billing",  style: "primary" };
+    case "active-pro":      return { label: "Open dashboard",        href: "/app",          style: "primary" };
+    case "active-builder":  return { label: "Open dashboard",        href: "/app",          style: "primary" };
+    case "active-team":     return { label: "Open dashboard",        href: "/app",          style: "primary" };
   }
 }
 
 function getSecondary(state: MobileCtaState): Cta | null {
   switch (state) {
-    case "logged-out":      return { label: "Sign in",             href: "/login",        style: "secondary" };
-    case "free":            return { label: "Start Pro trial",     href: "/app/trial",    style: "secondary" };
-    case "free-trial-used": return { label: "Upgrade to Pro",      href: "/app/billing",  style: "secondary" };
-    case "active-pro":      return { label: "Upgrade to Builder",  href: "/app/billing",  style: "secondary" };
+    case "logged-out":      return { label: "Sign in",            href: "/login",       style: "secondary" };
+    case "free":            return { label: "Docs",               href: "/app/install", style: "secondary" };
+    case "free-trial-used": return { label: "Docs",               href: "/app/install", style: "secondary" };
+    case "active-pro":      return { label: "Upgrade to Builder", href: "/app/billing", style: "secondary" };
     default:                return null;
   }
 }
@@ -184,10 +184,10 @@ export function PublicNav() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Status badge — desktop */}
+        {/* Status badge — desktop only (md+) */}
         <Link
           href="/status"
-          className="hidden sm:inline-flex items-center gap-2 transition-colors hover:border-white/18"
+          className="hidden md:inline-flex items-center gap-2 transition-colors hover:border-white/18"
           style={{
             ...MONO,
             fontSize: 11,
@@ -245,9 +245,10 @@ export function PublicNav() {
             width: 36,
             height: 36,
             borderRadius: 7,
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: open ? "rgba(255,255,255,0.06)" : "transparent",
-            color: "#c9ccd2",
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: open ? "#1a1d22" : "#0e1014",
+            color: "#e2e4e8",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
             transition: "background 0.15s, border-color 0.15s",
           }}
         >
@@ -264,11 +265,10 @@ export function PublicNav() {
             top: 60,
             left: 0,
             right: 0,
-            background: "rgba(8,9,11,0.97)",
-            backdropFilter: "saturate(140%) blur(16px)",
-            WebkitBackdropFilter: "saturate(140%) blur(16px)",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+            zIndex: 100,
+            background: "#08090b",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.85)",
             padding: "20px clamp(20px,4vw,40px) 24px",
           }}
         >
