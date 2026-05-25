@@ -73,7 +73,8 @@
       "Bash(dir c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\app\\\\app)",
       "Bash(node dist-cli/runtrim.cjs doctor)",
       "Bash(node dist-cli/runtrim.cjs --help)",
-      "Bash(node dist-cli/runtrim.cjs start)"
+      "Bash(node dist-cli/runtrim.cjs start)",
+      "Bash(node dist-cli/runtrim.cjs repo status)"
     ]
   }
 }

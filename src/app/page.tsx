@@ -281,7 +281,7 @@ export default function Home() {
 
                             <MotionFade delay={0.22}>
                 <div
-                  className="mt-4 sm:mt-5 flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-1.5 sm:gap-y-2"
+                  className="mt-4 sm:mt-5 hidden sm:flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-1.5 sm:gap-y-2"
                   style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#4a4f59" }}
                 >
                   <span>Local-first</span>
