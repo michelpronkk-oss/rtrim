@@ -28,6 +28,10 @@ type RecentRunRow = {
   status: string | null;
   risk_before: string | null;
   risk_after: string | null;
+  changed_files: Array<string | { path?: string | null }> | null;
+  watch_changed_files: Array<string | { path?: string | null }> | null;
+  agent: string | null;
+  model: string | null;
   created_at_local: string | null;
   evaluated_at_local: string | null;
   created_at: string | null;
@@ -99,10 +103,10 @@ async function getDashboardData(userId: string) {
 
     supabase
       .from("runtrim_runs")
-      .select("id, task, status, risk_before, risk_after, created_at_local, evaluated_at_local, created_at, synced_at")
+      .select("id, task, status, risk_before, risk_after, changed_files, watch_changed_files, agent, model, created_at_local, evaluated_at_local, created_at, synced_at")
       .eq("user_id", userId)
       .order("synced_at", { ascending: false })
-      .limit(10),
+      .limit(12),
   ]);
 
   const profile    = profileResult.data as ProfileRow | null;
@@ -145,7 +149,7 @@ async function getDashboardData(userId: string) {
     recentRuns[0] ??
     null;
 
-  return { plan, planStatus, periodEnd, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun, hasConnectedCli, hasCompletedRun };
+  return { plan, planStatus, periodEnd, runsUsed, runsLimit, totalRuns, totalProjects, totalTokens, totalCost, lastRun, hasConnectedCli, hasCompletedRun, recentRuns };
 }
 
 const RISK_BADGE: Record<string, string> = {
@@ -179,6 +183,28 @@ function StatCard({ label, value, sub, icon: Icon }: {
   );
 }
 
+function StatePill({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] ${
+        ok ? "border-[#4DE8B0]/24 bg-[#4DE8B0]/8 text-[#98e4c8]" : "border-[#F0BF72]/20 bg-[#F0BF72]/8 text-[#F0BF72]"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function gateLabel(currentPlan: string, requiredPlan: "pro" | "builder" | "team"): string {
+  const rank: Record<string, number> = { free: 0, pro: 1, builder: 2, team: 3 };
+  const current = rank[currentPlan] ?? 0;
+  const needed = rank[requiredPlan];
+  if (current >= needed) return "Included";
+  if (requiredPlan === "pro") return "Pro required";
+  if (requiredPlan === "builder") return "Builder required";
+  return "Team required";
+}
+
 export default async function OverviewPage() {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -209,6 +235,8 @@ export default async function OverviewPage() {
   const hasProjects      = (data?.totalProjects   ?? 0) > 0;
   const hasRuns          = (data?.totalRuns       ?? 0) > 0;
   const hasCompletedRun  = data?.hasCompletedRun  ?? false;
+  const lastVerdict      = data?.lastRun?.status ?? null;
+  const hasLastVerdict   = Boolean(lastVerdict);
   const runsUsed    = data?.runsUsed ?? 0;
   const runsLimit   = data?.runsLimit ?? 5;
   const isUnlimited = runsLimit === null;
@@ -398,6 +426,70 @@ export default async function OverviewPage() {
         />
       </div>
 
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Control state</p>
+          <p className="text-[11px] text-[#5a5f68]">RunTrim-aware projects keep memory, instructions, and MCP guidance in place.</p>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Project memory</p>
+            <div className="mt-2"><StatePill ok={hasProjects || hasRuns} label={hasProjects || hasRuns ? "updated" : "setup needed"} /></div>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Agent instructions</p>
+            <div className="mt-2"><StatePill ok={hasConnectedCli} label={hasConnectedCli ? "installed" : "setup needed"} /></div>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">MCP</p>
+            <div className="mt-2"><StatePill ok={true} label="available" /></div>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Local bridge</p>
+            <div className="mt-2"><StatePill ok={hasConnectedCli} label={hasConnectedCli ? "available" : "available after CLI connect"} /></div>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Last finish verdict</p>
+            <div className="mt-2"><StatePill ok={hasLastVerdict} label={hasLastVerdict ? String(lastVerdict).toUpperCase() : "not recorded"} /></div>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Active contract</p>
+            <div className="mt-2"><StatePill ok={hasRuns} label={hasRuns ? "from latest run" : "use runtrim_create_contract"} /></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Cloud and governance access</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Cloud sync</p>
+            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Auto-sync dashboard</p>
+            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Cloud run history</p>
+            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Memory sync</p>
+            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "pro")}</p>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Advanced reports and multi-project</p>
+            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "builder")}</p>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+            <p className="text-[12px] text-[#8a8f98]">Team approvals and audit logs</p>
+            <p className="mt-1 font-mono text-[11px] text-[#c9ccd2]">{gateLabel(plan, "team")}</p>
+            <p className="mt-1 text-[11px] text-[#5a5f68]">Team policies and GitHub checks: coming soon</p>
+          </div>
+        </div>
+      </div>
+
       {isEmpty ? (
         <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 text-center">
           <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8"
@@ -421,49 +513,50 @@ export default async function OverviewPage() {
           </div>
         </div>
       ) : (
-        data?.lastRun && (
-          <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
-            <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">
-              Last guarded run
-            </p>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold text-[#f4f5f7]">
-                  {data.lastRun.task ?? "Untitled run"}
-                </p>
-                <p className="mt-1 font-mono text-[11px] text-[#5a5f68]">
-                  {(() => {
-                    const when =
-                      toTimeMs(data.lastRun.evaluated_at_local) ??
-                      toTimeMs(data.lastRun.created_at_local) ??
-                      toTimeMs(data.lastRun.created_at) ??
-                      toTimeMs(data.lastRun.synced_at);
-                    return when ? new Date(when).toLocaleString() : "—";
-                  })()}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <RiskBadge level={data.lastRun.risk_after ?? data.lastRun.risk_before} />
-                <Link
-                  href={`/app/runs/${data.lastRun.id}`}
-                  className="font-mono text-[11px] text-[#a78bfa] transition-colors hover:text-[#c9ccd2]"
-                >
-                  View report
-                </Link>
-              </div>
-            </div>
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">
+            Recent runs
+          </p>
+          <div className="space-y-2">
+            {(data?.recentRuns ?? []).slice(0, 6).map((run) => {
+              const changedCount = [...(run.changed_files ?? []), ...(run.watch_changed_files ?? [])].length;
+              const when =
+                toTimeMs(run.evaluated_at_local) ??
+                toTimeMs(run.created_at_local) ??
+                toTimeMs(run.created_at) ??
+                toTimeMs(run.synced_at);
+              return (
+                <div key={run.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold text-[#f4f5f7]">{run.task ?? "Untitled run"}</p>
+                    <p className="mt-1 font-mono text-[10px] text-[#5a5f68]">
+                      {(run.agent ?? run.model ?? "agent n/a")} · {when ? new Date(when).toLocaleString() : "—"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatePill ok={Boolean(run.status)} label={(run.status ?? "unknown").toUpperCase()} />
+                    <RiskBadge level={run.risk_after ?? run.risk_before} />
+                    <span className="font-mono text-[10px] text-[#8a8f98]">{changedCount} files</span>
+                    <Link href={`/app/runs/${run.id}`} className="font-mono text-[11px] text-[#a78bfa] transition-colors hover:text-[#c9ccd2]">
+                      Open
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )
+        </div>
       )}
 
       {/* Sync banner */}
       <div className="rounded-xl border border-white/6 bg-[#0e1116] px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-semibold text-[#f4f5f7]">CLI cloud sync is live.</p>
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">{plan === "free" ? "Cloud sync requires Pro." : "CLI cloud sync is available on your plan."}</p>
             <p className="mt-0.5 text-[12px] leading-5 text-[#5a5f68]">
-              Connect your CLI with <code className="font-mono text-[#a78bfa]">runtrim login</code> then run{" "}
-              <code className="font-mono text-[#a78bfa]">runtrim sync</code> from any project.
+              {plan === "free"
+                ? <>Free includes local setup, local memory, and local run history. Upgrade to Pro to unlock auto-sync dashboard, cloud run history, and memory sync.</>
+                : <>Connect your CLI with <code className="font-mono text-[#a78bfa]">runtrim login</code> then run <code className="font-mono text-[#a78bfa]">runtrim sync</code> from any project.</>}
             </p>
           </div>
           <Link

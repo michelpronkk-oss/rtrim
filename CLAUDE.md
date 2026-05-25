@@ -9,14 +9,14 @@ After edits, ask the user to run: runtrim finish
 
 <!-- RUNTRIM:START -->
 RunTrim project instructions
-- Use RunTrim project memory before editing.
-- Stay inside the active RunTrim contract.
-- If no active contract exists, ask the user to run runtrim agent "task" --copy or use MCP if configured.
-- Check path scope before editing high-risk files.
+- Before editing, read RunTrim project memory and profile context.
+- Verify active contract first. If MCP is available and no contract is active, call runtrim_create_contract with the user's task.
+- If MCP is unavailable, ask the user to run: runtrim agent "task" --copy
+- Stay inside active contract scope.
+- Before high-risk edits (auth, billing, middleware/proxy, migrations, sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.
 - Never read or print env file contents.
-- Do not touch sensitive files unless explicitly approved.
-- If scope must expand, request: runtrim approve "..."
-- At the end, run or ask for: runtrim finish
+- Do not continue outside scope silently. Request: runtrim approve "Allow <path/scope> for this run only"
+- At the end, run or ask for runtrim finish. Do not claim completion before finish verification.
 
 RunTrim MCP:
 - runtrim mcp instructions

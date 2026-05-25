@@ -5,7 +5,7 @@ import { Check, ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
   title: "Pricing | RunTrim",
   description:
-    "RunTrim free CLI is live. Pro, Builder, and Team are live plans. Start local, scale when it matters.",
+    "RunTrim plans for local-first AI agent control: Free, Pro, Builder, and Team.",
   alternates: { canonical: "https://www.runtrim.com/pricing" },
 };
 
@@ -14,16 +14,16 @@ const PLANS = [
     id:        "free",
     name:      "Free",
     price:     "$0",
-    summary:   "Local CLI. No account required.",
+    summary:   "Local control for individual AI coding runs.",
     highlight: false,
     badge:     null,
     bullets: [
-      "Local CLI â€” guard, check, report, history",
-      "Bridge Mode: 5 runs per month",
-      "Local project memory",
-      "Token and cost estimates",
-      "Basic reports",
-      "Clean continuation prompts",
+      "Local guarded runs",
+      "Project setup",
+      "Scope, memory and finish checks",
+      "Local run history",
+      "Sensitive file warnings",
+      "No account required",
     ],
     cta:       "Install free CLI",
     ctaHref:   "/app/install",
@@ -32,57 +32,57 @@ const PLANS = [
   {
     id:        "pro",
     name:      "Pro",
-    price:     "$12/month",
-    summary:   "Unlimited Bridge Mode, cloud sync, and reports.",
-    highlight: false,
-    badge:     null,
+    price:     "$29/month",
+    summary:   "Personal agent control with synced memory and cloud history.",
+    highlight: true,
+    badge:     "Recommended",
     bullets: [
-      "Unlimited Bridge Mode runs",
-      "Cloud sync â€” run history and memory",
-      "Continuation packs",
-      "Weekly savings report",
-      "Project memory across sessions",
-      "Agent features",
+      "Everything in Free",
+      "Cloud sync dashboard",
+      "Memory sync",
+      "Unlimited guarded handoffs",
+      "Savings and report history",
+      "3-day trial",
     ],
-    cta:       "Request Pro access",
-    ctaHref:   "/login",
-    ctaStyle:  "border",
+    cta:       "Start Pro trial",
+    ctaHref:   "/app/trial",
+    ctaStyle:  "fill",
   },
   {
     id:        "builder",
     name:      "Builder",
-    price:     "$29/month",
-    summary:   "Advanced guardrails for serious builders.",
-    highlight: true,
-    badge:     "Recommended",
+    price:     "$49/month",
+    summary:   "For founders shipping production code with AI agents daily.",
+    highlight: false,
+    badge:     null,
     bullets: [
       "Everything in Pro",
       "Unlimited projects",
-      "Advanced scope drift detection",
-      "Advanced risk scoring",
-      "Custom forbidden-file rules",
-      "Exportable run reports",
+      "Pro reports",
+      "Priority Run Compiler and advanced guardrails",
+      "Higher run and history limits",
+      "Early access to advanced integrations",
     ],
-    cta:       "Request Builder access",
+    cta:       "Get Builder",
     ctaHref:   "/login",
-    ctaStyle:  "fill",
+    ctaStyle:  "border",
   },
   {
     id:        "team",
     name:      "Team",
-    price:     "from $99/month",
-    summary:   "Shared workspace, policies, and audit logs.",
+    price:     "from $24/seat",
+    summary:   "Shared control for teams using AI coding agents.",
     highlight: false,
     badge:     null,
     bullets: [
       "Everything in Builder",
-      "Shared run policies",
-      "Team run history",
-      "GitHub PR checks",
+      "Shared team state",
+      "Shared memory",
+      "Approvals",
       "Audit logs",
-      "Org-level budget rules",
+      "Team policies and GitHub checks (coming soon)",
     ],
-    cta:       "Join waitlist",
+    cta:       "Join Team waitlist",
     ctaHref:   "/login",
     ctaStyle:  "border",
   },
@@ -91,11 +91,9 @@ const PLANS = [
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
-      {/* Header */}
       <header className="border-b border-white/8 bg-[#07071A]/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
             <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
           </Link>
@@ -107,18 +105,16 @@ export default function PricingPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-16">
-        {/* Heading */}
         <div className="mb-14 text-center">
           <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4D5070]">Pricing</p>
           <h1 className="text-[2rem] font-bold tracking-[-0.04em] text-[#EDEEFF] sm:text-[2.6rem]">
-            Start local. Scale when it matters.
+            The control plans for AI coding agents.
           </h1>
-          <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.75] text-[#5E6A88]">
-            Free CLI works without an account. Pro, Builder, and Team are live with unlimited Bridge Mode and cloud sync.
+          <p className="mx-auto mt-4 max-w-[560px] text-[14px] leading-[1.75] text-[#5E6A88]">
+            Start local with Free, move to Pro for synced personal workflows, then scale to Builder and Team controls.
           </p>
         </div>
 
-        {/* Plan cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan) => (
             <div
@@ -171,17 +167,15 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Fine print */}
         <div className="mt-10 space-y-1.5 text-center">
           <p className="text-[12px] text-[#2E3554]">
             Cloud sync stores run metadata only. Source code never leaves your machine.
           </p>
           <p className="text-[12px] text-[#2E3554]">
-            Free Bridge Mode limit: 5 runs per calendar month. Unlimited on Pro and above.
+            Team policies, GitHub checks, and approval workflows are next-stage team controls.
           </p>
         </div>
 
-        {/* Back link */}
         <div className="mt-12 text-center">
           <Link href="/" className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
             Back to home

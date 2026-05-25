@@ -1452,6 +1452,7 @@ type StartProjectProfile = {
 };
 
 type StartAgentFileState = "updated" | "found" | "not found";
+type McpSnippetState = "generated" | "unchanged";
 
 function getBridgeDir(cwd: string): string {
   return path.join(getConfigDir(cwd), "bridge");
@@ -1463,6 +1464,10 @@ function getBridgeStatePath(cwd: string): string {
 
 function getProjectProfilePath(cwd: string): string {
   return path.join(getConfigDir(cwd), "project-profile.json");
+}
+
+function getProjectMcpDir(cwd: string): string {
+  return path.join(getConfigDir(cwd), "mcp");
 }
 
 function readBridgeState(cwd: string): BridgeState | null {
@@ -1697,14 +1702,14 @@ function upsertRuntrimStartBlock(filePath: string, blockBody: string): StartAgen
 function buildRuntrimAgentBlockContent(): string {
   return [
     "RunTrim project instructions",
-    "- Use RunTrim project memory before editing.",
-    "- Stay inside the active RunTrim contract.",
-    "- If no active contract exists, ask the user to run runtrim agent \"task\" --copy or use MCP if configured.",
-    "- Check path scope before editing high-risk files.",
+    "- Before editing, read RunTrim project memory and profile context.",
+    "- Verify active contract first. If MCP is available and no contract is active, call runtrim_create_contract with the user's task.",
+    "- If MCP is unavailable, ask the user to run: runtrim agent \"task\" --copy",
+    "- Stay inside active contract scope.",
+    "- Before high-risk edits (auth, billing, middleware/proxy, migrations, sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.",
     "- Never read or print env file contents.",
-    "- Do not touch sensitive files unless explicitly approved.",
-    "- If scope must expand, request: runtrim approve \"...\"",
-    "- At the end, run or ask for: runtrim finish",
+    "- Do not continue outside scope silently. Request: runtrim approve \"Allow <path/scope> for this run only\"",
+    "- At the end, run or ask for runtrim finish. Do not claim completion before finish verification.",
     "",
     "RunTrim MCP:",
     "- runtrim mcp instructions",
@@ -1865,9 +1870,11 @@ function updateStartMemory(cwd: string, profile: StartProjectProfile): string {
       : ["- none detected"]),
     "",
     "Default agent rules:",
-    "- Stay inside the active contract.",
-    "- Check scope before editing high-risk or sensitive paths.",
-    '- If scope must expand, use: runtrim approve "..."',
+    "- Use RunTrim memory/profile before planning edits.",
+    "- If no active contract exists and MCP is available, call runtrim_create_contract.",
+    '- If MCP is unavailable, ask the user to run: runtrim agent "task" --copy',
+    "- Check high-risk or sensitive paths before editing. If MCP is available, call runtrim_check_path.",
+    '- If scope must expand, use: runtrim approve "Allow <path/scope> for this run only"',
     "- End with runtrim finish verification.",
     "- Never read or print env file contents.",
     "",
@@ -1887,16 +1894,93 @@ function updateStartAgentInstructions(cwd: string): string {
   const existing = fs.existsSync(instructionsPath) ? fs.readFileSync(instructionsPath, "utf-8") : "";
   const body = [
     "RunTrim agent instructions:",
-    "- Use RunTrim project memory before editing.",
-    "- Stay inside the active contract.",
-    "- Check path scope before editing sensitive or high-risk files.",
-    "- If user asks to expand scope, request approval instead of silently continuing.",
-    "- Run finish verification at the end.",
+    "- Use RunTrim project memory and profile before editing.",
+    "- Verify active contract before edits. If MCP is available and contract is missing, call runtrim_create_contract with the user's task.",
+    '- If MCP is unavailable, ask user to run: runtrim agent "task" --copy',
+    "- For high-risk paths (auth, billing, middleware/proxy, migrations, sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.",
+    '- If scope must expand, request: runtrim approve "Allow <path/scope> for this run only"',
+    "- Run finish verification at the end. Do not claim completion before runtrim finish.",
     "- Never read or print env file contents.",
+    "",
+    "RunTrim MCP:",
+    "- runtrim mcp instructions",
+    "- runtrim mcp start",
   ].join("\n");
   const updated = replaceManagedSection(existing, "RUNTRIM_AGENT_INSTRUCTIONS", body);
   fs.writeFileSync(instructionsPath, updated, "utf-8");
   return instructionsPath;
+}
+
+function buildProjectMcpSnippetPayload(): Record<string, unknown> {
+  return {
+    mcpServers: {
+      runtrim: {
+        command: "runtrim",
+        args: ["mcp", "start"],
+      },
+    },
+  };
+}
+
+function upsertJsonFile(filePath: string, payload: Record<string, unknown>): McpSnippetState {
+  const next = `${JSON.stringify(payload, null, 2)}\n`;
+  if (fs.existsSync(filePath)) {
+    const current = fs.readFileSync(filePath, "utf-8");
+    if (current === next) return "unchanged";
+  } else {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(filePath, next, "utf-8");
+  return "generated";
+}
+
+function ensureProjectMcpSnippets(cwd: string): {
+  dir: string;
+  files: Array<{ relativePath: string; state: McpSnippetState }>;
+} {
+  const dir = getProjectMcpDir(cwd);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const payload = buildProjectMcpSnippetPayload();
+  const targets = [
+    path.join(dir, "claude-desktop.json"),
+    path.join(dir, "cursor.json"),
+    path.join(dir, "generic.json"),
+  ];
+  const files = targets.map((target) => ({
+    relativePath: path.relative(cwd, target),
+    state: upsertJsonFile(target, payload),
+  }));
+  return { dir, files };
+}
+
+function detectKnownMcpConfigPresence(): {
+  claudeConfigPath: string | null;
+  claudeConfigFound: boolean;
+  cursorConfigPath: string | null;
+  cursorConfigFound: boolean;
+} {
+  const home = os.homedir();
+  const appData = process.env.APPDATA;
+  const platform = process.platform;
+  const claudeCandidates = [
+    appData ? path.join(appData, "Claude", "claude_desktop_config.json") : "",
+    platform === "darwin" ? path.join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json") : "",
+    platform === "linux" ? path.join(home, ".config", "Claude", "claude_desktop_config.json") : "",
+  ].filter(Boolean);
+  const cursorCandidates = [
+    appData ? path.join(appData, "Cursor", "User", "mcp.json") : "",
+    platform === "darwin" ? path.join(home, "Library", "Application Support", "Cursor", "User", "mcp.json") : "",
+    platform === "linux" ? path.join(home, ".config", "Cursor", "User", "mcp.json") : "",
+  ].filter(Boolean);
+  const claudeMatch = claudeCandidates.find((p) => fs.existsSync(p)) ?? null;
+  const cursorMatch = cursorCandidates.find((p) => fs.existsSync(p)) ?? null;
+  return {
+    claudeConfigPath: claudeMatch ?? (claudeCandidates[0] ?? null),
+    claudeConfigFound: Boolean(claudeMatch),
+    cursorConfigPath: cursorMatch ?? (cursorCandidates[0] ?? null),
+    cursorConfigFound: Boolean(cursorMatch),
+  };
 }
 
 function appendContractAmendment(cwd: string, approvalText: string): { ok: boolean; reason?: string; fileLimit?: number } {
@@ -3265,6 +3349,8 @@ program
     const memoryPath = updateStartMemory(cwd, profile);
     const instructionsPath = updateStartAgentInstructions(cwd);
     const agentEnv = syncStartAgentEnvironment(cwd);
+    const mcpSnippets = ensureProjectMcpSnippets(cwd);
+    const mcpConfigPresence = detectKnownMcpConfigPresence();
 
     console.log(BOLD("RunTrim project setup"));
     console.log("");
@@ -3290,9 +3376,19 @@ program
     console.log(chalk.white(`  - ${path.relative(cwd, profilePath)}`));
     console.log(chalk.white(`  - ${path.relative(cwd, memoryPath)}`));
     console.log(chalk.white(`  - ${path.relative(cwd, instructionsPath)}`));
+    for (const snippet of mcpSnippets.files) {
+      if (snippet.state === "generated") console.log(chalk.white(`  - ${snippet.relativePath}`));
+    }
     for (const rel of agentEnv.updatedFiles) {
       console.log(chalk.white(`  - ${rel}`));
     }
+    console.log("");
+    console.log(DIM("  MCP"));
+    console.log(chalk.white("  - Server: available"));
+    console.log(chalk.white(`  - Config snippets: ${mcpSnippets.files.some((f) => f.state === "generated") ? "generated" : "ready"}`));
+    console.log(chalk.white(`  - Claude Desktop config: ${mcpConfigPresence.claudeConfigFound ? "found" : "not found"}`));
+    console.log(chalk.white(`  - Cursor config: ${mcpConfigPresence.cursorConfigFound ? "found" : "not found"}`));
+    console.log(chalk.white(`  - Project snippets: ${path.relative(cwd, mcpSnippets.dir)}`));
     console.log("");
     console.log(DIM("  Recommended"));
     console.log(chalk.white("  1. Open your agent in this project."));
@@ -3311,6 +3407,7 @@ program
     console.log("");
     console.log(DIM("  Optional MCP"));
     console.log(chalk.white("  runtrim mcp instructions"));
+    console.log(chalk.white("  runtrim mcp config --print"));
     console.log(chalk.white("  runtrim mcp start"));
     console.log("");
     console.log(DIM("  Adapters"));
@@ -4663,10 +4760,57 @@ mcpCommand
   .command("instructions")
   .description("Print MCP usage note for agents")
   .action(() => {
+    const cwd = process.cwd();
+    const snippets = ensureProjectMcpSnippets(cwd);
+    const detected = detectKnownMcpConfigPresence();
     console.log("");
-    console.log("RunTrim MCP usage note");
-    console.log("When using RunTrim, check path scope before editing files.");
-    console.log("If a requested file is outside scope, call runtrim_suggest_approval and ask the user before continuing.");
+    console.log("RunTrim MCP");
+    console.log("RunTrim MCP lets compatible agents call local RunTrim tools before and during edits.");
+    console.log("");
+    console.log("Tools available:");
+    console.log("- runtrim_create_contract");
+    console.log("- runtrim_check_path");
+    console.log("- runtrim_suggest_approval");
+    console.log("- runtrim_finish_guidance");
+    console.log("");
+    console.log("Project-local snippets:");
+    for (const file of snippets.files) {
+      console.log(`- ${file.relativePath}`);
+    }
+    console.log("");
+    console.log("How to connect:");
+    console.log(`- Open ${path.relative(cwd, path.join(getProjectMcpDir(cwd), "claude-desktop.json"))} or cursor.json`);
+    console.log("- Copy the runtrim mcpServers block into your MCP client config.");
+    console.log("- Then run: runtrim mcp start");
+    console.log("");
+    console.log("Detected local app configs (read-only):");
+    console.log(`- Claude Desktop: ${detected.claudeConfigFound ? "found" : "not found"}${detected.claudeConfigPath ? ` (${detected.claudeConfigPath})` : ""}`);
+    console.log(`- Cursor: ${detected.cursorConfigFound ? "found" : "not found"}${detected.cursorConfigPath ? ` (${detected.cursorConfigPath})` : ""}`);
+    console.log("");
+    console.log("RunTrim does not modify global MCP configs automatically.");
+    console.log("");
+  });
+
+mcpCommand
+  .command("config")
+  .description("Generate or print project-local MCP config snippets")
+  .option("--print", "Print generic snippet to terminal")
+  .option("--write-project", "Write snippets under .runtrim/mcp")
+  .action((options: { print?: boolean; writeProject?: boolean }) => {
+    const cwd = process.cwd();
+    const snippets = ensureProjectMcpSnippets(cwd);
+    if (options.print) {
+      console.log("");
+      console.log(JSON.stringify(buildProjectMcpSnippetPayload(), null, 2));
+      console.log("");
+    }
+    console.log("");
+    console.log("RunTrim MCP config");
+    console.log(`Snippet directory: ${path.relative(cwd, snippets.dir)}`);
+    for (const file of snippets.files) {
+      console.log(`- ${file.relativePath} (${file.state})`);
+    }
+    console.log("Global/app config is not modified automatically.");
     console.log("");
   });
 

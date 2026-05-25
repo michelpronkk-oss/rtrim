@@ -9,7 +9,7 @@ import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 export const metadata: Metadata = {
   title: "Plans | RunTrim",
   description:
-    "RunTrim plans. Free CLI runs locally. Pro starts with a 3-day trial - cloud sync, memory, unlimited Bridge Mode. Builder and Team are reviewed access.",
+    "RunTrim plans for the AI coding agent control layer. Start local, then scale to synced, founder, and team controls.",
   alternates: { canonical: "https://www.runtrim.com/plans" },
 };
 
@@ -22,18 +22,18 @@ const PLANS = [
     price: null,
     priceLabel: "Free",
     badge: null,
-    positioning: "Try RunTrim locally.",
+    positioning: "Local control for individual AI coding runs.",
     microcopy: "No account required. Runs stay local.",
     ctaLabel: "Install Free CLI",
     ctaHref: "/app/install",
     ctaVariant: "secondary" as const,
     features: [
-      "Local CLI",
-      "runtrim init",
-      "Limited Bridge Mode runs",
+      "Local guarded runs",
+      "Project setup",
+      "Scope, memory and finish checks",
       "Local run history",
-      "Basic local reports",
-      "Basic memory and continuation",
+      "Sensitive file warnings",
+      "No account required",
     ],
     missing: [
       "No cloud dashboard",
@@ -47,18 +47,18 @@ const PLANS = [
     price: null,
     priceLabel: "$29 / month",
     badge: "Recommended",
-    positioning: "Start a 3-day trial. Unlimited Bridge Mode, cloud sync, and reports for solo builders.",
+    positioning: "Personal agent control with synced memory and cloud history.",
     microcopy: "3-day trial - cancel anytime",
     ctaLabel: "Start free 3-day Pro trial",
     ctaHref: null,
     ctaVariant: "primary" as const,
     features: [
-      "Unlimited Bridge Mode",
+      "Everything in Free",
       "Auto-sync dashboard",
       "Cloud run history",
       "Memory sync",
-      "Continuation / handoff",
-      "Savings reports",
+      "Unlimited guarded handoffs",
+      "Savings and report history",
     ],
     missing: [],
   },
@@ -68,7 +68,7 @@ const PLANS = [
     price: null,
     priceLabel: "$49 / month",
     badge: "Serious projects",
-    positioning: "Advanced guardrails for founders and agencies shipping production code daily.",
+    positioning: "For founders shipping production code with AI agents daily.",
     microcopy: null,
     ctaLabel: "Request Builder access",
     ctaHref: null,
@@ -76,10 +76,10 @@ const PLANS = [
     features: [
       "Everything in Pro",
       "Unlimited projects",
-      "Proof / drift reports",
+      "Pro reports",
       "Priority Run Compiler + Agent Preview access",
-      "Forbidden file controls",
-      "Exportable reports",
+      "Advanced guardrails",
+      "Higher run/history limits",
     ],
     missing: [],
   },
@@ -88,8 +88,8 @@ const PLANS = [
     name: "Team",
     price: null,
     priceLabel: "From $24 / seat",
-    badge: "Reviewed access",
-    positioning: "For teams running AI agents across real codebases.",
+    badge: "Team direction",
+    positioning: "Shared control for teams using AI coding agents.",
     microcopy: null,
     ctaLabel: "Request Team access",
     ctaHref: null,
@@ -97,10 +97,10 @@ const PLANS = [
     features: [
       "Everything in Builder",
       "Shared team state",
-      "Approvals + GitHub checks",
+      "Approvals",
       "Audit logs",
-      "SSO and roles",
-      "Org-level budget rules",
+      "Team policies and GitHub checks (coming soon)",
+      "Shared accountability controls",
     ],
     missing: [],
   },
@@ -122,7 +122,7 @@ const TABLE_ROWS = [
   { label: "Advanced risk scoring",   free: false,      pro: false,      builder: true,        team: true        },
   { label: "Forbidden file controls", free: false,      pro: false,      builder: true,        team: true        },
   { label: "Exportable reports",      free: false,      pro: false,      builder: true,        team: true        },
-  { label: "Team policies",           free: false,      pro: false,      builder: false,       team: true        },
+  { label: "Team policies",           free: false,      pro: false,      builder: false,       team: "planned"   },
   { label: "Shared workspace",        free: false,      pro: false,      builder: false,       team: true        },
   { label: "Audit logs",              free: false,      pro: false,      builder: false,       team: "planned"   },
   { label: "GitHub checks",           free: false,      pro: false,      builder: false,       team: "planned"   },
@@ -202,7 +202,7 @@ export default function PlansPage() {
             className="mx-auto mt-5"
             style={{ fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}
           >
-            Free CLI works without an account. Pro starts with a 3-day trial. Builder and Team are reviewed-access plans for advanced guardrails and team control.
+            Free CLI works without an account. Pro starts with a 3-day trial. Builder is for high-volume founder workflows. Team adds shared controls with next-stage policies and checks.
           </p>
 
           <div
