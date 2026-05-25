@@ -199,7 +199,7 @@ export default function Home() {
                     color: "#6ee7b7", letterSpacing: "0.07em",
                     textTransform: "uppercase",
                   }}>
-                    Control layer active
+                    CONTROL LAYER ACTIVE
                   </span>
                 </span>
               </MotionFade>
@@ -208,39 +208,33 @@ export default function Home() {
                 <h1
                   className="mt-3 sm:mt-5 mb-0"
                   style={{
-                    fontSize: "clamp(34px, 5.4vw, 66px)",
-                    lineHeight: 1.06, letterSpacing: "-0.033em",
+                    fontSize: "clamp(34px, 5vw, 70px)",
+                    lineHeight: 1.04, letterSpacing: "-0.035em",
                     fontWeight: 500, color: "#f4f5f7",
                   }}
                 >
-                  The control layer{" "}
-                  <em style={{ fontStyle: "normal", color: "#8a8f98" }}>for AI coding agents.</em>
+                  The control layer for AI coding agents.
                 </h1>
               </MotionFade>
 
               <MotionFade delay={0.12}>
                 {/* Mobile sub ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â compact single statement */}
-                <p className="sm:hidden" style={{ marginTop: 12, fontSize: 15, lineHeight: 1.6, color: "#8a8f98", maxWidth: 340 }}>
-                  RunTrim scopes AI coding agents before they touch your repo.
+                <p className="sm:hidden" style={{ marginTop: 12, fontSize: 14.5, lineHeight: 1.55, color: "#b8bcc4", maxWidth: 360 }}>
+                  Give coding agents scoped contracts, memory, forbidden-file rules and finish checks before they touch your code.
                 </p>
                 {/* Desktop sub */}
-                <p className="hidden sm:block" style={{ marginTop: 20, fontSize: 17, lineHeight: 1.6, color: "#c9ccd2", maxWidth: 520 }}>
-                  RunTrim gives Claude, Codex, Cursor, ChatGPT, and other coding agents scoped instructions,
-                  project memory, forbidden-file rules, finish checks, and run history before they touch your code.
-                </p>
-                <p className="hidden sm:block" style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6, color: "#8a8f98", maxWidth: 560 }}>
-                  Agents are getting smarter. That makes control more important, not less. Native memory helps an agent remember.
-                  RunTrim defines what it can touch, what it must avoid, how the run is verified, and what carries into the next session.
+                <p className="hidden sm:block" style={{ marginTop: 20, fontSize: 17, lineHeight: 1.58, color: "#c9ccd2", maxWidth: 590 }}>
+                  Give Claude, Codex, Cursor, ChatGPT and other coding agents scoped contracts, project memory, forbidden-file rules and finish checks before they touch your code.
                 </p>
               </MotionFade>
 
               <MotionFade delay={0.17}>
-                <div className="mt-4 sm:mt-8 flex flex-wrap gap-3 items-center">
+                <div className="mt-5 sm:mt-8 flex flex-wrap gap-3 items-center">
                   <Link
                     href="/app/install"
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 10,
-                      height: 40, padding: "0 18px", borderRadius: 7,
+                      height: 42, padding: "0 18px", borderRadius: 7,
                       fontSize: 14, fontWeight: 500,
                       background: "#f4f5f7", color: "#0b0d10",
                       border: "1px solid rgba(255,255,255,0.9)",
@@ -253,7 +247,7 @@ export default function Home() {
                   </Link>
                   <Link
                     href="/plans"
-                    className="inline-flex items-center gap-2 h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
+                    className="inline-flex items-center gap-2 h-[42px] px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
                   >
                     View plans
                   </Link>
@@ -263,26 +257,31 @@ export default function Home() {
               <MotionFade delay={0.22}>
                 {/* Mobile: 2 items inline ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no wrapping */}
                 <div
-                  className="mt-4 flex sm:hidden items-center gap-x-4"
-                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46", whiteSpace: "nowrap" }}
+                  className="mt-4 flex sm:hidden flex-wrap items-center gap-x-4 gap-y-1.5"
+                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#4a4f59" }}
                 >
                   <span>Free CLI</span>
-                  <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.07)", display: "inline-block", flexShrink: 0 }} />
+                  <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block", flexShrink: 0 }} />
+                  <span>Local-first</span>
+                  <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block", flexShrink: 0 }} />
+                  <span>Source code stays local</span>
+                  <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block", flexShrink: 0 }} />
                   <span>No model lock-in</span>
                 </div>
                 {/* Desktop: all 3 */}
                 <div
                   className="mt-6 hidden sm:flex flex-wrap gap-x-5 gap-y-2"
-                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#3a3e46" }}
+                  style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#4a4f59" }}
                 >
                   {[
                     "Free CLI",
-                    "Local-first, source code stays local",
+                    "Local-first",
+                    "Source code stays local",
                     "No model lock-in",
                   ].map((t, i) => (
                     <span key={t} className="flex items-center gap-2">
                       {i > 0 && (
-                        <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.07)", display: "inline-block" }} />
+                        <span style={{ width: 1, height: 10, background: "rgba(255,255,255,0.09)", display: "inline-block" }} />
                       )}
                       {t}
                     </span>

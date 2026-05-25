@@ -2251,7 +2251,7 @@ async function buildRuntrimCreateContractMcp(
     const blockedPayload = {
       contract_created: false,
       task: taskRaw,
-      risk: latest.contract?.audit?.wasteRiskBefore ?? "unknown",
+      risk: latest.contract?.wasteRiskAfter ?? "unknown",
       contract_path: ".runtrim/contracts/latest.md",
       handoff_path: ".runtrim/agent/latest.md",
       allowed_scope_summary: [],
