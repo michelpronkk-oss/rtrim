@@ -271,6 +271,51 @@ function dedupeFiles(files: string[]): string[] {
   return [...new Set(files.filter(Boolean).map((f) => f.replace(/\\/g, "/")))];
 }
 
+function normalizeContractPathPattern(pattern: string): string {
+  let p = pattern.trim().replace(/\\/g, "/");
+  if (!p || p === "-" || p.toLowerCase() === "none") return "";
+  if (p.startsWith("./")) p = p.slice(2);
+  if (p.startsWith("/")) p = p.slice(1);
+  return p;
+}
+
+function looksLikePathPattern(value: string): boolean {
+  const v = value.toLowerCase();
+  return Boolean(v && (v.includes("*") || v.includes("/") || v.includes(".")));
+}
+
+function contractGlobToRegex(pattern: string): RegExp {
+  let out = "^";
+  for (let i = 0; i < pattern.length; i += 1) {
+    const ch = pattern[i];
+    if (ch === "*") {
+      if (pattern[i + 1] === "*") {
+        out += ".*";
+        i += 1;
+      } else {
+        out += "[^/]*";
+      }
+      continue;
+    }
+    if (ch === "?") {
+      out += ".";
+      continue;
+    }
+    if ("\\^$+?.()|{}[]".includes(ch)) out += "\\";
+    out += ch;
+  }
+  out += "$";
+  return new RegExp(out, "i");
+}
+
+function matchesContractPattern(filePath: string, rawPattern: string): boolean {
+  const file = filePath.replace(/\\/g, "/").replace(/^\.?\//, "");
+  const pattern = normalizeContractPathPattern(rawPattern);
+  if (!pattern) return false;
+  if (pattern === "**") return true;
+  return contractGlobToRegex(pattern).test(file);
+}
+
 type SensitivePathState = {
   untracked: boolean;
   ignored: boolean;
@@ -548,7 +593,7 @@ async function runAgentPreview(task: string): Promise<void> {
   console.log("");
   console.log(DIM("  Task               ") + chalk.white(preview.task));
   console.log(DIM("  Risk               ") + riskColor(preview.risk));
-  console.log(DIM("  Routing            ") + chalk.white(`${preview.providerRouting.route} · ${preview.providerRouting.recommendedAgent} · ${preview.providerRouting.executionMode}`));
+  console.log(DIM("  Routing            ") + chalk.white(`${preview.providerRouting.route} | ${preview.providerRouting.recommendedAgent} | ${preview.providerRouting.executionMode}`));
   console.log(DIM("  Contract required  ") + chalk.white(preview.contractRequired ? "yes" : "no"));
   console.log(DIM("  Guard mode         ") + chalk.white(preview.guardMode));
   console.log(DIM("  Approval           ") + chalk.white(preview.approvalRequired));
@@ -978,7 +1023,7 @@ function deriveControlledExecutionRisk(
   return previewRisk;
 }
 
-async function runAgentApply(task: string, mode: { apply: boolean; confirm: boolean }): Promise<void> {
+async function runAgentApply(task: string, mode: { apply: boolean; confirm: boolean; copy?: boolean; primary?: boolean }): Promise<void> {
   const cwd = process.cwd();
   const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
   const changed = dedupeFiles(await getGitDiff(cwd)).filter((f) => {
@@ -1037,16 +1082,46 @@ async function runAgentApply(task: string, mode: { apply: boolean; confirm: bool
   };
   const handoff = writeAgentHandoffArtifacts(cwd, apply, path.relative(cwd, previewPath));
 
-  const copied = await copyToClipboardSafe(fs.readFileSync(handoff.markdownPath, "utf-8"));
+  const copied = mode.copy ? await copyToClipboardSafe(fs.readFileSync(handoff.markdownPath, "utf-8")) : false;
   const run = saveRun(task, previewResult.audit, previewResult.contract, cwd);
   updateRun(run.id, { status: "guarded" }, cwd);
 
   const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, ChalkInstance>)[risk] ?? chalk.white;
+  if (mode.primary) {
+    console.log("");
+    console.log(GO_ACCENT.bold("RunTrim Agent"));
+    console.log("");
+    console.log(DIM("  Task         ") + chalk.white(task));
+    console.log(DIM("  Mode         ") + chalk.white("guarded handoff"));
+    console.log(DIM("  Risk         ") + riskColor(risk));
+    console.log(DIM("  Contract     ") + chalk.white("created"));
+    console.log(DIM("  Handoff      ") + chalk.white("ready"));
+    console.log(DIM("  Routing      ") + chalk.white(`${preview.providerRouting.route} | ${preview.providerRouting.recommendedAgent} | ${preview.providerRouting.executionMode}`));
+    console.log(DIM("  Contract file ") + chalk.white(path.relative(cwd, contractPath)));
+    console.log(DIM("  Handoff file ") + chalk.white(path.relative(cwd, handoff.markdownPath)));
+    console.log(DIM("  Preview file ") + chalk.white(path.relative(cwd, previewPath)));
+    if (copied) console.log(DIM("  Clipboard    ") + chalk.white("Handoff copied to clipboard"));
+    console.log("");
+    if (copied) {
+      console.log(chalk.white("Next:"));
+      console.log(chalk.white("1. Handoff copied. Paste it into your agent."));
+      console.log(chalk.white("2. When done, run: runtrim finish"));
+    } else {
+      console.log(chalk.white("Next:"));
+      console.log(chalk.white("1. Give the handoff to Claude/Codex/Cursor."));
+      console.log(chalk.white("2. Let the agent complete the scoped task."));
+      console.log(chalk.white("3. Run: runtrim finish"));
+      console.log(chalk.white('4. If scope needs to expand, run: runtrim approve "..."'));
+    }
+    console.log("");
+    return;
+  }
+
   console.log("");
   console.log(GO_ACCENT.bold("RunTrim Agent Apply"));
   console.log("");
   console.log(DIM("  Risk         ") + riskColor(risk));
-  console.log(DIM("  Routing      ") + chalk.white(`${preview.providerRouting.route} · ${preview.providerRouting.recommendedAgent} · ${preview.providerRouting.executionMode}`));
+  console.log(DIM("  Routing      ") + chalk.white(`${preview.providerRouting.route} | ${preview.providerRouting.recommendedAgent} | ${preview.providerRouting.executionMode}`));
   console.log(DIM("  Approval     ") + chalk.white(approvalRequired === "no" ? "not required" : approvalRequired));
   console.log(DIM("  Contract     ") + chalk.white(path.relative(cwd, contractPath)));
   console.log(DIM("  Handoff      ") + chalk.white(path.relative(cwd, handoff.markdownPath)));
@@ -1059,7 +1134,6 @@ async function runAgentApply(task: string, mode: { apply: boolean; confirm: bool
   console.log(chalk.white("runtrim finish"));
   console.log("");
 }
-
 async function runAgentDefaultPreviewHandoff(task: string): Promise<void> {
   const cwd = process.cwd();
   const previewResult = await buildAgentPreview(task);
@@ -1072,7 +1146,7 @@ async function runAgentDefaultPreviewHandoff(task: string): Promise<void> {
   console.log("");
   console.log(DIM("  Preview      ") + chalk.white(path.relative(cwd, previewPath)));
   console.log(DIM("  Handoff      ") + chalk.white(path.relative(cwd, handoff.markdownPath)));
-  console.log(DIM("  Routing      ") + chalk.white(`${preview.providerRouting.route} · ${preview.providerRouting.recommendedAgent} · ${preview.providerRouting.executionMode}`));
+  console.log(DIM("  Routing      ") + chalk.white(`${preview.providerRouting.route} | ${preview.providerRouting.recommendedAgent} | ${preview.providerRouting.executionMode}`));
   if (copied) console.log(DIM("  Clipboard    ") + chalk.white("Agent handoff copied"));
   console.log("");
   console.log(chalk.white("Preview created."));
@@ -1429,6 +1503,9 @@ function parseContractSummary(cwd: string): {
   summary: string;
   allowedScope: string[];
   forbiddenScope: string[];
+  allowedPaths: string[];
+  forbiddenPaths: string[];
+  approvedAmendments: string[];
   stopRules: string[];
   risk: string;
   active: boolean;
@@ -1441,6 +1518,9 @@ function parseContractSummary(cwd: string): {
       summary: "",
       allowedScope: [],
       forbiddenScope: [],
+      allowedPaths: [],
+      forbiddenPaths: [],
+      approvedAmendments: [],
       stopRules: [],
       risk: "unknown",
       active: false,
@@ -1459,10 +1539,17 @@ function parseContractSummary(cwd: string): {
     parseBulletList(splitMarkdownSection(lines, "FORBIDDEN SCOPE")).length > 0
       ? parseBulletList(splitMarkdownSection(lines, "FORBIDDEN SCOPE"))
       : parseBulletList(splitMarkdownSection(lines, "## Forbidden scope"));
+  const allowedPaths = parseBulletList(splitMarkdownSection(lines, "## Allowed paths"))
+    .map(normalizeContractPathPattern)
+    .filter((item) => item && looksLikePathPattern(item));
+  const forbiddenPaths = parseBulletList(splitMarkdownSection(lines, "## Forbidden paths"))
+    .map(normalizeContractPathPattern)
+    .filter((item) => item && looksLikePathPattern(item));
   const stopRules =
     parseBulletList(splitMarkdownSection(lines, "STOP RULES")).length > 0
       ? parseBulletList(splitMarkdownSection(lines, "STOP RULES"))
       : parseBulletList(splitMarkdownSection(lines, "## Stop conditions"));
+  const approvedAmendments = parseBulletList(splitMarkdownSection(lines, "## Approved amendments"));
   const modeLine = lines.find((line) => line.toLowerCase().startsWith("mode:")) ?? lines.find((line) => line.toLowerCase().startsWith("risk:"));
   const risk = modeLine?.split(":")[1]?.trim().toLowerCase() ?? "unknown";
   const active = /Status:\s*active/i.test(raw);
@@ -1472,6 +1559,9 @@ function parseContractSummary(cwd: string): {
     summary: objective.slice(0, 280),
     allowedScope: allowedScope.slice(0, 12),
     forbiddenScope: forbiddenScope.slice(0, 12),
+    allowedPaths: allowedPaths.slice(0, 64),
+    forbiddenPaths: forbiddenPaths.slice(0, 64),
+    approvedAmendments: approvedAmendments.slice(0, 24),
     stopRules: stopRules.slice(0, 8),
     risk,
     active,
@@ -1484,6 +1574,40 @@ function parseMemorySummary(cwd: string): { exists: boolean; path: string; summa
   const raw = fs.readFileSync(p, "utf-8");
   const summary = raw.split(/\r?\n/).filter((l) => l.trim()).slice(0, 8).join(" ").slice(0, 320);
   return { exists: true, path: ".runtrim/memory/current.md", summary };
+}
+
+function parseApprovalFileLimit(approvalText: string): number | null {
+  const lower = approvalText.toLowerCase();
+  const match =
+    lower.match(/up to\s+(\d+)\s+files?/) ??
+    lower.match(/allow\s+(\d+)\s+files?/) ??
+    lower.match(/maximum\s+(\d+)\s+files?/);
+  if (!match) return null;
+  const n = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(n) || n < 1 || n > 500) return null;
+  return n;
+}
+
+function appendContractAmendment(cwd: string, approvalText: string): { ok: boolean; reason?: string; fileLimit?: number } {
+  const p = path.join(cwd, ".runtrim", "contracts", "latest.md");
+  if (!fs.existsSync(p)) return { ok: false, reason: "missing_contract" };
+  const raw = fs.readFileSync(p, "utf-8");
+  if (!/Status:\s*active/i.test(raw)) return { ok: false, reason: "inactive_contract" };
+  const timestamp = new Date().toISOString();
+  const sanitized = approvalText.replace(/\r?\n/g, " ").trim();
+  const fileLimit = parseApprovalFileLimit(sanitized);
+  const entries = [`- ${timestamp}: User approved: ${sanitized}.`];
+  if (fileLimit !== null) {
+    entries.push(`- ${timestamp}: File-limit amendment: allow up to ${fileLimit} files for this run only.`);
+  }
+  let updated = raw;
+  if (/^## Approved amendments\s*$/im.test(raw)) {
+    updated = raw.replace(/^## Approved amendments\s*$/im, (m) => `${m}\n${entries.join("\n")}`);
+  } else {
+    updated = `${raw.trimEnd()}\n\n## Approved amendments\n${entries.join("\n")}\n`;
+  }
+  fs.writeFileSync(p, updated, "utf-8");
+  return { ok: true, fileLimit: fileLimit ?? undefined };
 }
 
 function parsePreviewSummary(cwd: string): {
@@ -3106,6 +3230,11 @@ program
     // Active contract
     const contractActive = isContractActive(cwd);
     console.log(DIM("  Contract    ") + (contractActive ? chalk.green("active") : DIM("none")));
+    const contractSummary = parseContractSummary(cwd);
+    if (contractSummary.approvedAmendments.length > 0) {
+      console.log(DIM("  Approvals   ") + chalk.white(`${contractSummary.approvedAmendments.length} amendment${contractSummary.approvedAmendments.length === 1 ? "" : "s"}`));
+      console.log(DIM("  Last appr.  ") + DIM(truncate(contractSummary.approvedAmendments[0], 70)));
+    }
 
     // Active run
     const allRuns   = loadAllRuns(cwd);
@@ -3314,17 +3443,18 @@ program
   });
 
 // Agent config
-const agentCommand = program.command("agent").description("Show or configure local agent execution settings");
+const agentCommand = program.command("agent").description("Start a guarded AI coding run with contract, scope, memory, and handoff");
 
 agentCommand
   .argument("[task]")
+  .option("--copy", "Copy the handoff to clipboard")
   .option("--preview", "Generate an execution preview instead of running any agent")
   .option("--apply", "Generate Agent Apply handoff artifacts")
   .option("--execute", "Create a controlled execution packet and handoff")
   .option("--run", "Alias for --execute")
   .option("--dry-run", "Create execution packet in pending mode without ready status")
   .option("--confirm", "Confirm high-risk apply handoff creation")
-  .action(async (task?: string, options?: { preview?: boolean; apply?: boolean; execute?: boolean; run?: boolean; dryRun?: boolean; confirm?: boolean }) => {
+  .action(async (task?: string, options?: { copy?: boolean; preview?: boolean; apply?: boolean; execute?: boolean; run?: boolean; dryRun?: boolean; confirm?: boolean }) => {
     if (task?.trim()) {
       const normalizedTask = (task ?? "").trim();
       if (options?.preview) {
@@ -3338,14 +3468,27 @@ agentCommand
         });
         return;
       }
+      if (options?.dryRun) {
+        await runAgentPreview(normalizedTask);
+        console.log(chalk.white("Dry-run mode: preview only. No active contract changed."));
+        console.log("");
+        return;
+      }
       if (options?.apply) {
         await runAgentApply(normalizedTask, {
           apply: options?.apply === true,
           confirm: options?.confirm === true,
+          copy: options?.copy === true,
+          primary: false,
         });
         return;
       }
-      await runAgentDefaultPreviewHandoff(normalizedTask);
+      await runAgentApply(normalizedTask, {
+        apply: false,
+        confirm: options?.confirm === true,
+        copy: options?.copy === true,
+        primary: true,
+      });
       return;
     }
 
@@ -4585,7 +4728,7 @@ program
     console.log(GO_ACCENT.bold("Contract"));
     console.log(DIM("  Risk          ") + riskColor(bridgeCtx.riskLevel));
     console.log(DIM("  Category      ") + chalk.white(audit.taskCategory ?? "unknown"));
-    console.log(DIM("  Routing       ") + chalk.white(`${providerRouting.route} · ${providerRouting.recommendedAgent} · ${providerRouting.executionMode}`));
+    console.log(DIM("  Routing       ") + chalk.white(`${providerRouting.route} | ${providerRouting.recommendedAgent} | ${providerRouting.executionMode}`));
     console.log(DIM("  Token budget  ") + chalk.white("~" + bridgeCtx.tokenBudget.toLocaleString()));
     // Show explicit paths prominently if present
     if (audit.explicitPaths && audit.explicitPaths.length > 0) {
@@ -5902,6 +6045,43 @@ program
 // ── runtrim finish ────────────────────────────────────────────────────────────
 
 program
+  .command("approve <approvalText...>")
+  .description("Approve a scoped amendment for the active contract (run-only)")
+  .action((approvalTextParts: string[]) => {
+    const cwd = process.cwd();
+    const approvalText = approvalTextParts.join(" ").trim();
+    if (!approvalText) {
+      console.log("");
+      console.log(chalk.yellow("Approval text is required."));
+      console.log(chalk.white('Example: runtrim approve "Allow up to 20 files and allow src/app/admin/planning/** for this run only"'));
+      console.log("");
+      return;
+    }
+
+    const result = appendContractAmendment(cwd, approvalText);
+    console.log("");
+    if (!result.ok) {
+      if (result.reason === "missing_contract") {
+        console.log(chalk.red("No active contract file found."));
+      } else {
+        console.log(chalk.red("Contract is not active. Start a new run first."));
+      }
+      console.log(chalk.white('Run: runtrim go "<task>"'));
+      console.log("");
+      return;
+    }
+
+    console.log(GO_ACCENT.bold("RunTrim approve"));
+    console.log(chalk.green("  Amendment recorded in .runtrim/contracts/latest.md"));
+    if (typeof result.fileLimit === "number") {
+      console.log(DIM("  File limit  ") + chalk.white(`allow up to ${result.fileLimit} files (run-only amendment)`));
+    }
+    console.log("");
+    console.log(DIM("  Next        ") + chalk.white("Continue the current run and finish with runtrim finish"));
+    console.log("");
+  });
+
+program
   .command("finish")
   .description("Bridge Mode: evaluate agent output, check scope, mark run completed, and sync")
   .option("--no-sync", "Skip cloud sync even if a CLI token is configured")
@@ -5919,6 +6099,7 @@ program
     const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
     const projectAudit = loadProjectAudit(cwd);
     const projectName = projectAudit?.projectName ?? path.basename(cwd);
+    const contractSummary = parseContractSummary(cwd);
 
     if (!activeRun) {
       // ── Fast Run Report path ──────────────────────────────────────────────
@@ -6065,6 +6246,14 @@ program
 
     // All scope evaluation runs only on agent-changed files
     const changedFiles = agentFiles;
+    const outOfContractFiles =
+      contractSummary.allowedPaths.length > 0
+        ? changedFiles.filter((file) => !contractSummary.allowedPaths.some((rule) => matchesContractPattern(file, rule)))
+        : [];
+    const forbiddenPathFiles =
+      contractSummary.forbiddenPaths.length > 0
+        ? changedFiles.filter((file) => contractSummary.forbiddenPaths.some((rule) => matchesContractPattern(file, rule)))
+        : [];
     const maxFiles = inferMaxFilesFromScope(
       activeRun.contract.contract?.relevantScope ?? [],
       config.maxFilesPerRun
@@ -6088,7 +6277,8 @@ program
 
     // ── Derive scope drift status ─────────────────────────────────────────
     let scopeDriftStatus = "passed";
-    if (scope.forbiddenFiles.length > 0)       scopeDriftStatus = "forbidden_touched";
+    if (scope.forbiddenFiles.length > 0 || forbiddenPathFiles.length > 0)       scopeDriftStatus = "forbidden_touched";
+    else if (outOfContractFiles.length > 0)     scopeDriftStatus = "out_of_scope";
     else if (scope.outOfScopeFiles.length > 0)  scopeDriftStatus = "out_of_scope";
     else if (evaluation.scopeDriftRisk === "high" || evaluation.scopeDriftRisk === "medium")
       scopeDriftStatus = "drift_detected";
@@ -6119,6 +6309,12 @@ program
     }
     if (sensitiveIgnored.length > 0) {
       reportParts.push(`${sensitiveIgnored.length} sensitive ignored file${sensitiveIgnored.length === 1 ? "" : "s"} detected.`);
+    }
+    if (outOfContractFiles.length > 0) {
+      reportParts.push(`${outOfContractFiles.length} out-of-contract file${outOfContractFiles.length === 1 ? "" : "s"} detected.`);
+    }
+    if (forbiddenPathFiles.length > 0) {
+      reportParts.push(`${forbiddenPathFiles.length} contract-forbidden file${forbiddenPathFiles.length === 1 ? "" : "s"} touched.`);
     }
     if (scopeDriftStatus === "passed" && changedFiles.length > 0) {
       reportParts.push("Changes within contract.");
@@ -6198,12 +6394,27 @@ program
     }
 
     // ── Output ────────────────────────────────────────────────────────────
+    const blockedBySensitive = scope.sensitiveFiles.length > 0 || sensitiveUntracked.length > 0 || sensitiveIgnored.length > 0;
+    const blockedByContract = outOfContractFiles.length > 0 || forbiddenPathFiles.length > 0;
+    const blockedByExistingHard = scope.forbiddenFiles.length > 0 || scope.status === "limit_exceeded";
+    const finishVerdict: "PASS" | "WARN" | "BLOCKED" =
+      blockedBySensitive || blockedByContract || blockedByExistingHard
+        ? "BLOCKED"
+        : scopeDriftStatus !== "passed" || evaluation.status === "needs_verification" || evaluation.status === "partial"
+          ? "WARN"
+          : "PASS";
+    const verdictColor = finishVerdict === "PASS" ? chalk.green : finishVerdict === "WARN" ? chalk.yellow : chalk.red;
+
     const scopeColor = scopeDriftStatus === "passed" ? chalk.green
       : scopeDriftStatus === "forbidden_touched" ? chalk.red
       : chalk.yellow;
 
     const riskAfter = activeRun.contract.wasteRiskAfter ?? "medium";
     const riskColor = ({ low: chalk.green, medium: chalk.yellow, high: chalk.hex("#FF8C00"), critical: chalk.red } as Record<string, typeof chalk>)[riskAfter] ?? chalk.white;
+
+    console.log(GO_ACCENT.bold("Verdict"));
+    console.log(verdictColor("  " + finishVerdict));
+    console.log("");
 
     console.log(GO_ACCENT.bold("Run"));
     console.log(chalk.white("  " + truncate(activeRun.task, 70)));
@@ -6252,6 +6463,26 @@ program
       }
       console.log("");
     }
+    if (outOfContractFiles.length > 0) {
+      console.log(chalk.red.bold("Out-of-contract changes detected"));
+      for (const file of outOfContractFiles.slice(0, 8)) {
+        console.log(chalk.red("  - ") + chalk.white(file));
+      }
+      if (contractSummary.allowedPaths.length > 0) {
+        console.log(chalk.red("  Active contract allowed paths:"));
+        for (const rule of contractSummary.allowedPaths.slice(0, 8)) {
+          console.log(chalk.red("  - ") + chalk.white(rule));
+        }
+      }
+      console.log("");
+    }
+    if (forbiddenPathFiles.length > 0) {
+      console.log(chalk.red.bold("Forbidden path touched"));
+      for (const file of forbiddenPathFiles.slice(0, 8)) {
+        console.log(chalk.red("  - ") + chalk.white(file));
+      }
+      console.log("");
+    }
 
     // RunTrim-managed files (shown separately, excluded from drift)
     if (runtrimFiles.length > 0) {
@@ -6277,6 +6508,21 @@ program
     console.log(GO_ACCENT.bold("Report"));
     console.log(chalk.white("  " + reportSummary));
     console.log("");
+
+    if (finishVerdict === "BLOCKED") {
+      console.log(chalk.red.bold("Blocked next steps"));
+      if (outOfContractFiles.length > 0) {
+        console.log(chalk.red("  Blocked because this exceeds the active contract."));
+        console.log(chalk.red(`  Try: runtrim approve "Allow ${outOfContractFiles[0]} for this run only"`));
+      } else if (scope.status === "limit_exceeded") {
+        console.log(chalk.red("  Blocked because file-limit checks were exceeded."));
+        console.log(chalk.red('  Try: runtrim approve "Allow up to 14 files for this run only"'));
+      }
+      console.log(chalk.red("  - Revert out-of-contract or forbidden files."));
+      console.log(chalk.red("  - Or approve a scoped amendment for this run only."));
+      console.log(chalk.red("  - Safer alternative: re-scope the task or revert out-of-scope files."));
+      console.log("");
+    }
 
     if (continuationPack) {
       console.log(GO_ACCENT.bold("Continuation"));
@@ -6412,3 +6658,6 @@ program
     }
   });
 program.parse(process.argv);
+
+
+

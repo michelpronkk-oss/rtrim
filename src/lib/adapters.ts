@@ -132,12 +132,15 @@ If the task requires leaving the current scope:
 - Stop.
 - Explain why the contract is insufficient.
 - Ask the user to create a new run.
+- If the user asks for extra work outside scope, request contract approval before continuing.
+- Do not silently continue outside the active contract.
 
 After editing:
 - List every file you changed.
 - State what verification you performed.
 - Ask the user to run:
   runtrim finish
+- runtrim finish verifies changed files against the active contract.
 
 RunTrim gives this agent:
 - Project memory
@@ -268,6 +271,8 @@ function getCursorMdcContent(): string {
     "- Stay inside the allowed scope defined in the contract.",
     "- Do not touch forbidden files or areas.",
     "- Stop if scope must expand beyond the contract.",
+    "- If the user asks for extra work outside scope, request contract approval first.",
+    "- Do not silently continue outside the active contract.",
     "- Do not read or write `.env` files or secrets.",
     "- Do not refactor code outside the direct task scope.",
     "",
@@ -275,6 +280,7 @@ function getCursorMdcContent(): string {
     "",
     "Summarize changed files, then ask the user to run:",
     "`runtrim finish`",
+    "runtrim finish verifies changed files against the active contract.",
     "",
     "## If no active contract",
     "",
