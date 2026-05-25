@@ -10,6 +10,8 @@ const MONO: React.CSSProperties = {
   fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
 };
 
+const HEADER_H = 60; // px — single source of truth for spacer + dropdown offset
+
 const NAV_LINKS = [
   { href: "/",            label: "Home"      },
   { href: "/#protocol",   label: "Protocol"  },
@@ -52,14 +54,17 @@ function useMobileCtaState(): MobileCtaState {
         if (!d.loggedIn) { setState("logged-out"); return; }
         if (needsPaymentUpdate(d.planStatus)) { setState("payment-issue"); return; }
 
-        const isActive =
-          d.planStatus === "active" || d.planStatus === "trialing";
+        const isActive = d.planStatus === "active" || d.planStatus === "trialing";
 
         if (d.plan === "team"    && isActive) { setState("active-team");    return; }
         if (d.plan === "builder" && isActive) { setState("active-builder"); return; }
         if (d.plan === "pro"     && isActive) { setState("active-pro");     return; }
 
-        if (trialEligible({ plan: d.plan, planStatus: d.planStatus, paymentSubscriptionId: d.paymentSubscriptionId })) {
+        if (trialEligible({
+          plan: d.plan,
+          planStatus: d.planStatus,
+          paymentSubscriptionId: d.paymentSubscriptionId,
+        })) {
           setState("free");
         } else {
           setState("free-trial-used");
@@ -71,27 +76,27 @@ function useMobileCtaState(): MobileCtaState {
   return state;
 }
 
-type Cta = { label: string; href: string; style: "primary" | "secondary" };
+type Cta = { label: string; href: string; variant: "primary" | "secondary" };
 
 function getPrimary(state: MobileCtaState): Cta | null {
   switch (state) {
     case "checking":        return null;
-    case "payment-issue":   return { label: "Update payment method", href: "/app/billing",  style: "primary" };
-    case "logged-out":      return { label: "Install free CLI",      href: "/app/install",  style: "primary" };
-    case "free":            return { label: "Upgrade to Pro",        href: "/app/trial",    style: "primary" };
-    case "free-trial-used": return { label: "Upgrade to Pro",        href: "/app/billing",  style: "primary" };
-    case "active-pro":      return { label: "Open dashboard",        href: "/app",          style: "primary" };
-    case "active-builder":  return { label: "Open dashboard",        href: "/app",          style: "primary" };
-    case "active-team":     return { label: "Open dashboard",        href: "/app",          style: "primary" };
+    case "payment-issue":   return { label: "Update payment method", href: "/app/billing", variant: "primary" };
+    case "logged-out":      return { label: "Install free CLI",      href: "/app/install", variant: "primary" };
+    case "free":            return { label: "Upgrade to Pro",        href: "/app/trial",   variant: "primary" };
+    case "free-trial-used": return { label: "Upgrade to Pro",        href: "/app/billing", variant: "primary" };
+    case "active-pro":      return { label: "Open dashboard",        href: "/app",         variant: "primary" };
+    case "active-builder":  return { label: "Open dashboard",        href: "/app",         variant: "primary" };
+    case "active-team":     return { label: "Open dashboard",        href: "/app",         variant: "primary" };
   }
 }
 
 function getSecondary(state: MobileCtaState): Cta | null {
   switch (state) {
-    case "logged-out":      return { label: "Sign in",            href: "/login",       style: "secondary" };
-    case "free":            return { label: "Docs",               href: "/app/install", style: "secondary" };
-    case "free-trial-used": return { label: "Docs",               href: "/app/install", style: "secondary" };
-    case "active-pro":      return { label: "Upgrade to Builder", href: "/app/billing", style: "secondary" };
+    case "logged-out":      return { label: "Sign in",            href: "/login",       variant: "secondary" };
+    case "free":            return { label: "Install free CLI",   href: "/app/install", variant: "secondary" };
+    case "free-trial-used": return { label: "Docs",               href: "/app/install", variant: "secondary" };
+    case "active-pro":      return { label: "Upgrade to Builder", href: "/app/billing", variant: "secondary" };
     default:                return null;
   }
 }
@@ -103,9 +108,9 @@ export function PublicNav() {
   const [hidden, setHidden] = useState(false);
   const ctaState = useMobileCtaState();
 
-  // Hide on scroll-down, reveal on scroll-up
+  // Scroll: hide on down, reveal on up. Close menu when hiding.
   useEffect(() => {
-    let lastY = typeof window !== "undefined" ? window.scrollY : 0;
+    let lastY = window.scrollY;
 
     function onScroll() {
       const y = window.scrollY;
@@ -124,7 +129,7 @@ export function PublicNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close on Escape
+  // Escape closes menu
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -134,175 +139,205 @@ export function PublicNav() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  function close() { setOpen(false); }
+
   const primary   = getPrimary(ctaState);
   const secondary = getSecondary(ctaState);
 
+  // Shared header bar styles (solid dark, full-width)
+  const headerBarStyle: React.CSSProperties = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HEADER_H,
+    zIndex: 200,
+    background: "#08090b",
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    boxShadow: "0 1px 0 rgba(255,255,255,0.04)",
+    transform: hidden ? "translateY(-100%)" : "translateY(0)",
+    transition: "transform 0.22s ease",
+    willChange: "transform",
+    // Prevent horizontal overflow
+    overflow: "hidden",
+  };
+
   return (
-    <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        background: "rgba(8,9,11,0.88)",
-        backdropFilter: "saturate(140%) blur(12px)",
-        WebkitBackdropFilter: "saturate(140%) blur(12px)",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        transform: hidden ? "translateY(-100%)" : "translateY(0)",
-        transition: "transform 0.25s ease",
-        willChange: "transform",
-      }}
-    >
-      {/* ── Main header row ──────────────────────────────────────────────── */}
-      <div
-        className="mx-auto flex items-center gap-7"
-        style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)", height: 60 }}
-      >
-        {/* Logo */}
-        <Link href="/" aria-label="RunTrim" className="no-underline shrink-0">
-          <RunTrimLogo size={20} />
-        </Link>
+    <>
+      {/*
+        Spacer: keeps page content from starting under the fixed header.
+        Height matches HEADER_H exactly so there is never a layout jump.
+      */}
+      <div style={{ height: HEADER_H, flexShrink: 0 }} aria-hidden="true" />
 
-        {/* Desktop nav links */}
-        <nav className="hidden md:flex items-center gap-1 ml-3">
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link
-              key={label}
-              href={href}
-              style={{
-                fontSize: 13,
-                color: "#8a8f98",
-                padding: "7px 10px",
-                borderRadius: 5,
-                transition: "color 0.15s, background 0.15s",
-              }}
-              className="hover:text-[#f4f5f7] hover:bg-white/6"
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        <div style={{ flex: 1 }} />
-
-        {/* Status badge — desktop only (md+) */}
-        <Link
-          href="/status"
-          className="hidden md:inline-flex items-center gap-2 transition-colors hover:border-white/18"
+      {/* ── Fixed header bar ──────────────────────────────────────────────── */}
+      <header style={headerBarStyle}>
+        <div
           style={{
-            ...MONO,
-            fontSize: 11,
-            color: "#8a8f98",
-            height: 32,
-            padding: "0 12px",
-            border: "1px solid rgba(255,255,255,0.09)",
-            borderRadius: 6,
-            background: "#0c0e11",
-          }}
-        >
-          <span
-            className="rt-live-dot"
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#6ee7b7",
-              display: "inline-block",
-            }}
-          />
-          all systems operational
-        </Link>
-
-        {/* Primary CTA — desktop */}
-        <Link
-          href="/plans"
-          style={{
-            display: "inline-flex",
+            maxWidth: 1240,
+            margin: "0 auto",
+            height: HEADER_H,
+            padding: "0 clamp(20px, 4vw, 40px)",
+            display: "flex",
             alignItems: "center",
-            gap: 8,
-            height: 32,
-            padding: "0 14px",
-            borderRadius: 6,
-            background: "#f4f5f7",
-            color: "#0b0d10",
-            fontSize: 13,
-            fontWeight: 500,
-            border: "1px solid #fff",
-            transition: "background 0.15s",
-          }}
-          className="hidden md:inline-flex hover:bg-white"
-        >
-          View plans
-        </Link>
-
-        {/* Hamburger — mobile only */}
-        <button
-          type="button"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="md:hidden flex items-center justify-center shrink-0"
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 7,
-            border: "1px solid rgba(255,255,255,0.18)",
-            background: open ? "#1a1d22" : "#0e1014",
-            color: "#e2e4e8",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
-            transition: "background 0.15s, border-color 0.15s",
+            gap: 0,
           }}
         >
-          {open ? <X size={18} strokeWidth={1.75} /> : <Menu size={18} strokeWidth={1.75} />}
-        </button>
-      </div>
+          {/* Logo — always visible */}
+          <Link href="/" aria-label="RunTrim home" style={{ textDecoration: "none", flexShrink: 0, lineHeight: 0 }}>
+            <RunTrimLogo size={20} />
+          </Link>
 
-      {/* ── Mobile dropdown ───────────────────────────────────────────────── */}
+          {/* Desktop nav links — hidden below md (768 px) */}
+          <nav className="hidden md:flex items-center gap-1 ml-4">
+            {NAV_LINKS.map(({ href, label }) => (
+              <Link
+                key={label}
+                href={href}
+                style={{
+                  fontSize: 13,
+                  color: "#8a8f98",
+                  padding: "7px 10px",
+                  borderRadius: 5,
+                  textDecoration: "none",
+                  transition: "color 0.15s, background 0.15s",
+                }}
+                className="hover:text-[#f4f5f7] hover:bg-white/6"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Push right-side items to far right */}
+          <div style={{ flex: 1 }} />
+
+          {/* Status badge — desktop only */}
+          <Link
+            href="/status"
+            className="hidden md:inline-flex items-center gap-2 transition-colors"
+            style={{
+              ...MONO,
+              fontSize: 11,
+              color: "#8a8f98",
+              height: 32,
+              padding: "0 12px",
+              border: "1px solid rgba(255,255,255,0.09)",
+              borderRadius: 6,
+              background: "#0c0e11",
+              marginRight: 10,
+              textDecoration: "none",
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "#6ee7b7",
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+            all systems operational
+          </Link>
+
+          {/* "View plans" CTA — desktop only (md+). Never shown on mobile. */}
+          <Link
+            href="/plans"
+            className="hidden md:inline-flex items-center"
+            style={{
+              height: 32,
+              padding: "0 14px",
+              borderRadius: 6,
+              background: "#f4f5f7",
+              color: "#0b0d10",
+              fontSize: 13,
+              fontWeight: 500,
+              border: "1px solid #fff",
+              transition: "background 0.15s",
+              textDecoration: "none",
+            }}
+          >
+            View plans
+          </Link>
+
+          {/* Hamburger — mobile only (below md). Solid dark button. */}
+          <button
+            type="button"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            aria-controls="mobile-nav-dropdown"
+            onClick={() => setOpen((v) => !v)}
+            className="md:hidden"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 36,
+              height: 36,
+              borderRadius: 7,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: open ? "#1c1f25" : "#111316",
+              color: "#dde0e5",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.6)",
+              cursor: "pointer",
+              flexShrink: 0,
+              transition: "background 0.15s",
+            }}
+          >
+            {open
+              ? <X size={17} strokeWidth={2} aria-hidden="true" />
+              : <Menu size={17} strokeWidth={2} aria-hidden="true" />
+            }
+          </button>
+        </div>
+      </header>
+
+      {/* ── Mobile dropdown — fixed, directly below the header bar ────────── */}
       {open && (
         <div
+          id="mobile-nav-dropdown"
           className="md:hidden"
           style={{
-            position: "absolute",
-            top: 60,
+            position: "fixed",
+            top: HEADER_H,
             left: 0,
             right: 0,
-            zIndex: 100,
-            background: "#08090b",
-            borderBottom: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.85)",
-            padding: "20px clamp(20px,4vw,40px) 24px",
+            zIndex: 199,        // one below header so header border renders on top
+            background: "#0a0b0e",  // solid near-black — no transparency, no blur bleed
+            borderBottom: "1px solid rgba(255,255,255,0.09)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.8)",
+            padding: "22px clamp(20px, 4vw, 40px) 28px",
+            // Prevent content jumping when menu opens
+            overflowY: "auto",
+            maxHeight: "calc(100dvh - 60px)",
           }}
         >
-          {/* Brand header */}
-          <div style={{ marginBottom: 20 }}>
-            <RunTrimLogo size={18} />
-            <p
-              style={{
-                ...MONO,
-                fontSize: 11,
-                color: "#5a5f68",
-                marginTop: 6,
-                letterSpacing: "0.01em",
-              }}
-            >
+          {/* Mini brand lockup */}
+          <div style={{ marginBottom: 24 }}>
+            <RunTrimLogo size={17} />
+            <p style={{ ...MONO, fontSize: 11, color: "#4e535e", marginTop: 7 }}>
               Control layer for AI coding agents.
             </p>
           </div>
 
           {/* Nav links */}
-          <nav style={{ marginBottom: 20 }}>
+          <nav style={{ marginBottom: 24 }}>
             {DROPDOWN_LINKS.map(({ href, label }) => (
               <Link
                 key={label}
                 href={href}
-                onClick={() => setOpen(false)}
+                onClick={close}
                 style={{
                   display: "block",
-                  padding: "10px 0",
+                  padding: "11px 0",
                   fontSize: 15,
                   fontWeight: 500,
-                  color: "#c9ccd2",
+                  color: "#c4c8d0",
                   borderBottom: "1px solid rgba(255,255,255,0.05)",
-                  transition: "color 0.15s",
+                  textDecoration: "none",
+                  transition: "color 0.12s",
                 }}
                 className="hover:text-[#f4f5f7]"
               >
@@ -311,26 +346,26 @@ export function PublicNav() {
             ))}
           </nav>
 
-          {/* CTA area */}
+          {/* State-aware CTA buttons */}
           {ctaState !== "checking" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {primary && (
                 <Link
                   href={primary.href}
-                  onClick={() => setOpen(false)}
+                  onClick={close}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    height: 44,
+                    height: 46,
                     borderRadius: 8,
-                    background: "#f4f5f7",
+                    background: "#f0f1f3",
                     color: "#0b0d10",
                     fontSize: 14,
                     fontWeight: 500,
-                    border: "1px solid #fff",
-                    transition: "background 0.15s",
+                    border: "1px solid rgba(255,255,255,0.9)",
                     textDecoration: "none",
+                    transition: "background 0.15s",
                   }}
                 >
                   {primary.label}
@@ -339,22 +374,22 @@ export function PublicNav() {
               {secondary && (
                 <Link
                   href={secondary.href}
-                  onClick={() => setOpen(false)}
+                  onClick={close}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    height: 44,
+                    height: 46,
                     borderRadius: 8,
-                    background: "transparent",
-                    color: "#c9ccd2",
+                    background: "#111417",
+                    color: "#b8bcc4",
                     fontSize: 14,
                     fontWeight: 500,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    transition: "background 0.15s, color 0.15s",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     textDecoration: "none",
+                    transition: "background 0.15s, color 0.15s",
                   }}
-                  className="hover:bg-white/6 hover:text-[#f4f5f7]"
+                  className="hover:bg-white/8 hover:text-[#f4f5f7]"
                 >
                   {secondary.label}
                 </Link>
@@ -362,20 +397,12 @@ export function PublicNav() {
             </div>
           )}
 
-          {/* Trust line */}
-          <p
-            style={{
-              ...MONO,
-              fontSize: 10,
-              color: "#3a3e46",
-              marginTop: 20,
-              textAlign: "center",
-            }}
-          >
+          {/* Trust footnote */}
+          <p style={{ ...MONO, fontSize: 10, color: "#2e3138", marginTop: 22, textAlign: "center" }}>
             Local-first. Source stays local.
           </p>
         </div>
       )}
-    </header>
+    </>
   );
 }
