@@ -3229,6 +3229,7 @@ program
 
     if (!interactive) return;
 
+    const latestRun = loadLatestRun(cwd);
     const hasRuns = Boolean(latestRun);
     const { action } = await prompts({
       type: "select",
