@@ -3432,6 +3432,8 @@ const CONTINUATION_REASONS = [
   "usage_limit",
   "credits_exhausted",
   "context_limit",
+  "blocked",
+  "manual",
   "rate_limit",
   "provider_error",
   "session_expired",
@@ -3453,6 +3455,8 @@ type ContinuationAgent = (typeof CONTINUATION_AGENTS)[number];
 function normalizeContinuationReason(value: string | undefined): ContinuationReason {
   if (!value) return "manual_handoff";
   const lower = value.trim().toLowerCase();
+  if (lower === "manual") return "manual_handoff";
+  if (lower === "blocked") return "blocked";
   if ((CONTINUATION_REASONS as readonly string[]).includes(lower)) {
     return lower as ContinuationReason;
   }
@@ -3497,6 +3501,8 @@ function continuationReasonLine(reason: ContinuationReason): string {
     usage_limit: "usage limit reached",
     credits_exhausted: "credits exhausted",
     context_limit: "context limit reached",
+    blocked: "previous run blocked",
+    manual: "manual handoff",
     rate_limit: "rate limit interruption",
     provider_error: "provider error",
     session_expired: "session expired",
@@ -3508,10 +3514,16 @@ function continuationReasonLine(reason: ContinuationReason): string {
 
 function continuationReasonInstruction(reason: ContinuationReason): string {
   if (reason === "usage_limit" || reason === "credits_exhausted") {
-    return "The previous agent stopped because usage or credits ran out. Do not repeat completed work. Start by summarizing the current state from the information below, then continue only from the next safe action.";
+    return "The previous agent stopped because usage or credits ran out. Do not restart from scratch. Continue from the local memory, scope, and latest run state below.";
   }
   if (reason === "context_limit") {
-    return "The previous agent likely lost context. Use this prompt as the compact source of truth. Do not ask to reload the entire project.";
+    return "The previous agent likely lost context. Do not restart from scratch. Use this prompt as the local source of truth and inspect only files needed for the next step.";
+  }
+  if (reason === "blocked") {
+    return "The previous run was blocked and is not trusted yet. Review, approve scoped amendments, or restore before treating it as complete.";
+  }
+  if (reason === "manual") {
+    return "This is a manual continuation handoff. Continue from the local RunTrim state without expanding scope.";
   }
   if (reason === "rate_limit" || reason === "provider_error" || reason === "session_expired") {
     return "The previous agent stopped due to provider interruption. Continue from the last known state without expanding scope.";
@@ -3971,12 +3983,13 @@ program
     console.log(chalk.white(`  - Project snippets: ${path.relative(cwd, mcpSnippets.dir)}`));
     console.log("");
     console.log(HEAD("  Agent Autopilot"));
-    console.log(chalk.white("  1. Open your agent (Claude Code, Codex, Cursor, or compatible)."));
-    console.log(chalk.white('  2. Use normal language: "Fix the homepage copy. Keep billing untouched."'));
-    console.log(chalk.white("  3. If MCP is configured, the agent will use RunTrim contract, memory and finish guidance automatically."));
-    console.log(chalk.white("  4. If MCP is not configured, the agent will ask you to run runtrim agent \"task\" --copy."));
-    console.log(chalk.white("  5. After edits, run or ask the agent to run: runtrim finish"));
-    console.log(chalk.white("  Note: Autopilot requires MCP or agent rules to be configured. Run runtrim doctor to check readiness."));
+    console.log(chalk.white("  RunTrim can prepare the guarded run locally before your agent spends tokens."));
+    console.log(chalk.white('  Start with: runtrim agent  (or runtrim panel)'));
+    console.log(chalk.white('  Then use normal language in your agent: "Fix the homepage copy. Keep billing untouched."'));
+    console.log(chalk.white("  With MCP connected, compatible agents can call RunTrim tools during edits."));
+    console.log(chalk.white("  Without MCP or wrapper flow, external agents are not forced to call RunTrim before editing."));
+    console.log(chalk.white("  After edits, run or ask the agent to run: runtrim finish"));
+    console.log(chalk.white("  Run runtrim doctor to check readiness."));
     console.log("");
     console.log(HEAD("  Guarded loop"));
     console.log(chalk.white('  runtrim agent "Your task" --copy'));
@@ -4327,6 +4340,7 @@ program
     } else if (readiness === "ready") {
       if (claudeMcpState !== "configured" && cursorMcpState !== "configured") {
         console.log(chalk.white("- Ready locally, MCP client not connected."));
+        console.log(chalk.white("- Zero-token contract creation is available in terminal: runtrim agent or runtrim panel."));
         console.log(chalk.white("- Run runtrim mcp instructions or copy .runtrim/mcp/cursor.json into your MCP client."));
       } else {
         console.log(chalk.white("- Agent Autopilot is ready. Open Cursor/Claude/Codex and use normal language."));
@@ -5271,7 +5285,7 @@ program
   });
 
 // Agent config
-const agentCommand = program.command("agent").description("Start a guarded AI coding run with contract, scope, memory, and handoff");
+const agentCommand = program.command("agent").description("Start a guarded AI coding run with contract, scope, memory, and handoff (prompts when task is omitted)");
 
 agentCommand
   .argument("[task]")
@@ -5337,25 +5351,78 @@ agentCommand
 
     const cwd = process.cwd();
     if (!configExists(cwd)) {
-      console.log(chalk.yellow("  No config found. Run: runtrim init"));
+      console.log(chalk.yellow("  No config found. Run: runtrim start"));
       console.log("");
       return;
     }
-    const config = loadConfig(cwd);
+    const interactive = isInteractiveTerminal();
+    if (!interactive) {
+      console.log("");
+      console.log(BOLD("RunTrim") + DIM("  agent"));
+      console.log("");
+      console.log(chalk.white("RunTrim can prepare the guarded run locally before your agent spends tokens."));
+      console.log(chalk.white('Run: runtrim agent "your task" --copy'));
+      console.log(chalk.white("Or open: runtrim panel"));
+      console.log("");
+      return;
+    }
+
+    const actionAnswer = await prompts({
+      type: "select",
+      name: "action",
+      message: "RunTrim agent",
+      choices: [
+        { title: "Create guarded run (recommended)", value: "create" },
+        { title: "Show agent config", value: "config" },
+        { title: "Cancel", value: "cancel" },
+      ],
+      initial: 0,
+    });
+    const action = actionAnswer.action as string | undefined;
+    if (!action || action === "cancel") {
+      console.log("");
+      return;
+    }
+
+    if (action === "config") {
+      const config = loadConfig(cwd);
+      console.log("");
+      console.log(BOLD("RunTrim") + DIM("  agent"));
+      console.log("");
+      console.log(DIM("  " + SECTION));
+      console.log(DIM("  AGENT CONFIG"));
+      console.log(DIM("  " + SECTION));
+      console.log("");
+      console.log(DIM("  agentMode      ") + chalk.white(config.agentMode));
+      console.log(DIM("  agentCommand   ") + chalk.white(config.agentCommand));
+      console.log(DIM("  agentArgs      ") + chalk.white(JSON.stringify(config.agentArgs)));
+      console.log(DIM("  agentPromptMode ") + chalk.white(config.agentPromptMode));
+      console.log(DIM("  defaultAgent   ") + chalk.white(config.defaultAgent));
+      console.log(DIM("  defaultModel   ") + chalk.white(config.defaultModel));
+      console.log("");
+      return;
+    }
+
     console.log("");
-    console.log(BOLD("RunTrim") + DIM("  agent"));
-    console.log("");
-    console.log(DIM("  " + SECTION));
-    console.log(DIM("  AGENT CONFIG"));
-    console.log(DIM("  " + SECTION));
-    console.log("");
-    console.log(DIM("  agentMode      ") + chalk.white(config.agentMode));
-    console.log(DIM("  agentCommand   ") + chalk.white(config.agentCommand));
-    console.log(DIM("  agentArgs      ") + chalk.white(JSON.stringify(config.agentArgs)));
-    console.log(DIM("  agentPromptMode ") + chalk.white(config.agentPromptMode));
-    console.log(DIM("  defaultAgent   ") + chalk.white(config.defaultAgent));
-    console.log(DIM("  defaultModel   ") + chalk.white(config.defaultModel));
-    console.log("");
+    console.log(chalk.white("RunTrim can prepare the guarded run locally before your agent spends tokens."));
+    const taskAnswer = await prompts({
+      type: "text",
+      name: "task",
+      message: "What should the agent do?",
+      validate: (value) => (value.trim().length > 0 ? true : "Task is required."),
+    });
+    const taskInput = (taskAnswer.task as string | undefined)?.trim();
+    if (!taskInput) {
+      console.log("");
+      return;
+    }
+    await runAgentApply(taskInput, {
+      apply: false,
+      confirm: options?.confirm === true,
+      copy: true,
+      primary: true,
+    });
+    return;
   });
 
 function registerBridgeCommands(name: "bridge" | "daemon"): void {
@@ -5610,6 +5677,9 @@ mcpCommand
     console.log("");
     console.log("RunTrim MCP");
     console.log("RunTrim MCP lets compatible agents call local RunTrim tools before and during edits.");
+    console.log('Use runtrim agent or runtrim panel to prepare a guarded run locally without spending agent tokens.');
+    console.log("MCP can create and check contracts directly when the agent calls these tools.");
+    console.log("Without MCP or wrapper flow, external agents are not forced to call RunTrim before editing.");
     console.log("");
     console.log("Tools available:");
     console.log("- runtrim_create_contract");
@@ -8044,8 +8114,8 @@ program
 
 program
   .command("continue")
-  .description("Create a safe continuation prompt from latest RunTrim state")
-  .option("--reason <reason>", "Continuation reason")
+  .description("Generate a local continuation prompt for a new agent session after usage, context, or interruption")
+  .option("--reason <reason>", "Continuation reason: usage_limit, context_limit, blocked, manual")
   .option("--agent <agent>", "Target agent hint")
   .option("--print", "Print the full continuation prompt")
   .option("--open", "Open continuation prompt in editor")
@@ -8074,6 +8144,8 @@ program
 
     const projectName = audit.projectName || path.basename(cwd);
     const stackLine = audit.detectedStack.length > 0 ? audit.detectedStack.join(", ") : "unknown";
+    const contractSummary = parseContractSummary(cwd);
+    const restoreCandidates = buildRestoreCandidates(cwd);
     const diffFiles = dedupeFiles(await getGitDiff(cwd));
     const changedFiles = latestRun?.evaluation?.changedFiles?.length
       ? dedupeFiles(latestRun.evaluation.changedFiles)
@@ -8158,6 +8230,19 @@ program
     const latestStatus = latestRun
       ? formatStatus(latestRun.evaluation?.status ?? latestRun.status)
       : "baseline_initialized";
+    const latestVerdict = normalizeRunVerdict(latestRun?.evaluation?.status ?? latestRun?.status);
+    const latestRestore = latestRun
+      ? loadRestorePoint(cwd, latestRun.id)
+      : (restoreCandidates.find((r) => r.hasRestorePoint) ? loadRestorePoint(cwd, restoreCandidates.find((r) => r.hasRestorePoint)!.runId) : null);
+    const restoreAvailable = Boolean(latestRestore);
+    const restoreStatusLine = restoreAvailable
+      ? latestRestore?.postRun?.finishVerdict
+        ? `${latestRestore.postRun.finishVerdict}${latestRestore.postRun.finishVerdict === "BLOCKED" ? " (needs review)" : ""}`
+        : "available"
+      : "not available yet";
+    const activeContractState = contractSummary.exists
+      ? contractSummary.active ? "active" : "archived/resting"
+      : "not found";
 
     const memoryCurrentState =
       extractMemorySection(memory, "Current state").join(" ") ||
@@ -8190,18 +8275,22 @@ program
         ];
 
     const promptLines: string[] = [
-      "RUNTRIM CONTINUATION PROMPT",
+      "RUNTRIM LOCAL CONTINUATION PROMPT",
+      "",
+      "This prompt is generated locally by RunTrim.",
+      "No agent tokens are required to generate it.",
       "",
       "Reason:",
-      continuationReasonLine(reason),
+      continuationReasonLine(reason) || "Continue after interruption.",
       "",
-      "Project:",
-      projectName,
-      "Stack:",
-      stackLine,
-      "",
-      "Previous task:",
-      previousTask,
+      "Project context:",
+      `- Project: ${projectName}`,
+      `- Stack: ${stackLine}`,
+      `- Last task: ${previousTask}`,
+      `- Latest finish verdict: ${latestVerdict ?? "not recorded yet"}`,
+      `- Latest run status: ${latestStatus}`,
+      `- Restore: ${restoreStatusLine}`,
+      `- Active/last contract: ${activeContractState}`,
       "",
       "Current state:",
       `${latestStatus}. ${stateLine}`,
@@ -8214,27 +8303,33 @@ program
         ? [
             `${changedFiles.length} files changed. Showing first 10:`,
             ...changedFiles.slice(0, 10).map((f) => `- ${f}`),
-            "Run `runtrim check` for full verification.",
+            "Run `runtrim finish` for full verification context.",
           ]
         : changedFiles.length > 0
         ? changedFiles.map((f) => `- ${f}`)
         : ["- No changed files recorded."]),
       "",
+      "Allowed scope:",
+      ...(contractSummary.allowedScope.length > 0
+        ? contractSummary.allowedScope.map((s) => `- ${s}`)
+        : ["- Use current scoped task boundaries only."]),
+      "",
+      "Forbidden or risky scope:",
+      ...(contractSummary.forbiddenScope.length > 0
+        ? contractSummary.forbiddenScope.map((s) => `- ${s}`)
+        : protectedAreas.map((p) => `- ${p}`)),
+      "",
       "Still missing:",
       ...stillMissing.map((m) => `- ${m}`),
       ...(hasUnverifiedChanges ? [] : [`- ${openNextAction}`]),
       "",
-      "Protected areas:",
-      ...protectedAreas.map((p) => `- ${p}`),
-      "",
       "Continuation rules:",
-      "- Continue from the current diff only.",
-      "- Do not restart the entire task.",
-      "- Do not reread unrelated files.",
-      "- Do not modify new files unless verification proves it is required.",
-      "- Identify root cause before editing.",
+      "- Continue without starting over.",
+      "- Use provided memory, scope, and latest run state.",
+      "- Inspect only files needed for the next step.",
+      "- Preserve working behavior.",
+      "- Do not broaden scope without explicit approval.",
       "- Return files changed and verification steps.",
-      "- Stop if scope expands.",
       "",
       "Next objective:",
       nextObjective,
@@ -8250,6 +8345,12 @@ program
     }
 
     if ((latestRun?.evaluation?.status ?? latestRun?.status) === "blocked" || (latestRun?.evaluation?.status ?? latestRun?.status) === "split_required") {
+      promptLines.push("Blocked run guidance:");
+      promptLines.push("- The previous run is not trusted yet.");
+      promptLines.push("- Review, approve a scoped amendment, or restore before treating it as complete.");
+      promptLines.push("- runtrim restore");
+      promptLines.push("- runtrim restore last --preview");
+      promptLines.push("");
       promptLines.push("Recommended split:");
       promptLines.push(...recommendedSplit);
       promptLines.push("");
@@ -8277,6 +8378,12 @@ program
       continuationAgentLine(agent),
       "",
       selectedReasonInstruction,
+      "",
+      "Before saying done:",
+      "- Run verification if available.",
+      "- Run or ask the user to run runtrim finish.",
+      "- If BLOCKED, stop and report.",
+      "- If recovery is needed, suggest runtrim restore.",
       ""
     );
 
@@ -8316,6 +8423,7 @@ program
     console.log(DIM("  Changed files      ") + chalk.white(String(changedFiles.length)));
     console.log(DIM("  Prompt path        ") + chalk.white(continuationPath.replace(/\\/g, "/")));
     console.log(DIM("  Clipboard          ") + chalk.white(copied ? "updated" : "unavailable"));
+    console.log(DIM("  Generation         ") + chalk.white("local continuation prompt, no agent tokens required"));
     console.log("");
 
     if (options.print) {

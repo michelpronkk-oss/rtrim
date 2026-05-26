@@ -7,7 +7,7 @@ import {
   AlertCircle, ArrowRight, Users, Activity, BarChart2, ChevronDown,
 } from "lucide-react";
 import { AdminPlanningContent } from "@/components/admin/admin-planning-dashboard";
-import { AdminSocialContent }   from "@/components/admin/admin-social";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ type MetricsResponse = {
   referrerBreakdown?: Array<{ source: string; count: number; isAI: boolean }>;
 };
 
-type Tab = "overview" | "early-access" | "activity" | "planning" | "social";
+type Tab = "overview" | "early-access" | "activity" | "planning";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -405,7 +405,7 @@ export function AdminDashboard() {
     { id: "early-access",  label: "Early Access", badge: pending || undefined },
     { id: "activity",      label: "Activity" },
     { id: "planning",      label: "Planning" },
-    { id: "social",        label: "Social" },
+
   ];
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
@@ -429,7 +429,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className={`min-h-screen text-[#EDEEFF] ${tab === "planning" || tab === "social" ? "bg-[#06070a]" : "bg-[#07071A]"}`}>
+    <div className={`min-h-screen text-[#EDEEFF] ${tab === "planning" ? "bg-[#06070a]" : "bg-[#07071A]"}`}>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 border-b border-white/8 bg-[#07071A]/96 backdrop-blur-md">
@@ -496,15 +496,8 @@ export function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Social tab ────────────────────────────────────────────────────── */}
-      {tab === "social" && (
-        <div className="mx-auto max-w-[1400px] px-5 py-6 sm:px-6">
-          <AdminSocialContent />
-        </div>
-      )}
-
       {/* ── Padded content tabs ───────────────────────────────────────────── */}
-      {tab !== "planning" && tab !== "social" && (
+      {tab !== "planning" && (
         <div className="mx-auto max-w-[1200px] px-5 py-6 sm:px-6">
 
           {fetchError && (
