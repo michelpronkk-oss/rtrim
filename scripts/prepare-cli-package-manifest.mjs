@@ -27,6 +27,18 @@ function writeJson(filePath, value) {
 
 const pkg = readJson(packageJsonPath);
 
+// Guard: refuse to strip an already-stripped manifest. If "next" is absent from
+// dependencies the repo package.json is already CLI-only (a previous run may have
+// failed to restore). Stripping it again would back up the broken state and make
+// restore silently return a CLI-only manifest too.
+if (!pkg.dependencies?.["next"]) {
+  throw new Error(
+    'prepare-cli-package-manifest: "next" not found in dependencies. ' +
+    "The repository package.json appears to already be in CLI-only publish state. " +
+    "Restore it from git (git checkout -- package.json) or from the full manifest before running publish again."
+  );
+}
+
 if (!fs.existsSync(backupDir)) {
   fs.mkdirSync(backupDir, { recursive: true });
 }

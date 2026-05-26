@@ -288,7 +288,7 @@ export default function InstallPage() {
                 >
                   {item.n}
                 </span>
-                <div className="min-w-0 flex-1" style={{ overflow: "hidden" }}>
+                <div className="min-w-0 flex-1">
                   <div style={{ overflowX: "auto", scrollbarWidth: "none" }}>
                     <code style={{ ...MONO, fontSize: 12.5, color: "#c9ccd2", display: "block", whiteSpace: "nowrap" }}>{item.cmd}</code>
                   </div>
@@ -310,7 +310,7 @@ export default function InstallPage() {
                 Cloud sync is available now.
               </h2>
               <p className="mt-2" style={{ fontSize: 13, color: "#8a8f98", lineHeight: 1.65, maxWidth: 560 }}>
-                The free CLI runs entirely locally. Cloud sync and hosted run history are available for live plans. When connected, sync uploads run metadata only - source code stays local.
+                Free CLI runs locally. Paid plans add cloud sync and run history — only metadata is uploaded, source code stays on your machine.
               </p>
             </div>
             <div className="shrink-0">

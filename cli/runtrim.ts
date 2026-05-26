@@ -6123,21 +6123,25 @@ function buildRestoreCandidates(cwd: string): RestoreCandidateRow[] {
   return rows;
 }
 
-function printRestoreList(rows: RestoreCandidateRow[]): void {
-  if (rows.length === 0) {
+function printRestoreList(rows: RestoreCandidateRow[], all = false): void {
+  const displayRows = all ? rows : rows.filter((r) => r.hasRestorePoint);
+  if (displayRows.length === 0) {
     console.log("");
-    console.log(chalk.yellow("No restore points yet."));
-    console.log(DIM("  Create a guarded run with `runtrim agent \"task\" --copy`, then run `runtrim finish`."));
+    if (all) {
+      console.log(chalk.yellow("No runs in archive."));
+    } else {
+      console.log(chalk.yellow("No restore points yet."));
+      console.log(DIM('  Create a guarded run with `runtrim agent "task" --copy`, then run `runtrim finish`.'));
+    }
     console.log("");
     return;
   }
   console.log("");
-  console.log(BOLD("RunTrim") + DIM("  restore points"));
+  console.log(BOLD("RunTrim") + DIM(all ? "  restore archive" : "  restore points"));
   console.log("");
   const shortId = (id: string) => id.slice(0, 8);
-  for (const row of rows) {
+  for (const row of displayRows) {
     const status = row.hasRestorePoint ? chalk.green("restore available") : chalk.gray("no restore point");
-    const verdict = verdictColor(row.verdict);
     const files = chalk.white(`${row.fileCount} file${row.fileCount === 1 ? "" : "s"}`);
     const task = truncate(row.task, 30).padEnd(30);
     const date = row.date.padEnd(16);
@@ -6291,11 +6295,11 @@ async function runRestoreApply(
 // ── interactive picker ──────────────────────────────────────────────────────
 
 async function runInteractiveRestorePicker(cwd: string): Promise<void> {
-  const rows = buildRestoreCandidates(cwd);
+  const rows = buildRestoreCandidates(cwd).filter((r) => r.hasRestorePoint);
   if (rows.length === 0) {
     console.log("");
     console.log(chalk.yellow("No restore points yet."));
-    console.log(DIM("  Create a guarded run with `runtrim agent \"task\" --copy`, then run `runtrim finish`."));
+    console.log(DIM('  Create a guarded run with `runtrim agent "task" --copy`, then run `runtrim finish`.'));
     console.log("");
     return;
   }
@@ -6305,9 +6309,8 @@ async function runInteractiveRestorePicker(cwd: string): Promise<void> {
 
   const runChoices = rows.map((row) => {
     const verdictRaw = row.verdict ?? "unknown";
-    const status = row.hasRestorePoint ? "restore available" : "no restore point";
-    const label = `${pad(row.date, 16)}  ${pad(truncate(row.task, 28), 28)}  ${pad(verdictRaw, 7)}  ${pad(row.fileCount + " files", 9)}  ${status}  ${DIM(shortId(row.runId))}`;
-    return { title: label, value: row.runId, disabled: !row.hasRestorePoint };
+    const label = `${pad(row.date, 16)}  ${pad(truncate(row.task, 28), 28)}  ${pad(verdictRaw, 7)}  ${pad(row.fileCount + " files", 9)}  restore available  ${shortId(row.runId)}`;
+    return { title: label, value: row.runId };
   });
 
   console.log("");
@@ -6319,7 +6322,6 @@ async function runInteractiveRestorePicker(cwd: string): Promise<void> {
     name: "runId",
     message: "Select a run to recover:",
     choices: runChoices,
-    warn: "No restore point for this run",
   });
   if (!runPick.runId) return;
 
@@ -6404,13 +6406,15 @@ restoreCommand
   .option("--preview", "Preview restore plan")
   .option("--apply", "Apply restore plan")
   .option("--force", "Apply even if unrelated new changes are detected")
-  .option("--list", "Print restore-capable runs non-interactively and exit")
+  .option("--list", "List restore-capable runs non-interactively and exit")
+  .option("--all", "Include all historical runs (use with --list)")
   .option("--only-out-of-scope", "Operate only on out-of-scope files")
   .option("--only-forbidden", "Operate only on forbidden files")
   .addHelpText("after", `
 Examples:
-  runtrim restore                               Open interactive restore picker
-  runtrim restore --list                        Print restore-capable runs
+  runtrim restore                               Pick a restore point interactively
+  runtrim restore --list                        List restore-capable runs
+  runtrim restore --list --all                  List all historical runs, including runs without restore points
   runtrim restore last --preview                Preview restore for latest run
   runtrim restore last --apply                  Apply restore for latest run
   runtrim restore <run-id> --preview            Preview restore for specific run
@@ -6425,6 +6429,7 @@ Examples:
       apply?: boolean;
       force?: boolean;
       list?: boolean;
+      all?: boolean;
       onlyOutOfScope?: boolean;
       onlyForbidden?: boolean;
     },
@@ -6434,13 +6439,14 @@ Examples:
     const doApply = options?.apply === true;
     const force = options?.force === true;
     const doList = options?.list === true;
+    const doAll = options?.all === true;
     const onlyOos = options?.onlyOutOfScope === true;
     const onlyForbidden = options?.onlyForbidden === true;
 
     // --list: non-interactive, print and exit
     if (doList) {
       const rows = buildRestoreCandidates(cwd);
-      printRestoreList(rows);
+      printRestoreList(rows, doAll);
       return;
     }
 

@@ -95,7 +95,12 @@
       "Bash(cat .npmrc)",
       "Bash(npm publish *)",
       "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\); console.log\\('deps:', Object.keys\\(d.dependencies\\).length, '| has next:', 'next' in d.dependencies, '| has chalk:', 'chalk' in d.dependencies\\); console.log\\('version:', d.version\\);\")",
-      "Bash(ls *.tgz)"
+      "Bash(ls *.tgz)",
+      "Bash(node dist-cli/runtrim.cjs restore --list --all)",
+      "PowerShell(node -p \"require\\('c:/Users/miche/Desktop/runtrim/node_modules/next/package.json'\\).version\")",
+      "PowerShell(node -p \"require\\('c:/Users/miche/Desktop/runtrim/node_modules/react/package.json'\\).version\")",
+      "PowerShell(node -p \"require\\('c:/Users/miche/Desktop/runtrim/node_modules/react-dom/package.json'\\).version\")",
+      "PowerShell(node -e \"const lock = JSON.parse\\(require\\('fs'\\).readFileSync\\('package-lock.json','utf8'\\)\\); const top = lock.packages['']; console.log\\('dependencies:', JSON.stringify\\(top.dependencies, null, 2\\)\\); console.log\\('devDependencies:', JSON.stringify\\(top.devDependencies, null, 2\\)\\);\" 2>&1)"
     ]
   }
 }
