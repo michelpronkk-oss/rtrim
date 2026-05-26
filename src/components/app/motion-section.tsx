@@ -205,7 +205,8 @@ export function CtaBeams() {
 }
 
 // ── ProtocolBars — scroll-triggered fill animation for protocol step cards ──
-// Each bar segment scaleX 0→1 from left, staggered per segment and per card.
+// Each bar segment slides in from the left, staggered per segment and per card.
+// Uses useRef + useInView + imperative animate for reliable mobile triggering.
 
 export function ProtocolBars({
   active,
@@ -216,26 +217,43 @@ export function ProtocolBars({
   cardIndex?: number;
   compact?: boolean;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const isInView = useInView(containerRef, { once: true, margin: "-40px" });
+
+  useEffect(() => {
+    if (!isInView) return;
+    barRefs.current.forEach((el, j) => {
+      if (!el) return;
+      animate(el, { x: ["-100%", "0%"] }, {
+        duration: 0.55,
+        delay: cardIndex * 0.08 + j * 0.07,
+        ease: EASE,
+      });
+    });
+  }, [isInView, cardIndex]);
+
   return (
-    <div style={{ marginTop: compact ? 0 : "auto", paddingTop: compact ? 0 : 16, display: "flex", gap: 4 }}>
+    <div
+      ref={containerRef}
+      style={{ marginTop: compact ? 0 : "auto", paddingTop: compact ? 0 : 16, display: "flex", gap: 4 }}
+    >
       {[0, 1, 2, 3].map((j) => (
         <div
           key={j}
           style={{ flex: 1, height: 3, borderRadius: 2, background: "#131619", overflow: "hidden" }}
         >
-          <motion.div
+          <div
+            ref={(el) => { barRefs.current[j] = el; }}
             style={{
               width: "100%",
               height: "100%",
               borderRadius: 2,
+              transform: "translateX(-100%)",
               background: active
                 ? "linear-gradient(90deg, rgba(109,60,220,0.9), rgba(167,139,250,0.95))"
                 : "linear-gradient(90deg, rgba(109,60,220,0.28), rgba(167,139,250,0.32))",
             }}
-            initial={{ x: "-100%" }}
-            whileInView={{ x: "0%" }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.55, delay: cardIndex * 0.08 + j * 0.07, ease: EASE }}
           />
         </div>
       ))}

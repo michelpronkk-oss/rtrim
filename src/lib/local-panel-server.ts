@@ -79,10 +79,14 @@ function buildHtml(monitorDefault: boolean): string {
     start: "runtrim start",
     init: "runtrim init",
     refresh: "refresh",
-    check: "runtrim check",
+    check: "runtrim finish",
     memory: "runtrim memory",
     continueUsageLimit: "runtrim continue --reason usage_limit",
-    prepareNewRun: 'runtrim prepare "your task"',
+    prepareNewRun: 'runtrim agent "your task" --copy',
+    restore: "runtrim restore",
+    restorePreview: "runtrim restore last --preview",
+    approve: 'runtrim approve "Allow editing <path> for this run only"',
+    mcpInstructions: "runtrim mcp instructions",
     watch: "runtrim watch",
     panelNoOpen: "runtrim panel --no-open",
   } as const;
@@ -161,18 +165,18 @@ function buildHtml(monitorDefault: boolean): string {
         radial-gradient(680px 280px at 8% -24%, rgba(124,109,250,0.15), transparent 72%),
         linear-gradient(180deg, rgba(14,16,36,0.98), rgba(10,11,27,0.98));
       box-shadow:0 0 0 1px rgba(124,109,250,0.16), 0 18px 34px rgba(0,0,0,0.30);
-      padding:22px 24px;
+      padding:18px;
     }
-    .hero-title{font-size:24px;font-weight:700;letter-spacing:0}
+    .hero-title{font-size:22px;font-weight:700;letter-spacing:0}
     .hero-state{
       font-size:28px;
       font-weight:700;
       color:#EDEEFF;
       letter-spacing:0;
       line-height:1;
-      margin-top:8px;
+      margin-top:6px;
     }
-    .hero-reason{margin-top:6px;font-size:13px;color:#A9B4CC}
+    .hero-reason{margin-top:8px;font-size:13px;color:#A9B4CC;max-width:78ch;line-height:1.5}
     .hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .status-rail{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
     .status-chip{
@@ -188,15 +192,16 @@ function buildHtml(monitorDefault: boolean): string {
     }
     .status-chip strong{font-weight:600;color:#E2E8F8}
     .cmd-hero{
-      margin-top:18px;
+      margin-top:14px;
       border:1px solid rgba(124,109,250,0.42);
       border-radius:10px;
       background:#0D1024;
       display:flex;
       align-items:center;
       justify-content:space-between;
+      flex-wrap:wrap;
       gap:10px;
-      padding:11px 12px;
+      padding:10px 11px;
       box-shadow:0 0 0 1px rgba(124,109,250,0.09);
     }
     .cmd-hero code{
@@ -205,6 +210,7 @@ function buildHtml(monitorDefault: boolean): string {
       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
       white-space:nowrap;
       overflow:auto;
+      max-width:100%;
     }
     .cmd-hero .btn{flex-shrink:0;min-width:76px}
     .why-panel{
@@ -221,7 +227,7 @@ function buildHtml(monitorDefault: boolean): string {
       border-radius:999px;
       padding:4px 10px;
     }
-    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     .kpi{
       border:1px solid var(--line);
       border-radius:9px;
@@ -240,7 +246,8 @@ function buildHtml(monitorDefault: boolean): string {
     .kpi .label{font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted2)}
     .kpi .value{margin-top:6px;font-size:20px;font-weight:700;line-height:1.05}
     .kpi .sub{margin-top:5px;font-size:11px;color:var(--muted)}
-    .grid{display:grid;grid-template-columns:1.2fr 0.8fr;gap:14px}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}
+    .main-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
     .stack{display:grid;gap:14px}
     .card{
       border:1px solid var(--line);
@@ -286,7 +293,7 @@ function buildHtml(monitorDefault: boolean): string {
     }
     .run{
       border:1px solid var(--line2);background:var(--card2);border-radius:10px;padding:10px 11px;
-      display:grid;grid-template-columns:auto minmax(0,1.6fr) auto auto;gap:8px;align-items:center
+      display:grid;grid-template-columns:auto minmax(0,1.6fr) auto auto auto;gap:8px;align-items:center
     }
     .run:hover{border-color:rgba(124,109,250,0.32)}
     .run-dot{width:8px;height:8px;border-radius:999px;background:#7C6DFA;box-shadow:0 0 0 1px rgba(124,109,250,0.24);position:relative;left:-8px}
@@ -328,6 +335,7 @@ function buildHtml(monitorDefault: boolean): string {
       display:flex;
       justify-content:space-between;
       align-items:flex-start;
+      flex-wrap:wrap;
       gap:10px;
       padding:10px 11px;
       border:1px solid var(--line2);
@@ -342,7 +350,25 @@ function buildHtml(monitorDefault: boolean): string {
     .quick-label{font-size:12px;color:#D8E0F1;font-weight:600}
     .quick-purpose{font-size:11px;color:#8897B2;margin-top:3px}
     .quick-cmd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#96A5C4;font-size:11px;margin-top:6px}
-    .quick-row .btn{padding:6px 8px;font-size:11px;align-self:center}
+    .quick-row .btn{padding:6px 8px;font-size:11px;align-self:center;flex-shrink:0}
+    .quick-main{min-width:0;flex:1}
+    .quick-cmd{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:100%;
+      display:block;
+    }
+    .recovery-note{
+      margin-top:12px;
+      border:1px solid var(--line2);
+      border-radius:10px;
+      padding:10px;
+      background:rgba(255,255,255,0.015);
+      color:#c1c9dc;
+      font-size:12px;
+      line-height:1.5;
+    }
     .smart{
       border:1px solid rgba(124,109,250,0.24);
       background:rgba(124,109,250,0.07);
@@ -358,18 +384,23 @@ function buildHtml(monitorDefault: boolean): string {
       margin-top:auto;padding-top:8px;border-top:1px solid var(--line2);font-size:12px;color:#74809B
     }
     .sr{position:absolute;left:-10000px}
-    @media (max-width:1120px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} .grid{grid-template-columns:1fr} }
+    @media (max-width:1120px){ .main-grid{grid-template-columns:1fr} .grid{grid-template-columns:1fr} }
     @media (max-width:760px){
       .app{padding:14px}
-      .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .kpis{grid-template-columns:1fr}
+      .main-grid{grid-template-columns:1fr}
       .kv{grid-template-columns:1fr}
-      .run{grid-template-columns:auto 1fr 1fr}
+      .run{grid-template-columns:auto 1fr auto}
       .cmd-hero{padding:8px 9px}
       .status-rail{gap:6px}
       .status-chip{font-size:11px;padding:5px 8px}
       .hide-sm{display:none}
       .empty h2{font-size:24px}
       .hero-title{font-size:20px}
+      .actions .btn{width:100%}
+      .quick-row{flex-direction:column}
+      .quick-row .btn{width:100%}
+      .cmd-hero .btn{width:100%}
     }
   </style>
 </head>
@@ -444,10 +475,9 @@ function buildHtml(monitorDefault: boolean): string {
     }
     function render(state){
       if(!state.initialized){ return renderEmpty(state); }
-      const status = state.latestRun?.statusLabel || "Not available";
       const ws = state.watchState || {};
       const watchStatus = ws.statusLabel || "safe";
-      const recent = (state.recentRuns||[]).slice(0,5).map((r)=>'<div class="run"><span class="run-dot '+(statusClass(r.statusRaw || r.statusLabel) || '')+'"></span><div class="task">'+esc(r.task)+'</div><div>'+runStatusPill(r.statusLabel, r.statusRaw)+'</div><div class="muted hide-sm">'+esc(r.createdAtLabel)+'</div></div>').join("");
+      const recent = (state.recentRuns||[]).slice(0,5).map((r)=>'<div class="run"><span class="run-dot '+(statusClass(r.statusRaw || r.statusLabel) || '')+'"></span><div class="task">'+esc(r.task)+'</div><div>'+runStatusPill(r.statusLabel, r.statusRaw)+'</div><div class="muted hide-sm">'+esc(r.createdAtLabel)+'</div><div class="muted hide-sm">'+esc((r.statusRaw||"").toLowerCase().includes("blocked") ? "restore available" : "local record")+'</div></div>').join("");
       const changedFiles = (ws.changedFiles||[]).slice(0,5);
       const changedList = changedFiles.map((f)=>'<div class="path-item">'+esc(f)+'</div>').join("");
       const protectedAreas = asArray(state.protectedAreas).slice(0,10).map((v)=>'<span class="chip">'+esc(v)+'</span>').join("");
@@ -459,9 +489,35 @@ function buildHtml(monitorDefault: boolean): string {
         : watchStatus === "stop"
         ? "Stop and contain drift before any new edits."
         : ((ws.changedFilesCount || 0) > 0 ? "Changes detected. Run runtrim check." : "No local changes detected.");
-      const heroReason = state.latestRun?.heroReason || "Run runtrim check because the latest run is guarded and not checked yet.";
-      const currentRunStatus = state.latestRun?.proofState === "Needs check" ? "Needs check" : (state.latestRun?.lifecycleLabel || "Not available");
+      const heroReason = state.latestRun?.heroReason || "Finish verification keeps local runs trustworthy.";
+      const verdictRaw = String(state.latestRun?.statusRaw || state.latestRun?.statusLabel || "").toLowerCase();
+      const hasLatest = Boolean(state.latestRun);
+      const isBlocked = verdictRaw.includes("blocked") || verdictRaw.includes("split_required") || verdictRaw.includes("drift_detected");
+      const isWarn = !isBlocked && (verdictRaw.includes("warn") || verdictRaw.includes("warning") || verdictRaw.includes("needs_verification") || verdictRaw.includes("partial") || verdictRaw.includes("guarded"));
+      const latestTitle = !hasLatest
+        ? "Start a guarded run"
+        : isBlocked
+        ? "Latest run needs review"
+        : isWarn
+        ? "Latest run needs attention"
+        : "Latest run verified";
+      const latestBody = !hasLatest
+        ? "Create a guarded run, then finish verification to record a trusted result."
+        : isBlocked
+        ? "RunTrim recorded this run, but it should not be treated as trusted work until reviewed, approved or restored."
+        : isWarn
+        ? "Review warnings and finish verification before you continue with new scope."
+        : "Finish verification captured a trusted local result for this run.";
+      const heroPrimary = !hasLatest ? COMMANDS.prepareNewRun : (isBlocked ? COMMANDS.restore : COMMANDS.check);
+      const heroSecondary = !hasLatest ? COMMANDS.check : (isBlocked ? COMMANDS.restorePreview : COMMANDS.memory);
       const riskLabel = state.latestRun?.riskLabel || "n/a";
+      const latestRestorePoint = state.recentRuns?.[0]?.createdAtLabel || "not recorded yet";
+      const autoStatus = state.latestRun ? (state.syncTokenPresent ? "Ready" : "Partial") : "Not connected";
+      const operatorNote = isBlocked
+        ? "Latest run needs review. Preview recovery before continuing."
+        : isWarn
+        ? "Review warnings before starting new scope."
+        : "Ready for the next guarded run.";
       return ''
       +'<div class="shell">'
       +'<div class="topbar">'
@@ -475,8 +531,9 @@ function buildHtml(monitorDefault: boolean): string {
       +'</div></div>'
       +'</div>'
       +'<div class="hero">'
-      +'<div class="hero-head"><div><div class="hero-title">Mission control</div><div class="hero-state">'+esc(currentRunStatus)+'</div><div class="hero-reason">Latest guarded run is waiting for verification.</div></div><div class="hero-status '+(statusClass(state.latestRun?.statusRaw || currentRunStatus) || '')+' status">'+esc(status)+'</div></div>'
-      +'<div class="cmd-hero"><code>'+esc(COMMANDS.check)+'</code><button class="btn btn-primary" data-command="'+esc(COMMANDS.check)+'">Copy</button></div>'
+      +'<div class="hero-head"><div><div class="hero-title">'+esc(latestTitle)+'</div><div class="hero-reason">'+esc(latestBody)+'</div></div><div class="hero-status '+(statusClass(state.latestRun?.statusRaw || state.latestRun?.statusLabel || "safe") || '')+' status">'+esc(hasLatest ? (state.latestRun?.statusLabel || "not recorded yet") : "not recorded yet")+'</div></div>'
+      +'<div class="cmd-hero"><code>'+esc(heroPrimary)+'</code><button class="btn btn-primary" data-command="'+esc(heroPrimary)+'">Copy</button></div>'
+      +'<div class="cmd-hero"><code>'+esc(heroSecondary)+'</code><button class="btn ghost" data-command="'+esc(heroSecondary)+'">Copy</button></div>'
       +'<div class="status-rail">'
       +'<span class="status-chip"><strong>Task:</strong>&nbsp;'+esc(state.latestRun?.task || "Not available")+'</span>'
       +'<span class="status-chip">'+esc(state.latestRun?.promptState === "guarded prompt available" ? "Guarded prompt ready" : (state.latestRun?.promptState || "No continuation prompt yet"))+'</span>'
@@ -497,6 +554,22 @@ function buildHtml(monitorDefault: boolean): string {
       +'<div class="kpi"><div class="label">Drift warnings</div><div class="value">'+esc(state.metrics.driftWarnings)+'</div><div class="sub">Guardrail pressure</div></div>'
       +'</div>'
       +'<div class="grid">'
+      +'<div class="card"><h2>Recovery</h2><div class="sub">Recover without spending another agent run.</div>'
+      +'<div class="kv"><div class="k">Latest restore point</div><div class="v">'+esc(latestRestorePoint)+'</div></div>'
+      +'<div class="kv"><div class="k">Restore status</div><div class="v">'+runStatusPill(isBlocked ? "needs review" : "available", isBlocked ? "blocked" : "safe")+'</div></div>'
+      +'<div class="actions">'
+      +'<button class="btn btn-primary" data-command="'+esc(COMMANDS.restore)+'"><code>runtrim restore</code></button>'
+      +'<button class="btn ghost" data-command="'+esc(COMMANDS.restorePreview)+'"><code>runtrim restore last --preview</code></button>'
+      +'</div>'
+      +'<div class="recovery-note">File recovery happens locally through the CLI.</div>'
+      +'</div>'
+      +'<div class="card"><h2>Agent Autopilot</h2><div class="sub">Contract and safety readiness for AI coding agents</div>'
+      +'<div class="kv"><div class="k">Status</div><div class="v">'+runStatusPill(autoStatus, autoStatus)+'</div></div>'
+      +'<div class="chips"><span class="chip">Contract before edits</span><span class="chip">Project memory</span><span class="chip">Risky path checks</span><span class="chip">Finish guidance</span><span class="chip">MCP tools</span><span class="chip">Agent rules</span></div>'
+      +'<div class="actions"><button class="btn ghost" data-command="'+esc(COMMANDS.mcpInstructions)+'"><code>runtrim mcp instructions</code></button></div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="main-grid">'
       +'<div class="stack">'
       +'<div class="card"><h2>Memory layer</h2><div class="sub">Project context carried across runs</div>'
       +'<div class="kv"><div class="k">Current state</div><div class="v">'+esc(state.memory.currentState || "No memory state captured yet.")+'</div></div>'
@@ -520,15 +593,18 @@ function buildHtml(monitorDefault: boolean): string {
       +'</div>'
       +'<div class="card"><h2>Command palette</h2><div class="sub">Copy and run in your terminal</div>'
       +'<div class="quick">'
-      +'<div class="quick-row"><div><div class="quick-label">Prepare new run</div><div class="quick-purpose">Create a guarded prompt contract</div><div class="quick-cmd">'+esc(COMMANDS.prepareNewRun)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.prepareNewRun)+'">Copy</button></div>'
-      +'<div class="quick-row"><div><div class="quick-label">Watch changes</div><div class="quick-purpose">Monitor local drift</div><div class="quick-cmd">'+esc(COMMANDS.watch)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.watch)+'">Copy</button></div>'
-      +'<div class="quick-row"><div><div class="quick-label">Check latest</div><div class="quick-purpose">Verify touched files and proof</div><div class="quick-cmd">'+esc(COMMANDS.check)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.check)+'">Copy</button></div>'
-      +'<div class="quick-row"><div><div class="quick-label">Show memory</div><div class="quick-purpose">Resume from project memory</div><div class="quick-cmd">'+esc(COMMANDS.memory)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.memory)+'">Copy</button></div>'
+      +'<div class="quick-row"><div class="quick-main"><div class="quick-label">Prepare new run</div><div class="quick-purpose">Create a guarded run handoff</div><div class="quick-cmd">'+esc(COMMANDS.prepareNewRun)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.prepareNewRun)+'">Copy</button></div>'
+      +'<div class="quick-row"><div class="quick-main"><div class="quick-label">Check latest</div><div class="quick-purpose">Run finish verification</div><div class="quick-cmd">'+esc(COMMANDS.check)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.check)+'">Copy</button></div>'
+      +'<div class="quick-row"><div class="quick-main"><div class="quick-label">Recover</div><div class="quick-purpose">Local restore from guarded run metadata</div><div class="quick-cmd">'+esc(COMMANDS.restore)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.restore)+'">Copy</button></div>'
+      +'<div class="quick-row"><div class="quick-main"><div class="quick-label">Preview recovery</div><div class="quick-purpose">Inspect restore before apply</div><div class="quick-cmd">'+esc(COMMANDS.restorePreview)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.restorePreview)+'">Copy</button></div>'
+      +'<div class="quick-row"><div class="quick-main"><div class="quick-label">Show memory</div><div class="quick-purpose">Resume with project memory</div><div class="quick-cmd">'+esc(COMMANDS.memory)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.memory)+'">Copy</button></div>'
+      +'<div class="quick-row"><div class="quick-main"><div class="quick-label">Continue after limit</div><div class="quick-purpose">Create safe continuation prompt</div><div class="quick-cmd">'+esc(COMMANDS.continueUsageLimit)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.continueUsageLimit)+'">Copy</button></div>'
+      +'<div class="quick-row"><div class="quick-main"><div class="quick-label">MCP instructions</div><div class="quick-purpose">Connect MCP tooling for Agent Autopilot</div><div class="quick-cmd">'+esc(COMMANDS.mcpInstructions)+'</div></div><button class="btn ghost" data-command="'+esc(COMMANDS.mcpInstructions)+'">Copy</button></div>'
       +'</div>'
       +'</div>'
       +'</div>'
       +'</div>'
-      +'<div class="smart"><strong>Operator note:</strong> '+esc(smartStep(state))+'</div>'
+      +'<div class="smart"><strong>Operator note:</strong> '+esc(operatorNote)+'</div>'
       +'<div class="footer">Source code stays local. Panel reads RunTrim metadata and git status only.</div>'
       +'</div>';
     }

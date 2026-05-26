@@ -1,6 +1,7 @@
 import React from "react";
 import { Composition } from "remotion";
 import { RunTrimDemo } from "./RunTrimDemo";
+import { SocialRoot } from "./social/SocialRoot";
 
 // Total duration: 750 frames = 25 seconds at 30fps
 const DURATION = 870;
@@ -27,6 +28,7 @@ export function RemotionRoot() {
         height={1080}
         defaultProps={{ mode: "square" as const }}
       />
+      <SocialRoot />
     </>
   );
 }

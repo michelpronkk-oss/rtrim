@@ -263,7 +263,19 @@ export default function Home() {
                     fontWeight: 500, color: "#f4f5f7",
                   }}
                 >
-                  Stop AI agents from drifting through your codebase.
+                  Stop AI agents from{" "}
+                  <span style={{
+                    fontStyle: "italic",
+                    fontWeight: 600,
+                    background: "linear-gradient(110deg, #7C6DFA 0%, #B8AEFF 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    paddingBottom: "0.25em",
+                    marginBottom: "-0.25em",
+                    display: "inline-block",
+                  }}>drifting</span>{" "}
+                  through your codebase.
                 </h1>
               </MotionFade>
 

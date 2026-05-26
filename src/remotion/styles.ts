@@ -1,9 +1,11 @@
+import { FONT_SANS_FAMILY, FONT_MONO_FAMILY } from "./fonts";
+
 export type VideoMode = "landscape" | "square";
 
 // ── Color tokens ──────────────────────────────────────────────────────────────
 export const C = {
-  bg:         "#08080E",   // graphite near-black
-  bgAlt:      "#0C0C16",
+  bg:         "#07071A",   // graphite near-black (matches homepage)
+  bgAlt:      "#0C0C20",
   surface:    "#0F0F1A",   // card surface
   surfaceEl:  "#141422",   // elevated element
 
@@ -16,15 +18,16 @@ export const C = {
   textDim:    "#484868",
 
   accent:     "#7C6DFA",   // brand violet
-  mint:       "#3DDAB4",   // mint / cyan accent
+  mint:       "#4DE8B0",   // mint / PASS (matches homepage)
   blue:       "#6B9BE8",
   amber:      "#F0BF72",
-  coral:      "#FF7B5C",
+  coral:      "#FF6B6B",   // coral / BLOCKED (matches homepage)
 } as const;
 
 // ── Fonts ─────────────────────────────────────────────────────────────────────
-export const FONT_MONO = "'Menlo','Monaco','Courier New',monospace";
-export const FONT_SANS = "-apple-system,'Segoe UI','Helvetica Neue',Arial,system-ui,sans-serif";
+// Inter Tight (sans) + Geist Mono — same as homepage
+export const FONT_SANS = `'${FONT_SANS_FAMILY}',-apple-system,'Segoe UI',sans-serif`;
+export const FONT_MONO = `'${FONT_MONO_FAMILY}','Menlo','Monaco','Courier New',monospace`;
 
 // ── Typography scale at 1920×1080 ─────────────────────────────────────────────
 // Square (1080×1080) scales at 0.76× — smaller canvas, same optical weight
