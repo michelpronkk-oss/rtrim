@@ -157,7 +157,7 @@ function TaskRow({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <span
-                className="text-[12.5px] font-medium leading-snug"
+                className="text-[12.5px] font-medium leading-snug break-words"
                 style={{
                   color: task.done ? "rgba(255,255,255,0.22)" : "#d8dbe5",
                   textDecoration: task.done ? "line-through" : "none",
@@ -166,7 +166,7 @@ function TaskRow({
                 {task.title}
               </span>
               <span
-                className="ml-2 rounded px-1.5 py-0.5 font-mono text-[9.5px]"
+                className="ml-2 inline-block rounded px-1.5 py-0.5 font-mono text-[9.5px]"
                 style={{ background: "rgba(255,255,255,0.04)", color: pc, border: `1px solid ${pc}22` }}
               >
                 {task.platform}
@@ -189,12 +189,12 @@ function TaskRow({
           className="space-y-3 border-t px-4 py-3"
           style={{ borderColor: "rgba(255,255,255,0.05)", background: "#090b0e" }}
         >
-          <p className="text-[11.5px] leading-relaxed" style={{ color: "rgba(255,255,255,0.38)" }}>
+          <p className="text-[11.5px] leading-relaxed break-words" style={{ color: "rgba(255,255,255,0.38)" }}>
             {task.instruction}
           </p>
           <textarea
             rows={2}
-            placeholder="Notes…"
+            placeholder="Notes..."
             value={task.notes}
             onChange={e => onNotes(task.id, e.target.value)}
             className="w-full resize-none rounded-lg px-3 py-2 text-[11.5px] outline-none leading-relaxed"
@@ -342,12 +342,12 @@ export function AdminPlanningContent() {
   const dateLabel = calendarDate(state.startDate, selectedDay);
 
   return (
-    <div className="flex min-h-0 flex-1" style={{ background: "#06070a" }}>
+    <div className="flex min-h-0 flex-1 flex-col lg:flex-row" style={{ background: "#06070a" }}>
 
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
-        className="flex shrink-0 flex-col overflow-y-auto"
-        style={{ width: 258, background: "#080a0d", borderRight: "1px solid rgba(255,255,255,0.06)" }}
+        className="flex w-full shrink-0 flex-col overflow-y-auto lg:w-[258px]"
+        style={{ background: "#080a0d", borderRight: "1px solid rgba(255,255,255,0.06)" }}
       >
         {/* Start date */}
         <div className="px-4 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -406,7 +406,7 @@ export function AdminPlanningContent() {
                       <button
                         key={day}
                         onClick={() => setSelectedDay(day)}
-                        title={`Day ${day}${state.startDate ? ` · ${calendarDate(state.startDate, day)}` : ""}`}
+                        title={`Day ${day}${state.startDate ? ` - ${calendarDate(state.startDate, day)}` : ""}`}
                         className="relative flex items-center justify-center rounded-[4px] font-mono text-[8px] font-bold transition-all"
                         style={{ width: 24, height: 22, ...dotStyle(dt, isSelected, isToday) }}
                       >
@@ -432,7 +432,7 @@ export function AdminPlanningContent() {
 
         {/* Header bar */}
         <div
-          className="shrink-0 flex items-center gap-4 px-6 py-3"
+          className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
           style={{ background: "#0a0b0e", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
           <div className="flex items-baseline gap-1.5">
@@ -452,16 +452,16 @@ export function AdminPlanningContent() {
           >
             Week {selectedWeek}
           </span>
-          <div className="flex-1" />
+          <div className="hidden flex-1 sm:block" />
           <span className="font-mono text-[11px]" style={{ color: dp.pct === 100 ? "#10b981" : "#7C6DFA" }}>
             {dp.done}/{dp.total} done
           </span>
-          <div className="w-24 overflow-hidden rounded-full" style={{ height: 3, background: "rgba(255,255,255,0.05)" }}>
+          <div className="w-full overflow-hidden rounded-full sm:w-24" style={{ height: 3, background: "rgba(255,255,255,0.05)" }}>
             <div className="h-full rounded-full transition-all" style={{ width: `${dp.pct}%`, background: dp.pct === 100 ? "#10b981" : "#7C6DFA" }} />
           </div>
         </div>
 
-        <div className="flex-1 space-y-5 px-6 py-5">
+        <div className="flex-1 space-y-5 px-4 py-4 sm:px-6 sm:py-5">
 
           {/* Week goal banner */}
           <div
@@ -493,7 +493,7 @@ export function AdminPlanningContent() {
               )}
             </div>
 
-            <div className="space-y-2 px-4 py-3">
+            <div className="space-y-2 px-3 py-3 sm:px-4">
               {selectedTasks.length === 0 ? (
                 <p className="py-6 text-center font-mono text-[11px]" style={{ color: "rgba(255,255,255,0.1)" }}>
                   No tasks for day {selectedDay}
@@ -524,7 +524,7 @@ export function AdminPlanningContent() {
                 Day 30 targets
               </span>
             </div>
-            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3">
               {state.metrics.map(metric => (
                 <MetricCard key={metric.key} metric={metric} onChange={updateMetric} />
               ))}
@@ -546,8 +546,8 @@ export function AdminPlanningDashboard() {
         className="sticky top-0 z-10 px-6 py-3.5 backdrop-blur-md"
         style={{ background: "rgba(6,7,10,0.95)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             <span className="text-[14px] font-semibold">30-Day Marketing Plan</span>
             <span className="rounded px-1.5 py-0.5 font-mono text-[10px]" style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.22)" }}>
               admin
@@ -555,7 +555,7 @@ export function AdminPlanningDashboard() {
           </div>
           <Link
             href="/admin"
-            className="rounded px-3 py-1.5 text-[12px] transition-colors"
+            className="w-full rounded px-3 py-1.5 text-center text-[12px] transition-colors sm:w-auto"
             style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.28)" }}
           >
             Back to admin

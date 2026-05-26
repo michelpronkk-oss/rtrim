@@ -1,53 +1,63 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  RefreshCw, LogOut, Terminal, Globe, Check, X,
-  AlertCircle, ArrowRight, Users, Activity, BarChart2, ChevronDown,
-} from "lucide-react";
+import { RefreshCw, LogOut } from "lucide-react";
 import { AdminPlanningContent } from "@/components/admin/admin-planning-dashboard";
-
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type EarlyAccessEntry = {
   id: string;
   email: string | null;
   role: string | null;
-  agent: string | null;
-  use_case: string | null;
   plan_interest: string | null;
-  workflow: string | null;
-  biggest_pain: string | null;
-  notes: string | null;
   status: string | null;
   created_at: string;
-  approved_at: string | null;
-  rejected_at: string | null;
-  reviewed_by: string | null;
-  decision_note: string | null;
-  approval_email_sent_at: string | null;
-  rejection_email_sent_at: string | null;
 };
+
+type FunnelStep = {
+  step: string;
+  count: number;
+  tracked: boolean;
+  recommendedEvent?: string;
+};
+
+type RevenueSummary = {
+  estimatedMrr: number;
+  isEstimated: boolean;
+  paidUsers: number;
+  proCount: number;
+  builderCount: number;
+  teamCount: number;
+  teamSeats: number | null;
+  trialUsers: number;
+  paymentIssueUsers: number;
+};
+
+type PlanSegment = {
+  plan: "free" | "pro" | "builder" | "team" | "unknown";
+  users: number;
+  connectedCliUsers: number;
+  recentlyActiveUsers7d: number;
+};
+
+type CliMetric = { label: string; count: number; tracked: boolean; recommendedEvent?: string };
 
 type MetricsResponse = {
   ok: boolean;
   summary?: Record<string, number>;
-  daily?: Array<Record<string, string | number>>;
-  funnel?: Array<{ step: string; count: number }>;
+  revenue?: RevenueSummary;
+  planSegments?: PlanSegment[];
+  funnel?: FunnelStep[];
   topPages?: Array<{ pagePath: string; views: number; uniqueUsers: number }>;
+  cliMetrics?: CliMetric[];
   cliEvents?: Array<{ eventName: string; count: number; lastSeen: string }>;
+  recentEvents?: Array<{ eventName: string; source: string; pagePath: string; createdAt: string; plan?: string }>;
+  referrerBreakdown?: Array<{ source: string; count: number; limited?: boolean }>;
+  trackingGaps?: Array<{ key: string; recommendedEvent: string; note: string }>;
   earlyAccess?: EarlyAccessEntry[];
-  earlyAccessTableFound?: boolean;
-  recentEvents?: Array<{ eventName: string; source: string; pagePath: string; createdAt: string }>;
-  conversionRates?: { visitToInstallCta: number; ctaToInstallCopy: number; copyToCli: number };
-  referrerBreakdown?: Array<{ source: string; count: number; isAI: boolean }>;
 };
 
-type Tab = "overview" | "early-access" | "activity" | "planning";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+type Tab = "overview" | "activity" | "early-access" | "planning";
 
 function rel(iso: string): string {
   const d = Date.now() - new Date(iso).getTime();
@@ -59,300 +69,44 @@ function rel(iso: string): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-function fmt(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function fmtMoney(v: number): string {
+  return `$${Math.round(v).toLocaleString("en-US")}`;
 }
 
-function fmtFull(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
-
-// ─── Atoms ────────────────────────────────────────────────────────────────────
-
-function StatusPill({ status }: { status: string | null }) {
-  const s = (status ?? "pending").toLowerCase();
-  const map: Record<string, string> = {
-    approved:  "border-[#4DE8B0]/25 bg-[#4DE8B0]/10 text-[#4DE8B0]",
-    rejected:  "border-[#FF6B6B]/25 bg-[#FF6B6B]/10 text-[#FF6B6B]",
-    pending:   "border-[#8E95C3]/25 bg-[#1A1A30] text-[#8E95C3]",
-    waitlisted:"border-[#F0BF72]/25 bg-[#2A2010] text-[#F0BF72]",
-  };
-  return (
-    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] tracking-[0.04em] ${map[s] ?? map.pending}`}>
-      {s}
-    </span>
-  );
-}
-
-function SourcePill({ source }: { source: string }) {
-  const isCli = source === "cli";
-  return (
-    <span className={`inline-flex rounded border px-1.5 py-0.5 font-mono text-[10px] ${isCli ? "border-[#7C6DFA]/25 bg-[#7C6DFA]/10 text-[#9E91FF]" : "border-white/10 text-[#4D5070]"}`}>
-      {isCli ? "cli" : "web"}
-    </span>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="whitespace-nowrap border-b border-white/8 pb-2 pr-4 font-mono text-[10px] uppercase tracking-[0.08em] text-[#3A4060] first:pl-0">
-      {children}
-    </th>
-  );
-}
-
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
-function Stat({
-  label, value, accent = "#7C6DFA", note,
-}: {
-  label: string; value: string | number; accent?: string; note?: string;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-lg border border-white/7 bg-[#0C0D22] px-4 py-3.5">
-      <div className="absolute inset-y-0 left-0 w-0.5 rounded-l-lg" style={{ background: accent }} />
-      <p className="text-[11px] text-[#4D5070]">{label}</p>
-      <p className="mt-1 text-[24px] font-bold tabular-nums tracking-tight text-[#EDEEFF]">{value}</p>
-      {note && <p className="mt-0.5 font-mono text-[10px] text-[#2E3554]">{note}</p>}
-    </div>
-  );
-}
-
-// ─── Collapsible section header ────────────────────────────────────────────────
-
-function CollapseHeader({
+function StatCard({
   label,
-  icon,
-  collapsed,
-  onToggle,
-  right,
+  value,
+  note,
 }: {
-  label: React.ReactNode;
-  icon?: React.ReactNode;
-  collapsed: boolean;
-  onToggle: () => void;
-  right?: React.ReactNode;
+  label: string;
+  value: string | number;
+  note?: string;
 }) {
   return (
-    <div className="mb-2 flex items-center justify-between gap-2">
-      <button
-        onClick={onToggle}
-        className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060] hover:text-[#7C6DFA] transition-colors"
-      >
-        {icon}
-        {label}
-        <ChevronDown
-          className={`size-3 transition-transform ${collapsed ? "-rotate-90" : ""}`}
-        />
-      </button>
-      {right}
+    <div className="rounded-lg border border-white/10 bg-[#0C0D22] px-4 py-3">
+      <p className="text-[11px] text-[#6D7398]">{label}</p>
+      <p className="mt-1 font-mono text-[22px] font-bold text-[#EDEEFF]">{value}</p>
+      {note ? <p className="mt-1 text-[10px] text-[#4D5070]">{note}</p> : null}
     </div>
   );
 }
-
-// ─── Approve / Reject row ─────────────────────────────────────────────────────
-
-type ActionState = {
-  open: "approve" | "reject" | null;
-  note: string;
-  loading: boolean;
-  done: boolean;
-  emailSent?: boolean;
-  error: string;
-};
-
-function EARow({
-  entry,
-  onDone,
-}: {
-  entry: EarlyAccessEntry;
-  onDone: (id: string, status: string) => void;
-}) {
-  const [a, setA] = useState<ActionState>({
-    open: null, note: "", loading: false, done: false, emailSent: undefined, error: "",
-  });
-
-  const pending = (entry.status ?? "pending") === "pending";
-
-  async function submit(type: "approve" | "reject") {
-    setA((s) => ({ ...s, loading: true, error: "" }));
-    const res = await fetch(`/api/admin/early-access/${type}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: entry.id, decision_note: a.note }),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.ok) {
-      setA((s) => ({ ...s, loading: false, error: json.error ?? "Failed" }));
-    } else {
-      setA((s) => ({ ...s, loading: false, done: true, emailSent: json.emailSent }));
-      onDone(entry.id, type === "approve" ? "approved" : "rejected");
-    }
-  }
-
-  const showStatus = a.done
-    ? (a.open === "approve" ? "approved" : "rejected")
-    : entry.status;
-
-  return (
-    <>
-      <tr className="group border-t border-white/6 transition-colors hover:bg-white/[0.018]">
-        {/* Email */}
-        <td className="py-2.5 pr-4 font-mono text-[12px] text-[#C8D4E0]">
-          {entry.email ?? "—"}
-        </td>
-        {/* Plan */}
-        <td className="pr-4 text-[12px] text-[#8E95C3]">
-          {entry.plan_interest || entry.role || "—"}
-        </td>
-        {/* Workflow */}
-        <td className="pr-4 text-[12px] text-[#8E95C3]">
-          {entry.workflow || entry.agent || "—"}
-        </td>
-        {/* Pain */}
-        <td className="max-w-[180px] pr-4 text-[12px] text-[#5E6A88]">
-          <span className="truncate block" title={entry.biggest_pain ?? entry.use_case ?? ""}>
-            {entry.biggest_pain || entry.use_case || "—"}
-          </span>
-          {entry.notes && (
-            <span className="block truncate font-mono text-[10px] text-[#3A4060]" title={entry.notes}>
-              {entry.notes}
-            </span>
-          )}
-        </td>
-        {/* Status */}
-        <td className="pr-4"><StatusPill status={showStatus} /></td>
-        {/* Date */}
-        <td className="pr-4 font-mono text-[11px] text-[#3A4060]">{fmt(entry.created_at)}</td>
-        {/* Reviewed */}
-        <td className="pr-4 font-mono text-[11px] text-[#3A4060]">
-          {entry.approved_at ? fmt(entry.approved_at)
-            : entry.rejected_at ? fmt(entry.rejected_at)
-            : "—"}
-        </td>
-        {/* Actions */}
-        <td className="py-2.5">
-          {a.done ? (
-            <span className={`font-mono text-[10px] ${a.emailSent === false ? "text-[#F0BF72]" : "text-[#4DE8B0]"}`}>
-              {a.open === "approve" ? "Approved" : "Rejected"}
-              {a.emailSent === false && " · email failed"}
-            </span>
-          ) : pending ? (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setA((s) => ({ ...s, open: s.open === "approve" ? null : "approve" }))}
-                disabled={a.loading}
-                className={`flex items-center gap-1 rounded border px-2 py-1 font-mono text-[10px] transition-colors disabled:opacity-40 ${
-                  a.open === "approve"
-                    ? "border-[#4DE8B0]/40 bg-[#4DE8B0]/15 text-[#4DE8B0]"
-                    : "border-[#4DE8B0]/20 bg-[#4DE8B0]/6 text-[#4DE8B0]/70 hover:border-[#4DE8B0]/35 hover:text-[#4DE8B0]"
-                }`}
-              >
-                <Check className="size-2.5" /> Approve
-              </button>
-              <button
-                onClick={() => setA((s) => ({ ...s, open: s.open === "reject" ? null : "reject" }))}
-                disabled={a.loading}
-                className={`flex items-center gap-1 rounded border px-2 py-1 font-mono text-[10px] transition-colors disabled:opacity-40 ${
-                  a.open === "reject"
-                    ? "border-[#FF6B6B]/40 bg-[#FF6B6B]/15 text-[#FF6B6B]"
-                    : "border-[#FF6B6B]/20 bg-[#FF6B6B]/6 text-[#FF6B6B]/70 hover:border-[#FF6B6B]/35 hover:text-[#FF6B6B]"
-                }`}
-              >
-                <X className="size-2.5" /> Reject
-              </button>
-            </div>
-          ) : (
-            <span className="font-mono text-[10px] text-[#2E3554]">reviewed</span>
-          )}
-        </td>
-      </tr>
-
-      {/* Inline confirm panel */}
-      {a.open && !a.done && (
-        <tr className="border-t-0">
-          <td colSpan={8} className="pb-2 pl-0 pr-0">
-            <div className="mx-0 flex items-start gap-3 rounded-lg border border-white/8 bg-[#09091C] px-4 py-3">
-              <div className="flex-1 space-y-2">
-                <p className="font-mono text-[10px] text-[#4D5070]">
-                  {a.open === "approve" ? "Approving" : "Rejecting"}{" "}
-                  <span className="text-[#C8D4E0]">{entry.email}</span>
-                  {a.open === "approve" && (
-                    <span className="ml-2 text-[#4DE8B0]/60">— approval email will be sent</span>
-                  )}
-                  {a.open === "reject" && (
-                    <span className="ml-2 text-[#FF6B6B]/60">— rejection email will be sent</span>
-                  )}
-                </p>
-                <input
-                  type="text"
-                  value={a.note}
-                  onChange={(e) => setA((s) => ({ ...s, note: e.target.value }))}
-                  placeholder="Decision note (optional)"
-                  className="w-full rounded border border-white/10 bg-[#07071A] px-3 py-1.5 font-mono text-[12px] text-[#EDEEFF] placeholder-[#2E3554] outline-none focus:border-[#7C6DFA]/40"
-                />
-                {a.error && (
-                  <p className="font-mono text-[11px] text-[#FF8F8F]">{a.error}</p>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  onClick={() => submit(a.open!)}
-                  disabled={a.loading}
-                  className={`rounded px-3 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-40 ${
-                    a.open === "approve"
-                      ? "bg-[#4DE8B0]/15 text-[#4DE8B0] hover:bg-[#4DE8B0]/25"
-                      : "bg-[#FF6B6B]/15 text-[#FF6B6B] hover:bg-[#FF6B6B]/25"
-                  }`}
-                >
-                  {a.loading ? "Saving..." : "Confirm"}
-                </button>
-                <button
-                  onClick={() => setA((s) => ({ ...s, open: null, note: "", error: "" }))}
-                  disabled={a.loading}
-                  className="rounded px-3 py-1.5 text-[11px] text-[#4D5070] transition-colors hover:text-[#9699BE] disabled:opacity-40"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
   const [data, setData] = useState<MetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [fetchError, setFetchError] = useState("");
-  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("overview");
-  const [eaOverrides, setEaOverrides] = useState<Record<string, string>>({});
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-
-  function toggleSection(key: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  }
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
   const load = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true); else setLoading(true);
-    setFetchError("");
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
+    setError("");
     const res = await fetch("/api/admin/metrics", { cache: "no-store" });
     const body = (await res.json().catch(() => ({}))) as MetricsResponse & { error?: string };
     if (!res.ok || !body.ok) {
-      setFetchError(body.error ?? "Could not load metrics.");
+      setError(body.error ?? "Could not load admin metrics.");
     } else {
       setData(body);
       setLastFetched(new Date());
@@ -361,600 +115,343 @@ export function AdminDashboard() {
     setRefreshing(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     window.location.reload();
   }
 
-  function handleEaDone(id: string, newStatus: string) {
-    setEaOverrides((prev) => ({ ...prev, [id]: newStatus }));
-  }
-
-  // ── Derived data ─────────────────────────────────────────────────────────
   const summary = data?.summary ?? {};
-  const earlyAccess = (data?.earlyAccess ?? []).map((e) => ({
-    ...e,
-    status: eaOverrides[e.id] ?? e.status,
-  }));
-  const funnel          = data?.funnel ?? [];
-  const topPages        = data?.topPages ?? [];
-  const cliEvents       = data?.cliEvents ?? [];
-  const recent          = data?.recentEvents ?? [];
-  const daily           = data?.daily ?? [];
-  const funnelMax       = Math.max(...funnel.map((f) => f.count), 1);
-  const conversionRates = data?.conversionRates;
+  const revenue = data?.revenue;
+  const planSegments = data?.planSegments ?? [];
+  const funnel = data?.funnel ?? [];
+  const topPages = data?.topPages ?? [];
+  const cliMetrics = data?.cliMetrics ?? [];
+  const cliEvents = data?.cliEvents ?? [];
+  const recentEvents = data?.recentEvents ?? [];
   const referrerBreakdown = data?.referrerBreakdown ?? [];
+  const trackingGaps = data?.trackingGaps ?? [];
+  const earlyAccess = data?.earlyAccess ?? [];
+  const funnelMax = Math.max(1, ...funnel.map((f) => f.count));
 
-  const pending  = earlyAccess.filter((e) => e.status === "pending").length;
-  const approved = earlyAccess.filter((e) => e.status === "approved").length;
-  const rejected = earlyAccess.filter((e) => e.status === "rejected").length;
-  const total    = earlyAccess.length;
+  const planSegmentRows = useMemo(() => {
+    const order = ["free", "pro", "builder", "team", "unknown"];
+    const map = new Map(planSegments.map((r) => [r.plan, r]));
+    return order.map((k) => map.get(k as PlanSegment["plan"]) ?? {
+      plan: k as PlanSegment["plan"],
+      users: 0,
+      connectedCliUsers: 0,
+      recentlyActiveUsers7d: 0,
+    });
+  }, [planSegments]);
 
-  const eaSorted = [...earlyAccess].sort((a, b) => {
-    const ap = a.status === "pending" ? 0 : 1;
-    const bp = b.status === "pending" ? 0 : 1;
-    if (ap !== bp) return ap - bp;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-
-  // ── Tab definitions ───────────────────────────────────────────────────────
-  const TABS: { id: Tab; label: string; badge?: number }[] = [
-    { id: "overview",      label: "Overview" },
-    { id: "early-access",  label: "Early Access", badge: pending || undefined },
-    { id: "activity",      label: "Activity" },
-    { id: "planning",      label: "Planning" },
-
-  ];
-
-  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#07071A]">
-        <header className="border-b border-white/8 bg-[#07071A]/95 px-6 py-3.5">
-          <div className="mx-auto flex max-w-[1200px] items-center justify-between">
-            <span className="text-[15px] font-bold text-[#EDEEFF]">RunTrim Admin</span>
-          </div>
-        </header>
-        <div className="mx-auto max-w-[1200px] px-6 py-8">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-lg border border-white/6 bg-[#0C0D22]" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-[#07071A] text-[#EDEEFF] p-6">Loading admin metrics...</div>;
   }
 
   return (
-    <div className={`min-h-screen text-[#EDEEFF] ${tab === "planning" ? "bg-[#06070a]" : "bg-[#07071A]"}`}>
-
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 border-b border-white/8 bg-[#07071A]/96 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-5 rounded" />
-            <span className="text-[14px] font-bold tracking-tight">RunTrim</span>
-            <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-[#4D5070]">
-              admin
-            </span>
+    <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
+      <header className="sticky top-0 z-10 border-b border-white/10 bg-[#07071A]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-5 py-3">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#4D5070]">admin</span>
+            <h1 className="text-[16px] font-semibold">RunTrim Growth and Revenue Control Room</h1>
+            {lastFetched ? (
+              <span className="font-mono text-[10px] text-[#4D5070]">updated {rel(lastFetched.toISOString())}</span>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
-            {lastFetched && (
-              <span className="hidden font-mono text-[10px] text-[#2E3554] sm:block">
-                {rel(lastFetched.toISOString())} ago
-              </span>
-            )}
             <button
-              onClick={() => load(true)}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-[12px] text-[#5A6480] transition-colors hover:border-white/20 hover:text-[#EDEEFF] disabled:opacity-40"
+              onClick={() => void load(true)}
+              className="inline-flex items-center gap-1 rounded border border-white/10 px-2.5 py-1.5 text-[12px] text-[#8E95C3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
             >
               <RefreshCw className={`size-3 ${refreshing ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              Refresh
             </button>
             <button
               onClick={logout}
-              className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-[12px] text-[#5A6480] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
+              className="inline-flex items-center gap-1 rounded border border-white/10 px-2.5 py-1.5 text-[12px] text-[#8E95C3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
             >
               <LogOut className="size-3" />
-              <span className="hidden sm:inline">Log out</span>
+              Logout
             </button>
           </div>
         </div>
+      </header>
 
-        {/* Tab bar */}
-        <div className="mx-auto flex max-w-[1200px] items-end gap-0 overflow-x-auto px-5 sm:px-6">
-          {TABS.map((t) => (
+      <main className="mx-auto max-w-[1400px] px-5 py-5">
+        {error ? (
+          <div className="mb-4 rounded border border-[#FF6B6B]/40 bg-[#2A0E17] p-3 text-[12px] text-[#FF9AA9]">{error}</div>
+        ) : null}
+
+        <div className="mb-5 flex flex-wrap gap-2">
+          {([
+            ["overview", "Overview"],
+            ["activity", "Activity"],
+            ["early-access", "Early Access (Historical)"],
+            ["planning", "Planning"],
+          ] as const).map(([id, label]) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 pb-2.5 pt-1.5 text-[13px] font-medium transition-colors ${
-                tab === t.id
-                  ? "border-[#7C6DFA] text-[#EDEEFF]"
-                  : "border-transparent text-[#4D5070] hover:text-[#9699BE]"
+              key={id}
+              onClick={() => setTab(id)}
+              className={`rounded border px-3 py-1.5 text-[12px] ${
+                tab === id
+                  ? "border-[#7C6DFA]/60 bg-[#7C6DFA]/20 text-[#DAD2FF]"
+                  : "border-white/10 text-[#7A83B3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
               }`}
             >
-              {t.label}
-              {t.badge ? (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#F0BF72] px-1 font-mono text-[10px] font-bold text-[#07071A]">
-                  {t.badge}
-                </span>
-              ) : null}
+              {label}
             </button>
           ))}
         </div>
-      </header>
 
-      {/* ── Planning tab (full-bleed, no inner padding wrapper) ───────────── */}
-      {tab === "planning" && (
-        <div className="flex" style={{ height: "calc(100vh - 97px)" }}>
-          <AdminPlanningContent />
-        </div>
-      )}
+        {tab === "planning" ? (
+          <div className="rounded-xl border border-white/10 bg-[#0B0C1E] p-2">
+            <AdminPlanningContent />
+          </div>
+        ) : null}
 
-      {/* ── Padded content tabs ───────────────────────────────────────────── */}
-      {tab !== "planning" && (
-        <div className="mx-auto max-w-[1200px] px-5 py-6 sm:px-6">
+        {tab === "overview" ? (
+          <div className="space-y-5">
+            <section>
+              <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.1em] text-[#4D5070]">Top KPIs</h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+                <StatCard label="Unique visitors 24h" value={summary.uniqueVisitors24h ?? 0} />
+                <StatCard label="Unique visitors 7d" value={summary.uniqueVisitors7d ?? 0} />
+                <StatCard label="Page views 7d" value={summary.pageViews7d ?? 0} />
+                <StatCard label="Install CTA clicks 7d" value={summary.installCtaClicks7d ?? 0} />
+                <StatCard label="Install command copies 7d" value={summary.installCommandCopies7d ?? 0} />
+                <StatCard label="CLI starts 7d" value={summary.cliStarts7d ?? 0} />
+                <StatCard label="Guarded runs 7d" value={summary.guardedRuns7d ?? 0} />
+                <StatCard label="CLI finishes 7d" value={summary.cliFinishes7d ?? 0} />
+                <StatCard label="Connected CLI users 7d" value={summary.cliConnectedUsers7d ?? 0} />
+                <StatCard label="Paid users" value={summary.paidUsers ?? 0} />
+                <StatCard
+                  label="MRR"
+                  value={fmtMoney(summary.mrr ?? 0)}
+                  note={revenue?.isEstimated ? "Estimated MRR" : "Exact MRR"}
+                />
+              </div>
+            </section>
 
-          {fetchError && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#FF6B6B]/20 bg-[#FF6B6B]/6 px-4 py-3 text-[13px] text-[#FF8F8F]">
-              <AlertCircle className="size-4 shrink-0" />
-              {fetchError}
-            </div>
-          )}
-
-          {/* ══ OVERVIEW ══════════════════════════════════════════════════════ */}
-          {tab === "overview" && (
-            <div className="space-y-5">
-
-              {/* Pending banner */}
-              {pending > 0 && (
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-[#F0BF72]/20 bg-[#F0BF72]/6 px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <AlertCircle className="size-4 shrink-0 text-[#F0BF72]" />
-                    <p className="text-[13px] font-medium text-[#F0BF72]">
-                      {pending} request{pending !== 1 ? "s" : ""} pending review
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setTab("early-access")}
-                    className="flex items-center gap-1 text-[12px] font-medium text-[#F0BF72]/80 transition-colors hover:text-[#F0BF72]"
-                  >
-                    Review <ArrowRight className="size-3.5" />
-                  </button>
+            <section className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">Revenue</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <StatCard label="MRR" value={fmtMoney(revenue?.estimatedMrr ?? 0)} note={revenue?.isEstimated ? "Estimated MRR" : "Exact"} />
+                  <StatCard label="Active paid users" value={revenue?.paidUsers ?? 0} />
+                  <StatCard label="Pro users" value={revenue?.proCount ?? 0} />
+                  <StatCard label="Builder users" value={revenue?.builderCount ?? 0} />
+                  <StatCard label="Team users" value={revenue?.teamCount ?? 0} note={revenue?.teamSeats != null ? `${revenue.teamSeats} seats` : "seats unavailable"} />
+                  <StatCard label="Trial users" value={revenue?.trialUsers ?? 0} />
+                  <StatCard label="Payment issues" value={revenue?.paymentIssueUsers ?? 0} />
                 </div>
-              )}
-
-              {/* Stats — EA counts */}
-              <div>
-                <CollapseHeader
-                  label="Early access"
-                  icon={<Users className="size-3" />}
-                  collapsed={collapsed.has("ea-counts")}
-                  onToggle={() => toggleSection("ea-counts")}
-                />
-                {!collapsed.has("ea-counts") && (
-                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                    <Stat label="Pending review"  value={pending}  accent="#F0BF72" />
-                    <Stat label="Approved"        value={approved} accent="#4DE8B0" />
-                    <Stat label="Rejected"        value={rejected} accent="#FF6B6B" />
-                    <Stat label="Total requests"  value={total}    accent="#7C6DFA" />
-                  </div>
-                )}
               </div>
 
-              {/* Stats — traffic + CLI */}
-              <div>
-                <CollapseHeader
-                  label="Traction (7d)"
-                  icon={<Activity className="size-3" />}
-                  collapsed={collapsed.has("traction")}
-                  onToggle={() => toggleSection("traction")}
-                />
-                {!collapsed.has("traction") && (
-                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                    <Stat label="Unique visitors"   value={summary.uniqueVisitors7d ?? 0} accent="#5B8BFF" note="7d" />
-                    <Stat label="Install copies"    value={summary.installCopies7d ?? 0}  accent="#4DE8B0" note="7d" />
-                    <Stat label="CLI starts"        value={summary.cliStarts7d ?? 0}       accent="#7C6DFA" note="7d" />
-                    <Stat label="Synced projects"   value={summary.syncedProjects30d ?? 0} accent="#9966FF" note="30d" />
-                  </div>
-                )}
-              </div>
-
-              {/* Conversion rates */}
-              {conversionRates && (
-                <div>
-                  <CollapseHeader
-                    label="Conversion"
-                    icon={<BarChart2 className="size-3" />}
-                    collapsed={collapsed.has("conversion")}
-                    onToggle={() => toggleSection("conversion")}
-                  />
-                  {!collapsed.has("conversion") && (
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                      <Stat
-                        label="Visit → Install CTA"
-                        value={`${conversionRates.visitToInstallCta}%`}
-                        accent="#7C6DFA"
-                      />
-                      <Stat
-                        label="CTA → Install copy"
-                        value={`${conversionRates.ctaToInstallCopy}%`}
-                        accent="#9966FF"
-                      />
-                      <Stat
-                        label="Copy → CLI start"
-                        value={`${conversionRates.copyToCli}%`}
-                        accent="#4DE8B0"
-                      />
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">User Segmentation</h3>
+                <div className="space-y-1">
+                  {planSegmentRows.map((row) => (
+                    <div key={row.plan} className="grid grid-cols-4 gap-2 rounded px-2 py-2 text-[12px] hover:bg-white/[0.02]">
+                      <span className="font-mono text-[#AEB6D7]">{row.plan}</span>
+                      <span className="font-mono text-[#EDEEFF]">{row.users}</span>
+                      <span className="font-mono text-[#7C86B4]">CLI {row.connectedCliUsers}</span>
+                      <span className="font-mono text-[#7C86B4]">active {row.recentlyActiveUsers7d}</span>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* Recent EA requests */}
-              <div>
-                <CollapseHeader
-                  label="Recent requests"
-                  icon={<Users className="size-3" />}
-                  collapsed={collapsed.has("recent-requests")}
-                  onToggle={() => toggleSection("recent-requests")}
-                  right={
-                    earlyAccess.length > 5 ? (
-                      <button
-                        onClick={() => setTab("early-access")}
-                        className="flex items-center gap-1 font-mono text-[10px] text-[#4D5070] transition-colors hover:text-[#9E91FF]"
-                      >
-                        All {earlyAccess.length} <ArrowRight className="size-3" />
-                      </button>
-                    ) : undefined
-                  }
-                />
-                {!collapsed.has("recent-requests") && (
-                  <div className="rounded-lg border border-white/7 bg-[#0C0D22] overflow-hidden">
-                    {eaSorted.slice(0, 6).length === 0 ? (
-                      <p className="px-4 py-5 text-[12px] text-[#3A4060]">No requests yet.</p>
-                    ) : (
-                      eaSorted.slice(0, 6).map((e, i) => (
-                        <div
-                          key={e.id}
-                          className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/[0.02] ${i > 0 ? "border-t border-white/6" : ""}`}
-                        >
-                          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-[#C8D4E0]">{e.email}</span>
-                          <span className="hidden shrink-0 text-[11px] text-[#4D5070] sm:block">
-                            {e.plan_interest || e.role || "—"}
-                          </span>
-                          <StatusPill status={e.status} />
-                          <span className="w-12 shrink-0 text-right font-mono text-[10px] text-[#2E3554]">{fmt(e.created_at)}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Recent events */}
-              <div>
-                <CollapseHeader
-                  label="Recent activity"
-                  icon={<Terminal className="size-3" />}
-                  collapsed={collapsed.has("recent-activity")}
-                  onToggle={() => toggleSection("recent-activity")}
-                />
-                {!collapsed.has("recent-activity") && (
-                  <div className="rounded-lg border border-white/7 bg-[#0C0D22] overflow-hidden">
-                    {recent.length === 0 ? (
-                      <p className="px-4 py-5 text-[12px] text-[#3A4060]">No activity yet.</p>
-                    ) : (
-                      recent.slice(0, 10).map((e, i) => (
-                        <div
-                          key={`${e.eventName}-${i}`}
-                          className={`flex items-center gap-2.5 px-4 py-2 transition-colors hover:bg-white/[0.02] ${i > 0 ? "border-t border-white/6" : ""}`}
-                        >
-                          <SourcePill source={e.source} />
-                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
-                          <span className="hidden shrink-0 max-w-[100px] truncate font-mono text-[10px] text-[#3A4060] sm:block">
-                            {e.pagePath || "—"}
-                          </span>
-                          <span className="shrink-0 font-mono text-[10px] text-[#2E3554]">{rel(e.createdAt)}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ══ EARLY ACCESS ══════════════════════════════════════════════════ */}
-          {tab === "early-access" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-[15px] font-semibold text-[#EDEEFF]">
-                    Early access requests
-                  </h2>
-                  <p className="mt-0.5 text-[12px] text-[#4D5070]">
-                    {pending > 0
-                      ? `${pending} pending review · ${approved} approved · ${rejected} rejected`
-                      : `${total} total · ${approved} approved · ${rejected} rejected`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 font-mono text-[10px]">
-                  <span className="flex items-center gap-1 rounded border border-[#F0BF72]/20 bg-[#F0BF72]/8 px-2 py-1 text-[#F0BF72]">
-                    {pending} pending
-                  </span>
-                  <span className="flex items-center gap-1 rounded border border-[#4DE8B0]/20 bg-[#4DE8B0]/8 px-2 py-1 text-[#4DE8B0]">
-                    {approved} approved
-                  </span>
+                  ))}
                 </div>
               </div>
+            </section>
 
-              {/* Mobile cards */}
-              <div className="space-y-2 md:hidden">
-                {eaSorted.length === 0 ? (
-                  <p className="py-8 text-center text-[12px] text-[#3A4060]">No requests yet.</p>
-                ) : eaSorted.map((e, i) => (
-                  <div key={`${e.id}-${i}`} className="rounded-lg border border-white/7 bg-[#0C0D22] p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 truncate font-mono text-[12px] text-[#C8D4E0]">{e.email}</span>
-                      <StatusPill status={e.status} />
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[#4D5070]">
-                      {(e.plan_interest || e.role) && <span>{e.plan_interest || e.role}</span>}
-                      {(e.workflow || e.agent) && <span>· {e.workflow || e.agent}</span>}
-                      <span>· {fmt(e.created_at)}</span>
-                    </div>
-                    {(e.biggest_pain || e.notes) && (
-                      <p className="mt-1 truncate text-[11px] text-[#4D5070]">
-                        {e.biggest_pain || e.use_case}{e.notes ? ` · ${e.notes}` : ""}
-                      </p>
-                    )}
-                    {e.status === "pending" && (
-                      <p className="mt-2 text-[11px] text-[#4D5070]">
-                        Use desktop to approve / reject.
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Desktop table */}
-              <div className="hidden overflow-x-auto rounded-lg border border-white/7 bg-[#0C0D22] md:block">
-                {eaSorted.length === 0 ? (
-                  <p className="px-6 py-10 text-center text-[12px] text-[#3A4060]">No requests yet.</p>
+            <section className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">Current Conversion Funnel (7d)</h3>
+                {funnel.length === 0 ? (
+                  <p className="text-[12px] text-[#5C638A]">No funnel data yet.</p>
                 ) : (
-                  <table className="w-full min-w-[900px] text-left text-[12px]">
-                    <thead>
-                      <tr>
-                        <Th>Email</Th>
-                        <Th>Plan</Th>
-                        <Th>Workflow</Th>
-                        <Th>Pain / notes</Th>
-                        <Th>Status</Th>
-                        <Th>Submitted</Th>
-                        <Th>Reviewed</Th>
-                        <Th>Actions</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {eaSorted.map((e, i) => (
-                        <EARow key={`${e.id}-${i}`} entry={e} onDone={handleEaDone} />
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ══ ACTIVITY ══════════════════════════════════════════════════════ */}
-          {tab === "activity" && (
-            <div className="space-y-5">
-
-              {/* Summary row */}
-              <div>
-                <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                  <BarChart2 className="size-3" /> Traffic (7d)
-                </p>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                  <Stat label="Unique visitors 24h" value={summary.uniqueVisitors24h ?? 0} accent="#5B8BFF" />
-                  <Stat label="Unique visitors 7d"  value={summary.uniqueVisitors7d ?? 0}  accent="#5B8BFF" />
-                  <Stat label="Page views 7d"        value={summary.pageViews7d ?? 0}        accent="#5B8BFF" />
-                </div>
-              </div>
-
-              {/* CLI traction stats */}
-              <div>
-                <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                  <Terminal className="size-3" /> CLI traction (7d)
-                </p>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-                  <Stat label="Active CLI users 7d" value={summary.cliUniqueUsers7d ?? 0} accent="#7C6DFA" note="distinct IDs" />
-                  <Stat label="CLI finishes 7d"      value={summary.cliFinishes7d ?? 0}    accent="#4DE8B0" />
-                  <Stat label="Agent runs 7d"         value={summary.cliAgentRuns7d ?? 0}   accent="#9966FF" />
-                  <Stat label="Install CTA clicks 7d" value={summary.installCtaClicks7d ?? 0} accent="#F0BF72" />
-                </div>
-              </div>
-
-              {/* Traffic sources */}
-              <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                  Traffic sources (7d)
-                </p>
-                {referrerBreakdown.length === 0 ? (
-                  <p className="text-[12px] text-[#3A4060]">
-                    Referrer data will appear when available.
-                  </p>
-                ) : (
-                  <div className="space-y-1">
-                    {referrerBreakdown.map((r) => (
-                      <div key={r.source} className="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-white/[0.02]">
-                        <span className={`min-w-0 flex-1 font-mono text-[11px] ${r.isAI ? "text-[#9E91FF]" : "text-[#8E95C3]"}`}>
-                          {r.source}
-                        </span>
-                        {r.isAI && (
-                          <span className="rounded border border-[#7C6DFA]/25 bg-[#7C6DFA]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#9E91FF]">
-                            AI
-                          </span>
-                        )}
-                        <span className="shrink-0 font-mono text-[11px] font-semibold text-[#EDEEFF]">
-                          {r.count}
-                        </span>
+                  <div className="space-y-2">
+                    {funnel.map((step) => (
+                      <div key={step.step}>
+                        <div className="mb-1 flex items-center justify-between gap-2 text-[12px]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[#AEB6D7]">{step.step}</span>
+                            {!step.tracked ? (
+                              <span className="rounded border border-[#F0BF72]/30 bg-[#F0BF72]/10 px-1.5 py-0.5 text-[10px] text-[#F0BF72]">
+                                Not tracked yet
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="font-mono text-[#EDEEFF]">{step.count}</span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded bg-white/10">
+                          <div className="h-full rounded bg-gradient-to-r from-[#5B8BFF] to-[#7C6DFA]" style={{ width: `${Math.round((step.count / funnelMax) * 100)}%` }} />
+                        </div>
+                        {!step.tracked && step.recommendedEvent ? (
+                          <p className="mt-1 text-[10px] text-[#6F78A6]">recommend: {step.recommendedEvent}</p>
+                        ) : null}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-
-                {/* Funnel */}
-                <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">
-                    Conversion funnel (7d)
-                  </p>
-                  {funnel.length === 0 ? (
-                    <p className="text-[12px] text-[#3A4060]">No data yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {funnel.map((f, i) => (
-                        <div key={f.step}>
-                          <div className="mb-1 flex items-center justify-between">
-                            <span className="font-mono text-[11px] text-[#8E95C3]">{f.step}</span>
-                            <span className="font-mono text-[11px] font-semibold text-[#EDEEFF]">{f.count.toLocaleString()}</span>
-                          </div>
-                          <div className="h-1 w-full overflow-hidden rounded-full bg-white/6">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${Math.round((f.count / funnelMax) * 100)}%`,
-                                background: ["#5B8BFF", "#7C6DFA", "#9966FF", "#4DE8B0", "#F0BF72", "#FF7B5C"][i % 6],
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Top pages */}
-                <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Top pages (7d)</p>
-                  {topPages.length === 0 ? (
-                    <p className="text-[12px] text-[#3A4060]">No data yet.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {topPages.map((p, i) => (
-                        <div key={p.pagePath} className="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-white/[0.02]">
-                          <span className="w-4 shrink-0 font-mono text-[10px] text-[#2E3554]">{i + 1}</span>
-                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{p.pagePath || "/"}</span>
-                          <span className="shrink-0 font-mono text-[11px] text-[#EDEEFF]">{p.views}</span>
-                          <span className="w-14 shrink-0 text-right font-mono text-[10px] text-[#3A4060]">{p.uniqueUsers} uniq</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                {/* CLI events */}
-                <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">CLI events (7d)</p>
-                  {cliEvents.length === 0 ? (
-                    <p className="text-[12px] text-[#3A4060]">No CLI events yet.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {cliEvents.map((e) => (
-                        <div key={e.eventName} className="flex items-center gap-2.5 rounded px-2 py-1.5 hover:bg-white/[0.02]">
-                          <Terminal className="size-3 shrink-0 text-[#7C6DFA]/40" />
-                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
-                          <span className="shrink-0 font-mono text-[11px] font-semibold text-[#EDEEFF]">{e.count}</span>
-                          <span className="w-10 shrink-0 text-right font-mono text-[10px] text-[#2E3554]">{rel(e.lastSeen)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Recent events */}
-                <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                  <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Recent events</p>
-                  {recent.length === 0 ? (
-                    <p className="text-[12px] text-[#3A4060]">No recent events.</p>
-                  ) : (
-                    <div className="space-y-0.5">
-                      {recent.slice(0, 15).map((e, i) => (
-                        <div key={`${e.eventName}-${i}`} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-white/[0.02]">
-                          <SourcePill source={e.source} />
-                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#8E95C3]">{e.eventName}</span>
-                          <span className="hidden max-w-[80px] shrink-0 truncate font-mono text-[10px] text-[#3A4060] sm:block">{e.pagePath || "—"}</span>
-                          <span className="shrink-0 font-mono text-[10px] text-[#2E3554]">{rel(e.createdAt)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Daily table — active days only, newest first */}
-              {(() => {
-                const activeDays = [...daily]
-                  .reverse()
-                  .filter((d) =>
-                    [d.visitors, d.pageViews, d.installCopies, d.earlyAccess, d.cliStarts, d.cliPrepares, d.cliChecks]
-                      .some((v) => Number(v ?? 0) > 0)
-                  );
-                return (
-                  <div className="rounded-lg border border-white/7 bg-[#0C0D22] p-5">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3A4060]">Daily activity</p>
-                      <span className="font-mono text-[10px] text-[#2E3554]">
-                        {activeDays.length > 0 ? `${activeDays.length} day${activeDays.length !== 1 ? "s" : ""} with data` : "no data yet"}
-                      </span>
-                    </div>
-                    {activeDays.length === 0 ? (
-                      <p className="py-2 text-[12px] text-[#3A4060]">Activity will appear here once tracking events are connected.</p>
-                    ) : (
-                      <div className="-mx-5 overflow-x-auto px-5">
-                        <table className="w-full min-w-[640px] text-left text-[12px]">
-                          <thead>
-                            <tr>
-                              {["Date", "Visitors", "Views", "Installs", "EA", "CLI starts", "Prepares", "Checks"].map((h) => (
-                                <Th key={h}>{h}</Th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activeDays.map((d, i) => (
-                              <tr key={`${d.date}-${i}`} className="border-t border-white/6 hover:bg-white/[0.015]">
-                                <td className="py-2 pr-4 font-mono text-[11px] text-[#4D5070]">{String(d.date)}</td>
-                                <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.visitors ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                                <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.pageViews ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                                <td className="pr-4 tabular-nums text-[#4DE8B0]">{Number(d.installCopies ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                                <td className="pr-4 tabular-nums text-[#F0BF72]">{Number(d.earlyAccess ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                                <td className="pr-4 tabular-nums text-[#9E91FF]">{Number(d.cliStarts ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                                <td className="pr-4 tabular-nums text-[#8E95C3]">{Number(d.cliPrepares ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                                <td className="tabular-nums text-[#8E95C3]">{Number(d.cliChecks ?? 0) || <span className="text-[#2E3554]">—</span>}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">Tracking Gaps</h3>
+                {trackingGaps.length === 0 ? (
+                  <p className="text-[12px] text-[#5C638A]">No major gaps detected in current metrics.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {trackingGaps.map((gap) => (
+                      <div key={gap.key} className="rounded border border-white/10 bg-white/[0.01] px-3 py-2">
+                        <p className="font-mono text-[11px] text-[#D5DBF7]">{gap.key}</p>
+                        <p className="text-[11px] text-[#7D87B5]">{gap.note}</p>
+                        <p className="mt-1 text-[10px] text-[#6F78A6]">event: {gap.recommendedEvent}</p>
                       </div>
-                    )}
+                    ))}
                   </div>
-                );
-              })()}
+                )}
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {tab === "activity" ? (
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">Traffic and Acquisition (7d)</h3>
+                {referrerBreakdown.length === 0 ? (
+                  <p className="text-[12px] text-[#5C638A]">No source data yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {referrerBreakdown.map((r) => (
+                      <div key={r.source} className="flex items-center justify-between rounded px-2 py-1.5 text-[12px] hover:bg-white/[0.02]">
+                        <span className="font-mono text-[#AEB6D7]">{r.source}</span>
+                        <span className="font-mono text-[#EDEEFF]">{r.count}</span>
+                      </div>
+                    ))}
+                    {summary.sourceAttributionLimited ? (
+                      <p className="pt-2 text-[10px] text-[#6F78A6]">source attribution limited</p>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">Top Pages (7d)</h3>
+                {topPages.length === 0 ? (
+                  <p className="text-[12px] text-[#5C638A]">No page data yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {topPages.map((p) => (
+                      <div key={p.pagePath} className="grid grid-cols-[1fr_auto_auto] gap-3 rounded px-2 py-1.5 text-[12px] hover:bg-white/[0.02]">
+                        <span className="truncate font-mono text-[#AEB6D7]">{p.pagePath || "/"}</span>
+                        <span className="font-mono text-[#EDEEFF]">{p.views}</span>
+                        <span className="font-mono text-[#7C86B4]">{p.uniqueUsers} uniq</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">CLI Events (7d)</h3>
+                {cliMetrics.length === 0 ? (
+                  <p className="text-[12px] text-[#5C638A]">No CLI events yet. Track install command copy, then CLI start, then finish.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {cliMetrics.map((m) => (
+                      <div key={m.label} className="grid grid-cols-[1fr_auto] gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-white/[0.02]">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[#AEB6D7]">{m.label}</span>
+                          {!m.tracked ? <span className="text-[10px] text-[#F0BF72]">not tracked yet</span> : null}
+                        </div>
+                        <span className="font-mono text-[#EDEEFF]">{m.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {cliEvents.length > 0 ? (
+                  <div className="mt-3 border-t border-white/10 pt-3">
+                    <p className="mb-1 text-[11px] text-[#6F78A6]">raw event names</p>
+                    <div className="space-y-1">
+                      {cliEvents.slice(0, 12).map((e) => (
+                        <div key={e.eventName} className="flex items-center justify-between rounded px-2 py-1 text-[11px] hover:bg-white/[0.02]">
+                          <span className="font-mono text-[#7D87B5]">{e.eventName}</span>
+                          <span className="font-mono text-[#AEB6D7]">{e.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+                <h3 className="mb-3 text-[14px] font-semibold">Recent Events</h3>
+                {recentEvents.length === 0 ? (
+                  <p className="text-[12px] text-[#5C638A]">No recent events.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {recentEvents.slice(0, 24).map((e, i) => (
+                      <div key={`${e.eventName}-${i}`} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded px-2 py-1.5 text-[11px] hover:bg-white/[0.02]">
+                        <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[#7D87B5]">{e.source}</span>
+                        <span className="truncate font-mono text-[#AEB6D7]">
+                          {e.eventName}
+                          {e.pagePath ? ` · ${e.pagePath}` : ""}
+                          {e.plan ? ` · ${e.plan}` : ""}
+                        </span>
+                        <span className="font-mono text-[#66709E]">{rel(e.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {tab === "early-access" ? (
+          <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-[14px] font-semibold">Early Access (Historical)</h3>
+              <Link href="/admin" className="text-[11px] text-[#7D87B5] hover:text-[#C4B9FF]">
+                Back to growth overview
+              </Link>
+            </div>
+            {earlyAccess.length === 0 ? (
+              <p className="text-[12px] text-[#5C638A]">No historical early-access entries found.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px] text-left text-[12px]">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[#6F78A6]">
+                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Email</th>
+                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Plan/Role</th>
+                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Status</th>
+                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {earlyAccess.slice(0, 100).map((row) => (
+                      <tr key={row.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                        <td className="px-2 py-2 font-mono text-[#D8DDF5]">{row.email ?? "-"}</td>
+                        <td className="px-2 py-2 text-[#AEB6D7]">{row.plan_interest || row.role || "-"}</td>
+                        <td className="px-2 py-2 text-[#AEB6D7]">{row.status || "pending"}</td>
+                        <td className="px-2 py-2 font-mono text-[#6F78A6]">{new Date(row.created_at).toLocaleDateString("en-US")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </main>
     </div>
   );
 }
+

@@ -104,7 +104,8 @@
       "Bash(grep -E '^[^.]*$')",
       "WebFetch(domain:www.runtrim.com)",
       "Bash(npm ls *)",
-      "Bash(start \"http://localhost:3000/social/scope-drift.html\")"
+      "Bash(start \"http://localhost:3000/social/scope-drift.html\")",
+      "PowerShell(\\(Get-Content \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\lib\\\\admin-planning-data.ts\" -Raw\\) -replace ' — ', ' - ' | Set-Content \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\lib\\\\admin-planning-data.ts\" -Encoding utf8 -NoNewline)"
     ]
   }
 }
