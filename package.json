@@ -46,6 +46,7 @@
     "postpack": "node scripts/restore-package-manifest.mjs",
     "start": "next start",
     "lint": "eslint",
+    "publish:safe": "node scripts/safe-publish.mjs",
     "prepublishOnly": "npm run build:cli && npm run verify:package",
     "runtrim": "tsx cli/runtrim.ts",
     "runtrim:build": "npm run build:cli",
