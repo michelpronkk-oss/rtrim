@@ -91,7 +91,11 @@
       "Bash(node scripts/restore-package-manifest.mjs)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('prepublishOnly:', d['scripts'].get\\('prepublishOnly','MISSING'\\)\\); print\\('prepack:', d['scripts'].get\\('prepack','MISSING'\\)\\); print\\('postpack:', d['scripts'].get\\('postpack','MISSING'\\)\\)\")",
       "Bash(npm --version)",
-      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\); console.log\\('dep count:', Object.keys\\(d.dependencies\\).length\\); console.log\\('has next:', 'next' in d.dependencies\\); console.log\\('has chalk:', 'chalk' in d.dependencies\\);\")"
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\); console.log\\('dep count:', Object.keys\\(d.dependencies\\).length\\); console.log\\('has next:', 'next' in d.dependencies\\); console.log\\('has chalk:', 'chalk' in d.dependencies\\);\")",
+      "Bash(cat .npmrc)",
+      "Bash(npm publish *)",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\); console.log\\('deps:', Object.keys\\(d.dependencies\\).length, '| has next:', 'next' in d.dependencies, '| has chalk:', 'chalk' in d.dependencies\\); console.log\\('version:', d.version\\);\")",
+      "Bash(ls *.tgz)"
     ]
   }
 }

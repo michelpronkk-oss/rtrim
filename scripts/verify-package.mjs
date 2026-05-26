@@ -11,12 +11,12 @@ function parsePackJson(raw) {
   const trimmed = raw.trim();
   const start = trimmed.indexOf("[");
   if (start === -1) {
-    throw new Error(`Could not find npm pack JSON output in: ${trimmed.slice(0, 200)}`);
+    throw new Error(`Could not find npm pack JSON output in: ${trimmed.slice(0, 300)}`);
   }
   return JSON.parse(trimmed.slice(start));
 }
 
-// Read a named file out of a .tgz without any `tar` binary (Windows-safe).
+// Read a named entry out of a .tgz without any `tar` binary (Windows-safe, pure Node).
 function extractFromTarball(tgzPath, targetPath) {
   const compressed = fs.readFileSync(tgzPath);
   const data = gunzipSync(compressed);
@@ -51,48 +51,17 @@ const EXPECTED_CLI_DEPS = [
 
 // ── Web/dashboard deps that must NEVER appear in the published package ────────
 const FORBIDDEN_DEPS = [
-  // React ecosystem
-  "next",
-  "react",
-  "react-dom",
-  "next-themes",
-  // Motion / animation
-  "framer-motion",
-  "motion",
-  // Radix UI
-  "@radix-ui/react-accordion",
-  "@radix-ui/react-avatar",
-  "@radix-ui/react-dialog",
-  "@radix-ui/react-dropdown-menu",
-  "@radix-ui/react-label",
-  "@radix-ui/react-progress",
-  "@radix-ui/react-select",
-  "@radix-ui/react-separator",
-  "@radix-ui/react-slot",
-  "@radix-ui/react-switch",
-  "@radix-ui/react-tabs",
-  "@radix-ui/react-tooltip",
-  "radix-ui",
-  // Supabase
-  "@supabase/ssr",
-  "@supabase/supabase-js",
-  // Remotion / video
-  "@remotion/cli",
-  "@remotion/player",
-  "remotion",
-  // Payment / email
-  "resend",
-  "dodopayments",
-  // UI tooling
-  "shadcn",
-  "lucide-react",
-  "sonner",
-  "tailwind-merge",
-  "tw-animate-css",
-  "class-variance-authority",
-  "clsx",
-  // File globbing (web build tool, not needed in CLI runtime)
-  "fast-glob",
+  "next", "react", "react-dom", "next-themes",
+  "framer-motion", "motion",
+  "@radix-ui/react-accordion", "@radix-ui/react-avatar", "@radix-ui/react-dialog",
+  "@radix-ui/react-dropdown-menu", "@radix-ui/react-label", "@radix-ui/react-progress",
+  "@radix-ui/react-select", "@radix-ui/react-separator", "@radix-ui/react-slot",
+  "@radix-ui/react-switch", "@radix-ui/react-tabs", "@radix-ui/react-tooltip", "radix-ui",
+  "@supabase/ssr", "@supabase/supabase-js",
+  "@remotion/cli", "@remotion/player", "remotion",
+  "resend", "dodopayments",
+  "shadcn", "lucide-react", "sonner", "tailwind-merge", "tw-animate-css",
+  "class-variance-authority", "clsx", "fast-glob",
 ];
 
 // ── Required files in the published package ───────────────────────────────────
@@ -105,15 +74,9 @@ const REQUIRED_FILES = [
 
 // ── Paths that must never appear in the published package ─────────────────────
 const FORBIDDEN_PATH_PATTERNS = [
-  ".env",
-  ".env.local",
-  ".runtrim/runs/",
-  ".runtrim/executions/",
-  ".runtrim/contracts/",
-  ".runtrim/memory/",
-  ".vercel/",
-  "tmp/",
-  "logs/",
+  ".env", ".env.local",
+  ".runtrim/runs/", ".runtrim/executions/", ".runtrim/contracts/", ".runtrim/memory/",
+  ".vercel/", "tmp/", "logs/",
 ];
 
 // ── Step 1: Build and verify CLI ─────────────────────────────────────────────
@@ -121,38 +84,35 @@ console.log("Building CLI...");
 run("npm run -s build:cli");
 run("npm run -s verify:cli");
 
-// ── Step 2: Prepare CLI-only manifest, then pack and inspect the real tarball ─
-// We write the CLI-only package.json first, then pack with --ignore-scripts
-// so npm bundles exactly what's on disk (no prepack double-strip confusion).
-// We then extract package/package.json from the tarball itself — this is the
-// ground truth for what npm publish would upload.
-console.log("Packing and inspecting tarball...");
+// ── Step 2: Prepare CLI-only manifest ────────────────────────────────────────
+console.log("Preparing CLI-only manifest...");
 run("node scripts/prepare-cli-package-manifest.mjs");
 
-let tarballPath = null;
+// Compute tarball filename BEFORE packing — npm always produces {name}-{version}.tgz.
+// We do NOT rely on pack.filename from the JSON output because npm propagates
+// npm_config_dry_run=true to child processes during `npm publish --dry-run`,
+// which causes npm pack to return JSON without a filename field.
+const cliPkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+const tarballName = `${cliPkg.name}-${cliPkg.version}.tgz`;
+const tarballPath = path.resolve(tarballName);
+
 const depErrors = [];
+let files = [];
 
 try {
-  // Pack with --ignore-scripts: no prepack/postpack, so the tarball contains
-  // exactly the CLI-only package.json we just wrote.
-  const packRaw = run("npm pack --json --ignore-scripts");
-  const packParsed = parsePackJson(packRaw);
-  const pack = Array.isArray(packParsed) ? packParsed[0] : packParsed;
-  tarballPath = pack?.filename ? path.resolve(pack.filename) : null;
-
-  if (!tarballPath || !fs.existsSync(tarballPath)) {
-    throw new Error(`npm pack did not produce a tarball. Output: ${packRaw.slice(0, 300)}`);
-  }
-
-  // ── File surface check ────────────────────────────────────────────────────
-  const files = Array.isArray(pack?.files) ? pack.files.map((f) => f.path) : [];
+  // ── Step 3: File surface check (dry-run, fast, no tarball on disk) ─────────
+  console.log("Checking package file surface...");
+  const dryRunRaw = run("npm pack --dry-run --json --ignore-scripts");
+  const dryRun = Array.isArray(parsePackJson(dryRunRaw))
+    ? parsePackJson(dryRunRaw)[0]
+    : parsePackJson(dryRunRaw);
+  files = Array.isArray(dryRun?.files) ? dryRun.files.map((f) => f.path) : [];
 
   for (const file of REQUIRED_FILES) {
     if (!files.includes(file)) {
       depErrors.push(`Package missing required file: ${file}`);
     }
   }
-
   for (const file of files) {
     for (const pattern of FORBIDDEN_PATH_PATTERNS) {
       if (file.includes(pattern)) {
@@ -161,50 +121,65 @@ try {
     }
   }
 
-  // ── Dependency surface check — read from the ACTUAL tarball ──────────────
-  const packedManifestRaw = extractFromTarball(tarballPath, "package/package.json");
-  if (!packedManifestRaw) {
-    depErrors.push("Could not extract package/package.json from tarball.");
+  // ── Step 4: Create real tarball and inspect its package.json ───────────────
+  // --ignore-scripts: prevent prepack from running again (we already prepared).
+  // We read the tarball bytes directly so no `tar` binary is needed on Windows.
+  // If npm_config_dry_run is inherited, npm pack may not write to disk — we
+  // detect this and fall back to the on-disk package.json check.
+  console.log("Creating tarball for inspection...");
+  run("npm pack --ignore-scripts");
+
+  if (fs.existsSync(tarballPath)) {
+    const packedManifestRaw = extractFromTarball(tarballPath, "package/package.json");
+    if (!packedManifestRaw) {
+      depErrors.push("Could not extract package/package.json from tarball.");
+    } else {
+      const packedDeps = Object.keys(JSON.parse(packedManifestRaw).dependencies ?? {});
+
+      const missing = EXPECTED_CLI_DEPS.filter((d) => !packedDeps.includes(d));
+      if (missing.length > 0) depErrors.push(`Missing expected CLI deps in tarball: ${missing.join(", ")}`);
+
+      const forbidden = packedDeps.filter((d) => FORBIDDEN_DEPS.includes(d));
+      if (forbidden.length > 0) depErrors.push(`Forbidden web deps in tarball: ${forbidden.join(", ")}`);
+
+      const extra = packedDeps.filter((d) => !EXPECTED_CLI_DEPS.includes(d) && !FORBIDDEN_DEPS.includes(d));
+      if (extra.length > 0) depErrors.push(`Unexpected extra deps in tarball: ${extra.join(", ")}`);
+
+      if (packedDeps.length !== EXPECTED_CLI_DEPS.length) {
+        depErrors.push(`Dep count mismatch in tarball. Expected ${EXPECTED_CLI_DEPS.length}, got ${packedDeps.length}: ${packedDeps.join(", ")}`);
+      }
+
+      if (depErrors.length === 0) {
+        console.log(`  ✓ Tarball deps verified: ${packedDeps.join(", ")}`);
+      }
+    }
   } else {
-    const packedManifest = JSON.parse(packedManifestRaw);
-    const packedDeps = Object.keys(packedManifest.dependencies ?? {});
+    // npm_config_dry_run=true was inherited — tarball not written to disk.
+    // Fall back: verify the on-disk CLI-only package.json directly.
+    console.log("  (dry-run mode — verifying on-disk manifest instead of tarball)");
+    const onDiskDeps = Object.keys(cliPkg.dependencies ?? {});
 
-    const missing = EXPECTED_CLI_DEPS.filter((d) => !packedDeps.includes(d));
-    if (missing.length > 0) {
-      depErrors.push(`Missing expected CLI dependencies in tarball: ${missing.join(", ")}`);
-    }
+    const missing = EXPECTED_CLI_DEPS.filter((d) => !onDiskDeps.includes(d));
+    if (missing.length > 0) depErrors.push(`Missing expected CLI deps: ${missing.join(", ")}`);
 
-    const forbidden = packedDeps.filter((d) => FORBIDDEN_DEPS.includes(d));
-    if (forbidden.length > 0) {
-      depErrors.push(`Forbidden web dependencies found in tarball: ${forbidden.join(", ")}`);
-    }
+    const forbidden = onDiskDeps.filter((d) => FORBIDDEN_DEPS.includes(d));
+    if (forbidden.length > 0) depErrors.push(`Forbidden web deps in manifest: ${forbidden.join(", ")}`);
 
-    const extra = packedDeps.filter(
-      (d) => !EXPECTED_CLI_DEPS.includes(d) && !FORBIDDEN_DEPS.includes(d)
-    );
-    if (extra.length > 0) {
-      depErrors.push(`Unexpected extra dependencies in tarball (not in expected or forbidden list): ${extra.join(", ")}`);
-    }
+    const extra = onDiskDeps.filter((d) => !EXPECTED_CLI_DEPS.includes(d) && !FORBIDDEN_DEPS.includes(d));
+    if (extra.length > 0) depErrors.push(`Unexpected extra deps: ${extra.join(", ")}`);
 
-    if (packedDeps.length !== EXPECTED_CLI_DEPS.length) {
-      depErrors.push(
-        `Dependency count mismatch in tarball. Expected ${EXPECTED_CLI_DEPS.length}, found ${packedDeps.length}: ${packedDeps.join(", ")}`
-      );
+    if (onDiskDeps.length !== EXPECTED_CLI_DEPS.length) {
+      depErrors.push(`Dep count mismatch. Expected ${EXPECTED_CLI_DEPS.length}, got ${onDiskDeps.length}: ${onDiskDeps.join(", ")}`);
     }
 
     if (depErrors.length === 0) {
-      console.log(`  ✓ Tarball package.json verified: ${packedDeps.join(", ")}`);
+      console.log(`  ✓ On-disk manifest deps verified: ${onDiskDeps.join(", ")}`);
     }
   }
-
-  if (files.length > 0) {
-    console.log(`  ✓ Files: ${files.length} files in package (${REQUIRED_FILES.length} required present)`);
-  }
 } finally {
-  // Always restore the repository package.json — even if packing or verification failed.
+  // Always restore repository package.json and remove any leftover tarball.
   run("node scripts/restore-package-manifest.mjs");
-  // Always delete the verification tarball.
-  if (tarballPath && fs.existsSync(tarballPath)) {
+  if (fs.existsSync(tarballPath)) {
     fs.unlinkSync(tarballPath);
   }
 }
@@ -215,5 +190,8 @@ if (depErrors.length > 0) {
   process.exit(1);
 }
 
+if (files.length > 0) {
+  console.log(`  ✓ Files: ${files.length} files (${REQUIRED_FILES.length} required present)`);
+}
 console.log(`  ✓ No forbidden web dependencies`);
 console.log("Package verification passed.");
