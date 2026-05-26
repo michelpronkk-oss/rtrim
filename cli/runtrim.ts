@@ -4122,6 +4122,9 @@ program
     const setupCorrupt = configExists(cwd) && (!profileReady || !memoryReady || !instructionsReady);
     const artifactFiles = listArtifactFiles(cwd);
     const artifactCount = artifactFiles.length;
+    const restoreCandidates = buildRestoreCandidates(cwd);
+    const availableRestoreCount = restoreCandidates.filter((r) => r.hasRestorePoint).length;
+    const latestRestore = restoreCandidates.find((r) => r.hasRestorePoint) ?? null;
 
     let readiness: "ready" | "partial" | "blocked" = "partial";
     if (!repoCheck.allowed || setupCorrupt) {
@@ -4172,7 +4175,6 @@ program
     console.log(DIM("- Path check tool: ") + (hasPathTool ? MINT("available") : chalk.yellow("missing")));
     console.log(DIM("- Approval tool: ") + (hasApprovalTool ? MINT("available") : chalk.yellow("missing")));
     console.log(DIM("- Finish guidance tool: ") + (hasFinishTool ? MINT("available") : chalk.yellow("missing")));
-    console.log(DIM("- Local artifacts: ") + chalk.white(String(artifactCount)));
     console.log("");
 
     // Agent Autopilot readiness
@@ -4201,6 +4203,31 @@ program
     }
     console.log("");
 
+    console.log(BOLD("Restore"));
+    console.log(DIM("- Restore points: ") + chalk.white(`${availableRestoreCount} available`));
+    if (latestRestore) {
+      console.log(
+        DIM("- Latest: ") +
+        chalk.white(latestRestore.date) +
+        DIM("  ") +
+        chalk.white(truncate(latestRestore.task, 40)) +
+        DIM("  ") +
+        verdictColor(latestRestore.verdict)
+      );
+    }
+    console.log(DIM("- Local artifacts: ") + chalk.white(String(artifactCount)));
+    if (artifactCount > 25) {
+      console.log(DIM("- Cleanup: ") + chalk.white("runtrim clean --dry-run"));
+    }
+    console.log("");
+    if (availableRestoreCount > 0) {
+      console.log(DIM("  Run ") + chalk.white("runtrim restore") + DIM(" to pick a recovery point."));
+      console.log(DIM("  Run ") + chalk.white("runtrim restore --list") + DIM(" to view all restore points."));
+    } else {
+      console.log(DIM("  No restore points yet. Run ") + chalk.white('runtrim agent "task" --copy') + DIM(" then ") + chalk.white("runtrim finish") + DIM("."));
+    }
+    console.log("");
+
     console.log(BOLD("Readiness"));
     console.log(DIM("- State: ") + (readiness === "ready" ? MINT("ready") : readiness === "partial" ? chalk.yellow("partial") : chalk.red("blocked")));
     console.log("");
@@ -4221,9 +4248,6 @@ program
       console.log(chalk.white("- Run runtrim start."));
       console.log(chalk.white("- Run runtrim mcp instructions."));
       console.log(chalk.white("- Run runtrim mcp config --print."));
-    }
-    if (artifactCount > 25) {
-      console.log(chalk.white(`- Local artifacts: ${artifactCount}. Run runtrim clean --dry-run to review cleanup.`));
     }
     console.log("");
   });

@@ -46,7 +46,7 @@
     "postpack": "node scripts/restore-package-manifest.mjs",
     "start": "next start",
     "lint": "eslint",
-    "prepublishOnly": "npm run build:cli",
+    "prepublishOnly": "npm run build:cli && npm run verify:package",
     "runtrim": "tsx cli/runtrim.ts",
     "runtrim:build": "npm run build:cli",
     "remotion:preview": "remotion preview src/remotion/index.ts",
