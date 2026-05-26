@@ -17,6 +17,7 @@ const NAV_LINKS = [
   { href: "/",            label: "Home"      },
   { href: "/#protocol",   label: "Protocol"  },
   { href: "/plans",       label: "Plans"     },
+  { href: "/faq",         label: "FAQ"       },
   { href: "/app/install", label: "Docs"      },
   { href: "/changelog",   label: "Changelog" },
 ];
@@ -24,6 +25,7 @@ const NAV_LINKS = [
 const DROPDOWN_LINKS = [
   { href: "/#protocol",   label: "How it works" },
   { href: "/plans",       label: "Pricing"      },
+  { href: "/faq",         label: "FAQ"          },
   { href: "/changelog",   label: "Changelog"    },
   { href: "/app/install", label: "Docs"         },
 ];

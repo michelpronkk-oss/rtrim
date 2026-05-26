@@ -8,6 +8,7 @@ const MONO: React.CSSProperties = {
 const PRODUCT_LINKS = [
   { href: "/app/install", label: "Docs" },
   { href: "/plans", label: "Plans" },
+  { href: "/faq", label: "FAQ" },
   { href: "/changelog", label: "Changelog" },
   { href: "/status", label: "Status" },
 ];
@@ -100,4 +101,3 @@ export function PublicFooter() {
     </footer>
   );
 }
-

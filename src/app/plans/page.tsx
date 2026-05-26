@@ -464,15 +464,11 @@ export default function PlansPage() {
         </div>
       </div>
 
-      {/* FAQ-style note */}
+      {/* FAQ preview */}
       <div className="border-t border-white/6 bg-[#08090b]">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <div className="grid gap-8 sm:grid-cols-2">
             {[
-              {
-                q: "When will paid plans open?",
-                a: "Pro, Builder, and Team plans are live and available now.",
-              },
               {
                 q: "Does RunTrim upload my source code?",
                 a: "No. The free CLI runs entirely locally. Cloud sync in paid plans uploads run metadata only, not file contents or environment values.",
@@ -482,8 +478,12 @@ export default function PlansPage() {
                 a: "Use runtrim start, runtrim doctor, runtrim agent \"task\" --copy, then runtrim finish.",
               },
               {
-                q: "Does RunTrim replace my agent?",
-                a: "No. RunTrim sits between you and your agent as a control layer. Bring your own agent. Run it through RunTrim first.",
+                q: "What happens when a run is BLOCKED?",
+                a: "A BLOCKED run is recorded for review but is not trusted yet. Review, approve a scoped change, or restore.",
+              },
+              {
+                q: "Does RunTrim replace Git?",
+                a: "No. RunTrim is the control, verification and recovery layer around agent runs. Git remains your version history system.",
               },
             ].map(({ q, a }) => (
               <div key={q}>
@@ -491,6 +491,15 @@ export default function PlansPage() {
                 <p className="mt-2 text-[13px] leading-[1.65] text-[#8a8f98]">{a}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-8">
+            <Link
+              href="/faq"
+              className="inline-flex items-center gap-2 rounded-[7px] border border-white/14 px-4 py-2 text-[13px] font-medium text-[#c9ccd2] transition-colors hover:border-white/28 hover:bg-[#16191e] hover:text-[#f4f5f7]"
+            >
+              View all FAQs
+              <ArrowRight className="size-3.5" />
+            </Link>
           </div>
         </div>
       </div>
