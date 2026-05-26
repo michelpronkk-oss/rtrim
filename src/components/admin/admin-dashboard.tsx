@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { RefreshCw, LogOut } from "lucide-react";
 import { AdminPlanningContent } from "@/components/admin/admin-planning-dashboard";
 
@@ -57,7 +56,7 @@ type MetricsResponse = {
   earlyAccess?: EarlyAccessEntry[];
 };
 
-type Tab = "overview" | "activity" | "early-access" | "planning";
+type Tab = "overview" | "activity" | "planning";
 
 function rel(iso: string): string {
   const d = Date.now() - new Date(iso).getTime();
@@ -155,25 +154,32 @@ export function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#07071A] text-[#EDEEFF]">
       <header className="sticky top-0 z-10 border-b border-white/10 bg-[#07071A]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-5 py-3">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#4D5070]">admin</span>
-            <h1 className="text-[16px] font-semibold">RunTrim Growth and Revenue Control Room</h1>
-            {lastFetched ? (
-              <span className="font-mono text-[10px] text-[#4D5070]">updated {rel(lastFetched.toISOString())}</span>
-            ) : null}
+        <div className="mx-auto max-w-[1400px] px-4 py-3 sm:px-5">
+          <div className="flex items-start justify-between gap-3 sm:items-center">
+            <div className="min-w-0">
+              <h1 className="text-[16px] font-semibold leading-tight">RunTrim</h1>
+              <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#7A83B3]">
+                  Admin
+                </span>
+                <span className="text-[12px] text-[#7A83B3]">Growth console</span>
+                {lastFetched ? (
+                  <span className="font-mono text-[10px] text-[#4D5070]">updated {rel(lastFetched.toISOString())}</span>
+                ) : null}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-0 sm:flex sm:justify-end">
             <button
               onClick={() => void load(true)}
-              className="inline-flex items-center gap-1 rounded border border-white/10 px-2.5 py-1.5 text-[12px] text-[#8E95C3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
+              className="inline-flex items-center justify-center gap-1 rounded border border-white/10 px-2.5 py-1.5 text-[12px] text-[#8E95C3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
             >
               <RefreshCw className={`size-3 ${refreshing ? "animate-spin" : ""}`} />
               Refresh
             </button>
             <button
               onClick={logout}
-              className="inline-flex items-center gap-1 rounded border border-white/10 px-2.5 py-1.5 text-[12px] text-[#8E95C3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
+              className="inline-flex items-center justify-center gap-1 rounded border border-white/10 px-2.5 py-1.5 text-[12px] text-[#8E95C3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
             >
               <LogOut className="size-3" />
               Logout
@@ -187,17 +193,16 @@ export function AdminDashboard() {
           <div className="mb-4 rounded border border-[#FF6B6B]/40 bg-[#2A0E17] p-3 text-[12px] text-[#FF9AA9]">{error}</div>
         ) : null}
 
-        <div className="mb-5 flex flex-wrap gap-2">
+        <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
           {([
             ["overview", "Overview"],
             ["activity", "Activity"],
-            ["early-access", "Early Access (Historical)"],
             ["planning", "Planning"],
           ] as const).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`rounded border px-3 py-1.5 text-[12px] ${
+              className={`shrink-0 rounded border px-3 py-1.5 text-[12px] ${
                 tab === id
                   ? "border-[#7C6DFA]/60 bg-[#7C6DFA]/20 text-[#DAD2FF]"
                   : "border-white/10 text-[#7A83B3] hover:border-[#7C6DFA]/40 hover:text-[#C4B9FF]"
@@ -401,8 +406,8 @@ export function AdminDashboard() {
                         <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[#7D87B5]">{e.source}</span>
                         <span className="truncate font-mono text-[#AEB6D7]">
                           {e.eventName}
-                          {e.pagePath ? ` · ${e.pagePath}` : ""}
-                          {e.plan ? ` · ${e.plan}` : ""}
+                          {e.pagePath ? ` - ${e.pagePath}` : ""}
+                          {e.plan ? ` - ${e.plan}` : ""}
                         </span>
                         <span className="font-mono text-[#66709E]">{rel(e.createdAt)}</span>
                       </div>
@@ -411,47 +416,38 @@ export function AdminDashboard() {
                 )}
               </div>
             </div>
-          </div>
-        ) : null}
-
-        {tab === "early-access" ? (
-          <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-[14px] font-semibold">Early Access (Historical)</h3>
-              <Link href="/admin" className="text-[11px] text-[#7D87B5] hover:text-[#C4B9FF]">
-                Back to growth overview
-              </Link>
-            </div>
-            {earlyAccess.length === 0 ? (
-              <p className="text-[12px] text-[#5C638A]">No historical early-access entries found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px] text-left text-[12px]">
-                  <thead>
-                    <tr className="border-b border-white/10 text-[#6F78A6]">
-                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Email</th>
-                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Plan/Role</th>
-                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Status</th>
-                      <th className="px-2 py-2 font-mono text-[10px] uppercase">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {earlyAccess.slice(0, 100).map((row) => (
-                      <tr key={row.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                        <td className="px-2 py-2 font-mono text-[#D8DDF5]">{row.email ?? "-"}</td>
-                        <td className="px-2 py-2 text-[#AEB6D7]">{row.plan_interest || row.role || "-"}</td>
-                        <td className="px-2 py-2 text-[#AEB6D7]">{row.status || "pending"}</td>
-                        <td className="px-2 py-2 font-mono text-[#6F78A6]">{new Date(row.created_at).toLocaleDateString("en-US")}</td>
+            <div className="rounded-xl border border-white/10 bg-[#0C0D22] p-4">
+              <h3 className="mb-3 text-[14px] font-semibold">Early Access (Historical)</h3>
+              {earlyAccess.length === 0 ? (
+                <p className="text-[12px] text-[#5C638A]">No historical early-access entries found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px] text-left text-[12px]">
+                    <thead>
+                      <tr className="border-b border-white/10 text-[#6F78A6]">
+                        <th className="px-2 py-2 font-mono text-[10px] uppercase">Email</th>
+                        <th className="px-2 py-2 font-mono text-[10px] uppercase">Plan/Role</th>
+                        <th className="px-2 py-2 font-mono text-[10px] uppercase">Status</th>
+                        <th className="px-2 py-2 font-mono text-[10px] uppercase">Created</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {earlyAccess.slice(0, 100).map((row) => (
+                        <tr key={row.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                          <td className="px-2 py-2 font-mono text-[#D8DDF5]">{row.email ?? "-"}</td>
+                          <td className="px-2 py-2 text-[#AEB6D7]">{row.plan_interest || row.role || "-"}</td>
+                          <td className="px-2 py-2 text-[#AEB6D7]">{row.status || "pending"}</td>
+                          <td className="px-2 py-2 font-mono text-[#6F78A6]">{new Date(row.created_at).toLocaleDateString("en-US")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </main>
     </div>
   );
 }
-
