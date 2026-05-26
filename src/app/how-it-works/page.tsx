@@ -4,12 +4,12 @@ import { Check } from "lucide-react";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 
 export const metadata: Metadata = {
-  title: "How It Works",
+  title: "How it works",
   description:
     "RunTrim scopes AI coding runs before they start, checks what changed after, and keeps run state for the next session. Works with Claude Code, Cursor, Codex, and ChatGPT.",
   alternates: { canonical: "https://www.runtrim.com/how-it-works" },
   openGraph: {
-    title: "How RunTrim Works — AI Coding Agent Control Layer",
+    title: "How it works | RunTrim",
     description:
       "Scoped contracts before, finish checks after, and run memory between sessions. Works with Claude Code, Cursor, Codex, and ChatGPT.",
     url: "https://www.runtrim.com/how-it-works",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "How RunTrim Works — AI Coding Agent Control Layer",
+    title: "How it works | RunTrim",
     description:
       "Scoped contracts before, finish checks after, and run memory between sessions. Works with Claude Code, Cursor, Codex, and ChatGPT.",
     images: ["/opengraph-image"],

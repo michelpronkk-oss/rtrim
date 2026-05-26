@@ -31,8 +31,8 @@ export interface Entitlements {
 export const PLAN_ENTITLEMENTS: Record<PlanId, Entitlements> = {
   free: {
     bridgeRunsPerMonth: 5,
-    cloudSync: true,
-    cloudSyncRunLimit: 10, // beta: 10 total synced runs
+    cloudSync: false,
+    cloudSyncRunLimit: null,
     projectLimit: 1,
     advancedReports: false,
     projectMemory: false,
@@ -80,7 +80,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanId, Entitlements> = {
 };
 
 export const FREE_BRIDGE_LIMIT   = 5;
-export const FREE_SYNC_RUN_LIMIT = 10; // beta
+export const FREE_SYNC_RUN_LIMIT = 0;
 
 export function getEntitlements(plan: string): Entitlements {
   return PLAN_ENTITLEMENTS[(plan as PlanId)] ?? PLAN_ENTITLEMENTS.free;

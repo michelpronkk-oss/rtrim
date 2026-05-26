@@ -631,7 +631,7 @@ function buildPatchStrategy(
   if (filesToInspect.length > 0) strategy.push(`Start with: ${filesToInspect.slice(0, 2).join(", ")}.`);
   if (hasCli) {
     strategy.push("Adjust CLI command routing and preview helpers only.");
-    strategy.push("Keep runtrim go/finish behavior unchanged.");
+    strategy.push("Keep legacy compatibility commands unchanged.");
   } else {
     strategy.push("Apply the smallest scoped change that satisfies the objective.");
   }
@@ -668,12 +668,12 @@ function buildApprovalLevel(
 }
 
 function buildRecommendedNextCommand(task: string, approval: "no" | "recommended" | "required", filesToInspect: string[]): string {
-  if (approval === "no") return `runtrim go "${task}"`;
+  if (approval === "no") return `runtrim agent "${task}" --copy`;
   if (approval === "required") {
-    if (filesToInspect.length <= 1) return `runtrim go "${task}"`;
+    if (filesToInspect.length <= 1) return `runtrim agent "${task}" --copy`;
     return 'split into:\n1. audit only\n2. implementation only\n3. verification only';
   }
-  return `runtrim go "${task}"`;
+  return `runtrim agent "${task}" --copy`;
 }
 
 function writePreviewArtifacts(cwd: string, preview: AgentPreviewArtifact): { jsonPath: string; markdownPath: string } {
@@ -1395,9 +1395,9 @@ async function runControlledExecution(task: string, mode: { confirm: boolean; dr
     console.log("");
     console.log(chalk.white("This task crosses multiple critical systems."));
     console.log(chalk.white("Run it as:"));
-    console.log(chalk.white('1. runtrim go "Audit one system only. No edits."'));
-    console.log(chalk.white('2. runtrim go "Implement one isolated fix only."'));
-    console.log(chalk.white('3. runtrim go "Verify behavior only."'));
+    console.log(chalk.white('1. runtrim agent "Audit one system only. No edits." --copy'));
+    console.log(chalk.white('2. runtrim agent "Implement one isolated fix only." --copy'));
+    console.log(chalk.white('3. runtrim agent "Verify behavior only." --copy'));
     console.log(DIM("  Handoff    ") + chalk.white(path.relative(cwd, splitArtifacts.markdownPath)));
     console.log(chalk.white("No active contract changed."));
     console.log(chalk.white("No finish required."));
@@ -2611,7 +2611,7 @@ async function getBridgeNextAction(cwd: string): Promise<string> {
   if (hasActiveRun && changes.count > 0) return "runtrim finish";
   const agent = parseAgentSummary(cwd);
   if (agent.exists && agent.approved) return "paste .runtrim/agent/latest.md into your agent";
-  return 'runtrim go "<task>"';
+  return 'runtrim agent "<task>" --copy';
 }
 
 function evaluateBridgePathAgainstContract(cwd: string, inputPath: string): BridgePathCheckResult {
@@ -4169,21 +4169,28 @@ program
     } else {
       console.log(DIM("- Repo tracking: ") + MINT("unlimited"));
     }
-    if (planLimits.cloudSync) {
-      console.log(DIM("- Cloud sync: ") + (isConnected ? MINT("ready") : chalk.yellow("token missing — run runtrim login")));
+    if (repoCheck.plan === "free") {
+      console.log(DIM("- Cloud sync: ") + chalk.gray("locked"));
+      console.log(DIM("- Local restore: ") + MINT("enabled") + DIM(` (latest ${CLI_PLAN_LIMITS.free.localRestoreLimit} points)`));
+      console.log(DIM("- CI Gate: ") + chalk.gray("Builder"));
+      console.log("");
+      console.log(DIM("  Next unlock: ") + chalk.white("Upgrade to Pro for cloud history, memory sync and restore metadata."));
+    } else if (repoCheck.plan === "pro") {
+      console.log(DIM("- Cloud sync: ") + (isConnected ? MINT("enabled") : chalk.yellow("not configured, run runtrim login")));
+      console.log(DIM("- Restore metadata: ") + MINT("enabled"));
+      console.log(DIM("- Dashboard history: ") + MINT("enabled"));
+      console.log(DIM("- CI Gate: ") + chalk.gray("Builder"));
+      console.log("");
+      console.log(DIM("  Next unlock: ") + chalk.white("Upgrade to Builder for unlimited projects and CI Gate."));
+    } else if (repoCheck.plan === "builder") {
+      console.log(DIM("- Cloud sync: ") + MINT("enabled"));
+      console.log(DIM("- Advanced recovery: ") + MINT("enabled"));
+      console.log(DIM("- CI Gate: ") + MINT("enabled"));
     } else {
-      console.log(DIM("- Cloud sync: ") + chalk.gray("locked") + DIM(" (upgrade to Pro)"));
-    }
-    if (planLimits.ciGate) {
-      console.log(DIM("- CI gate: ") + MINT("enabled"));
-    }
-    console.log(DIM("- Local restore: ") + MINT("enabled") + (repoCheck.plan === "free" ? DIM(` (latest ${CLI_PLAN_LIMITS.free.localRestoreLimit} points)`) : ""));
-    if (!isConnected && repoCheck.plan === "free") {
-      console.log("");
-      console.log(DIM("  Next unlock: ") + chalk.white("runtrim login") + DIM(" — Pro unlocks cloud sync, run history and restore metadata."));
-    } else if (isConnected && repoCheck.plan === "pro") {
-      console.log("");
-      console.log(DIM("  Next unlock: ") + chalk.white("Builder") + DIM(" — unlimited projects, advanced recovery and CI gate."));
+      console.log(DIM("- Repo tracking: ") + chalk.white("team policy"));
+      console.log(DIM("- Cloud sync: ") + MINT("enabled"));
+      console.log(DIM("- Governance: ") + chalk.white("reviewed access"));
+      console.log(DIM("- CI Gate: ") + MINT("enabled"));
     }
     console.log("");
     console.log(BOLD("Project"));
@@ -4243,6 +4250,13 @@ program
     }
     console.log("");
 
+    const latestRunForVerdict = loadAllRuns(cwd).find((r) => {
+      const s = (r.evaluation?.status ?? r.status ?? "").toLowerCase();
+      return s.length > 0;
+    }) ?? null;
+    const latestRunVerdictRaw = (latestRunForVerdict?.evaluation?.status ?? latestRunForVerdict?.status ?? "unknown").toString();
+    const latestRunNeedsReview = latestRunVerdictRaw.toLowerCase() === "blocked" || latestRunVerdictRaw.toLowerCase() === "split_required";
+
     console.log(BOLD("Restore"));
     console.log(DIM("- Restore points: ") + chalk.white(`${availableRestoreCount} available`));
     if (latestRestore) {
@@ -4258,6 +4272,12 @@ program
     console.log(DIM("- Local artifacts: ") + chalk.white(String(artifactCount)));
     if (artifactCount > 25) {
       console.log(DIM("- Cleanup: ") + chalk.white("runtrim clean --dry-run"));
+    }
+    console.log("");
+    console.log(BOLD("Latest run"));
+    console.log(DIM("- Latest run verdict: ") + verdictColor(latestRunVerdictRaw).replace(latestRunVerdictRaw, latestRunVerdictRaw.toUpperCase()));
+    if (latestRunNeedsReview) {
+      console.log(chalk.yellow("- Latest run needs review."));
     }
     console.log("");
     if (availableRestoreCount > 0) {
@@ -4288,6 +4308,11 @@ program
       console.log(chalk.white("- Run runtrim start."));
       console.log(chalk.white("- Run runtrim mcp instructions."));
       console.log(chalk.white("- Run runtrim mcp config --print."));
+    }
+    if (latestRunNeedsReview) {
+      console.log(chalk.white("- runtrim restore"));
+      console.log(chalk.white('- runtrim approve "Allow <path> for this run only"'));
+      console.log(chalk.white("- inspect latest finish report"));
     }
     console.log("");
   });
@@ -4469,7 +4494,7 @@ function installProtocol(
     "",
     "## Project rules",
     "",
-    "- Start every AI task with: runtrim go \"<task>\"",
+    "- Start every AI task with: runtrim agent \"<task>\" --copy",
     "- Stay inside the scoped contract.",
     "- Run runtrim finish after agent edits.",
     "- No unrelated refactors during a task.",
@@ -4696,7 +4721,7 @@ program
     console.log("");
 
     console.log(DIM("  Next"));
-    console.log(chalk.white('  runtrim go "your first task"'));
+    console.log(chalk.white('  runtrim agent "your first task" --copy'));
     if (detectedAdapters.length === 0) {
       console.log(chalk.white("  runtrim adapters install --all"));
     }
@@ -4979,7 +5004,7 @@ autoCommand
     if (hasUnfinished) {
       console.log(DIM("  Next        ") + chalk.white("runtrim finish"));
     } else if (!activeRun) {
-      console.log(DIM("  Next        ") + chalk.white('runtrim go "<task>"'));
+      console.log(DIM("  Next        ") + chalk.white('runtrim agent "<task>" --copy'));
     } else {
       console.log(DIM("  Next        ") + chalk.white("runtrim finish (after agent edits)"));
     }
@@ -5069,7 +5094,7 @@ program
     } else if (activeRun) {
       next = "runtrim finish (after agent edits are done)";
     } else {
-      next = 'runtrim go "<task>"';
+      next = 'runtrim agent "<task>" --copy';
     }
     console.log(DIM("  Next        ") + chalk.white(next));
     console.log("");
@@ -5187,7 +5212,7 @@ program
     // Next action
     console.log(GO_ACCENT.bold("Next"));
     if (plan.contractRequired) {
-      console.log(chalk.white(`  runtrim go "${task}"`));
+      console.log(chalk.white(`  runtrim agent "${task}" --copy`));
     } else {
       console.log(chalk.white("  Fast Path allowed. Make your change, then run:"));
       console.log(chalk.white("  runtrim finish"));
@@ -5457,7 +5482,7 @@ function registerBridgeCommands(name: "bridge" | "daemon"): void {
       if (status) {
         console.log(`Auto-guard: ${String(status.autoGuardMode ?? "unknown")}`);
         console.log(`Unfinished changes: ${Boolean(status.unfinishedChanges) ? "yes" : "no"}`);
-        console.log(`Next: ${String(status.nextAction ?? 'runtrim go "<task>"')}`);
+        console.log(`Next: ${String(status.nextAction ?? 'runtrim agent "<task>" --copy')}`);
       }
       console.log("");
     });
@@ -5800,6 +5825,7 @@ ciCommand
       } else if (verdict === "WARN") {
         nextSteps.push("Run runtrim finish locally to strengthen verification context.");
       } else {
+        nextSteps.push("Risky AI-generated changes detected. Review or restore before merge.");
         nextSteps.push("Resolve blocked issues, then rerun runtrim ci check.");
       }
     }
@@ -5828,6 +5854,9 @@ ciCommand
     console.log("");
     const verdictColor = verdict === "PASS" ? chalk.green : verdict === "WARN" ? chalk.yellow : chalk.red;
     console.log(DIM("  Verdict: ") + verdictColor(verdict));
+    if (verdict === "BLOCKED") {
+      console.log(chalk.red("  Risky AI-generated changes detected. Review or restore before merge."));
+    }
     console.log("");
     console.log(DIM("  Changed files:"));
     if (changedFiles.length === 0) console.log(chalk.white("  - (none detected)"));
@@ -6188,7 +6217,12 @@ function printRestoreList(rows: RestoreCandidateRow[], all = false): void {
   console.log("");
   const shortId = (id: string) => id.slice(0, 8);
   for (const row of displayRows) {
-    const status = row.hasRestorePoint ? chalk.green("restore available") : chalk.gray("no restore point");
+    const verdictLower = (row.verdict ?? "").toLowerCase();
+    const status = row.hasRestorePoint
+      ? verdictLower === "blocked" || verdictLower === "split_required"
+        ? chalk.yellow("restore available | needs review")
+        : chalk.green("restore available")
+      : chalk.gray("no restore point");
     const files = chalk.white(`${row.fileCount} file${row.fileCount === 1 ? "" : "s"}`);
     const task = truncate(row.task, 30).padEnd(30);
     const date = row.date.padEnd(16);
@@ -6359,7 +6393,11 @@ async function runInteractiveRestorePicker(cwd: string): Promise<void> {
 
   const runChoices = rows.map((row) => {
     const verdictRaw = row.verdict ?? "unknown";
-    const label = `${pad(row.date, 16)}  ${pad(truncate(row.task, 28), 28)}  ${pad(verdictRaw, 7)}  ${pad(row.fileCount + " files", 9)}  restore available  ${shortId(row.runId)}`;
+    const verdictLower = verdictRaw.toLowerCase();
+    const restoreLabel = verdictLower === "blocked" || verdictLower === "split_required"
+      ? "restore available | needs review"
+      : "restore available";
+    const label = `${pad(row.date, 16)}  ${pad(truncate(row.task, 28), 28)}  ${pad(verdictRaw, 7)}  ${pad(row.fileCount + " files", 9)}  ${restoreLabel}  ${shortId(row.runId)}`;
     return { title: label, value: row.runId };
   });
 
@@ -7384,14 +7422,18 @@ program
       if (cloudSync.status === "synced") {
         console.log(chalk.white("  Started run synced."));
       } else if (cloudSync.status === "failed") {
-        console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
+        console.log(chalk.yellow("  Cloud sync failed. Local run saved."));
       } else if (cloudSync.status === "skipped_invalid_token") {
-        console.log(DIM("  Local run saved. Token expired — run runtrim login to sync."));
+        console.log(DIM("  Token expired."));
+        console.log(DIM("  Run runtrim login to reconnect."));
       } else if (cloudSync.status === "skipped_no_token") {
         if (syncPlan3 === "free") {
-          console.log(DIM("  Local only. Upgrade to Pro for cloud history and restore metadata."));
+          console.log(DIM("  Cloud sync skipped."));
+          console.log(DIM("  Free keeps this run local."));
+          console.log(DIM("  Upgrade to Pro for cloud history, memory sync and restore metadata."));
         } else {
-          console.log(DIM("  Local run saved. Run runtrim login to connect cloud sync."));
+          console.log(DIM("  Cloud sync not configured."));
+          console.log(DIM("  Local run saved."));
         }
       } else {
         console.log(DIM("  Skipped."));
@@ -7430,7 +7472,7 @@ program
 
     const run = loadLatestRun(cwd);
     if (!run) {
-      console.log(chalk.yellow('  No runs found. Start with: runtrim go "your task"'));
+      console.log(chalk.yellow('  No runs found. Start with: runtrim agent "your task" --copy'));
       console.log("");
       return;
     }
@@ -7817,7 +7859,7 @@ program
         memory = buildBaselineMemoryMarkdown(audit);
         fs.writeFileSync(memoryPath, memory, "utf-8");
       }
-      const baselinePrompt = 'runtrim go "your task"';
+      const baselinePrompt = 'runtrim agent "your task" --copy';
       if (options.prompt) {
         console.log(baselinePrompt);
         await copyToClipboardSafe(baselinePrompt);
@@ -7853,7 +7895,7 @@ program
       console.log(chalk.white("No continuation prompt yet. Run `runtrim continue --reason usage_limit` when context runs out."));
       console.log("");
       console.log(BOLD("Useful commands"));
-      console.log(chalk.white('- runtrim go "your task"'));
+      console.log(chalk.white('- runtrim agent "your task" --copy'));
       console.log(chalk.white("- runtrim panel --monitor"));
       console.log(chalk.white("- runtrim check"));
       console.log(chalk.white("- runtrim continue --reason usage_limit"));
@@ -7958,7 +8000,7 @@ program
     }
     console.log("");
     console.log(BOLD("Useful commands"));
-    console.log(chalk.white('- runtrim go "your task"'));
+    console.log(chalk.white('- runtrim agent "your task" --copy'));
     console.log(chalk.white("- runtrim panel --monitor"));
     console.log(chalk.white("- runtrim check"));
     console.log(chalk.white("- runtrim continue --reason usage_limit"));
@@ -8670,39 +8712,36 @@ program
     writePlanToRegistry(connectedPlan);
 
     console.log("");
+    console.log(ACCENT.bold("  RunTrim connected."));
     if (email) {
-      console.log(ACCENT.bold("  Connected as ") + chalk.white(email));
-    } else {
-      console.log(ACCENT.bold("  Connected to RunTrim cloud."));
+      console.log(DIM("  Account    ") + chalk.white(email));
     }
     console.log(DIM("  Plan       ") + chalk.white(connectedPlan.charAt(0).toUpperCase() + connectedPlan.slice(1)));
     console.log(DIM("  Token stored in ") + chalk.white("~/.runtrim/auth.json"));
     console.log("");
     if (connectedPlan === "pro") {
-      console.log(DIM("  ✓ Cloud sync enabled"));
-      console.log(DIM("  ✓ Dashboard history enabled"));
-      console.log(DIM("  ✓ Memory sync enabled"));
-      console.log(DIM("  ✓ Restore metadata sync enabled"));
+      console.log(DIM("  - Cloud sync enabled"));
+      console.log(DIM("  - Dashboard history enabled"));
+      console.log(DIM("  - Memory sync enabled"));
+      console.log(DIM("  - Restore metadata sync enabled"));
       console.log("");
-      console.log(DIM("  Next unlock: Builder unlocks unlimited projects, advanced recovery history and CI gates."));
+      console.log(DIM("  Next: Builder unlocks unlimited projects, advanced recovery history and CI Gate."));
     } else if (connectedPlan === "builder") {
-      console.log(DIM("  ✓ Cloud sync enabled"));
-      console.log(DIM("  ✓ Unlimited projects enabled"));
-      console.log(DIM("  ✓ Multi-project memory enabled"));
-      console.log(DIM("  ✓ Advanced recovery history enabled"));
-      console.log(DIM("  ✓ CI gate enabled"));
+      console.log(DIM("  - Unlimited projects enabled"));
+      console.log(DIM("  - Multi-project memory enabled"));
+      console.log(DIM("  - Advanced recovery history enabled"));
+      console.log(DIM("  - CI Gate enabled"));
     } else if (connectedPlan === "team") {
-      console.log(DIM("  ✓ Cloud sync enabled"));
-      console.log(DIM("  ✓ Unlimited projects enabled"));
-      console.log(DIM("  ✓ Advanced recovery history enabled"));
-      console.log(DIM("  ✓ CI gate enabled"));
-      console.log(DIM("  ✓ Team governance direction enabled"));
+      console.log(DIM("  - Team governance enabled"));
+      console.log(DIM("  - Shared recovery and audit controls enabled where live"));
+      console.log(DIM("  - GitHub checks and policies: reviewed access / coming soon"));
     } else {
-      console.log(DIM("  ✓ Local runs enabled"));
-      console.log(DIM("  ✓ 1 repo included"));
-      console.log(DIM("  ✗ Cloud sync locked"));
+      console.log(DIM("  - Local runs enabled"));
+      console.log(DIM("  - 1 repo included"));
+      console.log(DIM("  - Local restore enabled"));
+      console.log(DIM("  - Cloud sync locked"));
       console.log("");
-      console.log(DIM("  Upgrade: Pro unlocks cloud history, memory sync and restore metadata."));
+      console.log(DIM("  Upgrade: Pro unlocks dashboard history, memory sync and restore metadata."));
     }
     console.log("");
     console.log(DIM("  Next: navigate to a project and run ") + GO_ACCENT("runtrim start"));
@@ -8729,11 +8768,15 @@ program
     console.log("");
     if (!result.ok) {
       if (result.reason === "missing_contract") {
-        console.log(chalk.red("No active contract file found."));
+        console.log(chalk.red("No active guarded contract found."));
       } else {
-        console.log(chalk.red("Contract is not active. Start a new run first."));
+        console.log(chalk.red("This guarded run is already finished."));
       }
-      console.log(chalk.white('Run: runtrim go "<task>"'));
+      console.log(chalk.white("Start a guarded run first:"));
+      console.log(chalk.white('runtrim agent "Your task" --copy'));
+      console.log("");
+      console.log(chalk.white("Then approve the scoped change:"));
+      console.log(chalk.white('runtrim approve "Allow editing <path or scope> for this run only"'));
       console.log("");
       return;
     }
@@ -8782,7 +8825,7 @@ program
 
       if (agentChanged.length === 0) {
         console.log(DIM("  No active run and no changed files detected."));
-        console.log(DIM('  Start a new session with: runtrim go "<task>"'));
+        console.log(DIM('  Start a new guarded run with: runtrim agent "Your task" --copy'));
         console.log("");
         return;
       }
@@ -8861,21 +8904,22 @@ program
         if (cloudSync.status === "synced") {
           console.log(DIM("  Cloud sync  ") + chalk.green("synced"));
         } else if (cloudSync.status === "failed") {
-          console.log(DIM("  Cloud sync  ") + chalk.yellow("failed — run runtrim sync to retry"));
+          console.log(DIM("  Cloud sync  ") + chalk.yellow("failed. Local run saved, run runtrim sync to retry."));
         } else if (cloudSync.status === "skipped_invalid_token") {
-          console.log(DIM("  Cloud sync  ") + DIM("local run saved. Token expired — run runtrim login to sync."));
+        console.log(DIM("  Token expired."));
+        console.log(DIM("  Run runtrim login to reconnect."));
         } else if (cloudSync.status === "skipped_no_token") {
           if (syncPlan === "free") {
-            console.log(DIM("  Cloud sync  ") + DIM("local only. Upgrade to Pro for cloud history and restore metadata."));
+            console.log(DIM("  Cloud sync  ") + DIM("skipped. Free keeps this run local. Upgrade to Pro for cloud history, memory sync and restore metadata."));
           } else {
-            console.log(DIM("  Cloud sync  ") + DIM("local run saved. Run runtrim login to connect cloud sync."));
+            console.log(DIM("  Cloud sync  ") + DIM("not configured. Local run saved."));
           }
         } else {
           console.log(DIM("  Cloud sync  ") + DIM("skipped"));
         }
       }
       console.log("");
-      console.log(DIM("  Next  ") + chalk.white('runtrim go "<task>" to start a properly guarded run'));
+      console.log(DIM("  Next  ") + chalk.white('runtrim agent "Your task" --copy to start a properly guarded run'));
       console.log("");
       return;
     }
@@ -8891,7 +8935,7 @@ program
     const allChangedFiles = dedupeFiles(gitChanged.map((entry) => entry.path));
 
     // ── Split RunTrim-owned files from agent files ─────────────────────────
-    // RunTrim writes bridge/protocol files during `runtrim go`. These must not
+    // RunTrim writes bridge/protocol files during guarded runs. These must not
     // be counted as agent code changes or trigger false scope drift.
     const sessionManagedFiles = activeRun.bridgeManagedFiles ?? [];
 
@@ -9200,6 +9244,8 @@ program
 
     if (finishVerdict === "BLOCKED") {
       console.log(chalk.red.bold("Blocked next steps"));
+      console.log(chalk.red("  This run is not trusted yet."));
+      console.log(chalk.red("  Review the blocked files, approve a scoped amendment, or run runtrim restore."));
       if (outOfContractFiles.length > 0) {
         console.log(chalk.red("  Blocked because this exceeds the active contract."));
         console.log(chalk.red(`  Try: runtrim approve "Allow ${outOfContractFiles[0]} for this run only"`));
@@ -9229,16 +9275,24 @@ program
       const syncPlan2 = loadGlobalRegistry().plan;
       console.log(GO_ACCENT.bold("Cloud sync"));
       if (cloudSync.status === "synced") {
-        console.log(chalk.white("  Completed run synced."));
+        if (finishVerdict === "BLOCKED") {
+          console.log(chalk.white("  Blocked report synced for review."));
+        } else {
+          console.log(chalk.white("  Completed run synced."));
+        }
       } else if (cloudSync.status === "failed") {
-        console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
+        console.log(chalk.yellow("  Cloud sync failed. Local run saved."));
       } else if (cloudSync.status === "skipped_invalid_token") {
-        console.log(DIM("  Local run saved. Token expired — run runtrim login to sync."));
+        console.log(DIM("  Token expired."));
+        console.log(DIM("  Run runtrim login to reconnect."));
       } else if (cloudSync.status === "skipped_no_token") {
         if (syncPlan2 === "free") {
-          console.log(DIM("  Local only. Upgrade to Pro for cloud history and restore metadata."));
+          console.log(DIM("  Cloud sync skipped."));
+          console.log(DIM("  Free keeps this run local."));
+          console.log(DIM("  Upgrade to Pro for cloud history, memory sync and restore metadata."));
         } else {
-          console.log(DIM("  Local run saved. Run runtrim login to connect cloud sync."));
+          console.log(DIM("  Cloud sync not configured."));
+          console.log(DIM("  Local run saved."));
         }
       } else {
         console.log(DIM("  Skipped."));
@@ -9281,7 +9335,7 @@ program
     const runs = loadAllRuns(cwd);
     if (runs.length === 0) {
       console.log(DIM("  No local runs found in this directory."));
-      console.log(DIM("  Run ") + GO_ACCENT('runtrim go "your task"') + DIM(" first to create runs."));
+      console.log(DIM("  Run ") + GO_ACCENT('runtrim agent "your task" --copy') + DIM(" first to create runs."));
       console.log("");
       return;
     }
@@ -9307,7 +9361,7 @@ program
     console.log("");
 
     if (opts.dryRun) {
-      console.log(ACCENT.bold("  Dry run � nothing uploaded."));
+      console.log(ACCENT.bold("  Dry run - nothing uploaded."));
       console.log("");
       return;
     }
@@ -9328,32 +9382,44 @@ program
         if (result.status === "skipped_no_token") {
           spinner.stop();
           console.log("");
-          console.log(DIM("  Cloud sync not configured."));
-          console.log(DIM("  Run ") + GO_ACCENT("runtrim login") + DIM(" to connect cloud sync."));
-          console.log(DIM("  Local CLI still works without a token."));
+          if (loadGlobalRegistry().plan === "free") {
+            console.log(DIM("  Cloud sync skipped."));
+            console.log(DIM("  Free keeps this run local."));
+            console.log(DIM("  Upgrade to Pro for cloud history, memory sync and restore metadata."));
+          } else {
+            console.log(DIM("  Cloud sync not configured."));
+            console.log(DIM("  Local run saved."));
+            console.log(DIM("  Run ") + GO_ACCENT("runtrim login") + DIM(" to connect cloud sync."));
+          }
         } else if (result.status === "skipped_invalid_token") {
           spinner.stop();
           console.log("");
-          console.log(DIM("  Cloud sync not configured. Run saved locally."));
-          console.log(DIM("  Re-run: runtrim login"));
+          console.log(DIM("  Token expired."));
+          console.log(DIM("  Run runtrim login to reconnect."));
         } else if (result.error) {
-          spinner.fail("  Sync failed.");
+          spinner.fail("  Cloud sync failed.");
           console.log("");
           console.log(chalk.red("  Error: ") + chalk.white(result.error));
           if (result.details) console.log(chalk.red("  Details: ") + chalk.white(result.details));
         } else {
-          spinner.fail("  Sync failed.");
+          spinner.fail("  Cloud sync failed.");
           console.log("");
-          console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
+          console.log(chalk.yellow("  Cloud sync failed. Local run saved."));
         }
         console.log("");
         return;
       }
 
+      const latestRunStatusForSync = (runs[0]?.evaluation?.status ?? runs[0]?.status ?? "").toLowerCase();
+      const latestBlockedForReview = latestRunStatusForSync === "blocked" || latestRunStatusForSync === "split_required";
       spinner.succeed("  Sync complete.");
       console.log("");
       const syncedRuns = result.syncedRuns ?? payload.runs.length;
-      console.log(ACCENT.bold("  Synced") + chalk.white(`  ${syncedRuns} run${syncedRuns === 1 ? "" : "s"}`));
+      if (latestBlockedForReview) {
+        console.log(ACCENT.bold("  Blocked report synced for review."));
+      } else {
+        console.log(ACCENT.bold("  Synced") + chalk.white(`  ${syncedRuns} run${syncedRuns === 1 ? "" : "s"}`));
+      }
       console.log("");
       console.log(DIM("  View at  ") + GO_ACCENT(`${apiBase}/app`));
       console.log("");
@@ -9363,6 +9429,8 @@ program
     }
   });
 program.parse(process.argv);
+
+
 
 
 

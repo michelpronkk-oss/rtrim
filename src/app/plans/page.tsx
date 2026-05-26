@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "Compare RunTrim plans for AI coding agent control. Free CLI for local-only runs. Pro for cloud sync and run history. Builder for founders shipping production code daily with AI agents. Team for shared policies and audit logs.",
   alternates: { canonical: "https://www.runtrim.com/plans" },
   openGraph: {
-    title: "RunTrim Plans — Free, Pro, Builder, Team",
+    title: "RunTrim Plans - Free, Pro, Builder, Team",
     description:
       "Free CLI for local agent control. Pro for cloud sync and run history. Builder for production founders. Team for shared governance and audit logs.",
     url: "https://www.runtrim.com/plans",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim Plans — Free, Pro, Builder, Team",
+    title: "RunTrim Plans - Free, Pro, Builder, Team",
     description:
       "Free CLI for local agent control. Pro for cloud sync. Builder for founders. Team for governance.",
     images: ["/opengraph-image"],
@@ -52,7 +52,7 @@ const PLANS = [
       "Memory, scope and finish checks",
       "All supported agents",
       "Local run history",
-      "Local restore for latest run",
+      "Local restore for latest 5 restore-capable points",
     ],
     missing: [
       "No cloud sync",
@@ -479,7 +479,7 @@ export default function PlansPage() {
               },
               {
                 q: "What is the primary RunTrim flow?",
-                a: "Use runtrim start, runtrim doctor, runtrim agent \"task\" --copy, then runtrim finish. Legacy runtrim go remains available for compatibility.",
+                a: "Use runtrim start, runtrim doctor, runtrim agent \"task\" --copy, then runtrim finish.",
               },
               {
                 q: "Does RunTrim replace my agent?",

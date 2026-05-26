@@ -100,5 +100,5 @@ runtrim restore last --preview
 Legacy bridge compatibility (still supported):
 
 ```bash
-runtrim go "Your task"
+runtrim agent "Your task" --copy
 ```

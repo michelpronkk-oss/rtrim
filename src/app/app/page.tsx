@@ -11,7 +11,7 @@ import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 import { CopyButton } from "@/components/app/copy-button";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "AI Run Control Room",
   robots: { index: false, follow: false },
 };
 
@@ -301,10 +301,15 @@ export default async function OverviewPage() {
     if (!hasConnectedCli) return "Connect CLI";
     if (!hasRuns) return "Run `runtrim finish`";
     const verdict = (data?.lastRun?.status ?? "").toLowerCase();
+    if (verdict === "blocked" || verdict === "split_required") return "Review, approve or restore";
     if (verdict === "guarded") return "Run `runtrim finish`";
     if (latestRisk?.toLowerCase() === "high") return "Review risky files";
     if (plan === "free") return "Upgrade to Pro for cloud history";
     return "Preview restore";
+  })();
+  const latestRunIsBlocked = (() => {
+    const verdict = (data?.lastRun?.status ?? "").toLowerCase();
+    return verdict === "blocked" || verdict === "split_required";
   })();
 
   const autopilotChecks = [
@@ -551,7 +556,7 @@ export default async function OverviewPage() {
 
       <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
         <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Latest Run Intelligence</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">{latestRunIsBlocked ? "Latest run needs review" : "Latest Run Intelligence"}</p>
           {data?.lastRun && <Link href={`/app/runs/${data.lastRun.id}`} className="font-mono text-[11px] text-[#a78bfa] hover:text-[#c9ccd2]">Open run</Link>}
         </div>
         {!data?.lastRun ? (
@@ -576,6 +581,16 @@ export default async function OverviewPage() {
               <p className="text-[11px] text-[#8a8f98]">Next safest action</p>
               <p className="mt-1 text-[13px] text-[#f4f5f7]">{latestRunAction}</p>
             </div>
+            {latestRunIsBlocked && (
+              <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-[#F0BF72]/25 bg-[#F0BF72]/6 px-3 py-3">
+                <p className="text-[13px] font-semibold text-[#f4f5f7]">RunTrim recorded this run, but it should not be treated as trusted work until reviewed or restored.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <CopyButton text="runtrim restore" label="Copy runtrim restore" />
+                  <CopyButton text="runtrim restore last --preview" label="Copy preview restore" />
+                  <CopyButton text={'runtrim approve "Allow <path> for this run only"'} label="Copy runtrim approve" />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -639,11 +654,11 @@ export default async function OverviewPage() {
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
             <p className="text-[13px] font-semibold text-[#f4f5f7]">Builder</p>
-            <p className="mt-1 text-[12px] text-[#8a8f98]">Unlimited projects, advanced recovery history, CI Gate, proof/drift reports.</p>
+            <p className="mt-1 text-[12px] text-[#8a8f98]">Unlimited projects, advanced recovery history, CI Gate, proof/drift reports (coming soon where not live).</p>
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
             <p className="text-[13px] font-semibold text-[#f4f5f7]">Team</p>
-            <p className="mt-1 text-[12px] text-[#8a8f98]">Shared recovery logs, approvals and audit logs, GitHub checks and policies coming soon, reviewed access where available.</p>
+            <p className="mt-1 text-[12px] text-[#8a8f98]">Shared recovery logs, approvals and audit logs, GitHub checks and policies (coming soon), reviewed access where available.</p>
           </div>
         </div>
       </div>

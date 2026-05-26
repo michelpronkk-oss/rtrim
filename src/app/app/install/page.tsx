@@ -5,7 +5,7 @@ import { CopyButton } from "@/components/app/copy-button";
 import { PublicNav } from "@/components/app/public-nav";
 
 export const metadata: Metadata = {
-  title: { absolute: "Install RunTrim CLI" },
+  title: "Install RunTrim",
   description:
     "Install RunTrim in one command. Set up your project with runtrim start, dispatch guarded runs with runtrim agent, and verify with runtrim finish. Free. Local-first. No account required.",
   alternates: { canonical: "https://www.runtrim.com/app/install" },
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     "Cursor guardrails CLI", "AI coding guardrails install", "runtrim mcp",
   ],
   openGraph: {
-    title: "Install RunTrim — CLI Control Layer for AI Coding Agents",
+    title: "Install RunTrim | RunTrim",
     description:
       "Install in one command. Set up your project, dispatch guarded agent runs, verify with finish checks. Free. Local-first. No account required.",
     url: "https://www.runtrim.com/app/install",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Install RunTrim — CLI Control Layer for AI Coding Agents",
+    title: "Install RunTrim | RunTrim",
     description:
       "Install in one command. Set up your project, dispatch guarded agent runs, verify with finish checks.",
     images: ["/opengraph-image"],
@@ -91,7 +91,7 @@ export default function InstallPage() {
     <div className="rt-page-in min-h-screen bg-[#08090b] text-[#f4f5f7]">
       <PublicNav />
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero :  same grid/glow as all public pages Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* Hero: same grid/glow as all public pages */}
       <section
         className="pt-14 pb-12 sm:pt-20 sm:pb-16"
         style={{ position: "relative", borderBottom: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}
@@ -181,7 +181,7 @@ export default function InstallPage() {
         </div>
       </section>
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Content Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* Content */}
       <div
         className="mx-auto py-12 sm:py-16 space-y-5"
         style={{ maxWidth: 1240, padding: "48px clamp(20px,4vw,40px) 80px" }}
@@ -328,3 +328,4 @@ export default function InstallPage() {
     </div>
   );
 }
+
