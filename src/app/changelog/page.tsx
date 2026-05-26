@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     "Every RunTrim CLI release in order: runtrim start, agent dispatch, MCP server, cloud sync, plan model, and finish enforcement changes.",
   alternates: { canonical: "https://www.runtrim.com/changelog" },
   openGraph: {
-    title: "RunTrim Changelog — CLI and Agent Workflow Updates",
+    title: "RunTrim Changelog - CLI and Agent Workflow Updates",
     description:
       "Latest updates to the RunTrim CLI control layer, MCP server, cloud sync, and AI coding agent workflow features.",
     url: "https://www.runtrim.com/changelog",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim Changelog — CLI and Agent Workflow Updates",
+    title: "RunTrim Changelog - CLI and Agent Workflow Updates",
     description:
       "Latest updates to the RunTrim CLI control layer, MCP server, cloud sync, and agent workflow features.",
     images: ["/opengraph-image"],
@@ -64,7 +64,7 @@ const RELEASES = [
     date: "May 2026",
     tag: null,
     items: [
-      "repo-limit consistency across start, agent, go compatibility, MCP contract creation, and sync messaging",
+      "repo-limit consistency across start, agent, legacy go compatibility, MCP contract creation, and sync messaging",
       "README/docs task scope and risk classification fixes",
       "modern command-flow cleanup across generated guidance",
     ],
@@ -116,7 +116,7 @@ const RELEASES = [
     date: "May 2026",
     tag: null,
     items: [
-      "runtrim go now auto-syncs started runs when connected",
+      "legacy runtrim go compatibility now auto-syncs started runs when connected",
       "runtrim finish auto-syncs completed reports",
       "manual runtrim sync remains available as fallback",
       "failed syncs stay local and can be retried",
@@ -131,7 +131,7 @@ const RELEASES = [
       "finished runs restore RUNTRIM.md to canonical protocol mode",
       "latest contract resets to Status: none after finish",
       "current memory resets after finish",
-      "agents entering between sessions are told to start a new runtrim go contract",
+      "agents entering between sessions are told to start a new guarded contract",
     ],
   },
   {
@@ -151,7 +151,7 @@ const RELEASES = [
     date: "May 2026",
     tag: null,
     items: [
-      "runtrim go creates scoped contracts before AI agents touch code",
+      "legacy runtrim go compatibility creates scoped contracts before AI agents touch code",
       "runtrim finish checks changed files, risk, proof gaps, and continuation",
       "works with Claude Code, Codex, Cursor, ChatGPT, and prompt-based agents",
     ],
@@ -272,7 +272,7 @@ export default function ChangelogPage() {
       {/* ── Timeline ─────────────────────────────────────────── */}
       <div className="mx-auto px-6 py-14 sm:py-20" style={{ maxWidth: 860 }}>
 
-        {/* Latest release — highlighted */}
+        {/* Latest release - highlighted */}
         <div
           className="relative mb-3 overflow-hidden rounded-xl"
           style={{
@@ -461,4 +461,5 @@ export default function ChangelogPage() {
     </div>
   );
 }
+
 

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "RunTrim pricing: Free local CLI forever, Pro at $29/month for cloud sync and run history, Builder at $49/month for founders shipping daily with AI agents, Team from $24/seat. No account required to start.",
   alternates: { canonical: "https://www.runtrim.com/pricing" },
   openGraph: {
-    title: "RunTrim Pricing — Free CLI, Pro, Builder, Team",
+    title: "RunTrim Pricing - Free CLI, Pro, Builder, Team",
     description:
       "Start free with the local CLI. Upgrade to Pro for cloud sync and dashboard run history. Builder for founders. Team for shared governance and audit logs.",
     url: "https://www.runtrim.com/pricing",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim Pricing — Free CLI, Pro, Builder, Team",
+    title: "RunTrim Pricing - Free CLI, Pro, Builder, Team",
     description:
       "Start free with the local CLI. Upgrade to Pro for cloud sync and run history.",
     images: ["/opengraph-image"],
@@ -221,3 +221,5 @@ export default function PricingPage() {
     </div>
   );
 }
+
+

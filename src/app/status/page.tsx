@@ -132,8 +132,8 @@ const INCIDENTS = [
   {
     month:  "March 2026",
     status: "degraded" as StatusLevel,
-    title:  "CLI Sync — brief elevated latency",
-    detail: "Latency on CLI sync endpoints increased ~3× for approximately 18 minutes. No data loss. Root cause: upstream provider maintenance window.",
+    title:  "CLI Sync - brief elevated latency",
+    detail: "Latency on CLI sync endpoints increased by about 3x for approximately 18 minutes. No data loss. Root cause: upstream provider maintenance window.",
   },
 ];
 
@@ -224,7 +224,7 @@ export default function StatusPage() {
         <div className="mx-auto" style={{ maxWidth: 1240, padding: "24px clamp(20px,4vw,40px)" }}>
           <div className="flex items-center justify-between mb-3">
             <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.09em" }}>
-              Overall system — 90-day view
+              Overall system - 90-day view
             </p>
             <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68" }}>99.97% uptime</p>
           </div>
@@ -433,3 +433,5 @@ export default function StatusPage() {
     </div>
   );
 }
+
+

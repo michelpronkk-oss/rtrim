@@ -284,7 +284,7 @@ export function ProjectAgentChat({
                 <p className="text-[12px] text-[#9aa3b5]">No synced runs yet. Start with one guarded run.</p>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
                   <code className="rounded-md border border-white/12 bg-[#101621] px-2.5 py-1 font-mono text-[10.5px] text-[#c6cedd]">
-                    runtrim go "your task"
+                    runtrim agent "your task" --copy
                   </code>
                   <code className="rounded-md border border-white/12 bg-[#101621] px-2.5 py-1 font-mono text-[10.5px] text-[#c6cedd]">
                     runtrim finish

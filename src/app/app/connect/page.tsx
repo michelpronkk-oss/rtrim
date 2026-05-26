@@ -128,7 +128,7 @@ export default function ConnectPage() {
             </p>
             <p className="text-[12px] leading-[1.7] text-[#5a5f68]">
               Cloud sync is optional. All CLI commands work without a token.
-              Sync only uploads run metadata — source code never leaves your machine.
+              Sync only uploads run metadata - source code never leaves your machine.
             </p>
           </div>
         </div>
@@ -153,3 +153,5 @@ export default function ConnectPage() {
     </div>
   );
 }
+
+

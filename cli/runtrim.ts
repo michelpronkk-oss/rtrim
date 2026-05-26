@@ -4270,7 +4270,7 @@ program
       const restoreVerdict = normalizeRunVerdict(latestRestore.verdict);
       const restoreLabel = restoreVerdict
         ? `${restoreVerdict}${restoreVerdict === "BLOCKED" ? ", needs review" : ""}`
-        : "unknown";
+        : "not recorded yet";
       console.log(
         DIM("- Latest restore point: ") +
         chalk.white(latestRestore.date) +
@@ -4299,7 +4299,7 @@ program
       console.log(DIM("- Source: ") + chalk.white(latestRunSource));
       console.log(DIM("- Next: ") + chalk.white(latestRunNeedsReview ? "runtrim restore" : "runtrim finish when the next guarded run is done"));
     } else {
-      console.log(DIM("- Verdict: ") + chalk.gray("unknown"));
+      console.log(DIM("- Verdict: ") + chalk.gray("not recorded yet"));
       console.log(DIM("- Status: ") + chalk.gray("no finished local run or restore verdict yet"));
       console.log(DIM("- Restore: ") + (latestRunHasRestore ? MINT("available") : chalk.gray("not available yet")));
       console.log(DIM("- Next: ") + chalk.white('runtrim agent "task" --copy'));
@@ -7228,7 +7228,7 @@ program
 
 program
   .command("go <task>")
-  .description("Bridge Mode: generate a scoped contract, write protocol files, and prepare the guarded prompt")
+  .description('Legacy shortcut (compatibility). Prefer runtrim agent "task" --copy for guarded handoffs')
   .option("--no-clipboard", "Print prompt to terminal instead of copying to clipboard")
   .option("--no-sync",      "Skip cloud sync even if a CLI token is configured")
   .option("--no-bridge",    "Skip bridge file writing (RUNTRIM.md, contracts, memory)")
