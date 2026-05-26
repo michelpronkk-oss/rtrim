@@ -19,11 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.runtrim.com"),
   title: {
-    default: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+    default: "RunTrim | AI Agent Control Layer",
     template: "%s | RunTrim",
   },
   description:
-    "RunTrim is the CLI control layer for AI coding agents. Give Claude Code, Cursor, Codex, and ChatGPT scoped contracts, project memory, forbidden-file rules, and finish checks before they touch your code. Free. Local-first. No account required.",
+    "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first. No account required.",
   keywords: [
     "runtrim", "RunTrim CLI", "AI coding agent control layer",
     "Claude Code guardrails", "Claude Code context limit", "Claude Code token waste",
@@ -45,23 +45,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.runtrim.com",
     siteName: "RunTrim",
-    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+    title: "RunTrim | AI Agent Control Layer",
     description:
-      "Give AI coding agents scoped contracts, project memory, forbidden-file rules, and finish checks before they touch your code. Free CLI. Local-first. No account required.",
+      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "RunTrim — CLI Control Layer for AI Coding Agents",
+        alt: "RunTrim | AI Agent Control Layer",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+    title: "RunTrim | AI Agent Control Layer",
     description:
-      "Give AI coding agents scoped contracts, project memory, forbidden-file rules, and finish checks before they touch your code. Free CLI. Local-first.",
+      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
     images: ["/opengraph-image"],
   },
   icons: {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
-  title: "RunTrim Security",
+  title: "Security",
   description:
     "RunTrim is designed around local-first usage, metadata-only sync, and no source code upload in V1.",
   alternates: {

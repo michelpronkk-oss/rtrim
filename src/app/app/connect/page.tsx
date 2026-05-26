@@ -4,7 +4,7 @@ import { GenerateTokenButton } from "@/components/app/generate-token-button";
 import { Terminal, Link2, RefreshCw } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Connect CLI | RunTrim Dashboard",
+  title: "Connect CLI",
   robots: { index: false, follow: false },
 };
 

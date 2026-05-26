@@ -5,7 +5,7 @@ import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { History, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Runs | RunTrim Dashboard",
+  title: "Runs",
   robots: { index: false, follow: false },
 };
 

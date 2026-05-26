@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
-import { MotionFade, MotionButton, ProtocolBars, CtaBeams, CountUpPrice } from "@/components/app/motion-section";
+import { MotionFade, MotionButton, MotionAgentCard, AgentStatCount, ProtocolBars, CtaBeams, CountUpPrice } from "@/components/app/motion-section";
 import { CopyButton } from "@/components/app/copy-button";
 import { SmartCta } from "@/components/app/smart-cta";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
@@ -12,24 +12,24 @@ import { PublicNav } from "@/components/app/public-nav";
 import { PublicFooter } from "@/components/app/public-footer";
 
 export const metadata: Metadata = {
-  title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+  title: { absolute: "RunTrim | AI Agent Control Layer" },
   description:
-    "Stop AI agents from drifting through your codebase. RunTrim gives Claude, Codex, Cursor and other coding agents scoped contracts, project memory, MCP tools, finish checks, CI gates and local restore points.",
+    "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first. No account required.",
   alternates: { canonical: "https://www.runtrim.com" },
   openGraph: {
-    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+    title: "RunTrim | AI Agent Control Layer",
     description:
-      "Stop AI agents from drifting through your codebase with scoped contracts, memory, finish verification, CI checks, and local restore points.",
+      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
     url: "https://www.runtrim.com",
     type: "website",
     siteName: "RunTrim",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "RunTrim — Control Layer for AI Coding Agents" }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "RunTrim | AI Agent Control Layer" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim — CLI Control Layer for Claude Code, Cursor, and Codex",
+    title: "RunTrim | AI Agent Control Layer",
     description:
-      "Stop AI agents from drifting through your codebase with scoped contracts, memory, finish verification, CI checks, and local restore points.",
+      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
     images: ["/opengraph-image"],
   },
 };
@@ -470,6 +470,9 @@ export default function Home() {
                     <span style={{ wordBreak: "break-all" }}>{cmd}</span>
                   </span>
                   <p style={{ margin: "4px 0 0", color: "#5a5f68", fontSize: 12, lineHeight: 1.5 }}>{desc}</p>
+                  <div style={{ marginTop: 8 }}>
+                    <ProtocolBars active={active} cardIndex={idx} compact />
+                  </div>
                 </div>
               </div>
             ))}
@@ -690,7 +693,7 @@ export default function Home() {
                   display: "inline-block",
                 }}
               />
-              connected agents · 7
+              connected agents · <AgentStatCount to={7} />
             </div>
 
             {/* Agent grid */}
@@ -705,8 +708,9 @@ export default function Home() {
                   : status === "beta"       ? "#F0BF72"
                   : "#5a5f68";
                 return (
-                  <div
+                  <MotionAgentCard
                     key={name}
+                    index={i}
                     className="p-5 sm:p-6"
                     style={{
                       background: "linear-gradient(180deg, #0e1116, #0a0c10)",
@@ -748,7 +752,7 @@ export default function Home() {
                       />
                       {status}
                     </div>
-                  </div>
+                  </MotionAgentCard>
                 );
               })}
             </div>

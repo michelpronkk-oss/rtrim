@@ -10,7 +10,7 @@ import { OnboardingChecklist } from "@/components/app/onboarding-checklist";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
-  title: "Overview | RunTrim Dashboard",
+  title: "Dashboard",
   robots: { index: false, follow: false },
 };
 
@@ -200,6 +200,21 @@ function StatePill({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
+function VerdictPill({ label, variant }: { label: string; variant: "pass" | "warn" | "fail" | "neutral" | "info" }) {
+  const cls = {
+    pass:    "border-[#4DE8B0]/24 bg-[#4DE8B0]/8 text-[#98e4c8]",
+    warn:    "border-[#F0BF72]/20 bg-[#F0BF72]/8 text-[#F0BF72]",
+    fail:    "border-[#FF7B5C]/20 bg-[#FF7B5C]/8 text-[#FFAC98]",
+    neutral: "border-white/10 bg-white/4 text-[#5a5f68]",
+    info:    "border-[#7C6DFA]/22 bg-[#7C6DFA]/8 text-[#a78bfa]",
+  }[variant];
+  return (
+    <span className={`inline-flex items-center rounded-md border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 function gateLabel(currentPlan: string, requiredPlan: "pro" | "builder" | "team"): string {
   const currentIdx = planOrder.indexOf(currentPlan as (typeof planOrder)[number]);
   const requiredIdx = planOrder.indexOf(requiredPlan);
@@ -248,6 +263,29 @@ export default async function OverviewPage() {
   const hasCompletedRun  = data?.hasCompletedRun  ?? false;
   const lastVerdict      = data?.lastRun?.status ?? null;
   const hasLastVerdict   = Boolean(lastVerdict);
+
+  // Derived display state
+  const lastFinishDisplay = (() => {
+    const s = (lastVerdict ?? "").toLowerCase();
+    if (s === "passed") return { label: "PASS", variant: "pass" as const };
+    if (s === "completed") return { label: "PASS", variant: "pass" as const };
+    if (s === "guarded") return { label: "In progress", variant: "info" as const };
+    if (s === "blocked") return { label: "BLOCKED", variant: "fail" as const };
+    if (s === "warned" || s === "warn") return { label: "WARN", variant: "warn" as const };
+    return null;
+  })();
+
+  const autopilotReadiness = (() => {
+    if (hasConnectedCli && hasRuns) return { label: "Ready", variant: "pass" as const };
+    if (hasConnectedCli) return { label: "Partial", variant: "warn" as const };
+    return { label: "Not configured", variant: "neutral" as const };
+  })();
+
+  const restoreState = (() => {
+    if (!hasRuns) return { label: "Not yet", variant: "neutral" as const };
+    if (plan === "free") return { label: "Local only", variant: "warn" as const };
+    return { label: "Available", variant: "pass" as const };
+  })();
   const runsUsed    = data?.runsUsed ?? 0;
   const runsLimit   = data?.runsLimit ?? 5;
   const isUnlimited = runsLimit === null;
@@ -282,6 +320,7 @@ export default async function OverviewPage() {
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Overview</p>
           <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">Dashboard</h1>
+          <p className="mt-0.5 text-[13px] text-[#5a5f68]">Control, verify and recover AI coding runs.</p>
         </div>
         <span className={`rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] ${isPastDue ? "border-[#FF7B5C]/30 bg-[#FF7B5C]/8 text-[#FF7B5C]" : PLAN_BADGE[plan] ?? PLAN_BADGE.free}`}>
           {isPastDue ? "Payment failed" : isTrialing ? "Pro Trial" : plan}
@@ -456,32 +495,112 @@ export default async function OverviewPage() {
       <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Control state</p>
-          <p className="text-[11px] text-[#5a5f68]">RunTrim-aware projects keep memory, instructions, and MCP guidance in place.</p>
+          <p className="text-[11px] text-[#5a5f68]">RunTrim-aware projects keep memory, autopilot rules, and finish verification in place.</p>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Project memory</p>
-            <div className="mt-2"><StatePill ok={hasProjects || hasRuns} label={hasProjects || hasRuns ? "updated" : "setup needed"} /></div>
+            <p className="text-[12px] font-medium text-[#8a8f98]">Project memory</p>
+            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Project context and rules available to agents.</p>
+            <div className="mt-2">
+              <StatePill ok={hasProjects || hasRuns} label={hasProjects || hasRuns ? "Ready" : "Setup needed"} />
+            </div>
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Agent instructions</p>
-            <div className="mt-2"><StatePill ok={hasConnectedCli} label={hasConnectedCli ? "installed" : "setup needed"} /></div>
+            <p className="text-[12px] font-medium text-[#8a8f98]">Agent Autopilot</p>
+            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Contract before edits, finish before done.</p>
+            <div className="mt-2">
+              <VerdictPill label={autopilotReadiness.label} variant={autopilotReadiness.variant} />
+            </div>
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">MCP</p>
-            <div className="mt-2"><StatePill ok={true} label="available" /></div>
+            <p className="text-[12px] font-medium text-[#8a8f98]">MCP</p>
+            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Compatible agents can call RunTrim tools directly.</p>
+            <div className="mt-2">
+              <VerdictPill label="Available" variant="pass" />
+            </div>
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Local bridge</p>
-            <div className="mt-2"><StatePill ok={hasConnectedCli} label={hasConnectedCli ? "available" : "available after CLI connect"} /></div>
+            <p className="text-[12px] font-medium text-[#8a8f98]">Latest finish</p>
+            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Last completed run verdict.</p>
+            <div className="mt-2">
+              {lastFinishDisplay
+                ? <VerdictPill label={lastFinishDisplay.label} variant={lastFinishDisplay.variant} />
+                : <VerdictPill label="Not recorded" variant="neutral" />}
+            </div>
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Last finish verdict</p>
-            <div className="mt-2"><StatePill ok={hasLastVerdict} label={hasLastVerdict ? String(lastVerdict).toUpperCase() : "not recorded"} /></div>
+            <p className="text-[12px] font-medium text-[#8a8f98]">Restore</p>
+            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Recover without spending another agent run.</p>
+            <div className="mt-2">
+              <VerdictPill label={restoreState.label} variant={restoreState.variant} />
+            </div>
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] text-[#8a8f98]">Active contract</p>
-            <div className="mt-2"><StatePill ok={hasRuns} label={hasRuns ? "from latest run" : "use runtrim_create_contract"} /></div>
+            <p className="text-[12px] font-medium text-[#8a8f98]">Active contract</p>
+            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Current guarded run scope.</p>
+            <div className="mt-2">
+              <VerdictPill label={hasRuns ? "Active" : "None"} variant={hasRuns ? "pass" : "neutral"} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Agent Autopilot module */}
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2.5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Agent Autopilot</p>
+              <VerdictPill label={autopilotReadiness.label} variant={autopilotReadiness.variant} />
+            </div>
+            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">
+              {autopilotReadiness.label === "Ready"
+                ? "Agents are operating under RunTrim control."
+                : "Set up RunTrim so agents use contracts and finish verification automatically."}
+            </p>
+            <p className="mt-1 text-[12px] leading-[1.65] text-[#5a5f68]">
+              Compatible agents should create a contract before edits, check risky paths and finish before done.
+              {autopilotReadiness.label !== "Ready" && " Run runtrim doctor to see what is missing."}
+            </p>
+          </div>
+          <div className="shrink-0 space-y-1.5 pt-1">
+            <div className="rounded-md border border-white/7 bg-[#080a0d] px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
+              runtrim doctor
+            </div>
+            {autopilotReadiness.label !== "Ready" && (
+              <div className="rounded-md border border-white/7 bg-[#080a0d] px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
+                runtrim mcp instructions
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Recovery module */}
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2.5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Recovery</p>
+              <VerdictPill label={restoreState.label} variant={restoreState.variant} />
+            </div>
+            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">
+              {!hasRuns
+                ? "Restore points are created automatically with each guarded run."
+                : plan === "free"
+                  ? "Local restore points are ready. Upgrade to Pro for synced restore metadata."
+                  : "Restore metadata syncs with guarded runs. Apply still happens locally through the CLI."}
+            </p>
+            <p className="mt-1 text-[12px] leading-[1.65] text-[#5a5f68]">
+              {!hasRuns
+                ? "Finish a guarded run to create your first restore point."
+                : "Recover without spending another agent run."}
+            </p>
+          </div>
+          <div className="shrink-0 pt-1">
+            <div className="rounded-md border border-white/7 bg-[#080a0d] px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
+              runtrim restore
+            </div>
           </div>
         </div>
       </div>
@@ -494,7 +613,7 @@ export default async function OverviewPage() {
           </p>
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(["Cloud sync", "Auto-sync dashboard", "Cloud run history", "Memory sync"] as const).map((label) => {
+            {(["Cloud sync", "Auto-sync dashboard", "Cloud run history", "Memory sync", "Synced restore metadata"] as const).map((label) => {
               const lbl = gateLabel(plan, "pro");
               return (
                 <div key={label} className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
@@ -504,49 +623,81 @@ export default async function OverviewPage() {
               );
             })}
             <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-              <p className="text-[12px] text-[#8a8f98]">Advanced reports and multi-project</p>
+              <p className="text-[12px] text-[#8a8f98]">Multi-project memory and advanced recovery</p>
               {(() => { const lbl = gateLabel(plan, "builder"); return <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>; })()}
             </div>
             <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-              <p className="text-[12px] text-[#8a8f98]">Team approvals and audit logs</p>
+              <p className="text-[12px] text-[#8a8f98]">Shared recovery logs and audit</p>
               {(() => { const lbl = gateLabel(plan, "team"); return <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>; })()}
-              <p className="mt-1 text-[11px] text-[#5a5f68]">Team policies and GitHub checks: coming soon</p>
-            </div>
-            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-              <p className="text-[12px] text-[#8a8f98]">Recovery</p>
-              {(() => { const lbl = gateLabel(plan, "pro"); return <p className={`mt-1 font-mono text-[11px] ${gateLabelCls(lbl)}`}>{lbl}</p>; })()}
-              <p className="mt-1 text-[11px] text-[#5a5f68]">
-                {plan === "free"
-                  ? "Local restore is available in CLI. Upgrade to Pro for synced restore metadata."
-                  : "Restore points are local-first. Preview with runtrim restore last --preview before apply."}
-              </p>
+              <p className="mt-1 text-[11px] text-[#5a5f68]">Approvals and GitHub checks: coming soon</p>
             </div>
           </div>
         )}
       </div>
 
       {isEmpty ? (
-        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 text-center">
-          <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8"
-               style={{ boxShadow: "0 0 24px rgba(124,109,250,0.08)" }}>
-            <Shield className="size-5 text-[#a78bfa]/70" />
+        hasConnectedCli ? (
+          /* CLI connected, no synced runs yet */
+          <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 text-center">
+            <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#4DE8B0]/20 bg-[#4DE8B0]/6"
+                 style={{ boxShadow: "0 0 24px rgba(77,232,176,0.07)" }}>
+              <Shield className="size-5 text-[#4DE8B0]/60" />
+            </div>
+            <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
+              Run history is ready.
+            </h2>
+            <p className="mx-auto mt-2 max-w-[420px] text-[13px] leading-[1.7] text-[#8a8f98]">
+              Create a guarded run and finish it to see scope, files, verdict and restore metadata here.
+            </p>
+            <div className="mx-auto mt-6 max-w-[340px] space-y-2 text-left">
+              {([
+                'runtrim agent "Fix checkout" --copy',
+                "runtrim finish",
+              ] as const).map((cmd) => (
+                <div key={cmd} className="flex items-center gap-2 rounded-md border border-white/7 bg-[#080a0d] px-3 py-2">
+                  <span className="font-mono text-[10px] text-[#a78bfa]">$</span>
+                  <code className="font-mono text-[11.5px] text-[#c9ccd2]">{cmd}</code>
+                </div>
+              ))}
+            </div>
           </div>
-          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
-            Connect your first guarded run.
-          </h2>
-          <p className="mx-auto mt-2 max-w-[400px] text-[13px] leading-[1.7] text-[#8a8f98]">
-            Free CLI works locally. Cloud sync is opening for Pro, Builder, and Team. Once connected, every guarded run will appear here with its contract, memory, risk, and savings.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/app/install" className="inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
-                  style={{ boxShadow: "0 4px 16px rgba(124,109,250,0.28)" }}>
-              Install CLI <ArrowRight className="size-3.5" />
-            </Link>
-            <Link href="/app/connect" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]">
-              Connect CLI
-            </Link>
+        ) : (
+          /* Not connected — full setup steps */
+          <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 text-center">
+            <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8"
+                 style={{ boxShadow: "0 0 24px rgba(124,109,250,0.08)" }}>
+              <Shield className="size-5 text-[#a78bfa]/70" />
+            </div>
+            <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
+              Get your first guarded run synced.
+            </h2>
+            <p className="mx-auto mt-2 max-w-[420px] text-[13px] leading-[1.7] text-[#8a8f98]">
+              Start RunTrim in your repo, run a guarded agent task, finish it, then sync the report here.
+            </p>
+            <div className="mx-auto mt-6 max-w-[340px] space-y-1.5 text-left">
+              {([
+                ["1. Set up project", "runtrim start"],
+                ["2. Check readiness", "runtrim doctor"],
+                ['3. Create a guarded run', 'runtrim agent "Fix checkout" --copy'],
+                ["4. Finish and sync", "runtrim finish"],
+              ] as const).map(([label, cmd]) => (
+                <div key={cmd} className="rounded-md border border-white/7 bg-[#080a0d] px-3 py-2">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[#3a3e46]">{label}</p>
+                  <code className="font-mono text-[11.5px] text-[#c9ccd2]">{cmd}</code>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Link href="/app/install" className="inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
+                    style={{ boxShadow: "0 4px 16px rgba(124,109,250,0.28)" }}>
+                Install CLI <ArrowRight className="size-3.5" />
+              </Link>
+              <Link href="/app/connect" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]">
+                Connect CLI
+              </Link>
+            </div>
           </div>
-        </div>
+        )
       ) : (
         <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
           <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">
@@ -591,15 +742,15 @@ export default async function OverviewPage() {
               {!planDataAvailable
                 ? "Sign in to check cloud sync access."
                 : plan === "free"
-                  ? "Cloud sync requires Pro."
-                  : "CLI cloud sync is available on your plan."}
+                  ? "Cloud sync and restore metadata require Pro."
+                  : "Auto-sync is active on your plan."}
             </p>
             <p className="mt-0.5 text-[12px] leading-5 text-[#5a5f68]">
               {!planDataAvailable
-                ? "Plan status unavailable. Local features remain available. Sign in or refresh billing to check cloud sync access."
+                ? "Plan status unavailable. Local features remain available."
                 : plan === "free"
-                  ? "Free includes local setup, local memory, and local run history. Upgrade to Pro to unlock auto-sync dashboard, cloud run history, and memory sync."
-                  : <>Connect your CLI with <code className="font-mono text-[#a78bfa]">runtrim login</code> then run <code className="font-mono text-[#a78bfa]">runtrim sync</code> from any project.</>}
+                  ? "Free includes local setup, memory, and guarded runs. Upgrade to Pro to unlock cloud run history, auto-sync dashboard, and synced restore metadata."
+                  : <>Run <code className="font-mono text-[#a78bfa]">runtrim finish</code> from any project to sync the run report, verdict, and restore metadata here.</>}
             </p>
           </div>
           <Link

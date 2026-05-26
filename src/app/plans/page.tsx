@@ -8,7 +8,7 @@ import { BuilderCtaButton } from "@/components/app/builder-cta-button";
 import { MotionCard, MotionFade, MotionButton, CountUpPrice } from "@/components/app/motion-section";
 
 export const metadata: Metadata = {
-  title: "Plans | RunTrim — Compare Free, Pro, Builder, Team",
+  title: "Plans",
   description:
     "Compare RunTrim plans for AI coding agent control. Free CLI for local-only runs. Pro for cloud sync and run history. Builder for founders shipping production code daily with AI agents. Team for shared policies and audit logs.",
   alternates: { canonical: "https://www.runtrim.com/plans" },

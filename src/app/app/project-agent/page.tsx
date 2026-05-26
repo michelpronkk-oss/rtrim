@@ -5,7 +5,7 @@ import { effectivePlanId } from "@/lib/entitlements";
 import { ProjectAgentChat } from "@/components/app/project-agent-chat";
 
 export const metadata: Metadata = {
-  title: "Project Agent | RunTrim Dashboard",
+  title: "Agent Autopilot",
   robots: { index: false, follow: false },
 };
 

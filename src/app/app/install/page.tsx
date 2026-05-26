@@ -5,7 +5,7 @@ import { CopyButton } from "@/components/app/copy-button";
 import { PublicNav } from "@/components/app/public-nav";
 
 export const metadata: Metadata = {
-  title: "Install RunTrim | CLI Control Layer for AI Coding Agents",
+  title: { absolute: "Install RunTrim CLI" },
   description:
     "Install RunTrim in one command. Set up your project with runtrim start, dispatch guarded runs with runtrim agent, and verify with runtrim finish. Free. Local-first. No account required.",
   alternates: { canonical: "https://www.runtrim.com/app/install" },
@@ -40,12 +40,12 @@ const MONO: React.CSSProperties = {
 function Cmd({ text, trackKey }: { text: string; trackKey?: string }) {
   return (
     <div
-      className="flex items-center overflow-hidden rounded-[8px]"
-      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)", minWidth: 0, width: "100%" }}
+      className="flex items-center rounded-[8px]"
+      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)", minWidth: 0, width: "100%", overflow: "hidden" }}
     >
       <span style={{ ...MONO, fontSize: 11, color: "#a78bfa", padding: "0 6px 0 14px", flexShrink: 0 }}>$</span>
-      <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-        <code style={{ ...MONO, fontSize: 12, color: "#c9ccd2", display: "block", padding: "10px 8px 10px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+      <div style={{ flex: 1, minWidth: 0, overflowX: "auto", scrollbarWidth: "none" }}>
+        <code style={{ ...MONO, fontSize: 12, color: "#c9ccd2", display: "block", padding: "10px 8px 10px 0", whiteSpace: "nowrap" as const }}>
           {text}
         </code>
       </div>
@@ -136,17 +136,17 @@ export default function InstallPage() {
           {/* Hero install command */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <div
-              className="flex items-center overflow-hidden rounded-[8px]"
+              className="flex items-center rounded-[8px]"
               style={{
-                height: 40, minWidth: 0,
+                height: 40, minWidth: 0, overflow: "hidden",
                 background: "#0c0e11",
                 border: "1px solid rgba(167,139,250,0.25)",
                 boxShadow: "0 0 0 1px rgba(167,139,250,0.06)",
               }}
             >
               <span style={{ ...MONO, fontSize: 12, color: "#a78bfa", padding: "0 6px 0 14px", flexShrink: 0 }}>$</span>
-              <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                <code style={{ ...MONO, fontSize: 13, color: "#c9ccd2", display: "block", padding: "0 8px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+              <div style={{ flex: 1, minWidth: 0, overflowX: "auto", scrollbarWidth: "none" }}>
+                <code style={{ ...MONO, fontSize: 13, color: "#c9ccd2", display: "block", padding: "0 8px 0 0", whiteSpace: "nowrap" as const }}>
                   npm install -g runtrim
                 </code>
               </div>
@@ -289,7 +289,9 @@ export default function InstallPage() {
                   {item.n}
                 </span>
                 <div className="min-w-0 flex-1" style={{ overflow: "hidden" }}>
-                  <code style={{ ...MONO, fontSize: 12.5, color: "#c9ccd2", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.cmd}</code>
+                  <div style={{ overflowX: "auto", scrollbarWidth: "none" }}>
+                    <code style={{ ...MONO, fontSize: 12.5, color: "#c9ccd2", display: "block", whiteSpace: "nowrap" }}>{item.cmd}</code>
+                  </div>
                   <p className="mt-1" style={{ fontSize: 12, color: "#5a5f68" }}>{item.note}</p>
                 </div>
                 <div className="shrink-0">

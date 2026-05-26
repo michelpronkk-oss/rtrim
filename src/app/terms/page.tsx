@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
-  title: "RunTrim Terms of Service",
+  title: "Terms of Service",
   description: "Terms for using RunTrim, a local-first control layer for AI coding agents.",
   alternates: {
     canonical: "https://www.runtrim.com/terms",

@@ -33,7 +33,7 @@ import { generateContract } from "../src/lib/run-contract.ts";
 import { saveRun, loadLatestRun, loadAllRuns, updateRun } from "../src/lib/run-storage.ts";
 import { getGitDiff, getGitChangedFiles, evaluateAgentOutput } from "../src/lib/run-evaluation.ts";
 import { formatRisk, formatStatus, formatScore, formatDate, truncate } from "../src/lib/format.ts";
-import type { RunEvaluationRecord, WatchEventRecord } from "../src/lib/run-storage.ts";
+import type { RunEvaluationRecord, WatchEventRecord, RunRecord } from "../src/lib/run-storage.ts";
 import { readMemory, writeMemoryFromRuns } from "../src/lib/run-memory.ts";
 import { buildSyncPayload } from "../src/lib/runtrim-sync.ts";
 import {
@@ -101,7 +101,7 @@ const oraFactory: typeof ora =
   (typeof ora === "function" ? ora : ((ora as unknown as { default?: typeof ora }).default ?? ora));
 const ACCENT = chalk.hex("#C8901A");
 const GO_ACCENT = chalk.hex("#8B7CFF");
-const RUNTRIM_AGENT_INSTRUCTIONS_VERSION = "2";
+const RUNTRIM_AGENT_INSTRUCTIONS_VERSION = "3";
 const DIM = chalk.gray;
 const BOLD = chalk.white.bold;
 const MINT = chalk.hex("#6ee7b7");
@@ -871,10 +871,19 @@ function writeAgentHandoffArtifacts(
     "- read .runtrim/agent/latest.md",
     "- stay inside allowed scope",
     "- do not touch forbidden scope",
-    "- stop if scope expansion is required",
+    "- treat auth, billing, env, middleware, migrations, secrets and config as risky unless explicitly in scope",
+    "- stop if scope expansion is required and request approval instead of editing",
     "- preserve user objective",
     "- produce proof",
-    "- after edits, ask the user to run runtrim finish",
+    "",
+    "Before saying done:",
+    "1. Run project verification if available (lint, typecheck, build, test).",
+    "2. If terminal access is available, run: runtrim finish",
+    "3. If terminal access is unavailable, tell the user to run: runtrim finish",
+    "4. Do not claim the task is complete until finish produces PASS, WARN, or BLOCKED.",
+    "5. If finish is BLOCKED: stop and report the safest next step. Do not continue editing.",
+    "6. If finish is WARN: summarize the risk. Ask the user whether to continue.",
+    "7. If the run broke the project, suggest: runtrim restore",
   ];
 
   const md = [
@@ -915,8 +924,15 @@ function writeAgentHandoffArtifacts(
     "Verification steps:",
     ...apply.verificationSteps.map((s) => `- ${s}`),
     "",
-    "Finish requirement:",
-    "- After edits are done, run: runtrim finish",
+    "Finish requirement (Agent Autopilot):",
+    "- After all edits, run project verification if available.",
+    "- If terminal access is available, run: runtrim finish",
+    "- If terminal access is unavailable, tell the user to run: runtrim finish",
+    "- Do not claim the task is complete until finish produces PASS, WARN, or BLOCKED.",
+    "- If BLOCKED: stop. Report safest next step. No further edits.",
+    "- If WARN: summarize risk. Ask user whether to continue.",
+    "- If PASS: summarize changed files. Ask what is next.",
+    "- Recovery: runtrim restore",
     "",
     "Agent instruction summary:",
     ...promptLines,
@@ -946,9 +962,18 @@ function writeAgentPlanningHandoffFromPreview(
     "- read .runtrim/previews/latest.md",
     "- stay inside preview allowed scope",
     "- do not touch preview forbidden scope",
-    "- stop if scope expansion is required",
+    "- treat auth, billing, env, middleware, migrations, secrets and config as risky unless explicitly in scope",
+    "- stop if scope expansion is required and request approval instead of editing",
     "- produce proof",
-    "- after edits, ask the user to run runtrim finish",
+    "",
+    "Before saying done:",
+    "1. Run project verification if available (lint, typecheck, build, test).",
+    "2. If terminal access is available, run: runtrim finish",
+    "3. If terminal access is unavailable, tell the user to run: runtrim finish",
+    "4. Do not claim the task is complete until finish produces PASS, WARN, or BLOCKED.",
+    "5. If finish is BLOCKED: stop and report the safest next step. Do not continue editing.",
+    "6. If finish is WARN: summarize the risk. Ask the user whether to continue.",
+    "7. If the run broke the project, suggest: runtrim restore",
   ];
   const json = {
     id,
@@ -1868,6 +1893,18 @@ function buildRuntrimAgentBlockContent(): string {
     "RunTrim MCP:",
     "- runtrim mcp instructions",
     "- runtrim mcp start",
+    "",
+    "RunTrim Agent Autopilot",
+    "For every coding request:",
+    "1. Contract before edits: create or verify a RunTrim contract before touching any file.",
+    "2. Scope and memory: load RunTrim project memory. Treat the contract as the only allowed scope.",
+    "3. Risky path checks: treat auth, billing, env, middleware, migrations, secrets and config as risky unless explicitly in scope. Call runtrim_check_path before editing any of these.",
+    "4. No silent expansion: if a needed path is outside scope, stop and request approval instead of editing.",
+    "5. Finish before done: after all edits, run `runtrim finish` if terminal access is available. If not, tell the user to run it.",
+    "6. Do not claim the task is complete until finish produces PASS, WARN, or BLOCKED, or the user explicitly says to skip finish.",
+    "7. If finish is BLOCKED, stop and report the safest next step. Do not continue making edits.",
+    "8. If finish is WARN, summarize the risk and ask the user whether to continue.",
+    "9. If the run broke the project, suggest: runtrim restore",
   ].join("\n");
 }
 
@@ -2023,16 +2060,25 @@ function updateStartMemory(cwd: string, profile: StartProjectProfile): string {
       ? profile.detected_sensitive_paths.slice(0, 20).map((p) => `- ${p}`)
       : ["- none detected"]),
     "",
-    "Default agent rules:",
-    "- Use RunTrim memory/profile before planning edits.",
-    "- If no active contract exists and MCP is available, call runtrim_create_contract.",
-    '- If MCP is unavailable, ask the user to run: runtrim agent "task" --copy',
-    "- Check high-risk or sensitive paths before editing. If MCP is available, call runtrim_check_path.",
-    '- If scope must expand, use: runtrim approve "Allow <path/scope> for this run only"',
-    "- End with runtrim finish verification.",
+    "Agent Autopilot rules:",
+    "- Contract before edits: create or verify a RunTrim contract before touching any file.",
+    "- Scope and memory: use RunTrim project memory. Treat the contract as the allowed scope.",
+    "- Risky path checks: auth, billing, env, middleware, migrations, secrets and config are risky unless in scope. Call runtrim_check_path before editing them.",
+    "- No silent expansion: stop and request approval if scope must grow.",
+    "- Finish before done: run or request runtrim finish after all edits. Do not claim done before finish.",
+    "- BLOCKED: stop and report safest next step. Do not continue editing.",
+    "- WARN: summarize risk, ask user whether to continue.",
+    "- Recovery: suggest runtrim restore if the run broke the project.",
     "- Never read or print env file contents.",
+    "- MCP unavailable: ask the user to run: runtrim agent \"task\" --copy",
     "",
-    "MCP guidance:",
+    "MCP tools:",
+    "- runtrim_create_contract  — create a guarded contract",
+    "- runtrim_check_path       — check if a path is in scope",
+    "- runtrim_suggest_approval — get the approval command for scope expansion",
+    "- runtrim_finish_guidance  — get finish instructions",
+    "",
+    "MCP setup:",
     "- runtrim mcp instructions",
     "- runtrim mcp start",
   ].join("\n");
@@ -2047,20 +2093,37 @@ function updateStartAgentInstructions(cwd: string): string {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   const existing = fs.existsSync(instructionsPath) ? fs.readFileSync(instructionsPath, "utf-8") : "";
   const body = [
-    "RunTrim agent instructions:",
+    "RunTrim Agent Autopilot — agent instructions",
     `RUNTRIM_AGENT_INSTRUCTIONS_VERSION: ${RUNTRIM_AGENT_INSTRUCTIONS_VERSION}`,
-    "- Use RunTrim project memory and profile before editing.",
-    "- Create or verify an active RunTrim contract before edits.",
-    "- If MCP is available and contract is missing, call runtrim_create_contract with the user's task.",
-    '- If MCP is unavailable, ask user to run: runtrim agent "task" --copy',
-    "- For high-risk paths (auth, billing, middleware/proxy, migrations, env/sensitive files, broad app-wide changes), check scope first. If MCP is available, call runtrim_check_path.",
-    "- Stay inside active contract scope and preserve existing project style and logic.",
-    '- If scope must expand, request: runtrim approve "Allow <path/scope> for this run only"',
-    "- Run runtrim finish when terminal execution is available, otherwise ask the user to run runtrim finish.",
-    "- Do not claim completion before runtrim finish verification when RunTrim is active.",
-    "- Never read or print env file contents.",
     "",
-    "RunTrim MCP:",
+    "For every coding request:",
+    "1. Contract before edits: use RunTrim project memory and profile. Create or verify an active RunTrim contract before touching any file.",
+    "   - MCP available: call runtrim_create_contract with the user's task.",
+    '   - MCP unavailable: ask the user to run: runtrim agent "task" --copy',
+    "2. Scope and memory: treat the contract as the allowed scope. Do not edit outside it.",
+    "3. Risky path checks: treat auth, billing, env, middleware, migrations, secrets and config as risky unless explicitly in scope.",
+    "   - If MCP is available, call runtrim_check_path before editing any risky or ambiguous path.",
+    "4. No silent expansion: if a needed path is outside scope, stop and request approval.",
+    '   - Approval command: runtrim approve "Allow <path/scope> for this run only"',
+    "5. Finish before done: after all edits, run or request runtrim finish.",
+    "   - If terminal access is available: run runtrim finish.",
+    "   - If not: tell the user to run runtrim finish.",
+    "6. Do not claim the task is complete until finish produces PASS, WARN, or BLOCKED, or the user explicitly says to skip finish.",
+    "7. If finish is BLOCKED: stop. Report the safest next step. Do not make further edits.",
+    "8. If finish is WARN: summarize the risk. Ask the user whether to continue.",
+    "9. If finish is PASS: summarize the changed files and ask the user what is next.",
+    "10. If the run broke the project: suggest runtrim restore.",
+    "",
+    "Never read or print env file contents.",
+    "Preserve existing project style and logic.",
+    "",
+    "RunTrim MCP tools:",
+    "- runtrim_create_contract  — create a guarded contract",
+    "- runtrim_check_path       — check if a path is in scope",
+    "- runtrim_suggest_approval — get the approval command for scope expansion",
+    "- runtrim_finish_guidance  — get finish instructions",
+    "",
+    "RunTrim MCP setup:",
     "- runtrim mcp instructions",
     "- runtrim mcp start",
   ].join("\n");
@@ -2783,8 +2846,9 @@ async function buildRuntrimCreateContractMcp(
       handoff_path: ".runtrim/agent/latest.md",
       allowed_scope_summary: [],
       forbidden_scope_summary: [],
-      next_action: "Active guarded run already exists. Complete it with runtrim finish before creating a new contract.",
+      next_action: "Active guarded run already exists. Run runtrim finish to complete it before creating a new contract. Do not start new edits while a run is active.",
       finish_command: "runtrim finish",
+      restore_command: "runtrim restore",
       approval_command_example: 'runtrim approve "Allow <path> for this run only"',
     };
     return {
@@ -2833,9 +2897,16 @@ async function buildRuntrimCreateContractMcp(
     handoff_path: path.relative(cwd, handoff.markdownPath).replace(/\\/g, "/"),
     allowed_scope_summary: preview.allowedScope.slice(0, 8),
     forbidden_scope_summary: preview.forbiddenScope.slice(0, 8),
-    next_action:
-      "Proceed inside this contract. Check path scope before edits, request approval if scope expands, and run finish when done.",
+    next_action: [
+      "Contract created. Proceed inside this contract scope only.",
+      "1. Edit only the paths listed in allowed_scope_summary.",
+      "2. Before editing auth, billing, env, middleware, migrations, secrets or config, call runtrim_check_path.",
+      "3. If a needed path is outside scope, call runtrim_suggest_approval and stop — do not edit silently.",
+      "4. After all edits, call runtrim_finish_guidance or run: runtrim finish",
+      "5. Do not claim done until finish produces PASS, WARN, or BLOCKED.",
+    ].join(" "),
     finish_command: "runtrim finish",
+    restore_command: "runtrim restore",
     approval_command_example: 'runtrim approve "Allow <path> for this run only"',
   };
   return {
@@ -2895,18 +2966,47 @@ function buildRuntrimContractMcp(cwd: string): McpToolCallResult {
 function buildRuntrimCheckPathMcp(cwd: string, args: Record<string, unknown> | undefined): McpToolCallResult {
   const inputPath = typeof args?.path === "string" ? args.path : "";
   const result = evaluateBridgePathAgainstContract(cwd, inputPath);
-  const blocked = result.allowed === false;
-  const nextAction =
-    result.allowed === true
-      ? "Path appears in scope. Continue and run runtrim finish when done."
-      : 'Path may be out of scope. Ask user and run: runtrim approve "Allow <path> for this run only"';
+
+  let status: "allowed" | "risky" | "forbidden" | "needs_approval" | "unknown";
+  let agentInstruction: string;
+  let canEdit: boolean;
+
+  if (result.allowed === true) {
+    status = "allowed";
+    canEdit = true;
+    agentInstruction = "Path is in scope. Proceed with edits. Run runtrim finish when all edits are done.";
+  } else if (result.sensitive) {
+    status = "forbidden";
+    canEdit = false;
+    agentInstruction =
+      "Path is sensitive (env/key/secret). Do not edit this file. Do not read or print its contents. List path only if needed.";
+  } else if (result.reason === "forbidden_path_match") {
+    status = "forbidden";
+    canEdit = false;
+    agentInstruction =
+      "Path is explicitly forbidden by the active contract. Do not edit this file silently. Stop and ask the user for explicit approval before proceeding.";
+  } else if (result.reason === "outside_allowed_paths") {
+    status = "needs_approval";
+    canEdit = false;
+    agentInstruction =
+      'Path is outside the allowed scope. Do not edit silently. Call runtrim_suggest_approval or ask user to run: runtrim approve "Allow <path> for this run only"';
+  } else {
+    status = "unknown";
+    canEdit = false;
+    agentInstruction =
+      "No active contract or path cannot be determined. Create a contract first with runtrim_create_contract, then re-check this path.";
+  }
+
   const payload: Record<string, unknown> = {
     path: inputPath,
+    status,
     allowed: result.allowed,
-    blocked,
+    can_edit: canEdit,
     reason: result.reason,
     matchedRule: result.matchedForbiddenRule ?? result.matchedAllowedRule ?? null,
-    suggestedNextAction: nextAction,
+    agent_instruction: agentInstruction,
+    finish_command: "runtrim finish",
+    restore_command: "runtrim restore",
   };
   return {
     content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -2946,9 +3046,21 @@ function buildRuntrimSuggestApprovalMcp(cwd: string, args: Record<string, unknow
 
 function buildRuntrimFinishGuidanceMcp(): McpToolCallResult {
   const payload: Record<string, unknown> = {
-    command: "runtrim finish",
+    finish_command: "runtrim finish",
+    restore_command: "runtrim restore",
     why: "runtrim finish verifies scope, sensitive files, and contract compliance before accepting a run.",
-    verdicts: ["PASS: safe to accept", "WARN: review needed", "BLOCKED: contract/safety violation"],
+    agent_instructions: [
+      "If edits are done, run: runtrim finish",
+      "If terminal execution is unavailable, tell the user to run: runtrim finish",
+      "Do not continue making unrelated edits while waiting for finish.",
+      "Do not claim the task is complete until finish produces PASS, WARN, or BLOCKED.",
+    ],
+    verdicts: {
+      PASS: "Safe to accept. Summarize changed files and ask the user what is next.",
+      WARN: "Review needed. Summarize the risk. Ask the user whether to continue or restore.",
+      BLOCKED: "Contract or safety violation. Stop all edits. Report the safest next step. Suggest: runtrim restore",
+    },
+    next_action: "Run runtrim finish now if terminal access is available. Otherwise tell the user to run it.",
   };
   return {
     content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -3849,11 +3961,13 @@ program
     console.log(chalk.white(`  - Cursor config: ${mcpConfigPresence.cursorConfigFound ? "found" : "not found"}`));
     console.log(chalk.white(`  - Project snippets: ${path.relative(cwd, mcpSnippets.dir)}`));
     console.log("");
-    console.log(HEAD("  Recommended"));
-    console.log(chalk.white("  1. Open your agent in this project."));
+    console.log(HEAD("  Agent Autopilot"));
+    console.log(chalk.white("  1. Open your agent (Claude Code, Codex, Cursor, or compatible)."));
     console.log(chalk.white('  2. Use normal language: "Fix the homepage copy. Keep billing untouched."'));
-    console.log(chalk.white("  3. Let the agent use RunTrim MCP/context where configured."));
-    console.log(chalk.white("  4. Run runtrim finish when done."));
+    console.log(chalk.white("  3. If MCP is configured, the agent will use RunTrim contract, memory and finish guidance automatically."));
+    console.log(chalk.white("  4. If MCP is not configured, the agent will ask you to run runtrim agent \"task\" --copy."));
+    console.log(chalk.white("  5. After edits, run or ask the agent to run: runtrim finish"));
+    console.log(chalk.white("  Note: Autopilot requires MCP or agent rules to be configured. Run runtrim doctor to check readiness."));
     console.log("");
     console.log(HEAD("  Guarded loop"));
     console.log(chalk.white('  runtrim agent "Your task" --copy'));
@@ -4060,6 +4174,33 @@ program
     console.log(DIM("- Finish guidance tool: ") + (hasFinishTool ? MINT("available") : chalk.yellow("missing")));
     console.log(DIM("- Local artifacts: ") + chalk.white(String(artifactCount)));
     console.log("");
+
+    // Agent Autopilot readiness
+    const autopilotContractReady = anySurfaceInstalled && runtrimBlockCurrent;
+    const autopilotMemoryReady = memoryReady;
+    const autopilotPathChecks = hasPathTool;
+    const autopilotFinish = hasFinishTool;
+    const autopilotMcp = claudeMcpState === "configured" || cursorMcpState === "configured";
+    const autopilotInstructions = instructionsReady;
+    const autopilotReadyCount = [autopilotContractReady, autopilotMemoryReady, autopilotPathChecks, autopilotFinish, autopilotInstructions].filter(Boolean).length;
+    const autopilotStatus = autopilotReadyCount === 5 && autopilotMcp ? "ready" : autopilotReadyCount >= 3 ? "partial" : "not configured";
+    console.log(BOLD("Agent Autopilot"));
+    console.log(DIM("- Contract before edits: ") + (autopilotContractReady ? MINT("installed") : chalk.yellow("missing — run runtrim start")));
+    console.log(DIM("- Project memory: ") + (autopilotMemoryReady ? MINT("ready") : chalk.yellow("missing — run runtrim start")));
+    console.log(DIM("- Risky path checks: ") + (autopilotPathChecks ? MINT("available") : chalk.yellow("missing")));
+    console.log(DIM("- Finish guidance: ") + (autopilotFinish ? MINT("available") : chalk.yellow("missing")));
+    console.log(DIM("- MCP tools: ") + (autopilotMcp ? MINT("connected") : chalk.yellow("not connected — run runtrim mcp instructions")));
+    console.log(DIM("- Agent instructions: ") + (autopilotInstructions ? MINT("installed") : chalk.yellow("missing — run runtrim start")));
+    console.log(DIM("- Status: ") + (autopilotStatus === "ready" ? MINT("ready") : autopilotStatus === "partial" ? chalk.yellow("partial") : chalk.gray("not configured")));
+    if (autopilotStatus !== "ready") {
+      console.log("");
+      console.log(DIM("  Next steps:"));
+      if (!autopilotContractReady || !autopilotMemoryReady || !autopilotInstructions) console.log(chalk.white("  - runtrim start"));
+      if (!autopilotMcp) console.log(chalk.white("  - runtrim mcp instructions"));
+      if (!autopilotMcp) console.log(chalk.white("  - configure MCP client, then reopen your agent"));
+    }
+    console.log("");
+
     console.log(BOLD("Readiness"));
     console.log(DIM("- State: ") + (readiness === "ready" ? MINT("ready") : readiness === "partial" ? chalk.yellow("partial") : chalk.red("blocked")));
     console.log("");
@@ -4073,7 +4214,8 @@ program
         console.log(chalk.white("- Ready locally, MCP client not connected."));
         console.log(chalk.white("- Run runtrim mcp instructions or copy .runtrim/mcp/cursor.json into your MCP client."));
       } else {
-        console.log(chalk.white("- Your project is RunTrim-aware. Open Cursor/Claude/Codex and use normal language."));
+        console.log(chalk.white("- Agent Autopilot is ready. Open Cursor/Claude/Codex and use normal language."));
+        console.log(chalk.white("- Compatible agents will use RunTrim contract, memory and finish guidance automatically."));
       }
     } else {
       console.log(chalk.white("- Run runtrim start."));
@@ -5915,25 +6057,385 @@ program
 
 const restoreCommand = program.command("restore").description("Preview or apply local restore for guarded runs");
 
+// ── helpers shared by interactive and direct restore paths ──────────────────
+
+function verdictColor(verdict: string | undefined): string {
+  if (verdict === "PASS") return chalk.green(verdict);
+  if (verdict === "WARN") return chalk.yellow(verdict);
+  if (verdict === "BLOCKED") return chalk.red(verdict);
+  return chalk.gray("unknown");
+}
+
+interface RestoreCandidateRow {
+  runId: string;
+  task: string;
+  date: string;
+  verdict: string | undefined;
+  fileCount: number;
+  hasRestorePoint: boolean;
+  outOfScopeCount: number;
+  forbiddenCount: number;
+}
+
+function buildRestoreCandidates(cwd: string): RestoreCandidateRow[] {
+  const runs = loadAllRuns(cwd);
+  const rows: RestoreCandidateRow[] = [];
+  for (const run of runs) {
+    if (run.status !== "completed" && run.status !== "guarded" && run.status !== "executed" && run.status !== "checked") continue;
+    const restore = loadRestorePoint(cwd, run.id);
+    const postFiles = restore?.postRun?.changedFiles ?? [];
+    rows.push({
+      runId: run.id,
+      task: run.task ?? "",
+      date: (restore?.postRun?.capturedAt ?? restore?.createdAt ?? run.createdAt ?? "").slice(0, 16).replace("T", " "),
+      verdict: restore?.postRun?.finishVerdict,
+      fileCount: postFiles.length,
+      hasRestorePoint: !!restore,
+      outOfScopeCount: restore?.postRun?.outOfScopeFiles?.length ?? 0,
+      forbiddenCount: restore?.postRun?.forbiddenFiles?.length ?? 0,
+    });
+  }
+  rows.sort((a, b) => (b.date > a.date ? 1 : -1));
+  return rows;
+}
+
+function printRestoreList(rows: RestoreCandidateRow[]): void {
+  if (rows.length === 0) {
+    console.log("");
+    console.log(chalk.yellow("No restore points yet."));
+    console.log(DIM("  Create a guarded run with `runtrim agent \"task\" --copy`, then run `runtrim finish`."));
+    console.log("");
+    return;
+  }
+  console.log("");
+  console.log(BOLD("RunTrim") + DIM("  restore points"));
+  console.log("");
+  const shortId = (id: string) => id.slice(0, 8);
+  for (const row of rows) {
+    const status = row.hasRestorePoint ? chalk.green("restore available") : chalk.gray("no restore point");
+    const verdict = verdictColor(row.verdict);
+    const files = chalk.white(`${row.fileCount} file${row.fileCount === 1 ? "" : "s"}`);
+    const task = truncate(row.task, 30).padEnd(30);
+    const date = row.date.padEnd(16);
+    const id = DIM(shortId(row.runId));
+    const verdictRaw = row.verdict ?? "unknown";
+    const verdictPadded = verdictRaw.padEnd(7);
+    console.log(`  ${date}  ${chalk.white(task)}  ${verdictColor(row.verdict).replace(verdictRaw, verdictPadded)}  ${files}  ${status}  ${id}`);
+  }
+  console.log("");
+}
+
+async function runRestorePreview(
+  cwd: string,
+  restore: RestorePointRecord,
+  run: RunRecord,
+  mode: "full" | "out-of-scope" | "forbidden",
+  gitAvailable: boolean,
+  nowChanged: string[],
+): Promise<void> {
+  const postFiles = restore.postRun?.changedFiles ?? [];
+  const sensitive = postFiles.filter((f) => isSensitivePath(f) || isSecretLikePath(f));
+
+  let filesToShow: string[];
+  let modeLabel: string;
+  if (mode === "out-of-scope") {
+    filesToShow = (restore.postRun?.outOfScopeFiles ?? []).filter((f) => !sensitive.includes(f));
+    modeLabel = "out-of-scope files only";
+  } else if (mode === "forbidden") {
+    filesToShow = (restore.postRun?.forbiddenFiles ?? []).filter((f) => !sensitive.includes(f));
+    modeLabel = "forbidden files only";
+  } else {
+    filesToShow = postFiles.filter((f) => !sensitive.includes(f));
+    modeLabel = "full restore";
+  }
+
+  const method = gitAvailable && restore.preRun.commit ? "git checkout from pre-run commit" : "metadata-only (limited)";
+  const unrelated = nowChanged.filter((f) => !postFiles.includes(f));
+
+  console.log("");
+  console.log(BOLD("RunTrim") + DIM(`  restore preview · ${modeLabel}`));
+  console.log("");
+  console.log(DIM("  Run ID   ") + chalk.white(restore.runId));
+  console.log(DIM("  Task     ") + chalk.white(truncate(run.task, 80)));
+  console.log(DIM("  Method   ") + chalk.white(method));
+  console.log(DIM("  Verdict  ") + verdictColor(restore.postRun?.finishVerdict));
+  console.log("");
+  console.log(DIM(`  Files to restore (${modeLabel})`));
+  if (filesToShow.length === 0) console.log(chalk.white("  - (none)"));
+  for (const f of filesToShow.slice(0, 30)) console.log(chalk.white("  - " + f));
+  if (filesToShow.length > 30) console.log(DIM(`  ... and ${filesToShow.length - 30} more`));
+  if (sensitive.length > 0) {
+    console.log("");
+    console.log(DIM("  Sensitive files (listed by path only — skipped by default)"));
+    for (const f of sensitive.slice(0, 20)) console.log(chalk.yellow("  - " + f));
+  }
+  if (unrelated.length > 0) {
+    console.log("");
+    console.log(chalk.yellow("  Warning: repo has new changes unrelated to this run."));
+    console.log(chalk.yellow("  Use --apply --force or review manually before restore."));
+  }
+  console.log("");
+}
+
+async function runRestoreApply(
+  cwd: string,
+  restore: RestorePointRecord,
+  run: RunRecord,
+  mode: "full" | "out-of-scope" | "forbidden",
+  force: boolean,
+  gitAvailable: boolean,
+  nowChanged: string[],
+): Promise<void> {
+  const postFiles = restore.postRun?.changedFiles ?? [];
+  const sensitive = postFiles.filter((f) => isSensitivePath(f) || isSecretLikePath(f));
+
+  let filesToRestore: string[];
+  if (mode === "out-of-scope") {
+    filesToRestore = (restore.postRun?.outOfScopeFiles ?? []).filter((f) => !sensitive.includes(f));
+  } else if (mode === "forbidden") {
+    filesToRestore = (restore.postRun?.forbiddenFiles ?? []).filter((f) => !sensitive.includes(f));
+  } else {
+    filesToRestore = postFiles.filter((f) => !sensitive.includes(f));
+  }
+
+  const unrelated = nowChanged.filter((f) => !postFiles.includes(f));
+
+  if (!gitAvailable || !restore.preRun.commit) {
+    console.log("");
+    console.log(chalk.red("Restore apply requires git and a pre-run commit restore point."));
+    console.log("");
+    process.exit(1);
+    return;
+  }
+  if (unrelated.length > 0 && !force) {
+    console.log("");
+    console.log(chalk.red("Restore blocked: new unrelated changes detected after this run."));
+    console.log(chalk.red("Re-run with --apply --force after manual review."));
+    console.log("");
+    process.exit(1);
+    return;
+  }
+
+  const restored: string[] = [];
+  const skippedSensitive: string[] = [...sensitive];
+  const failed: string[] = [];
+  for (const file of filesToRestore) {
+    try {
+      let existedBefore = false;
+      try {
+        await execa("git", ["cat-file", "-e", `${restore.preRun.commit}:${file}`], { cwd });
+        existedBefore = true;
+      } catch {
+        existedBefore = false;
+      }
+      if (existedBefore) {
+        await execa("git", ["checkout", restore.preRun.commit, "--", file], { cwd });
+      } else if (fs.existsSync(path.join(cwd, file))) {
+        fs.rmSync(path.join(cwd, file), { force: true });
+      }
+      restored.push(file);
+    } catch {
+      failed.push(file);
+    }
+  }
+
+  const report = {
+    runId: restore.runId,
+    mode,
+    appliedAt: new Date().toISOString(),
+    restored,
+    skippedSensitive,
+    failed,
+    forced: force,
+  };
+  const reportPath = path.join(getRestoresDir(cwd), `${restore.runId}.report.${Date.now()}.json`);
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf-8");
+
+  console.log("");
+  console.log(BOLD("RunTrim") + DIM("  restore apply"));
+  console.log("");
+  console.log(DIM("  Run ID             ") + chalk.white(restore.runId));
+  console.log(DIM("  Task               ") + chalk.white(truncate(run.task, 60)));
+  console.log(DIM("  Restored files     ") + chalk.white(String(restored.length)));
+  console.log(DIM("  Skipped sensitive  ") + chalk.white(String(skippedSensitive.length)));
+  console.log(DIM("  Failed             ") + chalk.white(String(failed.length)));
+  console.log(DIM("  Report             ") + chalk.white(path.relative(cwd, reportPath)));
+  console.log("");
+  if (failed.length > 0) process.exit(1);
+}
+
+// ── interactive picker ──────────────────────────────────────────────────────
+
+async function runInteractiveRestorePicker(cwd: string): Promise<void> {
+  const rows = buildRestoreCandidates(cwd);
+  if (rows.length === 0) {
+    console.log("");
+    console.log(chalk.yellow("No restore points yet."));
+    console.log(DIM("  Create a guarded run with `runtrim agent \"task\" --copy`, then run `runtrim finish`."));
+    console.log("");
+    return;
+  }
+
+  const shortId = (id: string) => id.slice(0, 8);
+  const pad = (s: string, n: number) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
+
+  const runChoices = rows.map((row) => {
+    const verdictRaw = row.verdict ?? "unknown";
+    const status = row.hasRestorePoint ? "restore available" : "no restore point";
+    const label = `${pad(row.date, 16)}  ${pad(truncate(row.task, 28), 28)}  ${pad(verdictRaw, 7)}  ${pad(row.fileCount + " files", 9)}  ${status}  ${DIM(shortId(row.runId))}`;
+    return { title: label, value: row.runId, disabled: !row.hasRestorePoint };
+  });
+
+  console.log("");
+  console.log(BOLD("RunTrim Restore"));
+  console.log("");
+
+  const runPick = await prompts({
+    type: "select",
+    name: "runId",
+    message: "Select a run to recover:",
+    choices: runChoices,
+    warn: "No restore point for this run",
+  });
+  if (!runPick.runId) return;
+
+  const selectedRow = rows.find((r) => r.runId === runPick.runId)!;
+  const restore = loadRestorePoint(cwd, runPick.runId);
+  if (!restore) {
+    console.log(chalk.yellow("No restore point found for this run."));
+    return;
+  }
+  const allRuns = loadAllRuns(cwd);
+  const run = allRuns.find((r) => r.id === runPick.runId);
+  if (!run) {
+    console.log(chalk.yellow("Run record not found."));
+    return;
+  }
+
+  const gitAvailable = await isGitRepo(cwd);
+  const nowChanged = gitAvailable ? dedupeFiles((await getGitChangedFiles(cwd)).map((f) => f.path)) : [];
+
+  const hasOutOfScope = selectedRow.outOfScopeCount > 0;
+  const hasForbidden = selectedRow.forbiddenCount > 0;
+
+  const actionChoices = [
+    { title: "Preview full restore", value: "preview-full" },
+    { title: `Preview only out-of-scope files${hasOutOfScope ? ` (${selectedRow.outOfScopeCount})` : ""}`, value: "preview-oos", disabled: !hasOutOfScope },
+    { title: `Preview only forbidden files${hasForbidden ? ` (${selectedRow.forbiddenCount})` : ""}`, value: "preview-forbidden", disabled: !hasForbidden },
+    { title: "Apply full restore", value: "apply-full" },
+    { title: `Apply only out-of-scope files${hasOutOfScope ? ` (${selectedRow.outOfScopeCount})` : ""}`, value: "apply-oos", disabled: !hasOutOfScope },
+    { title: `Apply only forbidden files${hasForbidden ? ` (${selectedRow.forbiddenCount})` : ""}`, value: "apply-forbidden", disabled: !hasForbidden },
+    { title: "Cancel", value: "cancel" },
+  ];
+
+  console.log("");
+
+  const actionPick = await prompts({
+    type: "select",
+    name: "action",
+    message: "Recovery options:",
+    choices: actionChoices,
+    warn: "No data for this category",
+  });
+  if (!actionPick.action || actionPick.action === "cancel") {
+    console.log(DIM("  Cancelled."));
+    console.log("");
+    return;
+  }
+
+  const isApply = (actionPick.action as string).startsWith("apply-");
+  const modeMap: Record<string, "full" | "out-of-scope" | "forbidden"> = {
+    "preview-full": "full", "apply-full": "full",
+    "preview-oos": "out-of-scope", "apply-oos": "out-of-scope",
+    "preview-forbidden": "forbidden", "apply-forbidden": "forbidden",
+  };
+  const mode = modeMap[actionPick.action as string] ?? "full";
+
+  if (!isApply) {
+    await runRestorePreview(cwd, restore, run, mode, gitAvailable, nowChanged);
+    return;
+  }
+
+  // Apply path: always require explicit confirmation
+  console.log("");
+  const confirm = await prompts({
+    type: "confirm",
+    name: "ok",
+    message: "Apply restore now? This will modify local files.",
+    initial: false,
+  });
+  if (!confirm.ok) {
+    console.log(DIM("  Apply cancelled."));
+    console.log("");
+    return;
+  }
+
+  await runRestoreApply(cwd, restore, run, mode, false, gitAvailable, nowChanged);
+}
+
+// ── restore command registration ────────────────────────────────────────────
+
 restoreCommand
   .argument("[runId]", "Run ID to restore, or use 'last'")
   .option("--preview", "Preview restore plan")
   .option("--apply", "Apply restore plan")
   .option("--force", "Apply even if unrelated new changes are detected")
-  .action(async (runIdArg?: string, options?: { preview?: boolean; apply?: boolean; force?: boolean }) => {
+  .option("--list", "Print restore-capable runs non-interactively and exit")
+  .option("--only-out-of-scope", "Operate only on out-of-scope files")
+  .option("--only-forbidden", "Operate only on forbidden files")
+  .addHelpText("after", `
+Examples:
+  runtrim restore                               Open interactive restore picker
+  runtrim restore --list                        Print restore-capable runs
+  runtrim restore last --preview                Preview restore for latest run
+  runtrim restore last --apply                  Apply restore for latest run
+  runtrim restore <run-id> --preview            Preview restore for specific run
+  runtrim restore <run-id> --apply              Apply restore for specific run
+  runtrim restore <run-id> --only-out-of-scope --preview
+  runtrim restore <run-id> --only-forbidden --preview
+`)
+  .action(async (
+    runIdArg?: string,
+    options?: {
+      preview?: boolean;
+      apply?: boolean;
+      force?: boolean;
+      list?: boolean;
+      onlyOutOfScope?: boolean;
+      onlyForbidden?: boolean;
+    },
+  ) => {
     const cwd = process.cwd();
     const doPreview = options?.preview === true;
     const doApply = options?.apply === true;
     const force = options?.force === true;
-    if (!doPreview && !doApply) {
-      console.log("");
-      console.log(chalk.yellow("Choose --preview or --apply."));
-      console.log("");
+    const doList = options?.list === true;
+    const onlyOos = options?.onlyOutOfScope === true;
+    const onlyForbidden = options?.onlyForbidden === true;
+
+    // --list: non-interactive, print and exit
+    if (doList) {
+      const rows = buildRestoreCandidates(cwd);
+      printRestoreList(rows);
       return;
     }
+
+    // No runId and no --preview/--apply: open interactive picker
+    if (!runIdArg && !doPreview && !doApply) {
+      await runInteractiveRestorePicker(cwd);
+      return;
+    }
+
+    // Direct path: runtrim restore [last|<id>] --preview|--apply
     if (doPreview && doApply) {
       console.log("");
       console.log(chalk.yellow("Use either --preview or --apply, not both."));
+      console.log("");
+      return;
+    }
+    if (!doPreview && !doApply) {
+      console.log("");
+      console.log(chalk.yellow("Choose --preview or --apply, or run `runtrim restore` for the interactive picker."));
       console.log("");
       return;
     }
@@ -5966,103 +6468,20 @@ restoreCommand
       return;
     }
 
-    const postFiles = restore.postRun?.changedFiles ?? [];
-    const sensitive = postFiles.filter((f) => isSensitivePath(f) || isSecretLikePath(f));
-    const safeFiles = postFiles.filter((f) => !sensitive.includes(f));
+    const mode: "full" | "out-of-scope" | "forbidden" =
+      onlyOos ? "out-of-scope" : onlyForbidden ? "forbidden" : "full";
+
     const gitAvailable = await isGitRepo(cwd);
-    const method = gitAvailable && restore.preRun.commit ? "git checkout from pre-run commit" : "metadata-only (limited)";
     const nowChanged = gitAvailable ? dedupeFiles((await getGitChangedFiles(cwd)).map((f) => f.path)) : [];
-    const unrelated = nowChanged.filter((f) => !postFiles.includes(f));
 
     if (doPreview) {
-      console.log("");
-      console.log(BOLD("RunTrim") + DIM("  restore preview"));
-      console.log("");
-      console.log(DIM("  Run ID   ") + chalk.white(targetRunId));
-      console.log(DIM("  Task     ") + chalk.white(truncate(run.task, 80)));
-      console.log(DIM("  Method   ") + chalk.white(method));
-      console.log(DIM("  Verdict  ") + chalk.white(restore.postRun?.finishVerdict ?? "unknown"));
-      console.log("");
-      console.log(DIM("  Files to restore"));
-      if (safeFiles.length === 0) console.log(chalk.white("  - (none)"));
-      for (const f of safeFiles.slice(0, 20)) console.log(chalk.white("  - " + f));
-      if (safeFiles.length > 20) console.log(DIM(`  ... and ${safeFiles.length - 20} more`));
-      if (sensitive.length > 0) {
-        console.log("");
-        console.log(DIM("  Sensitive files (listed by path only)"));
-        for (const f of sensitive.slice(0, 20)) console.log(chalk.yellow("  - " + f));
-        console.log(chalk.yellow("  Sensitive files are skipped by default and not auto-restored."));
-      }
-      if (unrelated.length > 0) {
-        console.log("");
-        console.log(chalk.yellow("  Warning: repo has new changes after this run."));
-        console.log(chalk.yellow("  Use --apply --force or review manually before restore."));
-      }
-      console.log("");
+      await runRestorePreview(cwd, restore, run, mode, gitAvailable, nowChanged);
       return;
     }
 
-    if (!doApply) return;
-    if (!gitAvailable || !restore.preRun.commit) {
-      console.log("");
-      console.log(chalk.red("Restore apply requires git and a pre-run commit restore point."));
-      console.log("");
-      process.exit(1);
-      return;
+    if (doApply) {
+      await runRestoreApply(cwd, restore, run, mode, force, gitAvailable, nowChanged);
     }
-    if (unrelated.length > 0 && !force) {
-      console.log("");
-      console.log(chalk.red("Restore blocked: new unrelated changes detected after this run."));
-      console.log(chalk.red("Re-run with --apply --force after manual review."));
-      console.log("");
-      process.exit(1);
-      return;
-    }
-
-    const restored: string[] = [];
-    const skippedSensitive: string[] = [...sensitive];
-    const failed: string[] = [];
-    for (const file of safeFiles) {
-      try {
-        let existedBefore = false;
-        try {
-          await execa("git", ["cat-file", "-e", `${restore.preRun.commit}:${file}`], { cwd });
-          existedBefore = true;
-        } catch {
-          existedBefore = false;
-        }
-        if (existedBefore) {
-          await execa("git", ["checkout", restore.preRun.commit, "--", file], { cwd });
-        } else if (fs.existsSync(path.join(cwd, file))) {
-          fs.rmSync(path.join(cwd, file), { force: true });
-        }
-        restored.push(file);
-      } catch {
-        failed.push(file);
-      }
-    }
-
-    const report = {
-      runId: targetRunId,
-      appliedAt: new Date().toISOString(),
-      restored,
-      skippedSensitive,
-      failed,
-      forced: force,
-    };
-    const reportPath = path.join(getRestoresDir(cwd), `${targetRunId}.report.${Date.now()}.json`);
-    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf-8");
-
-    console.log("");
-    console.log(BOLD("RunTrim") + DIM("  restore apply"));
-    console.log("");
-    console.log(DIM("  Run ID             ") + chalk.white(targetRunId));
-    console.log(DIM("  Restored files     ") + chalk.white(String(restored.length)));
-    console.log(DIM("  Skipped sensitive  ") + chalk.white(String(skippedSensitive.length)));
-    console.log(DIM("  Failed             ") + chalk.white(String(failed.length)));
-    console.log(DIM("  Report             ") + chalk.white(path.relative(cwd, reportPath)));
-    console.log("");
-    if (failed.length > 0) process.exit(1);
   });
 
 program

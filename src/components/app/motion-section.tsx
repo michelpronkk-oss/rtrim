@@ -210,12 +210,14 @@ export function CtaBeams() {
 export function ProtocolBars({
   active,
   cardIndex = 0,
+  compact = false,
 }: {
   active: boolean;
   cardIndex?: number;
+  compact?: boolean;
 }) {
   return (
-    <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", gap: 4 }}>
+    <div style={{ marginTop: compact ? 0 : "auto", paddingTop: compact ? 0 : 16, display: "flex", gap: 4 }}>
       {[0, 1, 2, 3].map((j) => (
         <div
           key={j}
@@ -239,6 +241,58 @@ export function ProtocolBars({
       ))}
     </div>
   );
+}
+
+// ── MotionAgentCard — scroll-triggered entrance + hover lift for agent grid cells ──
+// Use instead of a plain <div> inside the agent grid. The gap:1 / shared-border
+// grid pattern means we pass the card's own padding + background as style/className
+// rather than letting MotionCard add its own border.
+
+export function MotionAgentCard({
+  children,
+  index = 0,
+  className,
+  style,
+}: {
+  children: React.ReactNode;
+  index?: number;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <motion.div
+      className={className}
+      style={style}
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-20px" }}
+      whileHover={{ y: -2, transition: SPRING }}
+      transition={{ duration: 0.28, delay: index * 0.055, ease: EASE }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// ── AgentStatCount — counts from 0 → N on scroll into view (for the "· 7" label) ──
+
+export function AgentStatCount({ to, delay = 0 }: { to: number; delay?: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-30px" });
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+    const controls = animate(0, to, {
+      duration: 0.65,
+      delay,
+      ease: [0.21, 0.47, 0.32, 0.98],
+      onUpdate: (v) => setCount(Math.round(v)),
+    });
+    return controls.stop;
+  }, [isInView, to, delay]);
+
+  return <span ref={ref}>{count}</span>;
 }
 
 // ── MotionButton — hover lift + tap press for CTAs ────────────────────────

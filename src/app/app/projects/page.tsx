@@ -5,7 +5,7 @@ import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { FolderKanban, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Projects | RunTrim Dashboard",
+  title: "Projects",
   robots: { index: false, follow: false },
 };
 

@@ -4,7 +4,7 @@ import { Check, ArrowRight } from "lucide-react";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 
 export const metadata: Metadata = {
-  title: "Pricing | RunTrim — Free CLI, Pro, Builder, Team",
+  title: "Pricing",
   description:
     "RunTrim pricing: Free local CLI forever, Pro at $29/month for cloud sync and run history, Builder at $49/month for founders shipping daily with AI agents, Team from $24/seat. No account required to start.",
   alternates: { canonical: "https://www.runtrim.com/pricing" },

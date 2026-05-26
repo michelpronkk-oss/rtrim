@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
 
 export const metadata: Metadata = {
-  title: "How RunTrim Works | CLI Control Layer for AI Coding Agents",
+  title: "How It Works",
   description:
     "RunTrim scopes AI coding runs before they start, checks what changed after, and keeps run state for the next session. Works with Claude Code, Cursor, Codex, and ChatGPT.",
   alternates: { canonical: "https://www.runtrim.com/how-it-works" },

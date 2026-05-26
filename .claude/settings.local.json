@@ -75,7 +75,12 @@
       "Bash(node dist-cli/runtrim.cjs --help)",
       "Bash(node dist-cli/runtrim.cjs start)",
       "Bash(node dist-cli/runtrim.cjs repo status)",
-      "Read(//c/Users/miche/.claude/projects/c--Users-miche-Desktop-runtrim/memory/**)"
+      "Read(//c/Users/miche/.claude/projects/c--Users-miche-Desktop-runtrim/memory/**)",
+      "Bash(node dist-cli/runtrim.cjs restore --list)",
+      "Bash(node dist-cli/runtrim.cjs restore last --preview)",
+      "Bash(node dist-cli/runtrim.cjs restore --help)",
+      "Bash(node dist-cli/runtrim.cjs agent \"Fix README typo\" --copy)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\" -Directory)"
     ]
   }
 }

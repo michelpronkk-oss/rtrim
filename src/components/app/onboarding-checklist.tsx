@@ -32,24 +32,24 @@ const STEPS: StepDef[] = [
     cta: { label: "Open connect page", href: "/app/connect" },
   },
   {
-    id: "init",
-    label: "Initialize your repo",
-    cmd: "runtrim init",
-    note: "Install the RunTrim protocol, memory baseline, policies, and agent instructions into your repo.",
+    id: "start",
+    label: "Set up your project",
+    cmd: "runtrim start",
+    note: "Install RunTrim memory, agent instructions, and MCP guidance into your repo. Then run runtrim doctor to confirm Agent Autopilot is ready.",
     cta: null,
   },
   {
-    id: "start",
-    label: "Start a guarded run",
-    cmd: 'runtrim go "fix a small bug"',
-    note: "Create a scoped contract before your agent touches code.",
+    id: "run",
+    label: "Create a guarded run",
+    cmd: 'runtrim agent "Fix checkout" --copy',
+    note: "Create a scoped contract and guarded handoff. Compatible agents use RunTrim memory, path checks, and finish guidance automatically.",
     cta: null,
   },
   {
     id: "finish",
     label: "Finish and sync",
     cmd: "runtrim finish",
-    note: "Check changed files, drift, proof gaps, continuation, and sync the report.",
+    note: "Verify scope, sensitive files, and contract compliance. Syncs the run report, verdict, and restore metadata to the dashboard.",
     cta: null,
   },
 ];
@@ -68,8 +68,8 @@ function deriveStepStatus(idx: number, s: OnboardingState): StepStatus {
   const done = [
     s.hasConnectedCli, // install
     s.hasConnectedCli, // connect
-    s.hasProjects,     // init
-    s.hasRuns,         // start
+    s.hasProjects,     // start (project profile synced)
+    s.hasRuns,         // agent run created
     s.hasCompletedRun, // finish
   ];
   if (done[idx]) return "done";
@@ -98,7 +98,7 @@ export function OnboardingChecklist(state: OnboardingState) {
               }}
             />
             <p style={{ fontSize: 13, fontWeight: 600, color: "#f4f5f7" }}>
-              First guarded run synced.
+              First guarded run synced. Agent Autopilot is active.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -114,7 +114,7 @@ export function OnboardingChecklist(state: OnboardingState) {
               className="transition-colors hover:text-[#8a8f98]"
               style={{ ...MONO, fontSize: 12, color: "#5a5f68" }}
             >
-              Start another run
+              Create another guarded run
             </Link>
           </div>
         </div>
@@ -126,9 +126,9 @@ export function OnboardingChecklist(state: OnboardingState) {
   const isTrialing = plan !== "free" && planStatus === "trialing";
   const isFree = plan === "free";
   const planNote = isTrialing
-    ? "Use your Pro trial to sync your first runs and see memory, reports, and savings in the dashboard."
+    ? "Your Pro trial gives full access. Sync a guarded run to see scope, verdict, and restore metadata in the dashboard."
     : isFree
-    ? "Free users can try local Bridge Mode. Pro unlocks cloud memory, auto-sync, and unlimited Bridge."
+    ? "Free includes local setup, memory, and guarded runs. Upgrade to Pro to sync run history, restore metadata, and cloud reports."
     : null;
 
   // ── Checklist card ─────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ export function OnboardingChecklist(state: OnboardingState) {
           Get your first guarded run synced
         </p>
         <p className="mt-1" style={{ fontSize: 12.5, color: "#8a8f98", lineHeight: 1.55 }}>
-          Install the CLI, start a scoped run, finish it, and see the report here.
+          Set up RunTrim, create a guarded run, finish it, and see scope, verdict and restore metadata here.
         </p>
       </div>
 

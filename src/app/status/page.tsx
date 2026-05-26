@@ -6,7 +6,7 @@ import { PublicFooter } from "@/components/app/public-footer";
 import { MotionFade, MotionSection, UptimeBars } from "@/components/app/motion-section";
 
 export const metadata: Metadata = {
-  title: "Status | RunTrim",
+  title: "Status",
   description: "Current health, component uptime, and incident history for RunTrim.",
   alternates: { canonical: "https://www.runtrim.com/status" },
 };

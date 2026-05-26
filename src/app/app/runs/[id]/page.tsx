@@ -7,7 +7,7 @@ import { ArrowLeft, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { CopyContextButton } from "../copy-context-button";
 
 export const metadata: Metadata = {
-  title: "Run Report | RunTrim Dashboard",
+  title: "Run Report",
   robots: { index: false, follow: false },
 };
 

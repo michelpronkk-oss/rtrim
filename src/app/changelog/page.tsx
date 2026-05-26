@@ -5,7 +5,7 @@ import { PublicNav } from "@/components/app/public-nav";
 import { PublicFooter } from "@/components/app/public-footer";
 
 export const metadata: Metadata = {
-  title: { absolute: "RunTrim Changelog — CLI and Agent Workflow Updates" },
+  title: "Changelog",
   description:
     "Every RunTrim CLI release in order: runtrim start, agent dispatch, MCP server, cloud sync, plan model, and finish enforcement changes.",
   alternates: { canonical: "https://www.runtrim.com/changelog" },

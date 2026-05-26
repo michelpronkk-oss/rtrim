@@ -9,7 +9,7 @@ import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
 import { ManageBillingButton } from "./_components/manage-billing-button";
 
 export const metadata: Metadata = {
-  title: "Billing | RunTrim Dashboard",
+  title: "Billing",
   robots: { index: false, follow: false },
 };
 
