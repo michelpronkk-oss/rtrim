@@ -8,6 +8,7 @@ import { planOrder } from "@/lib/plans";
 import { trialEligible } from "@/lib/billing-cta";
 import { OnboardingChecklist } from "@/components/app/onboarding-checklist";
 import { ProCheckoutButton } from "@/components/app/pro-checkout-button";
+import { CopyButton } from "@/components/app/copy-button";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -286,6 +287,49 @@ export default async function OverviewPage() {
     if (plan === "free") return { label: "Local only", variant: "warn" as const };
     return { label: "Available", variant: "pass" as const };
   })();
+  const latestChangedCount = data?.lastRun
+    ? [...(data.lastRun.changed_files ?? []), ...(data.lastRun.watch_changed_files ?? [])].length
+    : 0;
+  const latestRisk = data?.lastRun?.risk_after ?? data?.lastRun?.risk_before ?? null;
+  const latestSyncedAt =
+    toTimeMs(data?.lastRun?.synced_at) ??
+    toTimeMs(data?.lastRun?.evaluated_at_local) ??
+    toTimeMs(data?.lastRun?.created_at_local) ??
+    toTimeMs(data?.lastRun?.created_at);
+
+  const latestRunAction = (() => {
+    if (!hasConnectedCli) return "Connect CLI";
+    if (!hasRuns) return "Run `runtrim finish`";
+    const verdict = (data?.lastRun?.status ?? "").toLowerCase();
+    if (verdict === "guarded") return "Run `runtrim finish`";
+    if (latestRisk?.toLowerCase() === "high") return "Review risky files";
+    if (plan === "free") return "Upgrade to Pro for cloud history";
+    return "Preview restore";
+  })();
+
+  const autopilotChecks = [
+    { label: "Contract before edits", ok: hasConnectedCli },
+    { label: "Project memory", ok: hasProjects || hasRuns },
+    { label: "Risky path checks", ok: hasRuns },
+    { label: "Finish guidance", ok: hasRuns },
+    { label: "MCP connection", ok: hasConnectedCli },
+    { label: "Agent rules", ok: hasConnectedCli },
+  ];
+  const autopilotReadyCount = autopilotChecks.filter((item) => item.ok).length;
+  const autopilotStatus =
+    autopilotReadyCount >= 5 ? "Ready" : autopilotReadyCount >= 2 ? "Partial" : "Not connected";
+
+  const protectionLabel = (() => {
+    const hasFinishVerdict = Boolean(lastFinishDisplay);
+    const hasRestorePoint = hasRuns;
+    const cloudSyncActive = plan !== "free";
+    const ciGateActive = plan === "builder" || plan === "team";
+    const score = [hasConnectedCli, hasRuns, hasFinishVerdict, hasRestorePoint, cloudSyncActive, ciGateActive].filter(Boolean).length;
+    if (score >= 5) return "Strong";
+    if (score >= 3) return "Partial";
+    if (score >= 1) return "Local only";
+    return "Needs setup";
+  })();
   const runsUsed    = data?.runsUsed ?? 0;
   const runsLimit   = data?.runsLimit ?? 5;
   const isUnlimited = runsLimit === null;
@@ -319,8 +363,8 @@ export default async function OverviewPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Overview</p>
-          <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">Dashboard</h1>
-          <p className="mt-0.5 text-[13px] text-[#5a5f68]">Control, verify and recover AI coding runs.</p>
+          <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">AI Run Control Room</h1>
+          <p className="mt-0.5 text-[13px] text-[#5a5f68]">See what your agents changed, what RunTrim caught, and how to recover.</p>
         </div>
         <span className={`rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] ${isPastDue ? "border-[#FF7B5C]/30 bg-[#FF7B5C]/8 text-[#FF7B5C]" : PLAN_BADGE[plan] ?? PLAN_BADGE.free}`}>
           {isPastDue ? "Payment failed" : isTrialing ? "Pro Trial" : plan}
@@ -492,91 +536,74 @@ export default async function OverviewPage() {
         />
       </div>
 
-      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Control state</p>
-          <p className="text-[11px] text-[#5a5f68]">RunTrim-aware projects keep memory, autopilot rules, and finish verification in place.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Protection</p>
+          <p className="mt-2 text-[22px] font-semibold text-[#f4f5f7]">{protectionLabel}</p>
+          <p className="mt-1 text-[12px] text-[#8a8f98]">CLI, guarded runs, finish verification, and recovery coverage.</p>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] font-medium text-[#8a8f98]">Project memory</p>
-            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Project context and rules available to agents.</p>
-            <div className="mt-2">
-              <StatePill ok={hasProjects || hasRuns} label={hasProjects || hasRuns ? "Ready" : "Setup needed"} />
-            </div>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] font-medium text-[#8a8f98]">Agent Autopilot</p>
-            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Contract before edits, finish before done.</p>
-            <div className="mt-2">
-              <VerdictPill label={autopilotReadiness.label} variant={autopilotReadiness.variant} />
-            </div>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] font-medium text-[#8a8f98]">MCP</p>
-            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Compatible agents can call RunTrim tools directly.</p>
-            <div className="mt-2">
-              <VerdictPill label="Available" variant="pass" />
-            </div>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] font-medium text-[#8a8f98]">Latest finish</p>
-            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Last completed run verdict.</p>
-            <div className="mt-2">
-              {lastFinishDisplay
-                ? <VerdictPill label={lastFinishDisplay.label} variant={lastFinishDisplay.variant} />
-                : <VerdictPill label="Not recorded" variant="neutral" />}
-            </div>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] font-medium text-[#8a8f98]">Restore</p>
-            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Recover without spending another agent run.</p>
-            <div className="mt-2">
-              <VerdictPill label={restoreState.label} variant={restoreState.variant} />
-            </div>
-          </div>
-          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
-            <p className="text-[12px] font-medium text-[#8a8f98]">Active contract</p>
-            <p className="mt-0.5 text-[11px] text-[#3a3e46]">Current guarded run scope.</p>
-            <div className="mt-2">
-              <VerdictPill label={hasRuns ? "Active" : "None"} variant={hasRuns ? "pass" : "neutral"} />
-            </div>
-          </div>
+        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Agent Autopilot</p>
+          <p className="mt-2 text-[22px] font-semibold text-[#f4f5f7]">{autopilotStatus}</p>
+          <p className="mt-1 text-[12px] text-[#8a8f98]">Contract, memory, risky path checks, and finish guidance status.</p>
         </div>
       </div>
 
-      {/* Agent Autopilot module */}
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Latest Run Intelligence</p>
+          {data?.lastRun && <Link href={`/app/runs/${data.lastRun.id}`} className="font-mono text-[11px] text-[#a78bfa] hover:text-[#c9ccd2]">Open run</Link>}
+        </div>
+        {!data?.lastRun ? (
+          <div className="mt-4 space-y-3">
+            <p className="text-[14px] font-semibold text-[#f4f5f7]">No synced runs yet.</p>
+            <p className="text-[12px] text-[#8a8f98]">Create a guarded run locally, finish it, then sync the report here.</p>
+            <div className="flex flex-wrap gap-2">
+              <CopyButton text="runtrim start" label="Copy runtrim start" />
+              <CopyButton text='runtrim agent "Fix checkout" --copy' label="Copy guarded run command" />
+              <CopyButton text="runtrim finish" label="Copy runtrim finish" />
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Task</p><p className="mt-1 text-[13px] text-[#f4f5f7]">{data.lastRun.task ?? "Untitled run"}</p></div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Verdict</p><div className="mt-1">{lastFinishDisplay ? <VerdictPill label={lastFinishDisplay.label} variant={lastFinishDisplay.variant} /> : <VerdictPill label={(data.lastRun.status ?? "UNKNOWN").toUpperCase()} variant="neutral" />}</div></div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Changed files</p><p className="mt-1 text-[13px] text-[#f4f5f7]">{latestChangedCount}</p></div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Risk level</p><div className="mt-1"><RiskBadge level={latestRisk} /></div></div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Restore status</p><div className="mt-1"><VerdictPill label={restoreState.label} variant={restoreState.variant} /></div></div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Sync time</p><p className="mt-1 text-[13px] text-[#f4f5f7]">{latestSyncedAt ? new Date(latestSyncedAt).toLocaleString() : "Unknown"}</p></div>
+            <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+              <p className="text-[11px] text-[#8a8f98]">Next safest action</p>
+              <p className="mt-1 text-[13px] text-[#f4f5f7]">{latestRunAction}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2.5">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Agent Autopilot</p>
-              <VerdictPill label={autopilotReadiness.label} variant={autopilotReadiness.variant} />
+              <VerdictPill label={autopilotStatus} variant={autopilotStatus === "Ready" ? "pass" : autopilotStatus === "Partial" ? "warn" : "neutral"} />
             </div>
-            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">
-              {autopilotReadiness.label === "Ready"
-                ? "Agents are operating under RunTrim control."
-                : "Set up RunTrim so agents use contracts and finish verification automatically."}
-            </p>
-            <p className="mt-1 text-[12px] leading-[1.65] text-[#5a5f68]">
-              Compatible agents should create a contract before edits, check risky paths and finish before done.
-              {autopilotReadiness.label !== "Ready" && " Run runtrim doctor to see what is missing."}
-            </p>
+            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">RunTrim checks are visible and actionable.</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {autopilotChecks.map((check) => (
+                <div key={check.label} className="flex items-center justify-between rounded-md border border-white/7 bg-[#080a0d] px-3 py-2">
+                  <span className="text-[12px] text-[#8a8f98]">{check.label}</span>
+                  <StatePill ok={check.ok} label={check.ok ? "Ready" : "Missing"} />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="shrink-0 space-y-1.5 pt-1">
-            <div className="rounded-md border border-white/7 bg-[#080a0d] px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
-              runtrim doctor
-            </div>
-            {autopilotReadiness.label !== "Ready" && (
-              <div className="rounded-md border border-white/7 bg-[#080a0d] px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
-                runtrim mcp instructions
-              </div>
-            )}
+          <div className="shrink-0 space-y-2 pt-1">
+            <CopyButton text="runtrim doctor" label="Copy runtrim doctor" />
+            <CopyButton text="runtrim mcp instructions" label="Copy MCP instructions" />
           </div>
         </div>
       </div>
 
-      {/* Recovery module */}
       <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
@@ -584,25 +611,56 @@ export default async function OverviewPage() {
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Recovery</p>
               <VerdictPill label={restoreState.label} variant={restoreState.variant} />
             </div>
-            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">
-              {!hasRuns
-                ? "Restore points are created automatically with each guarded run."
-                : plan === "free"
-                  ? "Local restore points are ready. Upgrade to Pro for synced restore metadata."
-                  : "Restore metadata syncs with guarded runs. Apply still happens locally through the CLI."}
-            </p>
+            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">Restore metadata syncs with your guarded runs. File recovery still happens locally through the CLI.</p>
             <p className="mt-1 text-[12px] leading-[1.65] text-[#5a5f68]">
-              {!hasRuns
-                ? "Finish a guarded run to create your first restore point."
-                : "Recover without spending another agent run."}
+              {!hasRuns ? "Restore metadata appears after your first guarded run." : "Recover without spending another agent run."}
             </p>
+            <p className="mt-2 text-[12px] text-[#8a8f98]">Latest restore point: {hasRuns ? "Available from latest guarded run" : "Not yet available"}</p>
           </div>
-          <div className="shrink-0 pt-1">
-            <div className="rounded-md border border-white/7 bg-[#080a0d] px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
-              runtrim restore
-            </div>
+          <div className="shrink-0 space-y-2 pt-1">
+            <CopyButton text="runtrim restore" label="Copy runtrim restore" />
+            <CopyButton text="runtrim restore last --preview" label="Copy preview restore" />
           </div>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Plan value</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">Free</p>
+            <p className="mt-1 text-[12px] text-[#8a8f98]">1 repo protected locally, local restore enabled, cloud sync locked, dashboard history locked.</p>
+            {plan === "free" && <Link href="/app/billing" className="mt-3 inline-flex rounded-md bg-[#7C6DFA] px-3 py-1.5 text-[12px] text-white">Upgrade to Pro</Link>}
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">Pro</p>
+            <p className="mt-1 text-[12px] text-[#8a8f98]">Cloud sync active, dashboard history active, memory sync active, restore metadata active.</p>
+            {plan === "pro" && <div className="mt-3 flex gap-2"><Link href="/app/runs" className="inline-flex rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#c9ccd2]">Open runs</Link><Link href="/app/billing" className="inline-flex rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#8a8f98]">Upgrade to Builder</Link></div>}
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">Builder</p>
+            <p className="mt-1 text-[12px] text-[#8a8f98]">Unlimited projects, advanced recovery history, CI Gate, proof/drift reports.</p>
+          </div>
+          <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">Team</p>
+            <p className="mt-1 text-[12px] text-[#8a8f98]">Shared recovery logs, approvals and audit logs, GitHub checks and policies coming soon, reviewed access where available.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">CI Gate</p>
+        {plan === "builder" || plan === "team" ? (
+          <div className="mt-3">
+            <p className="text-[13px] font-semibold text-[#f4f5f7]">Block risky AI-generated PRs before merge.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <CopyButton text="runtrim ci setup" label="Copy setup command" />
+              <Link href="/app/install" className="inline-flex rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#c9ccd2]">Open setup guide</Link>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 text-[12px] text-[#8a8f98]">Builder unlocks CI Gate for AI-generated PRs.</p>
+        )}
       </div>
 
       <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">

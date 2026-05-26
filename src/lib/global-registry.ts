@@ -4,7 +4,21 @@ import os from "os";
 import path from "path";
 import { execa } from "execa";
 
-export type RunTrimPlan = "free";
+export type RunTrimPlan = "free" | "pro" | "builder" | "team";
+
+/** CLI-side entitlement limits — mirrors entitlements.ts for CLI builds without web deps. */
+export const CLI_PLAN_LIMITS = {
+  free:    { repoLimit: 1,    localRestoreLimit: 5,    localReportLimit: 10,  cloudSync: false, ciGate: false, multiProject: false },
+  pro:     { repoLimit: 1,    localRestoreLimit: null, localReportLimit: null, cloudSync: true,  ciGate: false, multiProject: false },
+  builder: { repoLimit: null, localRestoreLimit: null, localReportLimit: null, cloudSync: true,  ciGate: true,  multiProject: true  },
+  team:    { repoLimit: null, localRestoreLimit: null, localReportLimit: null, cloudSync: true,  ciGate: true,  multiProject: true  },
+} as const;
+
+const VALID_PLANS: RunTrimPlan[] = ["free", "pro", "builder", "team"];
+
+function parsePlan(raw: unknown): RunTrimPlan {
+  return VALID_PLANS.includes(raw as RunTrimPlan) ? (raw as RunTrimPlan) : "free";
+}
 
 export interface TrackedRepoEntry {
   id: string;
@@ -246,7 +260,7 @@ function inspectGlobalRegistry(): {
     const base: Omit<GlobalRunTrimRegistry, "integrity"> = {
       version: 2,
       stateVersion: 2,
-      plan: raw.plan === "free" ? "free" : "free",
+      plan: parsePlan(raw.plan),
       machineInstallId: String(raw.machineInstallId ?? "").trim() || install.machineInstallId,
       createdAt: String(raw.createdAt ?? "").trim() || nowIso(),
       updatedAt: String(raw.updatedAt ?? "").trim() || nowIso(),
@@ -439,7 +453,8 @@ export async function registerCurrentRepo(cwd = process.cwd()): Promise<TrackedR
     createdAt: now,
     lastSeenAt: now,
   };
-  registry.trackedRepos = [entry];
+  // Free: only one tracked repo at a time (replaces). Pro+: accumulate all tracked repos.
+  registry.trackedRepos = registry.plan === "free" ? [entry] : [...registry.trackedRepos, entry];
   registry.updatedAt = now;
   registry.lastKnownRepo = {
     id: entry.id,
@@ -568,4 +583,22 @@ export async function unlinkCurrentRepo(
     currentRepo,
     trackedRepo: registry.trackedRepos[0] ?? null,
   };
+}
+
+/** Returns true if a path is in a system temp directory and should not be permanently tracked. */
+export function isTempPath(p: string): boolean {
+  const normalized = p.toLowerCase().replace(/\\/g, "/");
+  const tmpDir = (os.tmpdir() ?? "").toLowerCase().replace(/\\/g, "/");
+  if (tmpDir && normalized.startsWith(tmpDir)) return true;
+  const tempSegments = ["/tmp/", "/temp/", "appdata/local/temp/", "appdata\\local\\temp\\"];
+  return tempSegments.some((s) => normalized.includes(s.replace(/\\/g, "/")));
+}
+
+/** Write a new plan into the global registry (called after CLI login to sync plan from server). */
+export function writePlanToRegistry(plan: RunTrimPlan): void {
+  const registry = loadGlobalRegistry();
+  if (registry.plan === plan) return; // no-op if already correct
+  registry.plan = plan;
+  registry.updatedAt = nowIso();
+  saveRegistryWithSeal(registry);
 }

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from("runtrim_profiles")
-    .select("id, email")
+    .select("id, email, plan")
     .eq("cli_token_hash", tokenHash)
     .maybeSingle();
 
@@ -29,5 +29,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true, email: profile.email });
+  const plan = (["free", "pro", "builder", "team"].includes(profile.plan) ? profile.plan : "free") as string;
+  return NextResponse.json({ ok: true, email: profile.email, plan });
 }

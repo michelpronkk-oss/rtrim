@@ -66,6 +66,10 @@ import {
   repairGlobalRegistry,
   registerCurrentRepo,
   unlinkCurrentRepo,
+  writePlanToRegistry,
+  isTempPath,
+  CLI_PLAN_LIMITS,
+  type RunTrimPlan,
 } from "../src/lib/global-registry.ts";
 import { trackCliCommandEvent } from "../src/lib/cli-telemetry.ts";
 import {
@@ -3612,6 +3616,12 @@ function isInteractiveTerminal(): boolean {
 }
 
 async function ensureRepoAllowedForFree(cwd: string): Promise<boolean> {
+  // Temp/test dirs: skip permanent tracking for Free to avoid stealing the repo slot.
+  const registry = loadGlobalRegistry();
+  if (registry.plan === "free" && isTempPath(cwd)) {
+    return true; // allow the run, but don't register this temp dir as the tracked repo
+  }
+
   const check = await assertFreeRepoAllowed(cwd);
   if (check.status === "blocked_repair") {
     console.log(chalk.yellow("  RunTrim local state needs repair."));
@@ -3624,12 +3634,12 @@ async function ensureRepoAllowedForFree(cwd: string): Promise<boolean> {
     console.log(chalk.white("  - runtrim repo repair --use-current"));
     console.log(chalk.white("  - runtrim repo unlink --force"));
     console.log(chalk.white("  - upgrade to Builder for unlimited repos"));
-    console.log(chalk.white("  - sign in to restore cloud entitlements"));
+    console.log(chalk.white("  - sign in at runtrim.com/app/connect to restore cloud entitlements"));
     console.log("");
     return false;
   }
   if (check.allowed) {
-    await registerCurrentRepo(cwd);
+    if (!isTempPath(cwd)) await registerCurrentRepo(cwd);
     return true;
   }
 
@@ -3644,10 +3654,9 @@ async function ensureRepoAllowedForFree(cwd: string): Promise<boolean> {
   console.log(DIM("  Next:"));
   console.log(
     chalk.white(
-      "  Free includes 1 tracked repo. This repo is not currently tracked. Continue in the tracked repo, unlink the tracked repo with runtrim repo unlink --force, or upgrade to Builder for unlimited repos."
+      "  Free includes 1 tracked repo. Continue in the tracked repo, unlink with runtrim repo unlink --force, or upgrade to Builder for unlimited repos."
     )
   );
-  console.log(chalk.white("  Agent instructions were not installed because this repo is not tracked."));
   console.log("");
   console.log(
     DIM(
@@ -4143,8 +4152,39 @@ program
       readiness = "ready";
     }
 
+    const planLimits = CLI_PLAN_LIMITS[repoCheck.plan] ?? CLI_PLAN_LIMITS.free;
+    const globalAuth = loadGlobalAuth();
+    const isConnected = Boolean(globalAuth?.token?.startsWith("rt_live_"));
+    const planLabel = repoCheck.plan.charAt(0).toUpperCase() + repoCheck.plan.slice(1);
+    const repoLimit = planLimits.repoLimit;
+    const trackedCount = loadGlobalRegistry().trackedRepos.length;
+
     console.log("");
     console.log(BOLD("RunTrim") + DIM("  doctor"));
+    console.log("");
+    console.log(BOLD("Plan"));
+    console.log(DIM("- Plan: ") + chalk.white(planLabel));
+    if (repoLimit !== null) {
+      console.log(DIM("- Repo tracking: ") + chalk.white(`${trackedCount}/${repoLimit} used`));
+    } else {
+      console.log(DIM("- Repo tracking: ") + MINT("unlimited"));
+    }
+    if (planLimits.cloudSync) {
+      console.log(DIM("- Cloud sync: ") + (isConnected ? MINT("ready") : chalk.yellow("token missing — run runtrim login")));
+    } else {
+      console.log(DIM("- Cloud sync: ") + chalk.gray("locked") + DIM(" (upgrade to Pro)"));
+    }
+    if (planLimits.ciGate) {
+      console.log(DIM("- CI gate: ") + MINT("enabled"));
+    }
+    console.log(DIM("- Local restore: ") + MINT("enabled") + (repoCheck.plan === "free" ? DIM(` (latest ${CLI_PLAN_LIMITS.free.localRestoreLimit} points)`) : ""));
+    if (!isConnected && repoCheck.plan === "free") {
+      console.log("");
+      console.log(DIM("  Next unlock: ") + chalk.white("runtrim login") + DIM(" — Pro unlocks cloud sync, run history and restore metadata."));
+    } else if (isConnected && repoCheck.plan === "pro") {
+      console.log("");
+      console.log(DIM("  Next unlock: ") + chalk.white("Builder") + DIM(" — unlimited projects, advanced recovery and CI gate."));
+    }
     console.log("");
     console.log(BOLD("Project"));
     console.log(DIM("- Project profile: ") + (profileReady ? MINT("ready") : chalk.yellow("missing")));
@@ -6124,7 +6164,14 @@ function buildRestoreCandidates(cwd: string): RestoreCandidateRow[] {
 }
 
 function printRestoreList(rows: RestoreCandidateRow[], all = false): void {
-  const displayRows = all ? rows : rows.filter((r) => r.hasRestorePoint);
+  const plan = loadGlobalRegistry().plan;
+  const restoreLimit = CLI_PLAN_LIMITS[plan]?.localRestoreLimit ?? null;
+  let displayRows = all ? rows : rows.filter((r) => r.hasRestorePoint);
+  // Apply plan restore limit: Free shows only the latest N restore-capable points.
+  if (!all && restoreLimit !== null) {
+    const withRestore = displayRows.filter((r) => r.hasRestorePoint).slice(0, restoreLimit);
+    displayRows = withRestore;
+  }
   if (displayRows.length === 0) {
     console.log("");
     if (all) {
@@ -6295,7 +6342,10 @@ async function runRestoreApply(
 // ── interactive picker ──────────────────────────────────────────────────────
 
 async function runInteractiveRestorePicker(cwd: string): Promise<void> {
-  const rows = buildRestoreCandidates(cwd).filter((r) => r.hasRestorePoint);
+  const plan = loadGlobalRegistry().plan;
+  const restoreLimit = CLI_PLAN_LIMITS[plan]?.localRestoreLimit ?? null;
+  const allWithRestore = buildRestoreCandidates(cwd).filter((r) => r.hasRestorePoint);
+  const rows = restoreLimit !== null ? allWithRestore.slice(0, restoreLimit) : allWithRestore;
   if (rows.length === 0) {
     console.log("");
     console.log(chalk.yellow("No restore points yet."));
@@ -7329,13 +7379,20 @@ program
       console.log("");
     }
     if (options.sync !== false) {
+      const syncPlan3 = loadGlobalRegistry().plan;
       console.log(GO_ACCENT.bold("Cloud sync"));
       if (cloudSync.status === "synced") {
         console.log(chalk.white("  Started run synced."));
       } else if (cloudSync.status === "failed") {
         console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
-      } else if (cloudSync.status === "skipped_no_token" || cloudSync.status === "skipped_invalid_token") {
-        console.log(DIM("  Skipped. Run runtrim login to connect your dashboard."));
+      } else if (cloudSync.status === "skipped_invalid_token") {
+        console.log(DIM("  Local run saved. Token expired — run runtrim login to sync."));
+      } else if (cloudSync.status === "skipped_no_token") {
+        if (syncPlan3 === "free") {
+          console.log(DIM("  Local only. Upgrade to Pro for cloud history and restore metadata."));
+        } else {
+          console.log(DIM("  Local run saved. Run runtrim login to connect cloud sync."));
+        }
       } else {
         console.log(DIM("  Skipped."));
       }
@@ -8587,18 +8644,21 @@ program
     const spinner = oraFactory({ text: "  Verifying token...", color: "blue" }).start();
 
     let email: string | undefined;
+    let connectedPlan: RunTrimPlan = "free";
     try {
       const res = await fetch(verifyUrl, {
         method: "GET",
         headers: { Authorization: `Bearer ${rawToken}` },
       });
-      const body = await res.json() as { ok?: boolean; email?: string; error?: string };
+      const body = await res.json() as { ok?: boolean; email?: string; plan?: string; error?: string };
       if (!res.ok || !body.ok) {
         spinner.fail("  Invalid token. " + (body.error ?? ""));
         console.log("");
         return;
       }
       email = body.email as string | undefined;
+      const rawPlan = body.plan ?? "free";
+      connectedPlan = (["free", "pro", "builder", "team"].includes(rawPlan) ? rawPlan : "free") as RunTrimPlan;
       spinner.succeed("  Token verified.");
     } catch {
       spinner.fail("  Could not reach RunTrim server. Check your connection.");
@@ -8607,6 +8667,7 @@ program
     }
 
     saveGlobalAuth({ token: rawToken, storedAt: new Date().toISOString(), email });
+    writePlanToRegistry(connectedPlan);
 
     console.log("");
     if (email) {
@@ -8614,9 +8675,37 @@ program
     } else {
       console.log(ACCENT.bold("  Connected to RunTrim cloud."));
     }
+    console.log(DIM("  Plan       ") + chalk.white(connectedPlan.charAt(0).toUpperCase() + connectedPlan.slice(1)));
     console.log(DIM("  Token stored in ") + chalk.white("~/.runtrim/auth.json"));
     console.log("");
-    console.log(DIM("  Next: navigate to a project and run ") + GO_ACCENT("runtrim sync"));
+    if (connectedPlan === "pro") {
+      console.log(DIM("  ✓ Cloud sync enabled"));
+      console.log(DIM("  ✓ Dashboard history enabled"));
+      console.log(DIM("  ✓ Memory sync enabled"));
+      console.log(DIM("  ✓ Restore metadata sync enabled"));
+      console.log("");
+      console.log(DIM("  Next unlock: Builder unlocks unlimited projects, advanced recovery history and CI gates."));
+    } else if (connectedPlan === "builder") {
+      console.log(DIM("  ✓ Cloud sync enabled"));
+      console.log(DIM("  ✓ Unlimited projects enabled"));
+      console.log(DIM("  ✓ Multi-project memory enabled"));
+      console.log(DIM("  ✓ Advanced recovery history enabled"));
+      console.log(DIM("  ✓ CI gate enabled"));
+    } else if (connectedPlan === "team") {
+      console.log(DIM("  ✓ Cloud sync enabled"));
+      console.log(DIM("  ✓ Unlimited projects enabled"));
+      console.log(DIM("  ✓ Advanced recovery history enabled"));
+      console.log(DIM("  ✓ CI gate enabled"));
+      console.log(DIM("  ✓ Team governance direction enabled"));
+    } else {
+      console.log(DIM("  ✓ Local runs enabled"));
+      console.log(DIM("  ✓ 1 repo included"));
+      console.log(DIM("  ✗ Cloud sync locked"));
+      console.log("");
+      console.log(DIM("  Upgrade: Pro unlocks cloud history, memory sync and restore metadata."));
+    }
+    console.log("");
+    console.log(DIM("  Next: navigate to a project and run ") + GO_ACCENT("runtrim start"));
     console.log("");
   });
 
@@ -8768,12 +8857,19 @@ program
       }
       console.log("");
       if (options.sync !== false) {
+        const syncPlan = loadGlobalRegistry().plan;
         if (cloudSync.status === "synced") {
           console.log(DIM("  Cloud sync  ") + chalk.green("synced"));
         } else if (cloudSync.status === "failed") {
           console.log(DIM("  Cloud sync  ") + chalk.yellow("failed — run runtrim sync to retry"));
-        } else if (cloudSync.status === "skipped_no_token" || cloudSync.status === "skipped_invalid_token") {
-          console.log(DIM("  Cloud sync  ") + DIM("skipped - local run saved; sign in or upgrade for cloud sync"));
+        } else if (cloudSync.status === "skipped_invalid_token") {
+          console.log(DIM("  Cloud sync  ") + DIM("local run saved. Token expired — run runtrim login to sync."));
+        } else if (cloudSync.status === "skipped_no_token") {
+          if (syncPlan === "free") {
+            console.log(DIM("  Cloud sync  ") + DIM("local only. Upgrade to Pro for cloud history and restore metadata."));
+          } else {
+            console.log(DIM("  Cloud sync  ") + DIM("local run saved. Run runtrim login to connect cloud sync."));
+          }
         } else {
           console.log(DIM("  Cloud sync  ") + DIM("skipped"));
         }
@@ -9130,13 +9226,20 @@ program
     }
 
     if (options.sync !== false) {
+      const syncPlan2 = loadGlobalRegistry().plan;
       console.log(GO_ACCENT.bold("Cloud sync"));
       if (cloudSync.status === "synced") {
         console.log(chalk.white("  Completed run synced."));
       } else if (cloudSync.status === "failed") {
         console.log(chalk.yellow("  Failed. Run saved locally. Use runtrim sync later."));
-      } else if (cloudSync.status === "skipped_no_token" || cloudSync.status === "skipped_invalid_token") {
-        console.log(DIM("  Cloud sync skipped. Local run saved. Sign in or upgrade for cloud sync."));
+      } else if (cloudSync.status === "skipped_invalid_token") {
+        console.log(DIM("  Local run saved. Token expired — run runtrim login to sync."));
+      } else if (cloudSync.status === "skipped_no_token") {
+        if (syncPlan2 === "free") {
+          console.log(DIM("  Local only. Upgrade to Pro for cloud history and restore metadata."));
+        } else {
+          console.log(DIM("  Local run saved. Run runtrim login to connect cloud sync."));
+        }
       } else {
         console.log(DIM("  Skipped."));
       }

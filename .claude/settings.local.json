@@ -100,7 +100,8 @@
       "PowerShell(node -p \"require\\('c:/Users/miche/Desktop/runtrim/node_modules/next/package.json'\\).version\")",
       "PowerShell(node -p \"require\\('c:/Users/miche/Desktop/runtrim/node_modules/react/package.json'\\).version\")",
       "PowerShell(node -p \"require\\('c:/Users/miche/Desktop/runtrim/node_modules/react-dom/package.json'\\).version\")",
-      "PowerShell(node -e \"const lock = JSON.parse\\(require\\('fs'\\).readFileSync\\('package-lock.json','utf8'\\)\\); const top = lock.packages['']; console.log\\('dependencies:', JSON.stringify\\(top.dependencies, null, 2\\)\\); console.log\\('devDependencies:', JSON.stringify\\(top.devDependencies, null, 2\\)\\);\" 2>&1)"
+      "PowerShell(node -e \"const lock = JSON.parse\\(require\\('fs'\\).readFileSync\\('package-lock.json','utf8'\\)\\); const top = lock.packages['']; console.log\\('dependencies:', JSON.stringify\\(top.dependencies, null, 2\\)\\); console.log\\('devDependencies:', JSON.stringify\\(top.devDependencies, null, 2\\)\\);\" 2>&1)",
+      "Bash(grep -E '^[^.]*$')"
     ]
   }
 }

@@ -41,7 +41,7 @@ function Cmd({ text, trackKey }: { text: string; trackKey?: string }) {
   return (
     <div
       className="flex items-center rounded-[8px]"
-      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)", minWidth: 0, width: "100%", overflow: "hidden" }}
+      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)", minWidth: 0, width: "100%" }}
     >
       <span style={{ ...MONO, fontSize: 11, color: "#a78bfa", padding: "0 6px 0 14px", flexShrink: 0 }}>$</span>
       <div style={{ flex: 1, minWidth: 0, overflowX: "auto", scrollbarWidth: "none" }}>
@@ -138,7 +138,7 @@ export default function InstallPage() {
             <div
               className="flex items-center rounded-[8px]"
               style={{
-                height: 40, minWidth: 0, overflow: "hidden",
+                height: 40, minWidth: 0,
                 background: "#0c0e11",
                 border: "1px solid rgba(167,139,250,0.25)",
                 boxShadow: "0 0 0 1px rgba(167,139,250,0.06)",
@@ -310,7 +310,7 @@ export default function InstallPage() {
                 Cloud sync is available now.
               </h2>
               <p className="mt-2" style={{ fontSize: 13, color: "#8a8f98", lineHeight: 1.65, maxWidth: 560 }}>
-                Free CLI runs locally. Paid plans add cloud sync and run history — only metadata is uploaded, source code stays on your machine.
+                Free CLI runs locally. Paid plans add cloud sync and run history. Metadata only, source code stays on your machine.
               </p>
             </div>
             <div className="shrink-0">
