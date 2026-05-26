@@ -362,7 +362,7 @@ export default async function OverviewPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8 overflow-x-hidden">
 
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
@@ -514,7 +514,7 @@ export default async function OverviewPage() {
       )}
 
       {/* Stats — derived from all-time aggregates, not a capped query */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Runs"
           value={String(data?.totalRuns ?? 0)}
@@ -554,24 +554,24 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">{latestRunIsBlocked ? "Latest run needs review" : "Latest Run Intelligence"}</p>
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5 min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">{latestRunIsBlocked ? "Latest run needs review" : "Latest Run Intelligence"}</p>
           {data?.lastRun && <Link href={`/app/runs/${data.lastRun.id}`} className="font-mono text-[11px] text-[#a78bfa] hover:text-[#c9ccd2]">Open run</Link>}
         </div>
         {!data?.lastRun ? (
           <div className="mt-4 space-y-3">
             <p className="text-[14px] font-semibold text-[#f4f5f7]">No synced runs yet.</p>
             <p className="text-[12px] text-[#8a8f98]">Create a guarded run locally, finish it, then sync the report here.</p>
-            <div className="flex flex-wrap gap-2">
-              <CopyButton text="runtrim start" label="Copy runtrim start" />
-              <CopyButton text='runtrim agent "Fix checkout" --copy' label="Copy guarded run command" />
-              <CopyButton text="runtrim finish" label="Copy runtrim finish" />
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+              <CopyButton text="runtrim start" label="Copy start" className="w-full justify-center sm:w-auto" />
+              <CopyButton text='runtrim agent "Fix checkout" --copy' label="Copy guarded run" className="w-full justify-center sm:w-auto" />
+              <CopyButton text="runtrim finish" label="Copy finish" className="w-full justify-center sm:w-auto" />
             </div>
           </div>
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Task</p><p className="mt-1 text-[13px] text-[#f4f5f7]">{data.lastRun.task ?? "Untitled run"}</p></div>
+            <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3 min-w-0"><p className="text-[11px] text-[#8a8f98]">Task</p><p className="mt-1 break-words text-[13px] text-[#f4f5f7]">{data.lastRun.task ?? "Untitled run"}</p></div>
             <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Verdict</p><div className="mt-1">{lastFinishDisplay ? <VerdictPill label={lastFinishDisplay.label} variant={lastFinishDisplay.variant} /> : <VerdictPill label={(data.lastRun.status ?? "UNKNOWN").toUpperCase()} variant="neutral" />}</div></div>
             <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Changed files</p><p className="mt-1 text-[13px] text-[#f4f5f7]">{latestChangedCount}</p></div>
             <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3"><p className="text-[11px] text-[#8a8f98]">Risk level</p><div className="mt-1"><RiskBadge level={latestRisk} /></div></div>
@@ -583,11 +583,11 @@ export default async function OverviewPage() {
             </div>
             {latestRunIsBlocked && (
               <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-[#F0BF72]/25 bg-[#F0BF72]/6 px-3 py-3">
-                <p className="text-[13px] font-semibold text-[#f4f5f7]">RunTrim recorded this run, but it should not be treated as trusted work until reviewed or restored.</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <CopyButton text="runtrim restore" label="Copy runtrim restore" />
-                  <CopyButton text="runtrim restore last --preview" label="Copy preview restore" />
-                  <CopyButton text={'runtrim approve "Allow <path> for this run only"'} label="Copy runtrim approve" />
+                <p className="text-[13px] font-semibold text-[#f4f5f7]">RunTrim recorded this run, but it should not be treated as trusted work until reviewed, approved or restored.</p>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+                  <CopyButton text="runtrim restore" label="Copy restore" className="w-full justify-center sm:w-auto" />
+                  <CopyButton text="runtrim restore last --preview" label="Copy preview" className="w-full justify-center sm:w-auto" />
+                  <CopyButton text={'runtrim approve "Allow <path> for this run only"'} label="Copy approve" className="w-full justify-center sm:w-auto" />
                 </div>
               </div>
             )}
@@ -595,53 +595,53 @@ export default async function OverviewPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5 min-w-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2.5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Agent Autopilot</p>
-              <VerdictPill label={autopilotStatus} variant={autopilotStatus === "Ready" ? "pass" : autopilotStatus === "Partial" ? "warn" : "neutral"} />
-            </div>
-            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">RunTrim checks are visible and actionable.</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {autopilotChecks.map((check) => (
-                <div key={check.label} className="flex items-center justify-between rounded-md border border-white/7 bg-[#080a0d] px-3 py-2">
-                  <span className="text-[12px] text-[#8a8f98]">{check.label}</span>
-                  <StatePill ok={check.ok} label={check.ok ? "Ready" : "Missing"} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="shrink-0 space-y-2 pt-1">
-            <CopyButton text="runtrim doctor" label="Copy runtrim doctor" />
-            <CopyButton text="runtrim mcp instructions" label="Copy MCP instructions" />
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2.5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Recovery</p>
+              <p className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Recovery</p>
               <VerdictPill label={restoreState.label} variant={restoreState.variant} />
             </div>
             <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">Restore metadata syncs with your guarded runs. File recovery still happens locally through the CLI.</p>
             <p className="mt-1 text-[12px] leading-[1.65] text-[#5a5f68]">
               {!hasRuns ? "Restore metadata appears after your first guarded run." : "Recover without spending another agent run."}
             </p>
-            <p className="mt-2 text-[12px] text-[#8a8f98]">Latest restore point: {hasRuns ? "Available from latest guarded run" : "Not yet available"}</p>
+            <p className="mt-2 break-words text-[12px] text-[#8a8f98]">Latest restore point: {hasRuns ? "Available from latest guarded run" : "Not yet available"}</p>
           </div>
-          <div className="shrink-0 space-y-2 pt-1">
-            <CopyButton text="runtrim restore" label="Copy runtrim restore" />
-            <CopyButton text="runtrim restore last --preview" label="Copy preview restore" />
+          <div className="w-full space-y-2 pt-1 sm:w-auto sm:shrink-0">
+            <CopyButton text="runtrim restore" label="Copy restore" className="w-full justify-center sm:w-auto" />
+            <CopyButton text="runtrim restore last --preview" label="Copy preview" className="w-full justify-center sm:w-auto" />
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5 min-w-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2.5">
+              <p className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Agent Autopilot</p>
+              <VerdictPill label={autopilotStatus} variant={autopilotStatus === "Ready" ? "pass" : autopilotStatus === "Partial" ? "warn" : "neutral"} />
+            </div>
+            <p className="mt-2 text-[13px] font-semibold text-[#f4f5f7]">RunTrim checks are visible and actionable.</p>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {autopilotChecks.map((check) => (
+                <div key={check.label} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-white/7 bg-[#080a0d] px-3 py-2 min-w-0">
+                  <span className="min-w-0 break-words text-[12px] text-[#8a8f98]">{check.label}</span>
+                  <StatePill ok={check.ok} label={check.ok ? "Ready" : "Missing"} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="w-full space-y-2 pt-1 sm:w-auto sm:shrink-0">
+            <CopyButton text="runtrim doctor" label="Copy doctor" className="w-full justify-center sm:w-auto" />
+            <CopyButton text="runtrim mcp instructions" label="Copy MCP" className="w-full justify-center sm:w-auto" />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5 min-w-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Plan value</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
             <p className="text-[13px] font-semibold text-[#f4f5f7]">Free</p>
             <p className="mt-1 text-[12px] text-[#8a8f98]">1 repo protected locally, local restore enabled, cloud sync locked, dashboard history locked.</p>
@@ -650,7 +650,7 @@ export default async function OverviewPage() {
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
             <p className="text-[13px] font-semibold text-[#f4f5f7]">Pro</p>
             <p className="mt-1 text-[12px] text-[#8a8f98]">Cloud sync active, dashboard history active, memory sync active, restore metadata active.</p>
-            {plan === "pro" && <div className="mt-3 flex gap-2"><Link href="/app/runs" className="inline-flex rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#c9ccd2]">Open runs</Link><Link href="/app/billing" className="inline-flex rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#8a8f98]">Upgrade to Builder</Link></div>}
+            {plan === "pro" && <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Link href="/app/runs" className="inline-flex w-full justify-center rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#c9ccd2] sm:w-auto">Open runs</Link><Link href="/app/billing" className="inline-flex w-full justify-center rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#8a8f98] sm:w-auto">Upgrade to Builder</Link></div>}
           </div>
           <div className="rounded-lg border border-white/6 bg-[#0a0c10] px-4 py-4">
             <p className="text-[13px] font-semibold text-[#f4f5f7]">Builder</p>
@@ -663,14 +663,14 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5 min-w-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">CI Gate</p>
         {plan === "builder" || plan === "team" ? (
           <div className="mt-3">
             <p className="text-[13px] font-semibold text-[#f4f5f7]">Block risky AI-generated PRs before merge.</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <CopyButton text="runtrim ci setup" label="Copy setup command" />
-              <Link href="/app/install" className="inline-flex rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#c9ccd2]">Open setup guide</Link>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+              <CopyButton text="runtrim ci setup" label="Copy setup" className="w-full justify-center sm:w-auto" />
+              <Link href="/app/install" className="inline-flex w-full justify-center rounded-md border border-white/12 px-3 py-1.5 text-[12px] text-[#c9ccd2] sm:w-auto">Open setup guide</Link>
             </div>
           </div>
         ) : (
@@ -678,14 +678,14 @@ export default async function OverviewPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5">
+      <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-5 py-5 min-w-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5a5f68]">Cloud and governance access</p>
         {!planDataAvailable ? (
           <p className="mt-4 text-[12px] text-[#8a8f98]">
             Plan status unavailable. Local features remain available. Sign in or refresh billing to check cloud sync access.
           </p>
         ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(["Cloud sync", "Auto-sync dashboard", "Cloud run history", "Memory sync", "Synced restore metadata"] as const).map((label) => {
               const lbl = gateLabel(plan, "pro");
               return (
@@ -785,14 +785,14 @@ export default async function OverviewPage() {
                 toTimeMs(run.created_at) ??
                 toTimeMs(run.synced_at);
               return (
-                <div key={run.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3">
+                <div key={run.id} className="flex flex-col gap-3 rounded-lg border border-white/6 bg-[#0a0c10] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold text-[#f4f5f7]">{run.task ?? "Untitled run"}</p>
                     <p className="mt-1 font-mono text-[10px] text-[#5a5f68]">
                       {(run.agent ?? run.model ?? "agent n/a")} · {when ? new Date(when).toLocaleString() : "—"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                     <StatePill ok={Boolean(run.status)} label={(run.status ?? "unknown").toUpperCase()} />
                     <RiskBadge level={run.risk_after ?? run.risk_before} />
                     <span className="font-mono text-[10px] text-[#8a8f98]">{changedCount} files</span>
@@ -808,9 +808,9 @@ export default async function OverviewPage() {
       )}
 
       {/* Sync banner */}
-      <div className="rounded-xl border border-white/6 bg-[#0e1116] px-5 py-4">
+      <div className="rounded-xl border border-white/6 bg-[#0e1116] px-5 py-4 min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-[13px] font-semibold text-[#f4f5f7]">
               {!planDataAvailable
                 ? "Sign in to check cloud sync access."
@@ -828,7 +828,7 @@ export default async function OverviewPage() {
           </div>
           <Link
             href="/app/connect"
-            className="shrink-0 rounded-lg border border-white/10 px-3.5 py-2 text-[12px] font-medium text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
+            className="w-full rounded-lg border border-white/10 px-3.5 py-2 text-center text-[12px] font-medium text-[#8a8f98] transition-colors hover:border-white/20 hover:text-[#f4f5f7] sm:w-auto sm:shrink-0"
           >
             Connect CLI
           </Link>

@@ -4250,23 +4250,35 @@ program
     }
     console.log("");
 
-    const latestRunForVerdict = loadAllRuns(cwd).find((r) => {
-      const s = (r.evaluation?.status ?? r.status ?? "").toLowerCase();
-      return s.length > 0;
-    }) ?? null;
-    const latestRunVerdictRaw = (latestRunForVerdict?.evaluation?.status ?? latestRunForVerdict?.status ?? "unknown").toString();
-    const latestRunNeedsReview = latestRunVerdictRaw.toLowerCase() === "blocked" || latestRunVerdictRaw.toLowerCase() === "split_required";
+    const latestLocalRun = loadAllRuns(cwd)[0] ?? null;
+    const latestLocalRunVerdict = normalizeRunVerdict(latestLocalRun?.evaluation?.status ?? latestLocalRun?.status);
+    const latestRestoreVerdict = normalizeRunVerdict(latestRestore?.verdict);
+    const latestRunVerdict = latestLocalRunVerdict ?? latestRestoreVerdict;
+    const latestRunNeedsReview = latestRunVerdict === "BLOCKED";
+    const latestRunHasRestore = latestLocalRun
+      ? restoreCandidates.some((r) => r.runId === latestLocalRun.id && r.hasRestorePoint)
+      : Boolean(latestRestore);
+    const latestRunSource = latestLocalRunVerdict
+      ? "local run"
+      : latestRestoreVerdict
+        ? "restore point"
+        : "none yet";
 
     console.log(BOLD("Restore"));
     console.log(DIM("- Restore points: ") + chalk.white(`${availableRestoreCount} available`));
     if (latestRestore) {
+      const restoreVerdict = normalizeRunVerdict(latestRestore.verdict);
+      const restoreLabel = restoreVerdict
+        ? `${restoreVerdict}${restoreVerdict === "BLOCKED" ? ", needs review" : ""}`
+        : "unknown";
       console.log(
-        DIM("- Latest: ") +
+        DIM("- Latest restore point: ") +
         chalk.white(latestRestore.date) +
         DIM("  ") +
         chalk.white(truncate(latestRestore.task, 40)) +
         DIM("  ") +
-        verdictColor(latestRestore.verdict)
+        (restoreVerdict ? verdictColor(restoreVerdict) : chalk.gray(restoreLabel)) +
+        (restoreVerdict === "BLOCKED" ? chalk.yellow(", needs review") : "")
       );
     }
     console.log(DIM("- Local artifacts: ") + chalk.white(String(artifactCount)));
@@ -4275,9 +4287,25 @@ program
     }
     console.log("");
     console.log(BOLD("Latest run"));
-    console.log(DIM("- Latest run verdict: ") + verdictColor(latestRunVerdictRaw).replace(latestRunVerdictRaw, latestRunVerdictRaw.toUpperCase()));
+    if (latestRunVerdict) {
+      console.log(DIM("- Verdict: ") + verdictColor(latestRunVerdict));
+      const latestStatusLabel = latestRunNeedsReview
+        ? chalk.yellow("needs review")
+        : latestRunVerdict === "WARN"
+          ? chalk.yellow("warning")
+          : MINT("verified");
+      console.log(DIM("- Status: ") + latestStatusLabel);
+      console.log(DIM("- Restore: ") + (latestRunHasRestore ? MINT("available") : chalk.gray("not available yet")));
+      console.log(DIM("- Source: ") + chalk.white(latestRunSource));
+      console.log(DIM("- Next: ") + chalk.white(latestRunNeedsReview ? "runtrim restore" : "runtrim finish when the next guarded run is done"));
+    } else {
+      console.log(DIM("- Verdict: ") + chalk.gray("unknown"));
+      console.log(DIM("- Status: ") + chalk.gray("no finished local run or restore verdict yet"));
+      console.log(DIM("- Restore: ") + (latestRunHasRestore ? MINT("available") : chalk.gray("not available yet")));
+      console.log(DIM("- Next: ") + chalk.white('runtrim agent "task" --copy'));
+    }
     if (latestRunNeedsReview) {
-      console.log(chalk.yellow("- Latest run needs review."));
+      console.log(chalk.yellow("  This run is not trusted yet. Review, approve or restore."));
     }
     console.log("");
     if (availableRestoreCount > 0) {
@@ -6152,10 +6180,19 @@ const restoreCommand = program.command("restore").description("Preview or apply 
 
 // ── helpers shared by interactive and direct restore paths ──────────────────
 
+function normalizeRunVerdict(verdict: string | undefined | null): "PASS" | "WARN" | "BLOCKED" | undefined {
+  const value = (verdict ?? "").toLowerCase();
+  if (value === "pass" || value === "passed" || value === "completed") return "PASS";
+  if (value === "warn" || value === "warned") return "WARN";
+  if (value === "blocked" || value === "split_required" || value === "split-required") return "BLOCKED";
+  return undefined;
+}
+
 function verdictColor(verdict: string | undefined): string {
-  if (verdict === "PASS") return chalk.green(verdict);
-  if (verdict === "WARN") return chalk.yellow(verdict);
-  if (verdict === "BLOCKED") return chalk.red(verdict);
+  const normalized = normalizeRunVerdict(verdict);
+  if (normalized === "PASS") return chalk.green(normalized);
+  if (normalized === "WARN") return chalk.yellow(normalized);
+  if (normalized === "BLOCKED") return chalk.red(normalized);
   return chalk.gray("unknown");
 }
 
@@ -6217,9 +6254,9 @@ function printRestoreList(rows: RestoreCandidateRow[], all = false): void {
   console.log("");
   const shortId = (id: string) => id.slice(0, 8);
   for (const row of displayRows) {
-    const verdictLower = (row.verdict ?? "").toLowerCase();
+    const verdictDisplay = normalizeRunVerdict(row.verdict) ?? "unknown";
     const status = row.hasRestorePoint
-      ? verdictLower === "blocked" || verdictLower === "split_required"
+      ? verdictDisplay === "BLOCKED"
         ? chalk.yellow("restore available | needs review")
         : chalk.green("restore available")
       : chalk.gray("no restore point");
@@ -6227,9 +6264,8 @@ function printRestoreList(rows: RestoreCandidateRow[], all = false): void {
     const task = truncate(row.task, 30).padEnd(30);
     const date = row.date.padEnd(16);
     const id = DIM(shortId(row.runId));
-    const verdictRaw = row.verdict ?? "unknown";
-    const verdictPadded = verdictRaw.padEnd(7);
-    console.log(`  ${date}  ${chalk.white(task)}  ${verdictColor(row.verdict).replace(verdictRaw, verdictPadded)}  ${files}  ${status}  ${id}`);
+    const verdictPadded = verdictDisplay.padEnd(7);
+    console.log(`  ${date}  ${chalk.white(task)}  ${verdictColor(verdictDisplay).replace(verdictDisplay, verdictPadded)}  ${files}  ${status}  ${id}`);
   }
   console.log("");
 }
@@ -6392,12 +6428,11 @@ async function runInteractiveRestorePicker(cwd: string): Promise<void> {
   const pad = (s: string, n: number) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
 
   const runChoices = rows.map((row) => {
-    const verdictRaw = row.verdict ?? "unknown";
-    const verdictLower = verdictRaw.toLowerCase();
-    const restoreLabel = verdictLower === "blocked" || verdictLower === "split_required"
+    const verdictLabel = normalizeRunVerdict(row.verdict) ?? "unknown";
+    const restoreLabel = verdictLabel === "BLOCKED"
       ? "restore available | needs review"
       : "restore available";
-    const label = `${pad(row.date, 16)}  ${pad(truncate(row.task, 28), 28)}  ${pad(verdictRaw, 7)}  ${pad(row.fileCount + " files", 9)}  ${restoreLabel}  ${shortId(row.runId)}`;
+    const label = `${pad(row.date, 16)}  ${pad(truncate(row.task, 28), 28)}  ${pad(verdictLabel, 7)}  ${pad(row.fileCount + " files", 9)}  ${restoreLabel}  ${shortId(row.runId)}`;
     return { title: label, value: row.runId };
   });
 
@@ -9243,9 +9278,14 @@ program
     console.log("");
 
     if (finishVerdict === "BLOCKED") {
-      console.log(chalk.red.bold("Blocked next steps"));
+      console.log(chalk.red.bold("Run blocked."));
+      console.log(chalk.red("  This run is recorded for review, but should not be treated as completed work."));
       console.log(chalk.red("  This run is not trusted yet."));
-      console.log(chalk.red("  Review the blocked files, approve a scoped amendment, or run runtrim restore."));
+      console.log("");
+      console.log(chalk.red.bold("Next"));
+      console.log(chalk.red("  - Review the blocked files."));
+      console.log(chalk.red("  - Approve a scoped amendment."));
+      console.log(chalk.red("  - Run runtrim restore."));
       if (outOfContractFiles.length > 0) {
         console.log(chalk.red("  Blocked because this exceeds the active contract."));
         console.log(chalk.red(`  Try: runtrim approve "Allow ${outOfContractFiles[0]} for this run only"`));
@@ -9253,9 +9293,6 @@ program
         console.log(chalk.red("  Blocked because file-limit checks were exceeded."));
         console.log(chalk.red('  Try: runtrim approve "Allow up to 14 files for this run only"'));
       }
-      console.log(chalk.red("  - Revert out-of-contract or forbidden files."));
-      console.log(chalk.red("  - Or approve a scoped amendment for this run only."));
-      console.log(chalk.red("  - Safer alternative: re-scope the task or revert out-of-scope files."));
       console.log("");
     }
 

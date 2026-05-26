@@ -40,17 +40,20 @@ const MONO: React.CSSProperties = {
 function Cmd({ text, trackKey }: { text: string; trackKey?: string }) {
   return (
     <div
-      className="flex items-center rounded-[8px]"
-      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)", minWidth: 0, width: "100%" }}
+      className="flex w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[8px] sm:flex-row sm:items-center"
+      style={{ background: "#0c0e11", border: "1px solid rgba(255,255,255,0.09)" }}
     >
-      <span style={{ ...MONO, fontSize: 11, color: "#a78bfa", padding: "0 6px 0 14px", flexShrink: 0 }}>$</span>
-      <div style={{ flex: 1, minWidth: 0, overflowX: "auto", scrollbarWidth: "none" }}>
-        <code style={{ ...MONO, fontSize: 12, color: "#c9ccd2", display: "block", padding: "10px 8px 10px 0", whiteSpace: "nowrap" as const }}>
+      <div className="flex min-w-0 max-w-full items-start px-3 py-2 sm:flex-1 sm:items-center sm:py-0 sm:pr-2">
+        <span style={{ ...MONO, fontSize: 11, color: "#a78bfa", padding: "1px 6px 0 0", flexShrink: 0 }}>$</span>
+        <code
+          className="block min-w-0 max-w-full break-all text-[12px] text-[#c9ccd2] sm:whitespace-nowrap sm:break-normal"
+          style={{ ...MONO }}
+        >
           {text}
         </code>
       </div>
-      <div style={{ borderLeft: "1px solid rgba(255,255,255,0.07)", padding: "8px 12px", flexShrink: 0 }}>
-        <CopyButton text={text} trackCommandKey={trackKey} />
+      <div className="w-full border-t border-white/10 p-2 sm:w-auto sm:shrink-0 sm:border-t-0 sm:border-l sm:border-white/10 sm:p-2.5">
+        <CopyButton text={text} label="Copy" className="w-full justify-center sm:w-auto" trackCommandKey={trackKey} />
       </div>
     </div>
   );
@@ -136,22 +139,24 @@ export default function InstallPage() {
           {/* Hero install command */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <div
-              className="flex items-center rounded-[8px]"
+              className="flex w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[8px] sm:flex-row sm:items-center"
               style={{
-                height: 40, minWidth: 0,
                 background: "#0c0e11",
                 border: "1px solid rgba(167,139,250,0.25)",
                 boxShadow: "0 0 0 1px rgba(167,139,250,0.06)",
               }}
             >
-              <span style={{ ...MONO, fontSize: 12, color: "#a78bfa", padding: "0 6px 0 14px", flexShrink: 0 }}>$</span>
-              <div style={{ flex: 1, minWidth: 0, overflowX: "auto", scrollbarWidth: "none" }}>
-                <code style={{ ...MONO, fontSize: 13, color: "#c9ccd2", display: "block", padding: "0 8px 0 0", whiteSpace: "nowrap" as const }}>
+              <div className="flex min-w-0 max-w-full items-start px-3 py-2 sm:flex-1 sm:items-center sm:py-0 sm:pr-2">
+                <span style={{ ...MONO, fontSize: 12, color: "#a78bfa", padding: "1px 6px 0 0", flexShrink: 0 }}>$</span>
+                <code
+                  className="block min-w-0 max-w-full break-all text-[13px] text-[#c9ccd2] sm:whitespace-nowrap sm:break-normal"
+                  style={{ ...MONO }}
+                >
                   npm install -g runtrim
                 </code>
               </div>
-              <div style={{ borderLeft: "1px solid rgba(255,255,255,0.07)", padding: "0 12px", height: "100%", display: "flex", alignItems: "center", flexShrink: 0 }}>
-                <CopyButton text="npm install -g runtrim" trackCommandKey="npm_install_global" />
+              <div className="w-full border-t border-white/10 p-2 sm:w-auto sm:shrink-0 sm:border-t-0 sm:border-l sm:border-white/10 sm:p-2.5">
+                <CopyButton text="npm install -g runtrim" label="Copy" className="w-full justify-center sm:w-auto" trackCommandKey="npm_install_global" />
               </div>
             </div>
             <Link
@@ -229,7 +234,7 @@ export default function InstallPage() {
           <p className="mt-1.5 mb-4" style={{ fontSize: 13, color: "#5a5f68" }}>
             Copy mode works with every agent. MCP mode works with compatible agents that support the Model Context Protocol.
           </p>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div
               className="rounded-[8px] p-4"
               style={{ border: "1px solid rgba(167,139,250,0.25)", background: "rgba(167,139,250,0.04)" }}
@@ -276,7 +281,7 @@ export default function InstallPage() {
             {DIRECT_COMMANDS.map((item, i) => (
               <div
                 key={item.n}
-                className="flex items-start gap-4"
+                className="flex flex-col gap-3 sm:flex-row sm:items-start"
                 style={{
                   padding: "14px 16px",
                   borderBottom: i < DIRECT_COMMANDS.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
@@ -288,14 +293,12 @@ export default function InstallPage() {
                 >
                   {item.n}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div style={{ overflowX: "auto", scrollbarWidth: "none" }}>
-                    <code style={{ ...MONO, fontSize: 12.5, color: "#c9ccd2", display: "block", whiteSpace: "nowrap" }}>{item.cmd}</code>
-                  </div>
+                <div className="min-w-0 flex-1 max-w-full">
+                  <code className="block min-w-0 max-w-full break-all text-[12.5px] text-[#c9ccd2] sm:whitespace-nowrap sm:break-normal" style={{ ...MONO }}>{item.cmd}</code>
                   <p className="mt-1" style={{ fontSize: 12, color: "#5a5f68" }}>{item.note}</p>
                 </div>
-                <div className="shrink-0">
-                  <CopyButton text={item.cmd} />
+                <div className="w-full sm:w-auto sm:shrink-0">
+                  <CopyButton text={item.cmd} label="Copy" className="w-full justify-center sm:w-auto" />
                 </div>
               </div>
             ))}
@@ -304,7 +307,7 @@ export default function InstallPage() {
 
         {/* Cloud sync */}
         <SectionCard kicker="Cloud sync">
-          <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
             <div className="min-w-0 flex-1">
               <h2 style={{ fontSize: 16, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>
                 Cloud sync is available now.
@@ -313,10 +316,10 @@ export default function InstallPage() {
                 Free CLI runs locally. Paid plans add cloud sync and run history. Metadata only, source code stays on your machine.
               </p>
             </div>
-            <div className="shrink-0">
+            <div className="w-full sm:w-auto sm:shrink-0">
               <Link
                 href="/plans"
-                className="inline-flex items-center gap-2 rounded-[7px] bg-[#f4f5f7] px-4 py-2 text-[13px] font-medium text-[#0b0d10] border border-white transition-colors hover:bg-white"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#f4f5f7] px-4 py-2 text-[13px] font-medium text-[#0b0d10] border border-white transition-colors hover:bg-white sm:w-auto"
               >
                 View plans
               </Link>
