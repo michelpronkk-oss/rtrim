@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, LogOut, ExternalLink, Activity, TrendingUp, CreditCard, Zap, Shield, Terminal } from "lucide-react";
 import { AdminPlanningContent } from "@/components/admin/admin-planning-dashboard";
+import { AdminGrowthOpsContent }     from "@/components/admin/admin-growth-ops";
+import { AdminContentCalendarContent } from "@/components/admin/admin-content-calendar";
+import { AdminAssetLibraryContent }  from "@/components/admin/admin-asset-library";
+import { AdminReplyInboxContent }    from "@/components/admin/admin-reply-inbox";
+import { AdminVaChecklistContent }   from "@/components/admin/admin-va-checklist";
+import { AdminApprovalsContent }     from "@/components/admin/admin-approvals";
+import { AdminAnalyticsLiteContent } from "@/components/admin/admin-analytics-lite";
+import { AdminTeamContent }          from "@/components/admin/admin-team";
+import { type AdminRole, getDefaultTab, getTabsForRole, getRoleLabel } from "@/lib/admin-roles";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,7 +67,7 @@ type MetricsResponse = {
   earlyAccess?: EarlyAccessEntry[];
 };
 
-type Tab = "overview" | "activity" | "planning";
+type Tab = "overview" | "activity" | "planning" | "growth" | "content" | "assets" | "replies" | "approvals" | "analytics-lite" | "checklist" | "team";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -164,13 +173,14 @@ function StatusDot({ ok, unknown }: { ok: boolean; unknown?: boolean }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AdminDashboard() {
+export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
   const [data,        setData]        = useState<MetricsResponse | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [error,       setError]       = useState("");
-  const [tab,         setTab]         = useState<Tab>("overview");
+  const [tab,         setTab]         = useState<Tab>(getDefaultTab(role) as Tab);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const visibleTabs = useMemo(() => getTabsForRole(role), [role]);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -278,6 +288,9 @@ export function AdminDashboard() {
             <span style={{ ...MONO, fontSize: 10, color: "#a78bfa", letterSpacing: "0.10em", textTransform: "uppercase" }}>
               RunTrim Admin
             </span>
+            <span style={{ ...MONO, fontSize: 9.5, padding: "1px 7px", borderRadius: 4, border: "1px solid rgba(167,139,250,0.25)", background: "rgba(167,139,250,0.08)", color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {getRoleLabel(role)}
+            </span>
             {lastFetched && (
               <span style={{ ...MONO, fontSize: 10, color: "#3a3e46" }}>
                 {rel(lastFetched.toISOString())}
@@ -350,13 +363,12 @@ export function AdminDashboard() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 6, marginBottom: 24, overflowX: "auto", paddingBottom: 2 }}>
-          {(["overview", "activity", "planning"] as const).map((id) => {
-            const labels: Record<string, string> = { overview: "Overview", activity: "Activity", planning: "Planning" };
+          {visibleTabs.map(({ id, label }) => {
             const active = tab === id;
             return (
               <button
                 key={id}
-                onClick={() => setTab(id)}
+                onClick={() => setTab(id as Tab)}
                 style={{
                   flexShrink: 0,
                   height: 30, padding: "0 12px", borderRadius: 6,
@@ -368,7 +380,7 @@ export function AdminDashboard() {
                   transition: "all 0.12s",
                 }}
               >
-                {labels[id]}
+                {label}
               </button>
             );
           })}
@@ -798,6 +810,46 @@ export function AdminDashboard() {
             </div>
 
           </div>
+        ) : null}
+
+        {/* ── Growth Ops tab ────────────────────────────────────── */}
+        {tab === "growth" ? (
+          <AdminGrowthOpsContent summary={summary} />
+        ) : null}
+
+        {/* ── Content Calendar tab ──────────────────────────────── */}
+        {tab === "content" ? (
+          <AdminContentCalendarContent />
+        ) : null}
+
+        {/* ── Asset Library tab ─────────────────────────────────── */}
+        {tab === "assets" ? (
+          <AdminAssetLibraryContent />
+        ) : null}
+
+        {/* ── Reply Inbox tab ───────────────────────────────────── */}
+        {tab === "replies" ? (
+          <AdminReplyInboxContent />
+        ) : null}
+
+        {/* ── Approvals tab ─────────────────────────────────────── */}
+        {tab === "approvals" ? (
+          <AdminApprovalsContent />
+        ) : null}
+
+        {/* ── Daily VA Checklist tab ────────────────────────────── */}
+        {tab === "checklist" ? (
+          <AdminVaChecklistContent />
+        ) : null}
+
+        {/* ── Analytics Lite tab (VA-safe) ──────────────────────── */}
+        {tab === "analytics-lite" ? (
+          <AdminAnalyticsLiteContent summary={summary} />
+        ) : null}
+
+        {/* Team tab */}
+        {tab === "team" ? (
+          <AdminTeamContent />
         ) : null}
 
       </main>

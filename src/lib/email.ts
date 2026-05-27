@@ -11,6 +11,14 @@ type EarlyAccessEmailInput = {
   createdAtIso: string;
 };
 
+type AdminInviteEmailInput = {
+  toEmail: string;
+  role: "admin" | "content_va" | "analyst";
+  inviterName?: string;
+  inviteUrl: string;
+  note?: string;
+};
+
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) return null;
@@ -754,6 +762,86 @@ export async function sendEarlyAccessNotification(input: EarlyAccessEmailInput):
     subject: `New early access: ${input.email}`,
     html:    buildNotificationHtml(input),
     text:    buildNotificationText(input),
+  });
+
+  return !error;
+}
+
+function buildAdminInviteHtml(input: AdminInviteEmailInput): string {
+  const roleLabel =
+    input.role === "content_va" ? "Content VA" : input.role === "analyst" ? "Analyst" : "Admin";
+  const inviter = input.inviterName?.trim() || "RunTrim";
+
+  const content = `
+    <tr><td style="height:3px;background:linear-gradient(90deg,${C.accent},#9966FF,#5B8BFF);border-radius:12px 12px 0 0;"></td></tr>
+    <tr>
+      <td style="padding:36px 36px 0;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+          <tr>
+            <td style="background-color:${C.accentDim};border:1px solid rgba(124,109,250,0.22);border-radius:20px;padding:5px 12px;">
+              <span style="font-family:${C.fontMono};font-size:10px;font-weight:600;color:${C.accent};letter-spacing:0.12em;text-transform:uppercase;">Team Invite</span>
+            </td>
+          </tr>
+        </table>
+        <h1 style="margin:0 0 12px;font-family:${C.fontSans};font-size:28px;font-weight:700;color:${C.text};letter-spacing:-0.04em;line-height:1.1;">
+          You’ve been invited to RunTrim Growth Ops.
+        </h1>
+        <p style="margin:0 0 16px;font-family:${C.fontSans};font-size:15px;color:${C.muted};line-height:1.7;">
+          ${inviter} invited you as <strong style="color:${C.text};">${roleLabel}</strong>.
+        </p>
+        <p style="margin:0 0 20px;font-family:${C.fontSans};font-size:14px;color:${C.muted};line-height:1.7;">
+          Accept the invite to activate your admin workspace, complete onboarding, and start working in RunTrim Growth Ops.
+        </p>
+        ${input.note ? `<div style="margin:0 0 20px;padding:10px 12px;background:${C.code};border:1px solid ${C.codeBorder};border-radius:8px;font-family:${C.fontSans};font-size:12px;color:${C.muted};line-height:1.6;">${input.note}</div>` : ""}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:8px 36px 36px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;">
+          <tr>
+            <td style="background-color:${C.accent};border-radius:8px;">
+              <a href="${input.inviteUrl}" target="_blank"
+                 style="display:inline-block;font-family:${C.fontSans};font-size:13px;font-weight:700;color:${C.bg};text-decoration:none;padding:11px 22px;border-radius:8px;letter-spacing:-0.01em;">
+                Accept invite &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0;font-family:${C.fontSans};font-size:12px;color:${C.dimmer};line-height:1.7;">
+          This invite expires in 7 days.<br/>
+          If the button does not work, open:<br/>
+          <a href="${input.inviteUrl}" style="color:${C.muted};text-decoration:underline;">${input.inviteUrl}</a>
+        </p>
+      </td>
+    </tr>
+  `;
+  return emailShell(content);
+}
+
+function buildAdminInviteText(input: AdminInviteEmailInput): string {
+  return [
+    "You’ve been invited to RunTrim Growth Ops.",
+    "",
+    `${input.inviterName?.trim() || "RunTrim"} invited you as ${input.role}.`,
+    "Accept your invite:",
+    input.inviteUrl,
+    "",
+    "This invite expires in 7 days.",
+    "",
+    "— RunTrim",
+  ].join("\n");
+}
+
+export async function sendAdminInviteEmail(input: AdminInviteEmailInput): Promise<boolean> {
+  const resend = getResendClient();
+  if (!resend) return false;
+
+  const { error } = await resend.emails.send({
+    from: getFromEmail(),
+    to: input.toEmail,
+    subject: "You’ve been invited to RunTrim Growth Ops",
+    html: buildAdminInviteHtml(input),
+    text: buildAdminInviteText(input),
   });
 
   return !error;
