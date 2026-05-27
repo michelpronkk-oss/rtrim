@@ -333,7 +333,7 @@ export default async function OverviewPage() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full overflow-x-hidden" style={{ maxWidth: 1140 }}>
+    <div className="w-full min-w-0 overflow-x-hidden" style={{ maxWidth: 1320 }}>
 
       {/* ── Subscription banners ─────────────────────────────────── */}
       {isCanceledInPeriod && (
@@ -471,11 +471,11 @@ export default async function OverviewPage() {
       ) : (
         <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "linear-gradient(180deg, #0e1116, #0a0c10)", overflow: "hidden", marginBottom: 20 }}>
           {/* Pipeline header */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>Activation</span>
             <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.08em" }}>· {doneCount} of 5 complete</span>
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, ...MONO, fontSize: 11, color: "#8a8f98", letterSpacing: "0.06em" }}>
-              <div style={{ width: 120, height: 4, background: "#1c2026", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, ...MONO, fontSize: 11, color: "#8a8f98", letterSpacing: "0.06em", width: "100%" }} className="sm:w-auto">
+              <div style={{ width: 120, maxWidth: "100%", height: 4, background: "#1c2026", borderRadius: 2, overflow: "hidden", flexShrink: 1 }}>
                 <div style={{ height: "100%", borderRadius: 2, background: "linear-gradient(90deg, #7c5cff, #a78bfa)", width: `${(doneCount / 5) * 100}%`, transition: "width 0.4s ease" }} />
               </div>
               <span>{Math.round((doneCount / 5) * 100)}%</span>
@@ -532,7 +532,7 @@ export default async function OverviewPage() {
       )}
 
       {/* ── Hero row: contract surface + workspace health ─────────── */}
-      <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
+      <div className="grid grid-cols-1 gap-4 mb-5 lg:grid-cols-[1.4fr_1fr]">
 
         {/* Run contract surface */}
         <div style={{
@@ -572,9 +572,9 @@ export default async function OverviewPage() {
               <p style={{ fontFamily: "var(--font-sans), ui-sans-serif", fontSize: 13.5, color: "#8a8f98", maxWidth: 380, lineHeight: 1.5, margin: 0 }}>
                 Once you compile your first contract, the live surface — scope, memory, token budget, finish check, verdict — appears right here.
               </p>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px 8px 14px", borderRadius: 7, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px 8px 14px", borderRadius: 7, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", maxWidth: "100%" }}>
                 <span style={{ color: "#a78bfa" }}>$</span>
-                <span style={{ color: "#c9ccd2" }}>runtrim agent &quot;fix checkout webhook&quot; --copy</span>
+                <span style={{ color: "#c9ccd2", overflowX: "auto", whiteSpace: "nowrap", maxWidth: "100%" }}>runtrim agent &quot;fix checkout webhook&quot; --copy</span>
                 <CopyButton text='runtrim agent "fix checkout webhook" --copy' />
               </div>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8, ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.06em", textTransform: "uppercase" }}>
@@ -594,9 +594,9 @@ export default async function OverviewPage() {
                 { k: "Files",   v: String(latestChangedCount) },
                 { k: "Risk",    v: latestRisk?.toUpperCase() ?? "—", color: latestRisk === "high" ? "#f87171" : latestRisk === "medium" ? "#f5a524" : "#6ee7b7" },
               ].map(({ k, v, color }) => (
-                <div key={k} style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 14, padding: "9px 16px", borderBottom: "1px dashed rgba(255,255,255,0.04)", alignItems: "center" }}>
+                <div key={k} className="grid grid-cols-1 sm:grid-cols-[120px_1fr]" style={{ gap: 8, padding: "9px 16px", borderBottom: "1px dashed rgba(255,255,255,0.04)", alignItems: "center" }}>
                   <span style={{ fontSize: 10.5, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.07em" }}>{k}</span>
-                  <span style={{ color: color ?? "#f4f5f7", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v}</span>
+                  <span style={{ color: color ?? "#f4f5f7", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{v}</span>
                 </div>
               ))}
               <div style={{ padding: "12px 16px", display: "flex", justifyContent: "flex-end" }}>
@@ -693,10 +693,10 @@ export default async function OverviewPage() {
       </div>
 
       {/* ── Recent runs feed ──────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>Recent runs</h2>
         <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.06em" }}>workspace</span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", width: "100%" }} className="sm:w-auto">
           {["All", "Passed", "Blocked"].map((chip, i) => (
             <span
               key={chip}

@@ -181,7 +181,7 @@ export default async function RunsPage({
   ];
 
   return (
-    <div style={{ maxWidth: "92rem", margin: "0 auto" }}>
+    <div className="w-full min-w-0 overflow-x-hidden" style={{ maxWidth: "100%", margin: "0 auto" }}>
       {/* Page head */}
       <div style={{ marginBottom: 24 }}>
         <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.14em", textTransform: "uppercase" }}>runs · workspace · last 30 days</span>
@@ -243,7 +243,7 @@ export default async function RunsPage({
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "#f4f5f7", margin: 0, marginRight: 4 }}>Recent runs</h2>
             <span style={{ ...MONO, fontSize: 11, color: "#5a5f68" }}>{runs.length} results</span>
-            <div style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 4 }}>
+            <div style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 4, width: "100%" }} className="sm:w-auto">
               {filterChips.map((chip) => {
                 const isActive = activeFilter === chip.key;
                 return (

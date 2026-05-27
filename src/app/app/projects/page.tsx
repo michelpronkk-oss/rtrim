@@ -93,10 +93,10 @@ export default async function ProjectsPage() {
   }).length;
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+    <div className="w-full min-w-0 overflow-x-hidden" style={{ maxWidth: 1320, margin: "0 auto" }}>
 
       {/* ── Page head ──────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 28, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 10, ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: 8 }}>
             <span style={{ color: "#a78bfa", background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.25)", padding: "1px 7px", borderRadius: 4, letterSpacing: "0.04em" }}>projects</span>
@@ -107,11 +107,12 @@ export default async function ProjectsPage() {
             A project is any repo initialized with <code style={{ ...MONO, color: "#a78bfa" }}>runtrim start</code>. Each one gets its own memory, scope rules, and run history.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0, width: "100%" }} className="sm:w-auto">
           <Link
             href="/app/runs"
-            style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px", borderRadius: 7, fontSize: 13, fontWeight: 500, border: "1px solid rgba(255,255,255,0.16)", color: "#c9ccd2", textDecoration: "none" }}
-            className="hover:border-white/30 hover:text-[#f4f5f7] transition-colors"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 44, padding: "0 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "1px solid rgba(255,255,255,0.16)", color: "#c9ccd2", textDecoration: "none", width: "100%" }}
+            className="sm:w-auto"
+            
           >
             View all runs
           </Link>
@@ -119,10 +120,10 @@ export default async function ProjectsPage() {
       </div>
 
       {/* ── Filter row ─────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>All projects</h2>
         <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.06em" }}>workspace</span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", width: "100%" }} className="sm:w-auto">
           {[`All ${projects.length}`, "Active", "Idle"].map((chip, i) => (
             <span
               key={chip}
@@ -144,7 +145,7 @@ export default async function ProjectsPage() {
 
       {projects.length === 0 ? (
         /* ── Empty state ──────────────────────────────────────── */
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }} className="grid-cols-1 md:grid-cols-2">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }} className="md:grid-cols-2" >
           {/* Add project dashed card */}
           <div style={{ border: "1px dashed rgba(255,255,255,0.16)", borderRadius: 12, background: "transparent", padding: 18, display: "flex", flexDirection: "column", gap: 12, justifyContent: "center", minHeight: 240, textAlign: "center", alignItems: "center" }}>
             <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.30)", display: "grid", placeItems: "center", color: "#a78bfa" }}>
@@ -154,9 +155,9 @@ export default async function ProjectsPage() {
             <span style={{ fontSize: 12.5, color: "#8a8f98", maxWidth: 280 }}>
               Run <code style={{ ...MONO, color: "#a78bfa" }}>runtrim start</code> in any repo to initialize memory, scope, and finish-check rules.
             </span>
-            <div style={{ ...MONO, fontSize: 11.5, color: "#c9ccd2", padding: "7px 11px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <div style={{ ...MONO, fontSize: 11.5, color: "#c9ccd2", padding: "7px 11px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
               <span style={{ color: "#a78bfa" }}>$</span>
-              <span>cd ~/your-repo &amp;&amp; runtrim start</span>
+              <span style={{ overflowX: "auto", whiteSpace: "nowrap", display: "inline-block", maxWidth: "100%" }}>cd ~/your-repo &amp;&amp; runtrim start</span>
             </div>
           </div>
 
@@ -186,8 +187,8 @@ export default async function ProjectsPage() {
       ) : (
         /* ── Project grid ─────────────────────────────────────── */
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 24 }}
-               className="grid-cols-1 md:grid-cols-2">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14, marginBottom: 24 }}
+               className="md:grid-cols-2">
             {projects.map((project) => {
               const runs = runCounts[project.id] ?? 0;
               const verdict = verdictInfo(project.last_status);
@@ -235,7 +236,7 @@ export default async function ProjectsPage() {
                     )}
 
                     {/* Meta strip */}
-                    <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                    <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }} className="sm:grid-cols-3">
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <span style={{ ...MONO, fontSize: 9.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>Runs</span>
                         <span style={{ fontSize: 14, color: "#f4f5f7", fontWeight: 500, letterSpacing: "-0.01em" }}>{runs}</span>
@@ -266,9 +267,9 @@ export default async function ProjectsPage() {
               <span style={{ fontSize: 12.5, color: "#8a8f98", maxWidth: 260 }}>
                 Run <code style={{ ...MONO, color: "#a78bfa" }}>runtrim start</code> in any repo to initialize scope, memory and finish-check rules.
               </span>
-              <div style={{ ...MONO, fontSize: 11.5, color: "#c9ccd2", padding: "7px 11px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <div style={{ ...MONO, fontSize: 11.5, color: "#c9ccd2", padding: "7px 11px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
                 <span style={{ color: "#a78bfa" }}>$</span>
-                <span>cd ~/your-repo &amp;&amp; runtrim start</span>
+                <span style={{ overflowX: "auto", whiteSpace: "nowrap", display: "inline-block", maxWidth: "100%" }}>cd ~/your-repo &amp;&amp; runtrim start</span>
               </div>
             </div>
           </div>

@@ -99,7 +99,7 @@ export function NewRunModal({ open, onClose, hasConnectedCli }: NewRunModalProps
           position: "fixed",
           top: "50%", left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "min(600px, calc(100vw - 24px))",
+          width: "min(600px, calc(100vw - 16px))",
           maxHeight: "88vh",
           zIndex: 501,
           background: "#0c0e11",
@@ -188,14 +188,15 @@ export function NewRunModal({ open, onClose, hasConnectedCli }: NewRunModalProps
             <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: 8 }}>
               Agent target
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {AGENT_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setAgent(value)}
                   style={{
-                    padding: "7px 4px",
+                    minHeight: 44,
+                    padding: "7px 6px",
                     borderRadius: 7,
                     border: `1px solid ${agent === value ? "rgba(167,139,250,0.40)" : "rgba(255,255,255,0.08)"}`,
                     background: agent === value ? "rgba(167,139,250,0.10)" : "transparent",
@@ -307,8 +308,8 @@ export function NewRunModal({ open, onClose, hasConnectedCli }: NewRunModalProps
               ].map(({ k, v }, idx, arr) => (
                 <div
                   key={k}
+                  className="grid grid-cols-1 sm:grid-cols-[88px_1fr]"
                   style={{
-                    display: "grid", gridTemplateColumns: "88px 1fr",
                     padding: "8px 12px",
                     borderBottom: idx < arr.length - 1 ? "1px dashed rgba(255,255,255,0.04)" : "none",
                     gap: 12, alignItems: "start",
@@ -330,18 +331,18 @@ export function NewRunModal({ open, onClose, hasConnectedCli }: NewRunModalProps
             <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: 7 }}>
               Local command
             </p>
-            <div style={{
-              display: "flex", alignItems: "center",
+            <div className="flex flex-col sm:flex-row"
+              style={{
               borderRadius: 8,
               border: "1px solid rgba(255,255,255,0.08)",
               background: "#080a0d",
               overflow: "hidden",
             }}>
-              <span style={{ ...MONO, fontSize: 12, color: "#a78bfa", padding: "0 4px 0 12px", flexShrink: 0 }}>$</span>
+              <span style={{ ...MONO, fontSize: 12, color: "#a78bfa", padding: "10px 4px 0 12px", flexShrink: 0 }} className="sm:py-0">$</span>
               <code style={{
                 ...MONO, fontSize: 12, color: "#c9ccd2",
                 flex: 1, padding: "10px 8px 10px 0",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                overflowX: "auto", whiteSpace: "nowrap",
               }}>
                 {command}
               </code>
@@ -349,8 +350,9 @@ export function NewRunModal({ open, onClose, hasConnectedCli }: NewRunModalProps
                 type="button"
                 onClick={handleCopyCommand}
                 style={{
-                  padding: "0 14px", height: 40, minWidth: 72,
+                  padding: "0 14px", height: 44, minWidth: 72,
                   borderLeft: "1px solid rgba(255,255,255,0.06)",
+                  borderTop: "1px solid rgba(255,255,255,0.06)",
                   background: "transparent",
                   color: copiedCommand ? "#6ee7b7" : "#5a5f68",
                   cursor: "pointer",
@@ -427,7 +429,7 @@ export function NewRunModal({ open, onClose, hasConnectedCli }: NewRunModalProps
               type="button"
               onClick={handleCopyCommand}
               style={{
-                flex: "1 1 140px",
+                flex: "1 1 100%",
                 padding: "9px 16px",
                 borderRadius: 8,
                 background: copiedCommand ? "#6ee7b7" : "#f4f5f7",

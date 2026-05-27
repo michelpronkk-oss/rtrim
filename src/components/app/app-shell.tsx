@@ -93,8 +93,8 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#08090b" }}>
-      <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div style={{ minHeight: "100dvh", background: "#08090b", overflowX: "clip" }}>
+      <div style={{ display: "flex", minHeight: "100dvh", width: "100%", overflowX: "clip" }}>
 
         {/* ── Desktop sidebar ───────────────────────────────────────── */}
         <aside
@@ -213,7 +213,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
         </aside>
 
         {/* ── Main column ──────────────────────────────────────────── */}
-        <div className="min-w-0 flex-1 flex flex-col" style={{ background: "#08090b" }}>
+        <div className="min-w-0 flex-1 flex flex-col" style={{ background: "#08090b", width: "100%", overflowX: "clip" }}>
 
           {/* Desktop topbar */}
           <header
@@ -306,7 +306,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
 
           {/* Mobile header */}
           <header
-            className="relative z-40 md:hidden"
+            className="sticky top-0 relative z-40 md:hidden"
             style={{
               background: "rgba(12,14,17,0.95)",
               backdropFilter: "blur(12px)",
@@ -314,18 +314,18 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
               borderBottom: "1px solid rgba(255,255,255,0.06)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", paddingTop: "calc(10px + env(safe-area-inset-top, 0px))", minHeight: 56 }}>
               <Link href="/app" onClick={() => setMobileOpen(false)}>
                 <RunTrimLogo size={20} />
               </Link>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                 <button
                   type="button"
                   onClick={() => setNewRunOpen(true)}
                   aria-label="New guarded run"
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: 34, height: 34, borderRadius: 7,
+                    width: 44, height: 44, borderRadius: 10,
                     border: "1px solid rgba(255,255,255,0.09)",
                     background: "#111317", color: "#f4f5f7",
                     cursor: "pointer",
@@ -341,7 +341,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
                   onClick={() => setMobileOpen((o) => !o)}
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: 34, height: 34, borderRadius: 7,
+                    width: 44, height: 44, borderRadius: 10,
                     border: "1px solid rgba(255,255,255,0.09)",
                     background: "#111317", color: "#8a8f98",
                     cursor: "pointer",
@@ -356,7 +356,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
             {mobileOpen && (
               <div
                 id="mobile-app-nav"
-                style={{ padding: "12px 12px 16px", background: "#0c0e11", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                style={{ padding: "12px 12px calc(16px + env(safe-area-inset-bottom, 0px))", background: "#0c0e11", borderTop: "1px solid rgba(255,255,255,0.06)", maxHeight: "calc(100dvh - 64px)", overflowY: "auto" }}
               >
                 {userEmail && (
                   <div style={{
@@ -408,7 +408,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
           </header>
 
           {/* Page content */}
-          <main className="px-4 pt-5 pb-16 md:px-10 md:pt-7">
+          <main className="min-w-0 w-full px-4 pt-4 pb-16 sm:px-5 md:px-8 md:pt-7 lg:px-10" style={{ overflowX: "clip" }}>
             {children}
           </main>
         </div>
