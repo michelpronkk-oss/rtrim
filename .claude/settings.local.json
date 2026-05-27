@@ -111,7 +111,13 @@
       "Bash(node -e \"require\\('puppeteer'\\)\")",
       "Bash(node scripts/export-x-posts.js)",
       "Bash(start \"\" \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\design_handoff_runtrim_brand\\\\exports\")",
-      "Bash(powershell -Command \"\\(Get-Content 'design_handoff_runtrim_brand\\\\X Posts.html'\\) -replace 'runtrim\\\\.dev','runtrim.com' | Set-Content 'design_handoff_runtrim_brand\\\\X Posts.html'\")"
+      "Bash(powershell -Command \"\\(Get-Content 'design_handoff_runtrim_brand\\\\X Posts.html'\\) -replace 'runtrim\\\\.dev','runtrim.com' | Set-Content 'design_handoff_runtrim_brand\\\\X Posts.html'\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(npx remotion *)",
+      "Bash(start \"\" \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\design_handoff_runtrim_brand\\\\exports\\\\saas-hit.mp4\")",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })",
+      "Bash(python3 -c ' *)",
+      "Bash(not exist *)"
     ]
   }
 }

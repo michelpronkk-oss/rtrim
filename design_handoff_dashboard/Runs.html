@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Runs · RunTrim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="app-shell.css" />
+<style>
+  .stat-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 24px;
+  }
+  .stat-card {
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    background: var(--bg-1);
+    padding: 14px 16px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .stat-card .label {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--fg-3); letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .stat-card .v {
+    font-size: 26px; font-weight: 500;
+    color: var(--fg-0); letter-spacing: -0.025em;
+    line-height: 1.1;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .stat-card .v .unit { font-size: 13px; color: var(--fg-3); font-weight: 400; }
+  .stat-card .delta {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--mint); letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stat-card .delta.muted { color: var(--fg-3); }
+
+  .runs-table {
+    border: 1px solid var(--line-2);
+    border-radius: 12px;
+    background: var(--bg-1);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .runs-row {
+    display: grid;
+    grid-template-columns: 28px 1.4fr 1.2fr 110px 100px 110px 90px;
+    gap: 14px;
+    padding: 12px 16px;
+    align-items: center;
+    border-bottom: 1px solid var(--line-1);
+    font-size: 13px;
+  }
+  .runs-row:last-child { border-bottom: 0; }
+  .runs-row:hover:not(.head) { background: var(--bg-2); cursor: pointer; }
+  .runs-row.head {
+    background: var(--bg-2);
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--fg-3); letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 10px 16px;
+  }
+  .runs-row .status-led {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--mint); box-shadow: 0 0 6px var(--mint);
+    margin: 0 auto;
+  }
+  .runs-row .status-led.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .runs-row .status-led.rose  { background: var(--rose);  box-shadow: 0 0 6px var(--rose); }
+  .runs-row .status-led.live  { animation: pulse 1.8s ease-in-out infinite; }
+  .runs-row .task { color: var(--fg-0); display: flex; flex-direction: column; gap: 2px; }
+  .runs-row .task .text { font-size: 13px; }
+  .runs-row .task .id {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--fg-3); letter-spacing: 0.04em;
+  }
+  .runs-row .scope { font-family: var(--mono); font-size: 12px; color: var(--fg-2); display: flex; gap: 4px; flex-wrap: wrap; }
+  .runs-row .scope .more {
+    font-size: 10.5px; padding: 1px 5px; border-radius: 3px;
+    background: var(--bg-3); color: var(--fg-3);
+    border: 1px solid var(--line-1);
+  }
+  .runs-row .agent { font-family: var(--mono); font-size: 11.5px; color: var(--fg-1); display: flex; align-items: center; gap: 6px; }
+  .runs-row .agent .glyph {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: var(--bg-3); border: 1px solid var(--line-2);
+    display: grid; place-items: center;
+    color: var(--fg-0); font-size: 10px; font-weight: 600;
+  }
+  .runs-row .files {
+    font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .runs-row .verdict {
+    font-family: var(--mono); font-size: 10.5px;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--bg-3); border: 1px solid var(--line-2);
+    color: var(--fg-2);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    display: inline-block;
+  }
+  .runs-row .verdict.passed   { color: var(--mint);  background: rgba(110,231,183,0.07); border-color: rgba(110,231,183,0.28); }
+  .runs-row .verdict.review   { color: var(--amber); background: rgba(245,165,36,0.08);  border-color: rgba(245,165,36,0.30); }
+  .runs-row .verdict.blocked  { color: var(--rose);  background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.28); }
+  .runs-row .verdict.live  { color: var(--violet); background: rgba(167,139,250,0.07); border-color: rgba(167,139,250,0.28); }
+  .runs-row .when {
+    font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+    text-align: right;
+  }
+
+  .pagination {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--line-1);
+    background: var(--bg-2);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-3); letter-spacing: 0.05em;
+  }
+  .pagination .right {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+  }
+  .page-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    color: var(--fg-2); cursor: pointer;
+  }
+  .page-btn:hover { color: var(--fg-0); background: var(--bg-3); }
+  .page-btn.active { color: var(--fg-0); background: var(--bg-3); border-color: var(--line-3); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ════════════════ SIDEBAR ════════════════ -->
+  <aside class="sidebar">
+    <a class="brand" href="Dashboard.html">
+      <svg width="20" height="22" viewBox="10 10 74 80" fill="none"><path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="#a78bfa"/><path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="#f4f5f7" fill-rule="evenodd"/></svg>
+      <span>Run<span class="dim">Trim</span></span>
+    </a>
+    <div class="user-pill"><span class="led-static"></span><span class="email">psnpronk@gmail.com</span><span class="plan-badge">PRO</span></div>
+    <div class="nav-group">
+      <a class="nav-item" href="Dashboard.html"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/></svg><span>Overview</span></a>
+      <a class="nav-item" href="Connect CLI.html"><svg viewBox="0 0 16 16" fill="none"><path d="M6 5a3 3 0 014.24 0l1.06 1.06a3 3 0 010 4.24l-1.06 1.06M10 11a3 3 0 01-4.24 0L4.7 9.94a3 3 0 010-4.24L5.76 4.64" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Connect CLI</span></a>
+      <a class="nav-item" href="Projects.html"><svg viewBox="0 0 16 16" fill="none"><path d="M2 5a1 1 0 011-1h3.5l1 1.5H13a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span>Projects</span><span class="count">2</span></a>
+      <a class="nav-item active" href="Runs.html"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12 6 6 0 000-12z" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Runs</span><span class="led"></span></a>
+      <a class="nav-item" href="Project Agent.html"><svg viewBox="0 0 16 16" fill="none"><path d="M3 6a3 3 0 013-3h4a3 3 0 013 3v3a3 3 0 01-3 3H7l-3 2v-2h-1V6z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span>Project Agent</span></a>
+      <a class="nav-item" href="Billing.html"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M2 7h12" stroke="currentColor" stroke-width="1.3"/></svg><span>Billing</span></a>
+    </div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-foot">
+      <a class="foot-link" href="#"><svg viewBox="0 0 16 16" fill="none"><path d="M6 3H4a2 2 0 00-2 2v6a2 2 0 002 2h2M11 4l3 4-3 4M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sign out</span></a>
+      <div class="foot-legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a></div>
+    </div>
+  </aside>
+
+
+  <!-- ════════════════ MAIN ════════════════ -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="breadcrumb"><b>psnpronk</b><span class="sep">/</span><span>Runs</span></div>
+      <div class="topbar-search">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" stroke-width="1.3"/><path d="M8.5 8.5L12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span>Search runs by task, scope, agent…</span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <span class="topbar-status"><span class="led"></span><span>v0.7.2 · CLI connected</span></span>
+      <button class="topbar-cta">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        New run
+      </button>
+    </header>
+
+
+    <div class="page">
+
+      <div class="page-head">
+        <div class="left">
+          <span class="eyebrow"><span class="tag">runs</span><span>workspace · last 30 days</span></span>
+          <h1 class="page-title">Runs</h1>
+          <p class="page-sub">Every guarded run records the task, scope, agent, diff, and finish verdict. Click any row to see the full contract and restore point.</p>
+        </div>
+        <div class="right">
+          <a class="btn btn-ghost" href="#">Export CSV</a>
+          <button class="btn btn-primary">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            New run
+          </button>
+        </div>
+      </div>
+
+
+      <!-- STATS -->
+      <div class="stat-row">
+        <div class="stat-card">
+          <span class="label">Runs · this month</span>
+          <span class="v">60 <span class="unit">total</span></span>
+          <span class="delta">↑ 42% vs last month</span>
+        </div>
+        <div class="stat-card">
+          <span class="label">Pass rate · first attempt</span>
+          <span class="v">92.5%</span>
+          <span class="delta">↑ 4.1 pts</span>
+        </div>
+        <div class="stat-card">
+          <span class="label">Tokens trimmed</span>
+          <span class="v">812k <span class="unit">vs unguarded</span></span>
+          <span class="delta">≈ $14.20 saved</span>
+        </div>
+        <div class="stat-card">
+          <span class="label">Scope violations</span>
+          <span class="v" style="color: var(--mint);">0</span>
+          <span class="delta muted">contained 8 attempts</span>
+        </div>
+      </div>
+
+
+      <!-- FILTERS -->
+      <div class="section-head">
+        <h2>Recent runs</h2>
+        <span class="meta">60 results</span>
+        <div class="right">
+          <span class="filter-chip active"><span class="led"></span>All <span style="color: var(--fg-3); margin-left: 4px;">60</span></span>
+          <span class="filter-chip">Live <span style="color: var(--violet); margin-left: 4px;">1</span></span>
+          <span class="filter-chip">Passed <span style="color: var(--mint); margin-left: 4px;">52</span></span>
+          <span class="filter-chip">Review <span style="color: var(--amber); margin-left: 4px;">5</span></span>
+          <span class="filter-chip">Blocked <span style="color: var(--rose); margin-left: 4px;">2</span></span>
+          <span style="width: 1px; height: 18px; background: var(--line-2); margin: 0 4px;"></span>
+          <span class="filter-chip">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2h6l-2.5 3v3l-1-1V5L2 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            Project
+          </span>
+          <span class="filter-chip">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="1.5" y="2" width="7" height="6" rx="0.6" stroke="currentColor" stroke-width="1.2"/></svg>
+            Agent
+          </span>
+        </div>
+      </div>
+
+
+      <!-- RUNS TABLE -->
+      <div class="runs-table">
+        <div class="runs-row head">
+          <span></span>
+          <span>Task</span>
+          <span>Scope</span>
+          <span>Agent</span>
+          <span>Files</span>
+          <span>Verdict</span>
+          <span style="text-align: right;">When</span>
+        </div>
+
+        <!-- Live run -->
+        <div class="runs-row">
+          <span class="status-led live"></span>
+          <div class="task">
+            <span class="text">refactor stripe webhook to idempotent queue</span>
+            <span class="id">run.42 · checkout-api</span>
+          </div>
+          <span class="scope"><span class="pill scope">api/webhooks/**</span><span class="more">+1</span></span>
+          <span class="agent"><span class="glyph">C</span>claude-3.7</span>
+          <span class="files"><span style="color: var(--mint);">4</span><span style="color: var(--fg-4);">/</span><span>5</span></span>
+          <span class="verdict live">live · 4/7</span>
+          <span class="when">just now</span>
+        </div>
+
+        <!-- Passed -->
+        <div class="runs-row">
+          <span class="status-led"></span>
+          <div class="task">
+            <span class="text">add rate limiting to /api/auth</span>
+            <span class="id">run.41 · checkout-api</span>
+          </div>
+          <span class="scope"><span class="pill scope">api/auth/**</span></span>
+          <span class="agent"><span class="glyph">C</span>claude-3.7</span>
+          <span class="files">3</span>
+          <span class="verdict passed">passed</span>
+          <span class="when">12 min</span>
+        </div>
+
+        <!-- Review -->
+        <div class="runs-row">
+          <span class="status-led amber"></span>
+          <div class="task">
+            <span class="text">migrate Button to new token system</span>
+            <span class="id">run.40 · design-system</span>
+          </div>
+          <span class="scope"><span class="pill scope">components/Button/**</span></span>
+          <span class="agent"><span class="glyph">Cu</span>cursor</span>
+          <span class="files">7</span>
+          <span class="verdict review">review · 2</span>
+          <span class="when">1h</span>
+        </div>
+
+        <!-- Passed -->
+        <div class="runs-row">
+          <span class="status-led"></span>
+          <div class="task">
+            <span class="text">fix idempotency key collision in queue</span>
+            <span class="id">run.39 · checkout-api</span>
+          </div>
+          <span class="scope"><span class="pill scope">lib/queue/**</span></span>
+          <span class="agent"><span class="glyph">Cx</span>codex</span>
+          <span class="files">2</span>
+          <span class="verdict passed">passed</span>
+          <span class="when">2h</span>
+        </div>
+
+        <!-- Blocked -->
+        <div class="runs-row">
+          <span class="status-led rose"></span>
+          <div class="task">
+            <span class="text">add Stripe webhook signing</span>
+            <span class="id">run.38 · checkout-api</span>
+          </div>
+          <span class="scope"><span class="pill forbid">.env*</span><span class="more">+2</span></span>
+          <span class="agent"><span class="glyph">C</span>claude-3.7</span>
+          <span class="files"><span style="color: var(--rose);">3</span><span style="color: var(--fg-4);">/</span><span>5</span></span>
+          <span class="verdict blocked">blocked</span>
+          <span class="when">3h</span>
+        </div>
+
+        <!-- Passed -->
+        <div class="runs-row">
+          <span class="status-led"></span>
+          <div class="task">
+            <span class="text">extract Card primitive from PricingCard</span>
+            <span class="id">run.37 · design-system</span>
+          </div>
+          <span class="scope"><span class="pill scope">components/**</span></span>
+          <span class="agent"><span class="glyph">Cu</span>cursor</span>
+          <span class="files">5</span>
+          <span class="verdict passed">passed</span>
+          <span class="when">yesterday</span>
+        </div>
+
+        <!-- Passed -->
+        <div class="runs-row">
+          <span class="status-led"></span>
+          <div class="task">
+            <span class="text">write tests for queue retries</span>
+            <span class="id">run.36 · checkout-api</span>
+          </div>
+          <span class="scope"><span class="pill scope">tests/queue/**</span></span>
+          <span class="agent"><span class="glyph">C</span>claude-3.7</span>
+          <span class="files">4</span>
+          <span class="verdict passed">passed</span>
+          <span class="when">yesterday</span>
+        </div>
+
+        <!-- Review -->
+        <div class="runs-row">
+          <span class="status-led amber"></span>
+          <div class="task">
+            <span class="text">add color contrast tokens for AA compliance</span>
+            <span class="id">run.35 · design-system</span>
+          </div>
+          <span class="scope"><span class="pill scope">tokens/**</span></span>
+          <span class="agent"><span class="glyph">G</span>chatgpt</span>
+          <span class="files">12</span>
+          <span class="verdict review">review · 1</span>
+          <span class="when">2d</span>
+        </div>
+
+        <div class="pagination">
+          <span>showing 1–8 of 60</span>
+          <div class="right">
+            <span class="page-btn">←</span>
+            <span class="page-btn active">1</span>
+            <span class="page-btn">2</span>
+            <span class="page-btn">3</span>
+            <span class="page-btn">…</span>
+            <span class="page-btn">8</span>
+            <span class="page-btn">→</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

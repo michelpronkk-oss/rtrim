@@ -193,29 +193,40 @@ export default async function BillingPage() {
     return { kind: "contact" as const, label: "Contact support" };
   }
 
+  const planColor = isPastDue ? "#f87171" : !isFree ? "#a78bfa" : "#5a5f68";
+  const planGradient = !isFree && !isPastDue
+    ? "radial-gradient(120% 80% at 0% 0%, rgba(167,139,250,0.09), transparent 60%), #0c0e11"
+    : isPastDue
+      ? "radial-gradient(120% 80% at 0% 0%, rgba(248,113,113,0.07), transparent 60%), #0c0e11"
+      : "#0c0e11";
+
   return (
     <div className="mx-auto max-w-4xl space-y-8">
 
-      {/* Header */}
-      <div>
-        <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.14em" }}>
-          {isFree && !isPastDue ? "Get started" : "Billing"}
+      {/* Plan hero */}
+      <div style={{ borderRadius: 14, background: planGradient, border: `1px solid ${!isFree && !isPastDue ? "rgba(167,139,250,0.25)" : isPastDue ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.08)"}`, padding: "24px 28px", position: "relative", overflow: "hidden" }}>
+        {/* Corner label */}
+        <span style={{ ...MONO, position: "absolute", top: 16, right: 16, fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.12em", padding: "3px 8px", borderRadius: 4, background: !isFree ? "rgba(167,139,250,0.12)" : "rgba(255,255,255,0.06)", border: `1px solid ${!isFree ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.1)"}`, color: planColor }}>
+          {isPastDue ? "payment failed" : isTrialing ? "trial active" : isFree ? "free" : `${plan} active`}
+        </span>
+        <p style={{ ...MONO, fontSize: 10.5, color: planColor, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+          {isFree && !isPastDue ? "get started" : "billing"}
         </p>
-        <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">
+        <h1 style={{ margin: "0 0 6px", fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", color: "#f4f5f7" }}>
           {isPastDue
             ? "Payment needs attention."
             : isFree
               ? "Unlock the RunTrim dashboard."
               : "Plan and billing"}
         </h1>
-        <p className="mt-1.5 text-[14px] text-[#8a8f98]">
+        <p style={{ fontSize: 13.5, color: "#8a8f98", lineHeight: 1.6, maxWidth: 520, margin: 0 }}>
           {isPastDue
             ? "Update your payment method to keep dashboard access and cloud sync active."
             : isFree
               ? "The CLI stays free and local. Pro unlocks synced runs, cloud history, memory sync and restore metadata."
               : isTrialing
                 ? `Pro trial active${trialEnd ? `. Ends ${trialEnd}.` : ""}. Full Pro access until then.`
-                : `${plan.charAt(0).toUpperCase() + plan.slice(1)} plan active.`}
+                : `${plan.charAt(0).toUpperCase() + plan.slice(1)} plan active${periodEndFmt ? ` · renews ${periodEndFmt}` : ""}.`}
         </p>
       </div>
 
@@ -278,7 +289,49 @@ export default async function BillingPage() {
       )}
 
       {/* Plan cards */}
-      <div className="grid gap-3.5 sm:grid-cols-3">
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+
+        {/* Free plan */}
+        <div
+          className="relative flex flex-col rounded-[10px] overflow-hidden"
+          style={{
+            background: "#0c0e11",
+            border: isFree ? "1px solid rgba(255,255,255,0.14)" : "1px solid rgba(255,255,255,0.07)",
+            borderTop: isFree ? "2px solid rgba(255,255,255,0.22)" : "2px solid transparent",
+          }}
+        >
+          {isFree && (
+            <div className="absolute right-3 top-3 rounded px-2 py-0.5" style={{ ...MONO, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", background: "rgba(77,232,176,0.1)", border: "1px solid rgba(77,232,176,0.25)", color: "#4DE8B0" }}>Current</div>
+          )}
+          <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", textTransform: "uppercase", letterSpacing: "0.1em" }}>Free</span>
+            <div className="mt-2.5 flex items-baseline gap-1.5">
+              <span className="text-[26px] font-bold tracking-[-0.02em] text-[#f4f5f7]">$0</span>
+              <span className="text-[12px] text-[#5a5f68]">/ month</span>
+            </div>
+            <div style={{ height: 22 }} />
+            <p className="mt-2 text-[12px] leading-[1.55] text-[#8a8f98]">Local CLI, guarded runs, and restore points. No cloud sync.</p>
+          </div>
+          <div className="flex-1 px-5 py-4">
+            <ul className="space-y-2">
+              {["runtrim CLI", "Guarded runs", "Local restore points", "Basic reports"].map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-[12.5px] text-[#c9ccd2]">
+                  <Check className="mt-0.5 size-3.5 shrink-0" style={{ color: "#3a3e46" }} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-auto px-5 pb-5">
+            {isFree ? (
+              <div className="inline-flex w-full h-10 items-center justify-center rounded-[6px] px-4 text-[13px] font-medium border border-white/8 text-[#5a5f68] cursor-default select-none">
+                Current plan
+              </div>
+            ) : (
+              <div style={{ height: 40 }} />
+            )}
+          </div>
+        </div>
         {PLANS.map((p) => {
           const isPro = p.id === "pro";
           const isCurrentPlan = plan === p.id;

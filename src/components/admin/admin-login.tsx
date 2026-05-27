@@ -36,7 +36,7 @@ export function AdminLogin() {
           <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#7380A3]">RunTrim Admin</p>
           <h1 className="mt-2 text-[24px] font-semibold tracking-[-0.02em]">Sign in</h1>
           <p className="mt-2 text-[13px] text-[#9AA7B6]">
-            Launch performance, installs, CLI activity and early access signal.
+            Growth, activation and revenue console.
           </p>
           <form onSubmit={onSubmit} className="mt-5 space-y-3">
             <input

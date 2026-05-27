@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 import { SiteAnalytics } from "@/components/app/site-analytics";
 import { AuthCodeInterceptor } from "@/components/app/auth-code-interceptor";
 import "./globals.css";
@@ -176,6 +177,7 @@ export default function RootLayout({
         />
         <SiteAnalytics />
         <AuthCodeInterceptor />
+        <Analytics />
         {children}
         <Toaster
           theme="dark"

@@ -300,7 +300,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
               className="hover:bg-white"
             >
               <Plus size={11} strokeWidth={2.5} />
-              New run
+              New guarded run
             </button>
           </header>
 
@@ -322,7 +322,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
                 <button
                   type="button"
                   onClick={() => setNewRunOpen(true)}
-                  aria-label="New run"
+                  aria-label="New guarded run"
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     width: 34, height: 34, borderRadius: 7,
@@ -408,7 +408,7 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
           </header>
 
           {/* Page content */}
-          <main className="px-4 pb-16 pt-6 sm:px-8 sm:pt-8 xl:px-10">
+          <main className="px-4 pt-5 pb-16 md:px-10 md:pt-7">
             {children}
           </main>
         </div>

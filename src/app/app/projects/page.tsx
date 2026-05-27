@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { FolderKanban, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Projects",
   robots: { index: false, follow: false },
+};
+
+const MONO: React.CSSProperties = {
+  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
 };
 
 type ProjectRow = {
@@ -21,27 +24,33 @@ type ProjectRow = {
   updated_at: string | null;
 };
 
-type RunCountRow = {
-  project_id: string;
-  count: number;
-};
+function projectInitials(name: string | null): string {
+  if (!name) return "?";
+  const parts = name.replace(/[-_]/g, " ").split(" ").filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
 
-const STATUS_BADGE: Record<string, string> = {
-  guarded:  "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
-  partial:  "border-[#F0BF72]/22 bg-[#F0BF72]/8 text-[#F2C88D]",
-  passed:   "border-[#4DE8B0]/22 bg-[#4DE8B0]/8 text-[#9EE6CD]",
-  failed:   "border-[#FF7B5C]/22 bg-[#FF7B5C]/8 text-[#FFAC98]",
-};
+function verdictInfo(status: string | null): { label: string; color: string; bg: string; border: string } {
+  const s = (status ?? "").toLowerCase();
+  if (s === "passed" || s === "completed" || s === "guarded")
+    return { label: "passed", color: "#6ee7b7", bg: "rgba(110,231,183,0.06)", border: "rgba(110,231,183,0.25)" };
+  if (s === "warned" || s === "partial")
+    return { label: "review", color: "#f5a524", bg: "rgba(245,165,36,0.06)", border: "rgba(245,165,36,0.25)" };
+  if (s === "blocked" || s === "failed")
+    return { label: "blocked", color: "#f87171", bg: "rgba(248,113,113,0.06)", border: "rgba(248,113,113,0.28)" };
+  return { label: status ?? "—", color: "#8a8f98", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.10)" };
+}
 
-function StatusBadge({ status }: { status: string | null }) {
-  if (!status) return <span className="font-mono text-[11px] text-[#3a3e46]">—</span>;
-  const key = status.toLowerCase();
-  const cls = STATUS_BADGE[key] ?? "border-white/10 text-[#8a8f98]";
-  return (
-    <span className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${cls}`}>
-      {status}
-    </span>
-  );
+function relativeDate(iso: string | null): string {
+  if (!iso) return "—";
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86_400_000);
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7)  return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export default async function ProjectsPage() {
@@ -78,109 +87,211 @@ export default async function ProjectsPage() {
     }
   }
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-8">
+  const liveCount = projects.filter((p) => {
+    const s = (p.last_status ?? "").toLowerCase();
+    return s === "passed" || s === "completed" || s === "guarded";
+  }).length;
 
-      {/* Header */}
-      <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#5a5f68]">Projects</p>
-        <h1 className="mt-1 text-[1.6rem] font-bold tracking-[-0.03em] text-[#f4f5f7]">
-          Your projects
-        </h1>
+  return (
+    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+
+      {/* ── Page head ──────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 28, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: 8 }}>
+            <span style={{ color: "#a78bfa", background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.25)", padding: "1px 7px", borderRadius: 4, letterSpacing: "0.04em" }}>projects</span>
+            <span>{projects.length} tracked{liveCount > 0 ? ` · ${liveCount} active` : ""}</span>
+          </div>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.025em", color: "#f4f5f7", lineHeight: 1.1 }}>Projects</h1>
+          <p style={{ marginTop: 6, fontSize: 14, color: "#8a8f98", maxWidth: 560 }}>
+            A project is any repo initialized with <code style={{ ...MONO, color: "#a78bfa" }}>runtrim start</code>. Each one gets its own memory, scope rules, and run history.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+          <Link
+            href="/app/runs"
+            style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px", borderRadius: 7, fontSize: 13, fontWeight: 500, border: "1px solid rgba(255,255,255,0.16)", color: "#c9ccd2", textDecoration: "none" }}
+            className="hover:border-white/30 hover:text-[#f4f5f7] transition-colors"
+          >
+            View all runs
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Filter row ─────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>All projects</h2>
+        <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.06em" }}>workspace</span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          {[`All ${projects.length}`, "Active", "Idle"].map((chip, i) => (
+            <span
+              key={chip}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "4px 9px",
+                border: `1px solid ${i === 0 ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.10)"}`,
+                borderRadius: 5, fontSize: 12,
+                color: i === 0 ? "#f4f5f7" : "#8a8f98",
+                background: i === 0 ? "#16191e" : "#0c0e11",
+              }}
+            >
+              {i === 0 && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#6ee7b7", boxShadow: "0 0 6px #6ee7b7" }} />}
+              {chip}
+            </span>
+          ))}
+        </div>
       </div>
 
       {projects.length === 0 ? (
-        <div className="rounded-xl border border-white/6 bg-[#0c0e11] px-6 py-10 sm:py-12">
-          <div className="mb-5 flex size-10 items-center justify-center rounded-xl border border-[#7C6DFA]/22 bg-[#7C6DFA]/8">
-            <FolderKanban className="size-4.5 text-[#a78bfa]/70" />
+        /* ── Empty state ──────────────────────────────────────── */
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }} className="grid-cols-1 md:grid-cols-2">
+          {/* Add project dashed card */}
+          <div style={{ border: "1px dashed rgba(255,255,255,0.16)", borderRadius: 12, background: "transparent", padding: 18, display: "flex", flexDirection: "column", gap: 12, justifyContent: "center", minHeight: 240, textAlign: "center", alignItems: "center" }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.30)", display: "grid", placeItems: "center", color: "#a78bfa" }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>Add a project</span>
+            <span style={{ fontSize: 12.5, color: "#8a8f98", maxWidth: 280 }}>
+              Run <code style={{ ...MONO, color: "#a78bfa" }}>runtrim start</code> in any repo to initialize memory, scope, and finish-check rules.
+            </span>
+            <div style={{ ...MONO, fontSize: 11.5, color: "#c9ccd2", padding: "7px 11px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: "#a78bfa" }}>$</span>
+              <span>cd ~/your-repo &amp;&amp; runtrim start</span>
+            </div>
           </div>
-          <h2 className="text-[1rem] font-semibold tracking-[-0.01em] text-[#f4f5f7]">
-            No synced projects yet.
-          </h2>
-          <p className="mt-1.5 max-w-[440px] text-[13px] leading-[1.7] text-[#8a8f98]">
-            Run <code className="font-mono text-[#a78bfa]">runtrim start</code> in a repo, check readiness with <code className="font-mono text-[#a78bfa]">runtrim doctor</code>, then run and finish your first guarded task to sync project history.
-          </p>
-          <div className="mt-5 space-y-2 max-w-[360px]">
-            {[
-              "runtrim start",
-              "runtrim doctor",
-              'runtrim agent "your first task" --copy',
-              "runtrim finish",
-            ].map((cmd) => (
-              <div
-                key={cmd}
-                className="flex items-center overflow-hidden rounded-[6px]"
-                style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#080a0d" }}
-              >
-                <span className="pl-3 pr-1 font-mono text-[10px] text-[#a78bfa]/60">$</span>
-                <code className="flex-1 py-2 pr-2 font-mono text-[11.5px] text-[#c9ccd2]">{cmd}</code>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link
-              href="/app/connect"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#A3AEBD] transition-colors hover:border-white/20 hover:text-[#f4f5f7]"
-            >
-              Connect CLI
-              <ArrowRight className="size-3.5" />
-            </Link>
-            <Link
-              href="/app/install"
-              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] text-[#5a5f68] transition-colors hover:text-[#8a8f98]"
-            >
-              View install guide
-            </Link>
+
+          {/* Info card */}
+          <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase", margin: 0 }}>Quick start</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["runtrim start", "runtrim doctor", 'runtrim agent "your first task" --copy', "runtrim finish"].map((cmd) => (
+                <div key={cmd} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.07)", ...MONO, fontSize: 11.5, color: "#c9ccd2" }}>
+                  <span style={{ color: "#a78bfa" }}>$</span>
+                  <span>{cmd}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: "auto", flexWrap: "wrap" }}>
+              <Link href="/app/connect" style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 12px", borderRadius: 6, fontSize: 12, fontWeight: 500, border: "1px solid rgba(255,255,255,0.14)", color: "#c9ccd2", textDecoration: "none" }}
+                className="hover:border-white/28 hover:text-white transition-colors">
+                Connect CLI
+              </Link>
+              <Link href="/app/install" style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 12px", borderRadius: 6, fontSize: 12, color: "#5a5f68", textDecoration: "none" }}
+                className="hover:text-[#8a8f98] transition-colors">
+                View install guide
+              </Link>
+            </div>
           </div>
         </div>
       ) : (
-        /* Project list */
-        <div className="overflow-hidden rounded-xl border border-white/6">
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] border-b border-white/6 bg-[#0c0e11] px-5 py-3">
-            {["Project", "Runs", "Last run", "Status", ""].map((h) => (
-              <p key={h} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#3a3e46]">{h}</p>
-            ))}
+        /* ── Project grid ─────────────────────────────────────── */
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 24 }}
+               className="grid-cols-1 md:grid-cols-2">
+            {projects.map((project) => {
+              const runs = runCounts[project.id] ?? 0;
+              const verdict = verdictInfo(project.last_status);
+              const initials = projectInitials(project.name);
+              const stack = project.stack ?? [];
+
+              return (
+                <Link
+                  key={project.id}
+                  href={`/app/runs?project=${project.id}`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <div
+                    style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", padding: "18px 18px 16px", display: "flex", flexDirection: "column", gap: 14, transition: "border-color 0.15s, background 0.15s", cursor: "pointer" }}
+                    className="hover:border-white/20 hover:bg-[#0e1116] transition-all"
+                  >
+                    {/* Project head */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg, #1a1f2a, #11141a)", border: "1px solid rgba(255,255,255,0.10)", display: "grid", placeItems: "center", flexShrink: 0, color: "#a78bfa", ...MONO, fontSize: 14, fontWeight: 600 }}>
+                        {initials}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em", margin: 0 }}>
+                          {project.name ?? "Unnamed project"}
+                        </h3>
+                        {stack.length > 0 && (
+                          <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {stack.slice(0, 3).map((s) => (
+                              <span key={s} style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", padding: "1px 6px", borderRadius: 4, background: "#16191e", border: "1px solid rgba(255,255,255,0.07)" }}>{s}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, ...MONO, fontSize: 10, color: verdict.color, border: `1px solid ${verdict.border}`, background: verdict.bg, padding: "3px 8px", borderRadius: 999, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", boxShadow: "0 0 5px currentColor" }} />
+                        {verdict.label}
+                      </span>
+                    </div>
+
+                    {/* Task preview */}
+                    {project.last_task && (
+                      <p style={{ fontSize: 12.5, color: "#8a8f98", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {project.last_task}
+                      </p>
+                    )}
+
+                    {/* Meta strip */}
+                    <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ ...MONO, fontSize: 9.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>Runs</span>
+                        <span style={{ fontSize: 14, color: "#f4f5f7", fontWeight: 500, letterSpacing: "-0.01em" }}>{runs}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ ...MONO, fontSize: 9.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>Last run</span>
+                        <span style={{ fontSize: 13, color: verdict.color, fontWeight: 500 }}>{verdict.label}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ ...MONO, fontSize: 9.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>Active</span>
+                        <span style={{ fontSize: 13, color: "#8a8f98" }}>{relativeDate(project.updated_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+
+            {/* Add project card */}
+            <div
+              style={{ border: "1px dashed rgba(255,255,255,0.14)", borderRadius: 12, background: "transparent", padding: 18, display: "flex", flexDirection: "column", gap: 12, justifyContent: "center", minHeight: 220, textAlign: "center", alignItems: "center", transition: "background 0.15s, border-color 0.15s", cursor: "default" }}
+              className="hover:bg-[#0c0e11] hover:border-[#a78bfa]/40 transition-all"
+            >
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.30)", display: "grid", placeItems: "center", color: "#a78bfa" }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7" }}>Add a project</span>
+              <span style={{ fontSize: 12.5, color: "#8a8f98", maxWidth: 260 }}>
+                Run <code style={{ ...MONO, color: "#a78bfa" }}>runtrim start</code> in any repo to initialize scope, memory and finish-check rules.
+              </span>
+              <div style={{ ...MONO, fontSize: 11.5, color: "#c9ccd2", padding: "7px 11px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ color: "#a78bfa" }}>$</span>
+                <span>cd ~/your-repo &amp;&amp; runtrim start</span>
+              </div>
+            </div>
           </div>
 
-          {projects.map((project, i) => (
-            <div
-              key={project.id}
-              className={`grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.02] ${i < projects.length - 1 ? "border-b border-white/6" : ""}`}
-              style={{ background: i % 2 === 0 ? "#0c0e11" : "#08090b" }}
-            >
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-semibold text-[#f4f5f7]">
-                  {project.name ?? "Unnamed project"}
-                </p>
-                {project.stack && project.stack.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {project.stack.slice(0, 3).map((s) => (
-                      <span key={s} className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-[#5a5f68]">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                )}
+          {/* Archive section */}
+          <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", overflow: "hidden" }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>archive</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>Archived projects</span>
+              <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.06em" }}>soft-deleted · 30 day retention</span>
+              <div style={{ marginLeft: "auto" }}>
+                <span style={{ ...MONO, fontSize: 10, color: "#5a5f68", border: "1px solid rgba(255,255,255,0.10)", padding: "2px 8px", borderRadius: 4 }}>0</span>
               </div>
-              <p className="font-mono text-[13px] text-[#8a8f98]">
-                {runCounts[project.id] ?? 0}
-              </p>
-              <p className="font-mono text-[11px] text-[#5a5f68]">
-                {project.updated_at
-                  ? new Date(project.updated_at).toLocaleDateString()
-                  : "—"}
-              </p>
-              <StatusBadge status={project.last_status} />
-              <Link
-                href={`/app/runs?project=${project.id}`}
-                className="text-[12px] text-[#5a5f68] transition-colors hover:text-[#a78bfa]"
-              >
-                <ArrowRight className="size-3.5" />
-              </Link>
             </div>
-          ))}
-        </div>
+            <div style={{ padding: "48px 24px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 12, background: "#16191e", border: "1px solid rgba(255,255,255,0.07)", display: "grid", placeItems: "center", color: "#3a3e46" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><path d="M3 10h18M9 14h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </div>
+              <p style={{ fontSize: 16, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em", margin: 0 }}>Nothing archived</p>
+              <p style={{ fontSize: 13.5, color: "#8a8f98", maxWidth: 420, lineHeight: 1.5, margin: 0 }}>Archived projects keep their run history and restore points for 30 days, then move to cold storage.</p>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

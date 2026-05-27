@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Projects · RunTrim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="app-shell.css" />
+<style>
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .proj {
+    border: 1px solid var(--line-2);
+    border-radius: 12px;
+    background: var(--bg-1);
+    padding: 18px 18px 16px;
+    display: flex; flex-direction: column; gap: 14px;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+    position: relative;
+  }
+  .proj:hover { border-color: var(--line-3); background: #0e1116; }
+  .proj-head {
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .proj-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1a1f2a, #11141a);
+    border: 1px solid var(--line-2);
+    display: grid; place-items: center;
+    flex: none;
+    color: var(--violet);
+    font-family: var(--mono); font-size: 14px; font-weight: 600;
+  }
+  .proj-name {
+    font-size: 15px; font-weight: 500;
+    color: var(--fg-0); letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .proj-repo {
+    font-family: var(--mono); font-size: 11.5px;
+    color: var(--fg-3); margin-top: 2px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .proj-repo svg { width: 11px; height: 11px; opacity: 0.7; }
+  .proj-menu {
+    margin-left: auto;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--fg-3);
+    cursor: pointer;
+  }
+  .proj-menu:hover { color: var(--fg-1); background: var(--bg-3); }
+
+  .proj-scope-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .proj-meta {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-1);
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .proj-meta .m {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .proj-meta .m .k {
+    font-family: var(--mono); font-size: 9.5px;
+    color: var(--fg-3); letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .proj-meta .m .v {
+    font-size: 14px; color: var(--fg-0); font-weight: 500;
+    letter-spacing: -0.01em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .proj-meta .m .v.mint { color: var(--mint); }
+  .proj-meta .m .v.amber { color: var(--amber); }
+  .proj-meta .m .v.rose { color: var(--rose); }
+  .proj-meta .m .v .led {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; box-shadow: 0 0 5px currentColor;
+  }
+
+  /* Add project card */
+  .proj-add {
+    border: 1px dashed var(--line-3);
+    border-radius: 12px;
+    background: transparent;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 12px; justify-content: center;
+    min-height: 240px;
+    text-align: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .proj-add:hover { background: var(--bg-1); border-color: rgba(167,139,250,0.4); }
+  .proj-add .icon {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: rgba(167,139,250,0.10);
+    border: 1px solid rgba(167,139,250,0.30);
+    display: grid; place-items: center;
+    color: var(--violet);
+  }
+  .proj-add .h { font-size: 14px; font-weight: 500; color: var(--fg-0); letter-spacing: -0.005em; }
+  .proj-add .p { font-size: 12.5px; color: var(--fg-2); max-width: 280px; }
+  .proj-add .cmd-row {
+    font-family: var(--mono); font-size: 11.5px;
+    color: var(--fg-1);
+    padding: 7px 11px;
+    border-radius: 6px;
+    background: var(--bg-3); border: 1px solid var(--line-2);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .proj-add .cmd-row .prompt { color: var(--violet); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ════════════════ SIDEBAR ════════════════ -->
+  <aside class="sidebar">
+    <a class="brand" href="Dashboard.html">
+      <svg width="20" height="22" viewBox="10 10 74 80" fill="none"><path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="#a78bfa"/><path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="#f4f5f7" fill-rule="evenodd"/></svg>
+      <span>Run<span class="dim">Trim</span></span>
+    </a>
+    <div class="user-pill"><span class="led-static"></span><span class="email">psnpronk@gmail.com</span><span class="plan-badge">PRO</span></div>
+    <div class="nav-group">
+      <a class="nav-item" href="Dashboard.html"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/></svg><span>Overview</span></a>
+      <a class="nav-item" href="Connect CLI.html"><svg viewBox="0 0 16 16" fill="none"><path d="M6 5a3 3 0 014.24 0l1.06 1.06a3 3 0 010 4.24l-1.06 1.06M10 11a3 3 0 01-4.24 0L4.7 9.94a3 3 0 010-4.24L5.76 4.64" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Connect CLI</span></a>
+      <a class="nav-item active" href="Projects.html"><svg viewBox="0 0 16 16" fill="none"><path d="M2 5a1 1 0 011-1h3.5l1 1.5H13a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span>Projects</span><span class="count">2</span></a>
+      <a class="nav-item" href="Runs.html"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12 6 6 0 000-12z" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Runs</span><span class="led"></span></a>
+      <a class="nav-item" href="Project Agent.html"><svg viewBox="0 0 16 16" fill="none"><path d="M3 6a3 3 0 013-3h4a3 3 0 013 3v3a3 3 0 01-3 3H7l-3 2v-2h-1V6z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span>Project Agent</span></a>
+      <a class="nav-item" href="Billing.html"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M2 7h12" stroke="currentColor" stroke-width="1.3"/></svg><span>Billing</span></a>
+    </div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-foot">
+      <a class="foot-link" href="#"><svg viewBox="0 0 16 16" fill="none"><path d="M6 3H4a2 2 0 00-2 2v6a2 2 0 002 2h2M11 4l3 4-3 4M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sign out</span></a>
+      <div class="foot-legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a></div>
+    </div>
+  </aside>
+
+
+  <!-- ════════════════ MAIN ════════════════ -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="breadcrumb"><b>psnpronk</b><span class="sep">/</span><span>Projects</span></div>
+      <div class="topbar-search">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" stroke-width="1.3"/><path d="M8.5 8.5L12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span>Search projects, repos, contracts…</span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <span class="topbar-status"><span class="led"></span><span>v0.7.2 · CLI connected</span></span>
+      <button class="topbar-cta">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Add project
+      </button>
+    </header>
+
+
+    <div class="page">
+
+      <div class="page-head">
+        <div class="left">
+          <span class="eyebrow"><span class="tag">projects</span><span>2 tracked · 1 active</span></span>
+          <h1 class="page-title">Projects</h1>
+          <p class="page-sub">A project is any repo you've initialized with <code style="font-family: var(--mono); color: var(--violet);">runtrim start</code>. Each one gets its own memory, scope rules, and run history.</p>
+        </div>
+        <div class="right">
+          <a class="btn btn-ghost" href="#">Import from GitHub</a>
+          <button class="btn btn-primary">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            New project
+          </button>
+        </div>
+      </div>
+
+
+      <!-- FILTERS -->
+      <div class="section-head">
+        <h2>All projects</h2>
+        <span class="meta">workspace</span>
+        <div class="right">
+          <span class="filter-chip active"><span class="led"></span>All <span style="color: var(--fg-3); margin-left: 4px;">2</span></span>
+          <span class="filter-chip">Live <span style="color: var(--fg-3); margin-left: 4px;">1</span></span>
+          <span class="filter-chip">Idle</span>
+          <span class="filter-chip">Archived</span>
+          <span style="width: 1px; height: 18px; background: var(--line-2); margin: 0 4px;"></span>
+          <span class="filter-chip">Recent</span>
+        </div>
+      </div>
+
+
+      <!-- PROJECT GRID -->
+      <div class="project-grid">
+
+        <!-- Project 1 — active -->
+        <div class="proj">
+          <div class="proj-head">
+            <div class="proj-icon">CK</div>
+            <div style="flex: 1; min-width: 0;">
+              <h3 class="proj-name">checkout-api</h3>
+              <div class="proj-repo">
+                <svg viewBox="0 0 12 12" fill="none"><path d="M6 1a5 5 0 00-1.6 9.7c.3 0 .4-.1.4-.3v-1.1c-1.4.3-1.7-.7-1.7-.7-.2-.6-.5-.7-.5-.7-.4-.3 0-.3 0-.3.4 0 .7.5.7.5.4.8 1.2.6 1.5.4 0-.3.2-.6.3-.7-1.1-.1-2.3-.6-2.3-2.5 0-.6.2-1 .5-1.4 0-.1-.2-.6.1-1.3 0 0 .4-.1 1.4.5a4.7 4.7 0 012.5 0c1-.7 1.4-.5 1.4-.5.3.7.1 1.2.1 1.3.3.4.5.8.5 1.4 0 2-1.2 2.4-2.4 2.5.2.2.4.5.4 1V11c0 .2.1.3.4.3A5 5 0 006 1z" fill="currentColor"/></svg>
+                <span>github.com / acme / checkout-api</span>
+              </div>
+            </div>
+            <span class="badge"><span class="led"></span> live</span>
+          </div>
+
+          <div class="proj-scope-row">
+            <span class="pill scope">api/webhooks/**</span>
+            <span class="pill scope">lib/queue/**</span>
+            <span class="pill forbid">.env*</span>
+            <span class="pill forbid">migrations/**</span>
+          </div>
+
+          <div class="proj-meta">
+            <div class="m">
+              <span class="k">Runs</span>
+              <span class="v">42</span>
+            </div>
+            <div class="m">
+              <span class="k">Last run</span>
+              <span class="v mint">passed</span>
+            </div>
+            <div class="m">
+              <span class="k">Restore</span>
+              <span class="v">6</span>
+            </div>
+            <div class="m">
+              <span class="k">Agent</span>
+              <span class="v" style="font-family: var(--mono); font-size: 11.5px; font-weight: 400;">claude-3.7</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project 2 — idle, last run was review -->
+        <div class="proj">
+          <div class="proj-head">
+            <div class="proj-icon" style="color: var(--mint); background: linear-gradient(135deg, #14271f, #0f1a14); border-color: rgba(110,231,183,0.20);">DS</div>
+            <div style="flex: 1; min-width: 0;">
+              <h3 class="proj-name">design-system</h3>
+              <div class="proj-repo">
+                <svg viewBox="0 0 12 12" fill="none"><path d="M6 1a5 5 0 00-1.6 9.7c.3 0 .4-.1.4-.3v-1.1c-1.4.3-1.7-.7-1.7-.7-.2-.6-.5-.7-.5-.7-.4-.3 0-.3 0-.3.4 0 .7.5.7.5.4.8 1.2.6 1.5.4 0-.3.2-.6.3-.7-1.1-.1-2.3-.6-2.3-2.5 0-.6.2-1 .5-1.4 0-.1-.2-.6.1-1.3 0 0 .4-.1 1.4.5a4.7 4.7 0 012.5 0c1-.7 1.4-.5 1.4-.5.3.7.1 1.2.1 1.3.3.4.5.8.5 1.4 0 2-1.2 2.4-2.4 2.5.2.2.4.5.4 1V11c0 .2.1.3.4.3A5 5 0 006 1z" fill="currentColor"/></svg>
+                <span>github.com / acme / design-system</span>
+              </div>
+            </div>
+            <span class="badge amber"><span class="led"></span> review</span>
+          </div>
+
+          <div class="proj-scope-row">
+            <span class="pill scope">tokens/**</span>
+            <span class="pill scope">components/**</span>
+            <span class="pill forbid">storybook/**</span>
+          </div>
+
+          <div class="proj-meta">
+            <div class="m"><span class="k">Runs</span><span class="v">18</span></div>
+            <div class="m"><span class="k">Last run</span><span class="v amber">review</span></div>
+            <div class="m"><span class="k">Restore</span><span class="v">2</span></div>
+            <div class="m"><span class="k">Agent</span><span class="v" style="font-family: var(--mono); font-size: 11.5px; font-weight: 400;">cursor</span></div>
+          </div>
+        </div>
+
+        <!-- Add project -->
+        <div class="proj-add">
+          <div class="icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </div>
+          <span class="h">Add a project</span>
+          <span class="p">Run <code style="color: var(--violet); font-family: var(--mono);">runtrim start</code> in any repo to initialize memory, scope, and finish-check rules.</span>
+          <div class="cmd-row">
+            <span class="prompt">$</span>
+            <span>cd ~/your-repo &amp;&amp; runtrim start</span>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ARCHIVE / RESTORE -->
+      <div class="card">
+        <div class="card-head">
+          <span class="label">archive</span>
+          <span class="title">Archived projects</span>
+          <span class="sub">soft-deleted · 30 day retention</span>
+          <div class="right">
+            <span class="badge" style="color: var(--fg-3); background: transparent; border-color: var(--line-2);">0</span>
+          </div>
+        </div>
+        <div class="empty">
+          <div class="icon" style="color: var(--fg-3);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="14" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M3 10h18M9 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="h2">Nothing archived</div>
+          <p class="p">Archived projects keep their run history and restore points for 30 days, then move to cold storage.</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

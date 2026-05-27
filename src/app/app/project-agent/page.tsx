@@ -96,8 +96,19 @@ export default async function ProjectAgentPage() {
     ),
   };
 
+  const MONO: React.CSSProperties = { fontFamily: "var(--font-geist-mono), ui-monospace, monospace" };
+
   return (
-    <div className="w-full">
+    <div style={{ maxWidth: "92rem", margin: "0 auto" }}>
+      {/* Page head */}
+      <div style={{ marginBottom: 24 }}>
+        <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.14em", textTransform: "uppercase" }}>agent autopilot</span>
+        <h1 style={{ margin: "4px 0 6px", fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", color: "#f4f5f7" }}>Project Agent</h1>
+        <p style={{ fontSize: 13, color: "#8a8f98", lineHeight: 1.6, maxWidth: 560 }}>
+          Ask the RunTrim agent about your projects, runs, and guardrails. The agent reads your contracts and run history to give context-aware guidance.
+        </p>
+      </div>
+
       <ProjectAgentChat canUseAgent={canUseAgent} summary={summary} />
     </div>
   );

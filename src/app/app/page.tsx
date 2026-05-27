@@ -229,11 +229,11 @@ export default async function OverviewPage() {
   const hasCompletedRun = data?.hasCompletedRun ?? false;
 
   const stageDoneFlags = [
-    hasConnectedCli,
-    hasConnectedCli,
-    hasProjects,
-    hasRuns,
-    hasCompletedRun,
+    hasConnectedCli,  // 01 Install CLI (proxy: if connected, binary is installed)
+    hasConnectedCli,  // 02 Connect CLI
+    hasProjects,      // 03 Init project
+    hasRuns,          // 04 Connect MCP (proxy: first run implies MCP was attempted or bypassed)
+    hasCompletedRun,  // 05 Guarded run + finish
   ];
   const doneCount  = stageDoneFlags.filter(Boolean).length;
   const isComplete = doneCount === 5;
@@ -312,11 +312,11 @@ export default async function OverviewPage() {
   ];
 
   const PIPELINE_STAGES = [
-    { n: "01", label: "Install CLI",           desc: "runtrim binary installed on this machine.",               cmd: "npm install -g runtrim" },
-    { n: "02", label: "Connect CLI",           desc: "Auth token paired with this workspace.",                  cmd: "runtrim login" },
-    { n: "03", label: "Set up project",        desc: "Install memory, agent instructions, and MCP config.",     cmd: "runtrim start" },
-    { n: "04", label: "Create a guarded run",  desc: "Compile a contract: scope, memory, finish check.",        cmd: 'runtrim agent "your task" --copy' },
-    { n: "05", label: "Finish & sync",         desc: "Run the finish check. Sync verdict to dashboard.",        cmd: "runtrim finish" },
+    { n: "01", label: "Install CLI",        desc: "Install the runtrim binary on your machine.",                             cmd: "npm install -g runtrim" },
+    { n: "02", label: "Connect CLI",        desc: "Auth token paired. Dashboard can sync your runs.",                        cmd: "runtrim login" },
+    { n: "03", label: "Init project",       desc: "Install memory, agent instructions, and MCP config files.",               cmd: "runtrim start" },
+    { n: "04", label: "Connect MCP",        desc: "Connect agents via MCP. Not tracked remotely — run runtrim doctor.",      cmd: "runtrim mcp instructions" },
+    { n: "05", label: "Guarded run + finish", desc: "Compile a contract, run it with your agent, finish check syncs proof.", cmd: 'runtrim agent "…" --copy' },
   ];
 
   const AGENT_TILES = [
@@ -383,7 +383,7 @@ export default async function OverviewPage() {
           <p style={{ marginTop: 6, fontSize: 14, color: "#8a8f98", maxWidth: 560 }}>
             {isComplete
               ? "Control room active. Scope, verify, and recover any agent run."
-              : `${5 - doneCount} step${5 - doneCount !== 1 ? "s" : ""} to complete setup. Everything activates once your first guarded run is synced.`}
+              : `${5 - doneCount} step${5 - doneCount !== 1 ? "s" : ""} to complete setup. Install CLI, connect MCP, run a guarded task.`}
           </p>
         </div>
         <div className="flex items-center gap-2.5">

@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Billing · RunTrim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="app-shell.css" />
+<style>
+  /* Current plan hero card */
+  .plan-hero {
+    border: 1px solid rgba(167,139,250,0.30);
+    border-radius: 14px;
+    background:
+      radial-gradient(800px 300px at 0% 0%, rgba(167,139,250,0.10), transparent 60%),
+      linear-gradient(180deg, #11131a, #0c0e11);
+    padding: 28px 30px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .plan-hero .corner {
+    position: absolute; top: 0; right: 0;
+    padding: 10px 16px;
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--violet); letter-spacing: 0.10em; text-transform: uppercase;
+    border-left: 1px solid rgba(167,139,250,0.20);
+    border-bottom: 1px solid rgba(167,139,250,0.20);
+    border-radius: 0 14px 0 8px;
+    background: rgba(167,139,250,0.05);
+  }
+  .plan-hero-grid {
+    display: grid; grid-template-columns: 1fr auto; gap: 32px;
+    align-items: end;
+  }
+  .plan-hero .label {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--violet); letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .plan-hero .h {
+    margin: 8px 0 0;
+    font-size: 32px; font-weight: 500;
+    color: var(--fg-0); letter-spacing: -0.025em;
+    line-height: 1.05;
+  }
+  .plan-hero .h .sub {
+    font-size: 14px; font-weight: 400;
+    color: var(--fg-2); margin-left: 12px;
+    letter-spacing: -0.005em;
+  }
+  .plan-hero .sub-row {
+    margin-top: 10px;
+    display: flex; gap: 14px; align-items: center;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--fg-2); letter-spacing: 0.04em;
+  }
+  .plan-hero .sub-row b { color: var(--fg-0); font-weight: 500; }
+  .plan-hero .sub-row .dot {
+    width: 4px; height: 4px; border-radius: 50%; background: var(--fg-4);
+  }
+  .plan-hero .actions {
+    display: flex; gap: 10px; align-items: center;
+  }
+
+  /* Usage strip */
+  .usage-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 24px;
+  }
+  .usage {
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    background: var(--bg-1);
+    padding: 14px 16px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .usage .label {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--fg-3); letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .usage .v {
+    font-size: 24px; font-weight: 500;
+    color: var(--fg-0); letter-spacing: -0.025em;
+    line-height: 1.1;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .usage .v .unit { font-size: 13px; color: var(--fg-3); font-weight: 400; }
+  .usage .v .of  { font-size: 13px; color: var(--fg-3); font-weight: 400; }
+  .usage .bar {
+    height: 5px; border-radius: 3px;
+    background: var(--bg-3); border: 1px solid var(--line-1);
+    overflow: hidden;
+  }
+  .usage .bar > i {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, var(--violet-deep), var(--violet));
+    border-radius: 3px;
+  }
+  .usage .bar.mint > i { background: linear-gradient(90deg, var(--mint-deep), var(--mint)); }
+  .usage .bar.amber > i { background: linear-gradient(90deg, var(--amber), #ffba49); }
+  .usage .meta {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-3); letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Plan compare */
+  .plan-cards {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 24px;
+  }
+  .plan-card {
+    border: 1px solid var(--line-2);
+    border-radius: 12px;
+    background: var(--bg-1);
+    padding: 20px 20px 22px;
+    display: flex; flex-direction: column;
+    min-height: 320px;
+    position: relative;
+  }
+  .plan-card.current {
+    border-color: rgba(167,139,250,0.45);
+    background:
+      radial-gradient(160% 80% at 0% 0%, rgba(167,139,250,0.10), transparent 60%),
+      var(--bg-1);
+  }
+  .plan-card .pname {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-3); letter-spacing: 0.10em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .plan-card.current .pname { color: var(--violet); }
+  .plan-card .pname .me {
+    margin-left: auto;
+    font-size: 9.5px; letter-spacing: 0.10em;
+    padding: 1px 7px; border-radius: 3px;
+    color: var(--violet); background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.25);
+  }
+  .plan-card .pprice {
+    margin-top: 12px;
+    font-size: 26px; font-weight: 500;
+    color: var(--fg-0); letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .plan-card .pprice .per {
+    font-size: 13px; color: var(--fg-3); font-weight: 400; margin-left: 4px;
+  }
+  .plan-card .pdesc {
+    margin-top: 8px;
+    font-size: 13px; color: var(--fg-2);
+    line-height: 1.45;
+  }
+  .plan-card ul {
+    list-style: none; padding: 0;
+    margin: 18px 0 22px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .plan-card li {
+    font-size: 12.5px; color: var(--fg-1);
+    display: grid; grid-template-columns: 12px 1fr; gap: 10px; align-items: start;
+  }
+  .plan-card li::before {
+    content: ""; margin-top: 6px;
+    width: 6px; height: 6px;
+    background: var(--fg-3); border-radius: 1px;
+  }
+  .plan-card.current li::before { background: var(--violet); }
+  .plan-card .pcta {
+    margin-top: auto;
+    height: 32px; border-radius: 6px;
+    border: 1px solid var(--line-3);
+    background: transparent;
+    color: var(--fg-0);
+    font-size: 12.5px; cursor: pointer;
+    font-family: var(--sans); font-weight: 500;
+  }
+  .plan-card .pcta:hover { background: var(--bg-3); }
+  .plan-card .pcta.disabled {
+    color: var(--fg-3); cursor: default;
+    background: var(--bg-2);
+    border-color: var(--line-2);
+  }
+  .plan-card.current .pcta {
+    background: var(--fg-0); color: #0b0d10; border-color: #fff;
+  }
+
+  /* Payment method */
+  .pm-card {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    background: var(--bg-2);
+  }
+  .pm-card .card-brand {
+    width: 44px; height: 30px;
+    border-radius: 5px;
+    background: linear-gradient(135deg, #1a1f2a, #11141a);
+    border: 1px solid var(--line-2);
+    display: grid; place-items: center;
+    color: var(--fg-1);
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em;
+    flex: none;
+  }
+  .pm-card .num {
+    font-family: var(--mono); font-size: 13.5px;
+    color: var(--fg-0); letter-spacing: 0.04em;
+  }
+  .pm-card .meta {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-3); margin-top: 2px;
+  }
+
+  /* Invoice table */
+  .invoice-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 100px 90px 90px;
+    gap: 14px;
+    padding: 11px 16px;
+    align-items: center;
+    border-bottom: 1px solid var(--line-1);
+    font-size: 13px;
+  }
+  .invoice-row:last-child { border-bottom: 0; }
+  .invoice-row.head {
+    background: var(--bg-2);
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--fg-3); letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 10px 16px;
+  }
+  .invoice-row .num { font-family: var(--mono); font-size: 11.5px; color: var(--fg-2); }
+  .invoice-row .desc { color: var(--fg-0); }
+  .invoice-row .desc .sub { font-family: var(--mono); font-size: 11px; color: var(--fg-3); display: block; margin-top: 2px; }
+  .invoice-row .amt { font-family: var(--mono); font-size: 13px; color: var(--fg-0); }
+  .invoice-row .status {
+    font-family: var(--mono); font-size: 10px;
+    padding: 2px 8px; border-radius: 4px;
+    color: var(--mint); background: rgba(110,231,183,0.07);
+    border: 1px solid rgba(110,231,183,0.28);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    width: max-content;
+  }
+  .invoice-row .pdf {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--violet); cursor: pointer;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ════════════════ SIDEBAR ════════════════ -->
+  <aside class="sidebar">
+    <a class="brand" href="Dashboard.html">
+      <svg width="20" height="22" viewBox="10 10 74 80" fill="none"><path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="#a78bfa"/><path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="#f4f5f7" fill-rule="evenodd"/></svg>
+      <span>Run<span class="dim">Trim</span></span>
+    </a>
+    <div class="user-pill"><span class="led-static"></span><span class="email">psnpronk@gmail.com</span><span class="plan-badge">PRO</span></div>
+    <div class="nav-group">
+      <a class="nav-item" href="Dashboard.html"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="0.8" stroke="currentColor" stroke-width="1.3"/></svg><span>Overview</span></a>
+      <a class="nav-item" href="Connect CLI.html"><svg viewBox="0 0 16 16" fill="none"><path d="M6 5a3 3 0 014.24 0l1.06 1.06a3 3 0 010 4.24l-1.06 1.06M10 11a3 3 0 01-4.24 0L4.7 9.94a3 3 0 010-4.24L5.76 4.64" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Connect CLI</span></a>
+      <a class="nav-item" href="Projects.html"><svg viewBox="0 0 16 16" fill="none"><path d="M2 5a1 1 0 011-1h3.5l1 1.5H13a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span>Projects</span><span class="count">2</span></a>
+      <a class="nav-item" href="Runs.html"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12 6 6 0 000-12z" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Runs</span><span class="led"></span></a>
+      <a class="nav-item" href="Project Agent.html"><svg viewBox="0 0 16 16" fill="none"><path d="M3 6a3 3 0 013-3h4a3 3 0 013 3v3a3 3 0 01-3 3H7l-3 2v-2h-1V6z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span>Project Agent</span></a>
+      <a class="nav-item active" href="Billing.html"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M2 7h12" stroke="currentColor" stroke-width="1.3"/></svg><span>Billing</span></a>
+    </div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-foot">
+      <a class="foot-link" href="#"><svg viewBox="0 0 16 16" fill="none"><path d="M6 3H4a2 2 0 00-2 2v6a2 2 0 002 2h2M11 4l3 4-3 4M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sign out</span></a>
+      <div class="foot-legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a></div>
+    </div>
+  </aside>
+
+
+  <!-- ════════════════ MAIN ════════════════ -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="breadcrumb"><b>psnpronk</b><span class="sep">/</span><span>Billing</span></div>
+      <div class="topbar-search">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" stroke-width="1.3"/><path d="M8.5 8.5L12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span>Search invoices, plans…</span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <span class="topbar-status"><span class="led"></span><span>v0.7.2 · CLI connected</span></span>
+      <a class="topbar-cta" href="#">Manage subscription</a>
+    </header>
+
+
+    <div class="page">
+
+      <div class="page-head">
+        <div class="left">
+          <span class="eyebrow"><span class="tag">billing</span><span>workspace · personal</span></span>
+          <h1 class="page-title">Billing</h1>
+          <p class="page-sub">Your plan, usage, and invoices. The CLI stays free forever. Pro adds cloud history, synced memory, and restore metadata across machines.</p>
+        </div>
+        <div class="right">
+          <a class="btn btn-ghost" href="#">View tax info</a>
+          <button class="btn btn-primary">Manage subscription</button>
+        </div>
+      </div>
+
+
+      <!-- CURRENT PLAN HERO -->
+      <div class="plan-hero">
+        <div class="corner">current plan</div>
+        <div class="plan-hero-grid">
+          <div>
+            <span class="label">RunTrim Pro</span>
+            <h2 class="h">$18<span class="sub">/ month · billed monthly</span></h2>
+            <div class="sub-row">
+              <span>renews <b>Jun 21, 2026</b></span>
+              <span class="dot"></span>
+              <span><b>•••• 4242</b></span>
+              <span class="dot"></span>
+              <span>seats <b>1 / 1</b></span>
+              <span class="dot"></span>
+              <span><b>Auto-renew on</b></span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-ghost">Switch to yearly · save 20%</button>
+            <button class="btn btn-violet">Upgrade to Builder</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- USAGE STRIP -->
+      <div class="usage-strip">
+        <div class="usage">
+          <span class="label">Guarded runs · this period</span>
+          <span class="v">142 <span class="of">/ unlimited</span></span>
+          <div class="bar mint"><i style="width: 100%; opacity: 0.6;"></i></div>
+          <span class="meta">no cap on Pro plan</span>
+        </div>
+        <div class="usage">
+          <span class="label">Cloud history · 90 day retention</span>
+          <span class="v">86 <span class="unit">runs synced</span></span>
+          <div class="bar"><i style="width: 60%"></i></div>
+          <span class="meta">86 of last 142 runs synced</span>
+        </div>
+        <div class="usage">
+          <span class="label">Synced memory · projects</span>
+          <span class="v">2 <span class="of">/ 5</span></span>
+          <div class="bar"><i style="width: 40%"></i></div>
+          <span class="meta">checkout-api · design-system</span>
+        </div>
+        <div class="usage">
+          <span class="label">Estimated savings · this month</span>
+          <span class="v" style="color: var(--mint);">$14.20</span>
+          <div class="bar amber"><i style="width: 28%"></i></div>
+          <span class="meta">812k tokens trimmed</span>
+        </div>
+      </div>
+
+
+      <!-- PLAN COMPARE -->
+      <div class="section-head">
+        <h2>Plans</h2>
+        <span class="meta">workspace · monthly billing</span>
+        <div class="right">
+          <span class="filter-chip active"><span class="led"></span>Monthly</span>
+          <span class="filter-chip">Yearly <span style="color: var(--mint); margin-left: 4px;">−20%</span></span>
+        </div>
+      </div>
+
+      <div class="plan-cards">
+
+        <div class="plan-card">
+          <span class="pname">Free</span>
+          <span class="pprice">$0<span class="per">/ local</span></span>
+          <p class="pdesc">The CLI, local memory and recovery for individual AI coding runs.</p>
+          <ul>
+            <li>Unlimited local runs</li>
+            <li>Memory, scope, finish checks</li>
+            <li>All supported agents</li>
+            <li>Local run history</li>
+            <li>Local restore for latest run</li>
+          </ul>
+          <button class="pcta">Downgrade</button>
+        </div>
+
+        <div class="plan-card current">
+          <span class="pname">Pro <span class="me">current</span></span>
+          <span class="pprice">$18<span class="per">/ month</span></span>
+          <p class="pdesc">Personal agent control with synced memory, cloud history and recovery metadata.</p>
+          <ul>
+            <li>Everything in Free</li>
+            <li>Cloud run history · 90 days</li>
+            <li>Cross-machine memory</li>
+            <li>Web dashboard</li>
+            <li>Synced restore metadata</li>
+          </ul>
+          <button class="pcta">Manage Pro</button>
+        </div>
+
+        <div class="plan-card">
+          <span class="pname">Builder</span>
+          <span class="pprice">$48<span class="per">/ month</span></span>
+          <p class="pdesc">Advanced guardrails for founders shipping production code with AI agents daily.</p>
+          <ul>
+            <li>Everything in Pro</li>
+            <li>Unlimited projects</li>
+            <li>Proof / drift reports</li>
+            <li>Priority guardrails</li>
+            <li>Advanced recovery history</li>
+          </ul>
+          <button class="pcta">Upgrade to Builder</button>
+        </div>
+
+        <div class="plan-card">
+          <span class="pname">Team</span>
+          <span class="pprice">$24<span class="per">/ seat / mo</span></span>
+          <p class="pdesc">Shared control for teams using AI coding agents.</p>
+          <ul>
+            <li>Everything in Builder</li>
+            <li>Shared team state</li>
+            <li>Approvals and audit logs</li>
+            <li>Shared recovery logs</li>
+            <li>GitHub checks (soon)</li>
+          </ul>
+          <button class="pcta">Contact sales</button>
+        </div>
+
+      </div>
+
+
+      <!-- PAYMENT METHOD + INVOICES -->
+      <div class="grid-2-equal">
+
+        <!-- Payment method -->
+        <div class="card">
+          <div class="card-head">
+            <span class="label">payment method</span>
+            <span class="title">Card on file</span>
+            <div class="right">
+              <button class="btn btn-sm btn-ghost">Update</button>
+            </div>
+          </div>
+          <div style="padding: 16px;">
+            <div class="pm-card">
+              <span class="card-brand">VISA</span>
+              <div>
+                <div class="num">•••• •••• •••• 4242</div>
+                <div class="meta">expires <b style="color: var(--fg-1);">09 / 28</b> · billing <b style="color: var(--fg-1);">monthly</b></div>
+              </div>
+              <span style="margin-left: auto;"><span class="badge"><span class="led"></span> active</span></span>
+            </div>
+            <div style="margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line-1); border-radius: 8px; background: var(--bg-2); display: flex; gap: 10px; align-items: center;">
+              <span style="width: 28px; height: 28px; border-radius: 6px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; color: var(--mint); flex: none;">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3 3 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <div style="flex: 1;">
+                <div style="font-size: 12.5px; color: var(--fg-0);">Next charge</div>
+                <div style="font-family: var(--mono); font-size: 11px; color: var(--fg-3); margin-top: 2px;">$18.00 · Jun 21, 2026</div>
+              </div>
+              <button class="btn btn-sm btn-ghost">Receipt prefs</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Billing address / tax -->
+        <div class="card">
+          <div class="card-head">
+            <span class="label">billing details</span>
+            <span class="title">Address &amp; tax</span>
+            <div class="right">
+              <button class="btn btn-sm btn-ghost">Edit</button>
+            </div>
+          </div>
+          <div style="padding: 18px;">
+            <div style="font-family: var(--mono); font-size: 12.5px; color: var(--fg-1); line-height: 1.7;">
+              psnpronk<br/>
+              Amsterdam, NL<br/>
+              <span style="color: var(--fg-3);">VAT</span> <span style="color: var(--fg-0);">NL ••••••••B01</span><br/>
+              <span style="color: var(--fg-3);">Email</span> <span style="color: var(--fg-0);">psnpronk@gmail.com</span>
+            </div>
+            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-1); display: flex; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em;">
+              <span>tax: <b style="color: var(--fg-1); font-weight: 500;">VAT applies</b></span>
+              <span style="opacity: 0.5;">·</span>
+              <span>currency: <b style="color: var(--fg-1); font-weight: 500;">USD</b></span>
+              <span style="opacity: 0.5;">·</span>
+              <span>locale: <b style="color: var(--fg-1); font-weight: 500;">en-US</b></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- INVOICES -->
+      <div class="section-head" style="margin-top: 24px;">
+        <h2>Invoices</h2>
+        <span class="meta">3 months</span>
+        <div class="right">
+          <a class="btn btn-sm btn-ghost" href="#">Download all</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="invoice-row head">
+          <span>Invoice</span>
+          <span>Description</span>
+          <span style="text-align: right;">Amount</span>
+          <span>Status</span>
+          <span style="text-align: right;">Receipt</span>
+        </div>
+
+        <div class="invoice-row">
+          <span class="num">INV-0014</span>
+          <div class="desc">RunTrim Pro · monthly<span class="sub">period: May 21 – Jun 21, 2026</span></div>
+          <span class="amt" style="text-align: right;">$18.00</span>
+          <span class="status">paid</span>
+          <span class="pdf">PDF ↓</span>
+        </div>
+        <div class="invoice-row">
+          <span class="num">INV-0013</span>
+          <div class="desc">RunTrim Pro · monthly<span class="sub">period: Apr 21 – May 21, 2026</span></div>
+          <span class="amt" style="text-align: right;">$18.00</span>
+          <span class="status">paid</span>
+          <span class="pdf">PDF ↓</span>
+        </div>
+        <div class="invoice-row">
+          <span class="num">INV-0012</span>
+          <div class="desc">RunTrim Pro · monthly<span class="sub">period: Mar 21 – Apr 21, 2026</span></div>
+          <span class="amt" style="text-align: right;">$18.00</span>
+          <span class="status">paid</span>
+          <span class="pdf">PDF ↓</span>
+        </div>
+        <div class="invoice-row">
+          <span class="num">INV-0011</span>
+          <div class="desc">RunTrim Pro · 3-day trial<span class="sub">period: Mar 18 – Mar 21, 2026</span></div>
+          <span class="amt" style="text-align: right; color: var(--fg-3);">$0.00</span>
+          <span class="status" style="color: var(--fg-3); background: transparent; border-color: var(--line-2);">trial</span>
+          <span class="pdf" style="color: var(--fg-3);">PDF ↓</span>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>
