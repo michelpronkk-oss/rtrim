@@ -102,6 +102,8 @@ export default async function ConnectPage() {
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
           <a
             href="/app/install"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px", borderRadius: 7, fontSize: 13, fontWeight: 500, border: "1px solid rgba(255,255,255,0.16)", color: "#c9ccd2", textDecoration: "none" }}
             className="hover:border-white/30 hover:text-[#f4f5f7] transition-colors"
           >
@@ -167,26 +169,7 @@ export default async function ConnectPage() {
             </span>
           </div>
 
-          {hasConnectedCli ? (
-            <div style={{ padding: "10px 14px", background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 7, ...MONO, fontSize: 13, color: "#c9ccd2", display: "flex", alignItems: "center", gap: 12 }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "#6ee7b7", flexShrink: 0 }}><path d="M5 7l1.5 1.5L9 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/></svg>
-              <code style={{ flex: 1, color: "#6ee7b7" }}>rt_live_••••••••••••••••••••</code>
-            </div>
-          ) : (
-            <div style={{ padding: "10px 14px", background: "#16191e", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 7, ...MONO, fontSize: 12, color: "#5a5f68", display: "flex", alignItems: "center", gap: 12 }}>
-              <span>Generate a token to pair this machine</span>
-            </div>
-          )}
-
-          {cliCreatedAt && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.06em" }}>
-              <span>created <b style={{ color: "#c9ccd2", fontWeight: 500 }}>{new Date(cliCreatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</b></span>
-            </div>
-          )}
-
-          <div style={{ marginTop: 4 }}>
-            <GenerateTokenButton />
-          </div>
+          <GenerateTokenButton hasConnectedCli={hasConnectedCli} cliCreatedAt={cliCreatedAt} />
         </div>
       </div>
 
@@ -223,6 +206,8 @@ export default async function ConnectPage() {
             />
             <a
               href="/app/install"
+              target="_blank"
+              rel="noopener noreferrer"
               style={{ display: "inline-flex", alignItems: "center", height: 28, padding: "0 10px", borderRadius: 6, fontSize: 12, fontWeight: 500, border: "1px solid rgba(255,255,255,0.16)", color: "#c9ccd2", textDecoration: "none" }}
               className="hover:text-white hover:border-white/30 transition-colors"
             >

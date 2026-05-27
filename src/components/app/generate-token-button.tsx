@@ -1,69 +1,65 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Copy, Check, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, Copy, Check, RefreshCw, AlertTriangle } from "lucide-react";
 
-export function GenerateTokenButton() {
-  const [token, setToken]     = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied]   = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
+const MONO: React.CSSProperties = {
+  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+};
+
+interface GenerateTokenButtonProps {
+  hasConnectedCli?: boolean;
+  cliCreatedAt?: string | null;
+}
+
+export function GenerateTokenButton({ hasConnectedCli = false, cliCreatedAt }: GenerateTokenButtonProps) {
+  const [newToken,   setNewToken]   = useState<string | null>(null);
+  const [visible,    setVisible]    = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [copied,     setCopied]     = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   async function generate() {
-    if (token && !confirmed) {
-      setConfirmed(true);
-      return;
-    }
     setLoading(true);
     setError(null);
-    setToken(null);
-    setConfirmed(false);
-
-    const res = await fetch("/api/cli-token/generate", { method: "POST" });
+    setConfirming(false);
+    const res  = await fetch("/api/cli-token/generate", { method: "POST" });
     const json = await res.json();
-
     if (!res.ok || !json.ok) {
       setError(json.error ?? "Could not generate token.");
     } else {
-      setToken(json.token as string);
+      setNewToken(json.token as string);
+      setVisible(true);
     }
     setLoading(false);
   }
 
   async function copy() {
-    if (!token) return;
-    await navigator.clipboard.writeText(token);
+    if (!newToken) return;
+    await navigator.clipboard.writeText(newToken);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (confirmed) {
+  // ── Confirm regenerate ──────────────────────────────────────────────────
+  if (confirming) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-start gap-3 rounded-lg border border-[#F0BF72]/20 bg-[#F0BF72]/6 px-4 py-3">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#F0BF72]" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 7, border: "1px solid rgba(245,165,36,0.22)", background: "rgba(245,165,36,0.05)" }}>
+          <AlertTriangle size={13} style={{ color: "#f5a524", flexShrink: 0, marginTop: 1 }} />
           <div>
-            <p className="text-[13px] font-semibold text-[#EDEEFF]">
-              This will invalidate your existing token.
-            </p>
-            <p className="mt-0.5 text-[12px] text-[#5E6A88]">
-              Any machine using the old token will stop syncing.
-            </p>
+            <p style={{ fontSize: 12.5, color: "#f4f5f7", fontWeight: 500, margin: 0 }}>This will invalidate your existing token.</p>
+            <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", margin: "3px 0 0" }}>Any machine using the old token will stop syncing.</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={generate}
-            disabled={loading}
-            className="rounded-lg bg-[#7C6DFA] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
-          >
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={generate} disabled={loading}
+            style={{ height: 30, padding: "0 12px", borderRadius: 6, background: "#a78bfa", color: "#0b0d10", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit", opacity: loading ? 0.5 : 1 }}>
             {loading ? "Generating..." : "Yes, regenerate"}
           </button>
-          <button
-            onClick={() => setConfirmed(false)}
-            className="rounded-lg border border-white/10 px-4 py-2 text-[13px] text-[#9699BE] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-          >
+          <button onClick={() => setConfirming(false)}
+            style={{ height: 30, padding: "0 12px", borderRadius: 6, background: "transparent", color: "#5a5f68", fontSize: 12, border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "inherit" }}>
             Cancel
           </button>
         </div>
@@ -71,63 +67,80 @@ export function GenerateTokenButton() {
     );
   }
 
-  if (token) {
-    return (
-      <div className="space-y-3">
-        <div className="rounded-xl border border-[#4DE8B0]/18 bg-[#4DE8B0]/5 px-4 py-4">
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#4DE8B0]/70">
-            CLI token — shown once
-          </p>
-          <div
-            className="flex items-center overflow-hidden rounded-lg"
-            style={{
-              background: "#090A1F",
-              border: "1px solid rgba(77,232,176,0.20)",
-            }}
-          >
-            <code className="flex-1 overflow-x-auto whitespace-nowrap px-4 py-3 font-mono text-[13px] text-[#4DE8B0]">
-              {token}
-            </code>
-            <button
-              onClick={copy}
-              className="flex shrink-0 items-center gap-1.5 border-l border-[#4DE8B0]/15 px-4 py-3 font-mono text-[11px] text-[#4DE8B0]/70 transition-colors hover:text-[#4DE8B0]"
-            >
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
-          <p className="mt-2.5 text-[12px] text-[#5E6A88]">
-            Copy this token now. It will not be shown again. Run{" "}
-            <code className="font-mono text-[#9E91FF]">runtrim login</code> and paste it when prompted.
-          </p>
-        </div>
-        <button
-          onClick={generate}
-          className="flex items-center gap-1.5 text-[12px] text-[#3A4460] transition-colors hover:text-[#9699BE]"
-        >
-          <RefreshCw className="size-3.5" />
-          Regenerate token
-        </button>
-      </div>
-    );
-  }
+  // ── Token display row (existing masked OR new token) ────────────────────
+  const showingNewToken = newToken !== null;
 
   return (
-    <div className="space-y-2">
-      {error && (
-        <p className="text-[12px] text-[#FF8F8F]">{error}</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+      {/* Token field */}
+      <div style={{ padding: "10px 14px", background: "#16191e", border: `1px solid ${showingNewToken ? "rgba(110,231,183,0.22)" : "rgba(255,255,255,0.10)"}`, borderRadius: 7, display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {showingNewToken ? (
+          <>
+            {/* Eye toggle */}
+            <button onClick={() => setVisible((v) => !v)} style={{ background: "none", border: "none", color: "#5a5f68", cursor: "pointer", display: "flex", flexShrink: 0, padding: 0 }}>
+              {visible ? <EyeOff size={13} /> : <Eye size={13} />}
+            </button>
+            <code style={{ ...MONO, flex: 1, fontSize: 12.5, color: "#6ee7b7", overflow: "hidden", textOverflow: visible ? "unset" : "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+              {visible ? newToken : newToken.replace(/(?<=.{12})./g, "•")}
+            </code>
+            {/* Copy */}
+            <button onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 5, ...MONO, fontSize: 11, color: copied ? "#6ee7b7" : "#5a5f68", background: "none", border: "none", cursor: "pointer", flexShrink: 0, padding: 0, transition: "color 0.1s" }}>
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </>
+        ) : hasConnectedCli ? (
+          <>
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ color: "#6ee7b7", flexShrink: 0 }}><path d="M5 7l1.5 1.5L9 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/></svg>
+            <code style={{ ...MONO, flex: 1, fontSize: 12.5, color: "#6ee7b7", minWidth: 0 }}>rt_live_••••••••••••••••••••</code>
+          </>
+        ) : (
+          <span style={{ ...MONO, fontSize: 12, color: "#5a5f68" }}>Generate a token to pair this machine</span>
+        )}
+      </div>
+
+      {/* Show-once note when new token is visible */}
+      {showingNewToken && (
+        <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", margin: 0, lineHeight: 1.5 }}>
+          Copy this token now — it will not be shown again. Run <span style={{ color: "#a78bfa" }}>runtrim login</span> and paste it when prompted.
+        </p>
       )}
-      <button
-        onClick={generate}
-        disabled={loading}
-        className="inline-flex items-center gap-2 rounded-lg bg-[#7C6DFA] px-5 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
-        style={{
-          boxShadow:
-            "0 0 0 1px rgba(124,109,250,0.45), 0 4px 16px rgba(124,109,250,0.22), inset 0 1px 0 rgba(255,255,255,0.10)",
-        }}
-      >
-        {loading ? "Generating..." : "Generate CLI token"}
-      </button>
+
+      {/* Created date */}
+      {cliCreatedAt && !showingNewToken && (
+        <p style={{ ...MONO, fontSize: 11, color: "#5a5f68", margin: 0 }}>
+          created <span style={{ color: "#c9ccd2" }}>
+            {new Date(cliCreatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        </p>
+      )}
+
+      {/* Error */}
+      {error && <p style={{ ...MONO, fontSize: 11, color: "#f87171", margin: 0 }}>{error}</p>}
+
+      {/* Action button */}
+      {showingNewToken ? (
+        <button onClick={() => setConfirming(true)}
+          style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, ...MONO, fontSize: 11, color: "#3a3e46", background: "none", border: "none", cursor: "pointer", padding: 0, transition: "color 0.1s" }}
+          className="hover:text-[#8a8f98]">
+          <RefreshCw size={11} />
+          Regenerate token
+        </button>
+      ) : hasConnectedCli ? (
+        <button onClick={() => setConfirming(true)}
+          style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, ...MONO, fontSize: 11, color: "#3a3e46", background: "none", border: "none", cursor: "pointer", padding: 0, transition: "color 0.1s" }}
+          className="hover:text-[#8a8f98]">
+          <RefreshCw size={11} />
+          Regenerate token
+        </button>
+      ) : (
+        <button onClick={generate} disabled={loading}
+          style={{ alignSelf: "flex-start", height: 32, padding: "0 14px", borderRadius: 6, background: "#f4f5f7", color: "#0b0d10", fontSize: 12.5, fontWeight: 600, border: "1px solid #fff", cursor: "pointer", fontFamily: "inherit", opacity: loading ? 0.6 : 1, transition: "background 0.12s" }}
+          className="hover:bg-white">
+          {loading ? "Generating..." : "Generate CLI token"}
+        </button>
+      )}
     </div>
   );
 }

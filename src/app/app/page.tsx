@@ -387,13 +387,15 @@ export default async function OverviewPage() {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
-          <Link
+          <a
             href="/app/install"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px", borderRadius: 7, fontSize: 13, fontWeight: 500, border: "1px solid rgba(255,255,255,0.16)", color: "#c9ccd2", textDecoration: "none", transition: "border-color 0.15s, color 0.15s" }}
             className="hover:border-white/30 hover:text-[#f4f5f7]"
           >
             View docs
-          </Link>
+          </a>
           <Link
             href={isComplete ? "/app/runs" : "/app/connect"}
             style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 34, padding: "0 14px", borderRadius: 7, fontSize: 13, fontWeight: 500, background: "#f4f5f7", color: "#0b0d10", border: "1px solid #fff", textDecoration: "none" }}
@@ -939,9 +941,9 @@ export default async function OverviewPage() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <CopyButton text="runtrim ci setup" label="Copy setup" />
-              <Link href="/app/install" style={{ display: "inline-flex", alignItems: "center", borderRadius: 7, border: "1px solid rgba(255,255,255,0.10)", padding: "6px 12px", fontSize: 12, color: "#c9ccd2", textDecoration: "none" }}>
+              <a href="/app/install" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", borderRadius: 7, border: "1px solid rgba(255,255,255,0.10)", padding: "6px 12px", fontSize: 12, color: "#c9ccd2", textDecoration: "none" }}>
                 Open guide
-              </Link>
+              </a>
             </div>
           </div>
         </div>

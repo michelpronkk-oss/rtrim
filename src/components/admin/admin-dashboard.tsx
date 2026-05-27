@@ -670,12 +670,6 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
                     </div>
                   ))}
                 </div>
-                <p style={{ ...MONO, fontSize: 10.5, color: "#3a3e46", marginTop: 14, lineHeight: 1.6, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  {vercelOn
-                    ? "Vercel Analytics is connected. Traffic numbers (visitors, page views, top pages) are pulled live from the Vercel API."
-                    : "To connect Vercel Analytics, add these env vars: VERCEL_API_TOKEN (vercel.com/account/tokens), VERCEL_PROJECT_ID (Project Settings > General), and optionally VERCEL_TEAM_ID. Until then, traffic data falls back to the internal runtrim_events table."
-                  }
-                </p>
               </div>
             </section>
 

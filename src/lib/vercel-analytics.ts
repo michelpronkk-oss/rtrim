@@ -61,14 +61,14 @@ function buildParams(from: Date, to: Date): URLSearchParams {
   return params;
 }
 
-async function fetchVercel<T>(path: string, params: URLSearchParams): Promise<T | null> {
+async function fetchVercel<T>(path: string, params: URLSearchParams): Promise<{ data: T; status: number } | { data: null; status: number }> {
   const url = `${BASE}${path}?${params.toString()}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}` },
-    next: { revalidate: 300 }, // 5-min server-side cache
+    next: { revalidate: 300 },
   });
-  if (!res.ok) return null;
-  return res.json() as Promise<T>;
+  if (!res.ok) return { data: null, status: res.status };
+  return { data: await res.json() as T, status: res.status };
 }
 
 function extractStats(raw: { data?: Partial<VercelStats> } | null): VercelStats {
@@ -90,23 +90,26 @@ export async function getVercelAnalytics(): Promise<VercelAnalyticsData> {
   const ago24h = new Date(now.getTime() -      24 * 60 * 60 * 1000);
 
   try {
-    const [stats7d, stats24h, pages, referrers] = await Promise.all([
+    const [s7d, s24h, pages, referrers] = await Promise.all([
       fetchVercel<{ data?: Partial<VercelStats> }>("/v1/web/insights/stats", buildParams(ago7d, now)),
       fetchVercel<{ data?: Partial<VercelStats> }>("/v1/web/insights/stats", buildParams(ago24h, now)),
       fetchVercel<{ data?: VercelPage[] }>("/v1/web/insights/pages", buildParams(ago7d, now)),
       fetchVercel<{ data?: VercelReferrer[] }>("/v1/web/insights/referrers", buildParams(ago7d, now)),
     ]);
 
-    if (stats7d === null) {
+    if (s7d.status === 401 || s7d.status === 403) {
       return { connected: false, reason: "auth_error" };
+    }
+    if (s7d.data === null) {
+      return { connected: false, reason: "fetch_error" };
     }
 
     return {
       connected:  true,
-      stats7d:    extractStats(stats7d),
-      stats24h:   extractStats(stats24h),
-      topPages:   pages?.data ?? [],
-      referrers:  referrers?.data ?? [],
+      stats7d:    extractStats(s7d.data),
+      stats24h:   extractStats(s24h.data),
+      topPages:   pages.data?.data ?? [],
+      referrers:  referrers.data?.data ?? [],
     };
   } catch {
     return { connected: false, reason: "fetch_error" };

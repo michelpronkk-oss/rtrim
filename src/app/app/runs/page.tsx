@@ -213,9 +213,9 @@ export default async function RunsPage({
             <Link href="/app/connect" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.10)", fontSize: 13, color: "#a3aebd", textDecoration: "none" }}>
               Connect CLI
             </Link>
-            <Link href="/app/install" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, fontSize: 13, color: "#5a5f68", textDecoration: "none" }}>
+            <a href="/app/install" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, fontSize: 13, color: "#5a5f68", textDecoration: "none" }}>
               View install guide
-            </Link>
+            </a>
           </div>
         </div>
       ) : (

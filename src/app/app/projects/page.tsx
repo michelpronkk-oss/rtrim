@@ -177,10 +177,10 @@ export default async function ProjectsPage() {
                 className="hover:border-white/28 hover:text-white transition-colors">
                 Connect CLI
               </Link>
-              <Link href="/app/install" style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 12px", borderRadius: 6, fontSize: 12, color: "#5a5f68", textDecoration: "none" }}
+              <a href="/app/install" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 12px", borderRadius: 6, fontSize: 12, color: "#5a5f68", textDecoration: "none" }}
                 className="hover:text-[#8a8f98] transition-colors">
                 View install guide
-              </Link>
+              </a>
             </div>
           </div>
         </div>
