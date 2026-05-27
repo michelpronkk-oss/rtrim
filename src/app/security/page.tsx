@@ -59,6 +59,7 @@ export default function SecurityPage() {
       title: "Contact",
       body: [
         "Security and trust questions can be sent to hello@runtrim.com.",
+        "For direct product behavior answers, see /faq.",
       ],
     },
   ];

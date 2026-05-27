@@ -115,3 +115,85 @@ export function RunTrimLogo({
     </span>
   );
 }
+
+/**
+ * Wordmark only — Inter Tight 500, "Run" full + "Trim" at dim opacity.
+ * Use in footers and long-form documents where the mark would be redundant.
+ */
+export function RunTrimWordmark({
+  size = 22,
+  ink = "#f4f5f7",
+  dim = 0.6,
+  className,
+}: Omit<LogoProps, "accent">) {
+  return (
+    <span
+      style={{
+        display: "inline-flex", alignItems: "baseline",
+        fontFamily: "var(--font-sans), ui-sans-serif, system-ui, sans-serif",
+        fontWeight: 500,
+        fontSize: size,
+        letterSpacing: "-0.035em",
+        color: ink,
+        lineHeight: 1,
+        fontFeatureSettings: '"ss01", "cv11"',
+      }}
+      className={className}
+    >
+      <span>Run</span>
+      <span style={{ opacity: dim }}>Trim</span>
+    </span>
+  );
+}
+
+/**
+ * Stacked / vertical lockup — mark centered above wordmark.
+ * Use for app tiles (128 px+) and splash screens.
+ */
+export function RunTrimVLockup({
+  size = 56,
+  ink = "#f4f5f7",
+  accent = "#a78bfa",
+  dim = 0.6,
+  className,
+}: LogoProps) {
+  const wordSize = Math.round(size * 0.42);
+  const gap = Math.round(size * 0.32);
+
+  return (
+    <span
+      style={{
+        display: "inline-flex", flexDirection: "column",
+        alignItems: "center", gap,
+      }}
+      className={className}
+    >
+      <RunTrimMark size={size} ink={ink} accent={accent} />
+      <RunTrimWordmark size={wordSize} ink={ink} dim={dim} />
+    </span>
+  );
+}
+
+/**
+ * App tile — mark with rounded-rect background tile.
+ * Sizes: 16 / 24 / 32 / 48 / 64 (favicon-safe at 16).
+ */
+export function RunTrimTile({
+  size = 64,
+  ink = "#f4f5f7",
+  accent = "#a78bfa",
+  bg = "#0e1116",
+  className,
+}: LogoProps & { bg?: string }) {
+  const rx = Math.round(size * 0.22);
+  return (
+    <RunTrimMark
+      size={size}
+      ink={ink}
+      accent={accent}
+      bg={bg}
+      bgRadius={rx}
+      className={className}
+    />
+  );
+}

@@ -48,6 +48,32 @@
 
 :root,
 .dark {
+  /* ── RunTrim design token ladder ─────────────────────────────────────────── */
+  /* Surfaces */
+  --rt-bg0: #08090b;
+  --rt-bg1: #0c0e11;
+  --rt-bg2: #111317;
+  --rt-bg3: #16191e;
+  --rt-bg4: #1c2026;
+  /* Text */
+  --rt-fg0: #f4f5f7;
+  --rt-fg1: #c9ccd2;
+  --rt-fg2: #8a8f98;
+  --rt-fg3: #5a5f68;
+  --rt-fg4: #3a3e46;
+  /* Lines */
+  --rt-line1: rgba(255,255,255,0.06);
+  --rt-line2: rgba(255,255,255,0.10);
+  --rt-line3: rgba(255,255,255,0.16);
+  /* Brand */
+  --rt-violet:      #a78bfa;
+  --rt-violet-deep: #7c5cff;
+  --rt-mint:        #6ee7b7;
+  --rt-mint-deep:   #10b981;
+  --rt-amber:       #f5a524;
+  --rt-rose:        #f87171;
+  /* ─────────────────────────────────────────────────────────────────────────── */
+
   /* Graphite base — matches new homepage design language */
   --background:          #08090b;
   --foreground:          #f4f5f7;
@@ -96,7 +122,10 @@
 @layer base {
   * { @apply border-border outline-ring/50; }
   html { @apply font-sans; }
-  body { @apply bg-background text-foreground; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01","ss02","cv11";
+  }
   ::selection {
     background: rgba(124, 109, 250, 0.22);
     color: #EDEEFF;
@@ -129,7 +158,25 @@
   }
 }
 
+/* LED status dot — spec-exact */
+@keyframes rt-led-pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.85); }
+}
+
 @layer utilities {
+  /* LED dot variants — color via modifier class (mint / amber / rose) */
+  .rt-led {
+    display: inline-block;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--rt-mint);
+    box-shadow: 0 0 8px var(--rt-mint);
+  }
+  .rt-led.amber { background: var(--rt-amber); box-shadow: 0 0 8px var(--rt-amber); }
+  .rt-led.rose  { background: var(--rt-rose);  box-shadow: 0 0 8px var(--rt-rose);  }
+  .rt-led.violet{ background: var(--rt-violet); box-shadow: 0 0 8px var(--rt-violet);}
+  .rt-led.pulse { animation: rt-led-pulse 1.8s ease-in-out infinite; }
+
   .surface-panel {
     background: #0D0C22;
     border: 1px solid rgba(255, 255, 255, 0.08);

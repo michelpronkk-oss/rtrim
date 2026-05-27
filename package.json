@@ -108,6 +108,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "playwright": "^1.60.0",
+    "puppeteer": "^25.1.0",
     "tailwindcss": "^4",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",

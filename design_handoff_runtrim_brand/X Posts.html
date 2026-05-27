@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>RunTrim — X / Social Posts · Final</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-0: #08090b;
+    --bg-1: #0c0e11;
+    --bg-2: #111317;
+    --bg-3: #16191e;
+    --bg-4: #1c2026;
+
+    --line-1: rgba(255,255,255,0.06);
+    --line-2: rgba(255,255,255,0.10);
+    --line-3: rgba(255,255,255,0.16);
+
+    --fg-0: #f4f5f7;
+    --fg-1: #c9ccd2;
+    --fg-2: #8a8f98;
+    --fg-3: #5a5f68;
+
+    --violet: #a78bfa;
+    --violet-deep: #7c5cff;
+    --mint: #6ee7b7;
+    --mint-deep: #10b981;
+    --amber: #f5a524;
+    --rose: #f87171;
+
+    --sans: "Inter Tight", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Consistent inset margins for every post */
+    --inset-y: 64px;
+    --inset-x: 80px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  html { background: #050608; -webkit-font-smoothing: antialiased; }
+  body {
+    font-family: var(--sans);
+    color: var(--fg-1);
+    min-height: 100vh;
+    padding: 40px 0 80px;
+    overflow-x: hidden;
+    font-feature-settings: "ss01","ss02","cv11";
+  }
+
+  /* ─────────── Index ─────────── */
+  .index {
+    width: min(calc(100vw - 80px), 1600px);
+    margin: 0 auto 40px;
+    padding: 28px 32px;
+    border: 1px solid var(--line-2);
+    border-radius: 14px;
+    background: linear-gradient(180deg, #0c0e11, #0a0c10);
+  }
+  .index-head {
+    display: flex; align-items: baseline; gap: 14px;
+    padding-bottom: 18px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--line-1);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-3); letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .index-head .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--mint); box-shadow: 0 0 8px var(--mint);
+  }
+  .index-head .title { color: var(--fg-0); }
+  .index-head .meta { margin-left: auto; color: var(--fg-3); }
+
+  .index-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: var(--line-1);
+    border: 1px solid var(--line-1);
+    border-radius: 10px; overflow: hidden;
+  }
+  .ix {
+    background: var(--bg-1);
+    padding: 16px 18px;
+    display: grid; grid-template-columns: 28px 1fr; gap: 14px;
+    font-family: var(--sans);
+  }
+  .ix .n {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--violet); letter-spacing: 0.05em;
+    padding-top: 2px;
+  }
+  .ix.exp .n { color: var(--mint); }
+  .ix .body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .ix .head {
+    color: var(--fg-0); font-weight: 500; font-size: 14px;
+    letter-spacing: -0.01em; line-height: 1.3;
+  }
+  .ix .sup { color: var(--fg-2); font-size: 12.5px; line-height: 1.4; }
+  .ix .cap {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-3); margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+  .ix .cap b { color: var(--fg-1); font-weight: 500; }
+
+  /* ─────────── Frame scaling ─────────── */
+  .post-wrap {
+    width: calc(1600px * var(--s, 1));
+    height: calc(900px * var(--s, 1));
+    margin: 0 auto 32px;
+    position: relative;
+  }
+  .post-label {
+    width: 100%;
+    margin-bottom: 10px;
+    display: flex; align-items: baseline; gap: 12px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-3); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .post-label .name { color: var(--fg-1); }
+  .post-label .meta { margin-left: auto; color: var(--fg-3); }
+
+  .post {
+    width: 1600px;
+    height: 900px;
+    transform: scale(var(--s, 1));
+    transform-origin: top left;
+    background: var(--bg-0);
+    color: var(--fg-1);
+    border: 1px solid var(--line-2);
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    background-image:
+      radial-gradient(1400px 800px at 50% -240px, rgba(109,76,242,0.10), transparent 60%);
+  }
+
+  /* Subtle grid overlay */
+  .post::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 96px 96px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 95%);
+    pointer-events: none;
+  }
+
+  /* ─────────── Logo / chrome ─────────── */
+  .logo {
+    display: inline-flex; align-items: baseline; gap: 12px;
+    font-family: var(--sans); font-weight: 500;
+    color: var(--fg-0); letter-spacing: -0.035em;
+    line-height: 1;
+  }
+  .logo svg { display: block; }
+  .logo .word {
+    font-size: 28px; display: inline-flex; align-items: baseline;
+  }
+  .logo .dim { opacity: 0.55; }
+
+  .corner-tl, .corner-tr, .corner-bl, .corner-br {
+    position: absolute; z-index: 3;
+  }
+  .corner-tl { top: var(--inset-y); left: var(--inset-x); }
+  .corner-tr { top: var(--inset-y); right: var(--inset-x); }
+  .corner-bl { bottom: var(--inset-y); left: var(--inset-x); }
+  .corner-br { bottom: var(--inset-y); right: var(--inset-x); }
+
+  .micro {
+    font-family: var(--mono); font-size: 14px;
+    color: var(--fg-2); letter-spacing: 0.10em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .micro .led {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--mint); box-shadow: 0 0 8px var(--mint);
+  }
+  .micro .led.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .micro.muted { color: var(--fg-3); }
+
+  .footer-cta {
+    font-family: var(--mono); font-size: 14px;
+    color: var(--fg-2); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .footer-cta b { color: var(--fg-0); font-weight: 500; }
+
+  /* ─────────── Eyebrow ─────────── */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--fg-2);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 8px 16px 8px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.02);
+    align-self: flex-start;
+  }
+  .eyebrow .tag {
+    color: var(--violet);
+    background: rgba(167,139,250,0.10);
+    padding: 3px 10px;
+    border-radius: 5px;
+    border: 1px solid rgba(167,139,250,0.25);
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .eyebrow .tag.mint   { color: var(--mint);   background: rgba(110,231,183,0.08); border-color: rgba(110,231,183,0.25); }
+  .eyebrow .tag.amber  { color: var(--amber);  background: rgba(245,165,36,0.10);  border-color: rgba(245,165,36,0.25); }
+  .eyebrow .tag.rose   { color: var(--rose);   background: rgba(248,113,113,0.10); border-color: rgba(248,113,113,0.25); }
+
+  /* ─────────── Typography ─────────── */
+  .h-display {
+    font-family: var(--sans);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 0.98;
+    color: var(--fg-0);
+    margin: 0;
+    text-wrap: balance;
+  }
+  .h-display em {
+    font-style: normal;
+    color: var(--violet);
+  }
+  .h-display em.mint  { color: var(--mint); }
+  .h-display em.amber { color: var(--amber); }
+  .h-display em.rose  { color: var(--rose); }
+
+  .lead {
+    font-size: 24px;
+    line-height: 1.4;
+    color: var(--fg-1);
+    max-width: 620px;
+    margin: 0;
+    text-wrap: pretty;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+  }
+
+  /* Headline scales — balanced for split layouts */
+  .scale-240 { font-size: 220px; line-height: 0.9; letter-spacing: -0.05em; }
+  .scale-160 { font-size: 124px; line-height: 0.95; letter-spacing: -0.045em; }
+  .scale-128 { font-size: 92px; }
+  .scale-112 { font-size: 80px; }
+  .scale-96  { font-size: 72px; }
+  .scale-88  { font-size: 68px; }
+  .scale-80  { font-size: 64px; }
+
+  /* ─────────── Layout ─────────── */
+  .post-body {
+    position: absolute; inset: 130px var(--inset-x) 130px;
+    display: flex; flex-direction: column;
+    z-index: 2;
+  }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 64px; align-items: center; height: 100%; }
+  .stack { display: flex; flex-direction: column; gap: 24px; }
+  .stack.gap-lg { gap: 32px; }
+  .stack.gap-sm { gap: 16px; }
+
+  /* ─────────── Product surface ─────────── */
+  .surface {
+    background: linear-gradient(180deg, #0e1116, #0a0c10);
+    border: 1px solid var(--line-2);
+    border-radius: 16px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.03) inset,
+      0 40px 100px -40px rgba(0,0,0,0.95);
+    overflow: hidden;
+    font-family: var(--mono);
+    color: var(--fg-1);
+  }
+  .surface-head {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line-1);
+    background: linear-gradient(180deg, #14171c, #0d1014);
+  }
+  .surface-head .dots { display: flex; gap: 8px; }
+  .surface-head .dots span { width: 11px; height: 11px; border-radius: 50%; background: #2a2e36; }
+  .surface-head .title {
+    color: var(--fg-2);
+    font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .surface-head .id {
+    margin-left: auto; color: var(--fg-3); font-size: 13px;
+  }
+  .surface-head .id b { color: var(--fg-1); font-weight: 500; }
+  .surface-head .id b.rose  { color: var(--rose); }
+  .surface-head .id b.amber { color: var(--amber); }
+  .surface-head .id b.mint  { color: var(--mint); }
+
+  .surface-foot {
+    padding: 16px 22px;
+    border-top: 1px solid var(--line-1);
+    display: flex; gap: 16px; align-items: center;
+    font-size: 14px; color: var(--fg-2);
+  }
+  .surface-foot .led {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--mint); box-shadow: 0 0 10px var(--mint);
+  }
+  .surface-foot .led.amber { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+  .surface-foot .led.rose  { background: var(--rose);  box-shadow: 0 0 10px var(--rose); }
+  .surface-foot .sep { width: 1px; height: 16px; background: var(--line-2); }
+  .surface-foot b { color: var(--fg-0); font-weight: 500; }
+  .surface-foot b.mint  { color: var(--mint); }
+  .surface-foot b.amber { color: var(--amber); }
+  .surface-foot b.rose  { color: var(--rose); }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 12px; border-radius: 6px;
+    background: var(--bg-3); border: 1px solid var(--line-2);
+    font-family: var(--mono); font-size: 15px; color: var(--fg-1);
+    line-height: 1;
+  }
+  .pill.scope  { color: var(--mint);   border-color: rgba(110,231,183,0.30); background: rgba(110,231,183,0.07); }
+  .pill.forbid { color: var(--rose);   border-color: rgba(248,113,113,0.30); background: rgba(248,113,113,0.07); }
+  .pill.mem    { color: var(--violet); border-color: rgba(167,139,250,0.30); background: rgba(167,139,250,0.08); }
+  .pill.warn   { color: var(--amber);  border-color: rgba(245,165,36,0.32);  background: rgba(245,165,36,0.08); }
+
+  /* Big logo SVG inline */
+  .r-mark { display: block; }
+</style>
+</head>
+<body>
+
+
+<!-- ─────────── Index ─────────── -->
+<div class="index">
+  <div class="index-head">
+    <span class="dot"></span>
+    <span class="title">RunTrim · X / social — final set</span>
+    <span class="meta">7 posts + 1 brand variant · 1600 × 900 · export-ready</span>
+  </div>
+  <div class="index-grid">
+    <div class="ix">
+      <span class="n">01</span>
+      <div class="body">
+        <div class="head">You asked for one fix. Your agent touched 14 files.</div>
+        <div class="sup">RunTrim contains scope drift before it becomes damage.</div>
+        <div class="cap">Caption · <b>Pain hook · primary launch post.</b> Concrete, visceral. Best for cold-feed scroll-stop.</div>
+      </div>
+    </div>
+    <div class="ix">
+      <span class="n">02</span>
+      <div class="body">
+        <div class="head">Recover without spending another agent run.</div>
+        <div class="sup">Restore locally. No re-prompt, no re-debug.</div>
+        <div class="cap">Caption · <b>Relief shot.</b> Pairs naturally with Post 01 — answers the pain.</div>
+      </div>
+    </div>
+    <div class="ix">
+      <span class="n">03</span>
+      <div class="body">
+        <div class="head">When the agent runs out of context, the run should not die.</div>
+        <div class="sup">Continuation prompts keep the next handoff sharp and usable.</div>
+        <div class="cap">Caption · <b>Workflow value.</b> For devs running long, multi-session agent tasks.</div>
+      </div>
+    </div>
+    <div class="ix">
+      <span class="n">04</span>
+      <div class="body">
+        <div class="head">BLOCKED does not mean broken.</div>
+        <div class="sup">Not trusted yet. Review first, then ship.</div>
+        <div class="cap">Caption · <b>Education post.</b> Reframes BLOCKED as a status, not a failure.</div>
+      </div>
+    </div>
+    <div class="ix">
+      <span class="n">05</span>
+      <div class="body">
+        <div class="head">AI coding needs a finish check.</div>
+        <div class="sup">RunTrim verifies changed files, proof gaps, and risky writes before you trust the run.</div>
+        <div class="cap">Caption · <b>Team-serious.</b> For engineering leads who own merge gates.</div>
+      </div>
+    </div>
+    <div class="ix">
+      <span class="n">06</span>
+      <div class="body">
+        <div class="head">Source code stays local.</div>
+        <div class="sup">Memory, restore points and runs stay local by default.</div>
+        <div class="cap">Caption · <b>Trust post.</b> For founders / security-aware engineers worried about uploads.</div>
+      </div>
+    </div>
+    <div class="ix">
+      <span class="n">07</span>
+      <div class="body">
+        <div class="head">Use any coding agent. Keep control.</div>
+        <div class="sup">Claude, Codex, Cursor, ChatGPT, DeepSeek and more.</div>
+        <div class="cap">Caption · <b>Compatibility / reach.</b> Best after Posts 01–06 land — broadens the audience.</div>
+      </div>
+    </div>
+    <div class="ix exp">
+      <span class="n">08</span>
+      <div class="body">
+        <div class="head">Stop AI agents from drifting through your codebase. <span style="color: var(--mint); font-weight: 500;">— brand variant</span></div>
+        <div class="sup">Scope the run. Verify the changes. Recover without spending another agent run.</div>
+        <div class="cap">Caption · <b>Brand / poster.</b> Typography-led. Use for launch announcement / pinned post.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 01 — One fix, 14 files (PRIMARY LAUNCH)
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 01 · Scope creep</span>
+  <span class="meta">1600 × 900 · primary launch · big "14" + readable diff</span>
+</div>
+<div class="post-wrap"><div class="post" id="p01">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led" style="background: var(--rose); box-shadow: 0 0 8px var(--rose);"></span> Drift detected</span>
+  </div>
+
+  <div class="post-body">
+    <div class="split">
+      <div class="stack gap-lg">
+        <span class="eyebrow"><span class="tag rose">drift</span><span>What scope creep looks like</span></span>
+        <h1 class="h-display scale-112">
+          You asked for one fix.<br/>
+          Your agent touched <em class="rose">14&nbsp;files</em>.
+        </h1>
+        <p class="lead">RunTrim contains scope drift before it becomes damage.</p>
+      </div>
+
+      <!-- File-diff fragment — bigger, more readable -->
+      <div class="surface">
+        <div class="surface-head">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <span class="title">unscoped run · 14 files modified</span>
+          <span class="id"><b class="rose">3 forbidden</b></span>
+        </div>
+        <div style="padding: 6px 0;">
+          <div style="padding: 12px 24px; display: flex; gap: 16px; align-items: center; font-size: 17px; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--fg-3); width: 18px;">+</span>
+            <span style="color: var(--mint);">api/webhooks/handler.ts</span>
+            <span style="margin-left: auto; color: var(--fg-3); font-size: 14px;">in scope</span>
+          </div>
+          <div style="padding: 12px 24px; display: flex; gap: 16px; align-items: center; font-size: 17px; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--fg-3); width: 18px;">+</span>
+            <span style="color: var(--mint);">lib/queue/idempotency.ts</span>
+            <span style="margin-left: auto; color: var(--fg-3); font-size: 14px;">in scope</span>
+          </div>
+          <div style="padding: 12px 24px; display: flex; gap: 16px; align-items: center; font-size: 17px; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--amber); width: 18px;">~</span>
+            <span style="color: var(--fg-1);">lib/auth/session.ts</span>
+            <span style="margin-left: auto; color: var(--amber); font-size: 14px;">strayed</span>
+          </div>
+          <div style="padding: 12px 24px; display: flex; gap: 16px; align-items: center; font-size: 17px; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--amber); width: 18px;">~</span>
+            <span style="color: var(--fg-1);">config/email.json</span>
+            <span style="margin-left: auto; color: var(--amber); font-size: 14px;">strayed</span>
+          </div>
+          <div style="padding: 12px 24px; display: flex; gap: 16px; align-items: center; font-size: 17px; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--rose); width: 18px;">!</span>
+            <span style="color: var(--rose);">.env.production</span>
+            <span style="margin-left: auto; color: var(--rose); font-size: 14px;">forbidden</span>
+          </div>
+          <div style="padding: 12px 24px; display: flex; gap: 16px; align-items: center; font-size: 17px; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--rose); width: 18px;">!</span>
+            <span style="color: var(--rose);">migrations/0042_users.sql</span>
+            <span style="margin-left: auto; color: var(--rose); font-size: 14px;">forbidden</span>
+          </div>
+          <div style="padding: 12px 24px; display: flex; gap: 16px; align-items: center; font-size: 17px; color: var(--fg-3);">
+            <span style="width: 18px;">·</span>
+            <span>+ 8 more files</span>
+            <span style="margin-left: auto; font-size: 14px;">strayed</span>
+          </div>
+        </div>
+        <div class="surface-foot">
+          <span class="led rose"></span>
+          <span>blast radius: <b class="rose">14 files</b></span>
+          <span class="sep"></span>
+          <span>RunTrim would have <b class="mint">blocked 12</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b></span></div>
+  <div class="corner-br"><span class="footer-cta">scope control</span></div>
+</div></div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 02 — Recover without spending another run
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 02 · Restore points</span>
+  <span class="meta">1600 × 900 · headline + restore timeline</span>
+</div>
+<div class="post-wrap"><div class="post" id="p02">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led"></span> Restore</span>
+  </div>
+
+  <div class="post-body">
+    <div class="split">
+      <div class="stack gap-lg">
+        <span class="eyebrow"><span class="tag mint">restore</span><span>Local rewind</span></span>
+        <h1 class="h-display scale-112">
+          <em class="mint">Recover</em> without spending<br/>
+          another agent run.
+        </h1>
+        <p class="lead">Restore locally. No re-prompt, no re-debug.</p>
+      </div>
+
+      <!-- Restore timeline -->
+      <div class="surface">
+        <div class="surface-head">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <span class="title">run history · ~/.runtrim</span>
+          <span class="id"><b>local</b></span>
+        </div>
+        <div style="padding: 28px 30px;">
+          <div style="position: relative; padding-left: 32px;">
+            <div style="position: absolute; left: 11px; top: 10px; bottom: 10px; width: 2px; background: var(--line-2);"></div>
+
+            <div style="position: relative; padding: 8px 0 26px;">
+              <div style="position: absolute; left: -32px; top: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--bg-2); border: 2px solid var(--rose); box-shadow: 0 0 14px rgba(248,113,113,0.4); display: grid; place-items: center;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--rose);"></span>
+              </div>
+              <div style="font-size: 18px; color: var(--fg-0);">run.42 · refactor webhook</div>
+              <div style="font-size: 14px; color: var(--fg-3); margin-top: 6px;">2 min ago · 4 files · <span style="color: var(--rose);">tests failed</span></div>
+            </div>
+
+            <div style="position: relative; padding: 8px 0 26px;">
+              <div style="position: absolute; left: -32px; top: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 20px var(--mint); display: grid; place-items: center;">
+                <span style="color: #0a0c10; font-size: 14px; font-weight: 600;">↶</span>
+              </div>
+              <div style="font-size: 19px; color: var(--mint); font-weight: 500;">restore point · before run.42</div>
+              <div style="font-size: 14px; color: var(--fg-3); margin-top: 6px;">8 min ago · clean tree · trusted</div>
+            </div>
+
+            <div style="position: relative; padding: 8px 0;">
+              <div style="position: absolute; left: -32px; top: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--bg-2); border: 2px solid var(--fg-3); display: grid; place-items: center;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3);"></span>
+              </div>
+              <div style="font-size: 18px; color: var(--fg-2);">run.41 · add idempotency</div>
+              <div style="font-size: 14px; color: var(--fg-3); margin-top: 6px;">22 min ago · 3 files · <span style="color: var(--mint);">passed</span></div>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line-1); display: flex; gap: 12px; align-items: center;">
+            <span class="pill" style="padding: 10px 18px; font-size: 16px; color: var(--mint); border-color: rgba(110,231,183,0.35); background: rgba(110,231,183,0.07);">↶ runtrim restore</span>
+            <span class="pill" style="padding: 10px 18px; font-size: 16px;">diff before/after</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b></span></div>
+  <div class="corner-br"><span class="footer-cta">restore</span></div>
+</div></div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 03 — Continuation prompts
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 03 · Continuation</span>
+  <span class="meta">1600 × 900 · headline + handoff card with paste CTA</span>
+</div>
+<div class="post-wrap"><div class="post" id="p03">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led"></span> Handoff</span>
+  </div>
+
+  <div class="post-body">
+    <div class="split">
+      <div class="stack gap-lg">
+        <span class="eyebrow"><span class="tag">handoff</span><span>Continuation prompts</span></span>
+        <h1 class="h-display scale-88">
+          When the agent runs out of context,<br/>
+          the run <em>should not die</em>.
+        </h1>
+        <p class="lead">Continuation prompts keep the next handoff sharp and usable.</p>
+      </div>
+
+      <!-- Continuation card -->
+      <div class="surface">
+        <div class="surface-head">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <span class="title">handoff · prompt for next agent</span>
+          <span class="id">step <b>4 / 7</b></span>
+        </div>
+        <div style="padding: 24px 26px 22px;">
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px;">Carry-over · ~2.1k tokens</div>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-family: var(--mono); font-size: 16px; line-height: 1.4;">
+            <div style="display: flex; gap: 14px;"><span style="color: var(--violet); width: 18px; flex: none;">▸</span><span style="color: var(--fg-0);">task: refactor webhook to idempotent queue</span></div>
+            <div style="display: flex; gap: 14px;"><span style="color: var(--violet); width: 18px; flex: none;">▸</span><span style="color: var(--fg-1);">scope held: api/webhooks/**, lib/queue/**</span></div>
+            <div style="display: flex; gap: 14px;"><span style="color: var(--violet); width: 18px; flex: none;">▸</span><span style="color: var(--fg-1);">finished: handler stub, queue model</span></div>
+            <div style="display: flex; gap: 14px;"><span style="color: var(--violet); width: 18px; flex: none;">▸</span><span style="color: var(--fg-0);">next: write idempotency tests, finish check</span></div>
+            <div style="display: flex; gap: 14px;"><span style="color: var(--amber); width: 18px; flex: none;">!</span><span style="color: var(--fg-1);">note: stripe.constructEvent needs raw body</span></div>
+          </div>
+        </div>
+
+        <!-- Dominant paste CTA -->
+        <div style="
+          margin: 0 26px 24px;
+          padding: 16px 20px;
+          background: linear-gradient(180deg, rgba(167,139,250,0.10), rgba(167,139,250,0.05));
+          border: 1px solid rgba(167,139,250,0.35);
+          border-radius: 10px;
+          display: flex; align-items: center; gap: 16px;
+        ">
+          <span style="
+            width: 38px; height: 38px; border-radius: 8px;
+            background: var(--violet); color: #0a0c10;
+            display: grid; place-items: center;
+            font-size: 18px; font-weight: 700;
+            flex: none;
+          ">↗</span>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <div style="font-family: var(--sans); font-weight: 500; font-size: 17px; color: var(--fg-0); letter-spacing: -0.01em;">Paste into next agent</div>
+            <div style="font-family: var(--mono); font-size: 13px; color: var(--violet);">runtrim continue → clipboard</div>
+          </div>
+        </div>
+
+        <div class="surface-foot">
+          <span class="led"></span>
+          <span>handoff: <b class="mint">sharp</b></span>
+          <span class="sep"></span>
+          <span>trimmed from 38k → <b>2.1k tokens</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b></span></div>
+  <div class="corner-br"><span class="footer-cta">continue</span></div>
+</div></div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 04 — BLOCKED does not mean broken
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 04 · Block status</span>
+  <span class="meta">1600 × 900 · centered chip + status pills</span>
+</div>
+<div class="post-wrap"><div class="post" id="p04">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led amber"></span> Verdict pending</span>
+  </div>
+
+  <div class="post-body" style="align-items: center; justify-content: center;">
+    <div class="stack" style="align-items: center; gap: 44px; text-align: center; gap: 44px;">
+
+      <!-- Big BLOCKED chip -->
+      <div style="
+        display: inline-flex; align-items: center; gap: 22px;
+        padding: 22px 44px 22px 32px;
+        background: rgba(245,165,36,0.10);
+        border: 1.5px solid rgba(245,165,36,0.45);
+        border-radius: 18px;
+        font-family: var(--mono); font-size: 44px; font-weight: 500;
+        color: var(--amber); letter-spacing: 0.10em;
+        box-shadow: 0 0 80px rgba(245,165,36,0.18);
+      ">
+        <span style="width: 18px; height: 18px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 20px var(--amber);"></span>
+        BLOCKED
+      </div>
+
+      <h1 class="h-display scale-160" style="text-align: center;">
+        <em class="amber">BLOCKED</em> does not<br/>
+        mean broken.
+      </h1>
+      <p class="lead" style="text-align: center; max-width: 900px; font-size: 26px;">
+        Not trusted yet. Review first, then ship.
+      </p>
+
+      <!-- Status pills — bigger, readable -->
+      <div style="display: flex; gap: 16px; margin-top: 8px;">
+        <span class="pill" style="padding: 12px 22px; font-size: 18px;">
+          <span style="color: var(--mint); font-size: 20px;">✓</span> tests pass
+        </span>
+        <span class="pill" style="padding: 12px 22px; font-size: 18px;">
+          <span style="color: var(--mint); font-size: 20px;">✓</span> scope held
+        </span>
+        <span class="pill" style="padding: 12px 22px; font-size: 18px; color: var(--amber); border-color: rgba(245,165,36,0.35); background: rgba(245,165,36,0.08);">
+          <span style="font-size: 20px;">!</span> proof gap on 1 file
+        </span>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b></span></div>
+  <div class="corner-br"><span class="footer-cta">verify</span></div>
+</div></div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 05 — Finish check
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 05 · Finish check</span>
+  <span class="meta">1600 × 900 · headline + readable check list</span>
+</div>
+<div class="post-wrap"><div class="post" id="p05">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led"></span> Verify before trust</span>
+  </div>
+
+  <div class="post-body">
+    <div class="split">
+      <div class="stack gap-lg">
+        <span class="eyebrow"><span class="tag">verify</span><span>Verification gate</span></span>
+        <h1 class="h-display scale-112">
+          AI coding needs<br/>
+          a <em>finish check</em>.
+        </h1>
+        <p class="lead">Verifies changed files, proof gaps, and risky writes — before you trust the run.</p>
+      </div>
+
+      <!-- Finish check list — larger rows -->
+      <div class="surface">
+        <div class="surface-head">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <span class="title">finish check · run.42</span>
+          <span class="id"><b class="amber">2 unresolved</b></span>
+        </div>
+        <div>
+          <div style="display: grid; grid-template-columns: 28px 1fr auto; gap: 18px; padding: 16px 24px; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--mint); font-family: var(--mono); font-size: 22px;">✓</span>
+            <span style="font-family: var(--mono); font-size: 17px; color: var(--fg-0);">tests pass</span>
+            <span style="font-family: var(--mono); font-size: 14px; color: var(--fg-3);">42 / 42</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 28px 1fr auto; gap: 18px; padding: 16px 24px; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--mint); font-family: var(--mono); font-size: 22px;">✓</span>
+            <span style="font-family: var(--mono); font-size: 17px; color: var(--fg-0);">no forbidden writes</span>
+            <span style="font-family: var(--mono); font-size: 14px; color: var(--fg-3);">0 violations</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 28px 1fr auto; gap: 18px; padding: 16px 24px; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--mint); font-family: var(--mono); font-size: 22px;">✓</span>
+            <span style="font-family: var(--mono); font-size: 17px; color: var(--fg-0);">diff &lt; 400 lines</span>
+            <span style="font-family: var(--mono); font-size: 14px; color: var(--fg-3);">288 lines</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 28px 1fr auto; gap: 18px; padding: 16px 24px; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--mint); font-family: var(--mono); font-size: 22px;">✓</span>
+            <span style="font-family: var(--mono); font-size: 17px; color: var(--fg-0);">scope held</span>
+            <span style="font-family: var(--mono); font-size: 14px; color: var(--fg-3);">2 / 2 paths</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 28px 1fr auto; gap: 18px; padding: 16px 24px; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.04);">
+            <span style="color: var(--amber); font-family: var(--mono); font-size: 22px;">!</span>
+            <span style="font-family: var(--mono); font-size: 17px; color: var(--fg-0);">proof gap on 1 file</span>
+            <span style="font-family: var(--mono); font-size: 14px; color: var(--amber);">queue/idempotency.ts</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 28px 1fr auto; gap: 18px; padding: 16px 24px; align-items: center;">
+            <span style="color: var(--amber); font-family: var(--mono); font-size: 22px;">!</span>
+            <span style="font-family: var(--mono); font-size: 17px; color: var(--fg-0);">risky write detected</span>
+            <span style="font-family: var(--mono); font-size: 14px; color: var(--amber);">config/email.json</span>
+          </div>
+        </div>
+        <div class="surface-foot">
+          <span class="led amber"></span>
+          <span>verdict: <b class="amber">review</b></span>
+          <span class="sep"></span>
+          <span>resolve to ship</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b></span></div>
+  <div class="corner-br"><span class="footer-cta">verify</span></div>
+</div></div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 06 — Source code stays local
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 06 · Local-first trust</span>
+  <span class="meta">1600 × 900 · headline + local machine diagram</span>
+</div>
+<div class="post-wrap"><div class="post" id="p06">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led"></span> Local by default</span>
+  </div>
+
+  <div class="post-body">
+    <div class="split">
+      <div class="stack gap-lg">
+        <span class="eyebrow"><span class="tag mint">trust</span><span>By default</span></span>
+        <h1 class="h-display scale-128">
+          Source code<br/>
+          stays <em class="mint">local</em>.
+        </h1>
+        <p class="lead">Memory, restore points and runs stay local by default.</p>
+      </div>
+
+      <!-- Local machine block, prominent -->
+      <div class="surface" style="
+        border-color: rgba(110,231,183,0.32);
+        box-shadow:
+          0 1px 0 rgba(255,255,255,0.03) inset,
+          0 40px 100px -40px rgba(0,0,0,0.95),
+          0 0 80px rgba(110,231,183,0.10);
+      ">
+        <div class="surface-head" style="border-bottom-color: rgba(110,231,183,0.18);">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <span class="title" style="color: var(--mint);">your machine · localhost</span>
+          <span class="id" style="font-family: var(--mono);">~/projects/checkout-api</span>
+        </div>
+        <div style="padding: 26px 28px; display: flex; flex-direction: column; gap: 14px; font-family: var(--mono);">
+
+          <div style="display: flex; align-items: center; gap: 16px; padding: 18px 22px; background: var(--bg-3); border-radius: 10px; border: 1px solid var(--line-2);">
+            <span style="
+              width: 36px; height: 36px; border-radius: 8px;
+              background: rgba(110,231,183,0.10);
+              border: 1px solid rgba(110,231,183,0.30);
+              display: grid; place-items: center; flex: none;
+            "><span style="color: var(--mint); font-size: 16px;">●</span></span>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="color: var(--fg-0); font-size: 17px;">Repository</span>
+              <span style="color: var(--fg-3); font-size: 13px;">never uploaded · never indexed</span>
+            </div>
+            <span style="margin-left: auto; color: var(--mint); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">local</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 16px; padding: 18px 22px; background: var(--bg-3); border-radius: 10px; border: 1px solid var(--line-2);">
+            <span style="
+              width: 36px; height: 36px; border-radius: 8px;
+              background: rgba(110,231,183,0.10);
+              border: 1px solid rgba(110,231,183,0.30);
+              display: grid; place-items: center; flex: none;
+            "><span style="color: var(--mint); font-size: 16px;">●</span></span>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="color: var(--fg-0); font-size: 17px;">Memory &amp; restore points</span>
+              <span style="color: var(--fg-3); font-size: 13px;">~/.runtrim · on disk</span>
+            </div>
+            <span style="margin-left: auto; color: var(--mint); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">local</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 16px; padding: 18px 22px; background: var(--bg-3); border-radius: 10px; border: 1px solid var(--line-2);">
+            <span style="
+              width: 36px; height: 36px; border-radius: 8px;
+              background: rgba(110,231,183,0.10);
+              border: 1px solid rgba(110,231,183,0.30);
+              display: grid; place-items: center; flex: none;
+            "><span style="color: var(--mint); font-size: 16px;">●</span></span>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="color: var(--fg-0); font-size: 17px;">Runs &amp; finish checks</span>
+              <span style="color: var(--fg-3); font-size: 13px;">runtrim CLI · executes locally</span>
+            </div>
+            <span style="margin-left: auto; color: var(--mint); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">local</span>
+          </div>
+        </div>
+        <div class="surface-foot" style="border-top-color: rgba(110,231,183,0.18);">
+          <span class="led"></span>
+          <span>nothing leaves your machine</span>
+          <span class="sep"></span>
+          <span>cloud sync: <b>opt-in only</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b></span></div>
+  <div class="corner-br"><span class="footer-cta">privacy</span></div>
+</div></div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 07 — Use any coding agent
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 07 · Agent compatibility</span>
+  <span class="meta">1600 × 900 · headline + compact agent grid</span>
+</div>
+<div class="post-wrap"><div class="post" id="p07">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led"></span> Model-agnostic</span>
+  </div>
+
+  <div class="post-body" style="justify-content: center;">
+    <div class="stack" style="gap: 64px;">
+      <div class="stack" style="gap: 32px; align-items: center; text-align: center;">
+        <span class="eyebrow"><span class="tag">control</span><span>Any agent · one contract</span></span>
+        <h1 class="h-display scale-160" style="text-align: center;">
+          Use any coding agent.<br/>
+          Keep <em>control</em>.
+        </h1>
+        <p class="lead" style="text-align: center; font-size: 22px;">
+          Claude, Codex, Cursor, ChatGPT, DeepSeek and more.
+        </p>
+      </div>
+
+      <!-- Clean agent row -->
+      <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px;">
+        <div style="border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; background: var(--bg-1); display: flex; flex-direction: column; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 9px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--fg-0);">C</div>
+          <div style="font-weight: 500; color: var(--fg-0); font-size: 18px; letter-spacing: -0.01em;">Claude</div>
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--mint); letter-spacing: 0.05em;">● first-class</div>
+        </div>
+        <div style="border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; background: var(--bg-1); display: flex; flex-direction: column; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 9px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--fg-0);">Cx</div>
+          <div style="font-weight: 500; color: var(--fg-0); font-size: 18px; letter-spacing: -0.01em;">Codex</div>
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--mint); letter-spacing: 0.05em;">● first-class</div>
+        </div>
+        <div style="border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; background: var(--bg-1); display: flex; flex-direction: column; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 9px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--fg-0);">Cu</div>
+          <div style="font-weight: 500; color: var(--fg-0); font-size: 18px; letter-spacing: -0.01em;">Cursor</div>
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--mint); letter-spacing: 0.05em;">● first-class</div>
+        </div>
+        <div style="border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; background: var(--bg-1); display: flex; flex-direction: column; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 9px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--fg-0);">G</div>
+          <div style="font-weight: 500; color: var(--fg-0); font-size: 18px; letter-spacing: -0.01em;">ChatGPT</div>
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--mint); letter-spacing: 0.05em;">● supported</div>
+        </div>
+        <div style="border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; background: var(--bg-1); display: flex; flex-direction: column; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 9px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--fg-0);">Ds</div>
+          <div style="font-weight: 500; color: var(--fg-0); font-size: 18px; letter-spacing: -0.01em;">DeepSeek</div>
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--mint); letter-spacing: 0.05em;">● supported</div>
+        </div>
+        <div style="border: 1px dashed var(--line-3); border-radius: 12px; padding: 22px; background: transparent; display: flex; flex-direction: column; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 9px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--fg-2);">···</div>
+          <div style="font-weight: 500; color: var(--fg-1); font-size: 18px; letter-spacing: -0.01em;">Bring your own</div>
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.05em;">MCP-compatible</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b></span></div>
+  <div class="corner-br"><span class="footer-cta">control layer</span></div>
+</div></div>
+
+
+<!-- ════════════════════════════════════════════════
+     POST 08 — Brand / Poster variant
+     Typography-led. Pinned/launch announcement asset.
+     ════════════════════════════════════════════════ -->
+<div class="post-label">
+  <span class="name">Post 08 · Brand variant</span>
+  <span class="meta">1600 × 900 · typography-led · for pinned / launch announcement</span>
+</div>
+<div class="post-wrap"><div class="post" id="p08">
+  <div class="corner-tl">
+    <div class="logo">
+      <svg class="r-mark" width="28" height="30" viewBox="10 10 74 80" fill="none">
+        <path d="M 26 54 L 52 54 L 84 90 L 58 90 Z" fill="var(--violet)"/>
+        <path d="M 10 10 L 80 10 L 80 54 L 26 54 L 26 90 L 10 90 Z M 26 26 L 64 26 L 64 38 L 26 38 Z" fill="var(--fg-0)" fill-rule="evenodd"/>
+      </svg>
+      <span class="word">Run<span class="dim">Trim</span></span>
+    </div>
+  </div>
+  <div class="corner-tr">
+    <span class="micro"><span class="led"></span> Control layer · v0.7</span>
+  </div>
+
+  <div class="post-body" style="justify-content: center;">
+    <div class="stack" style="gap: 36px; max-width: 1300px;">
+      <h1 class="h-display" style="font-size: 108px; line-height: 0.98; letter-spacing: -0.045em;">
+        Stop AI agents<br/>
+        from <em>drifting</em><br/>
+        through your codebase.
+      </h1>
+
+      <div style="
+        margin-top: 12px;
+        display: flex; align-items: center; gap: 18px;
+        font-family: var(--mono); font-size: 18px;
+        color: var(--fg-2); letter-spacing: 0.04em;
+      ">
+        <span style="color: var(--mint); font-weight: 500;">Scope the run.</span>
+        <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-4);"></span>
+        <span style="color: var(--violet); font-weight: 500;">Verify the changes.</span>
+        <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-4);"></span>
+        <span style="color: var(--amber); font-weight: 500;">Recover without spending another run.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-bl"><span class="footer-cta"><b>runtrim.com</b> / install</span></div>
+  <div class="corner-br"><span class="footer-cta">the control layer for AI coding agents</span></div>
+</div></div>
+
+
+<script>
+  // Fit each 1600x900 frame to viewport
+  function fit() {
+    const targetW = Math.min(window.innerWidth - 80, 1600);
+    const s = targetW / 1600;
+    document.documentElement.style.setProperty('--s', s);
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+
+</body>
+</html>

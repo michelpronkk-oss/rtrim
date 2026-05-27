@@ -35,6 +35,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: "https://www.runtrim.com/faq",
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
       url: "https://www.runtrim.com/pricing",
       lastModified: now,
       changeFrequency: "weekly",

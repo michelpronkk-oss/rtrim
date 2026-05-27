@@ -83,7 +83,7 @@ function Row({ k, children, delay = 0 }: { k: string; children: React.ReactNode;
   return (
     <motion.div
       style={{
-        display: "grid", gridTemplateColumns: "120px 1fr", gap: 16,
+        display: "grid", gridTemplateColumns: "130px 1fr", gap: 16,
         padding: "9px 16px", alignItems: "center",
         borderBottom: "1px dashed rgba(255,255,255,0.04)", ...MONO,
       }}
@@ -202,7 +202,18 @@ export function HeroRunContract() {
             <Pill variant="forbid">.env*</Pill>
             <Pill variant="forbid">migrations/**</Pill>
           </Row>
-          <Row k="Risk" delay={0.8}>
+          <Row k="Budget" delay={0.75}>
+            <Meter pct={61} delay={1.0} />
+            <motion.span
+              style={{ color: "#c9ccd2", fontSize: "11.5px", minWidth: 56, textAlign: "right" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.9, duration: 0.3 }}
+            >
+              38.2k
+            </motion.span>
+          </Row>
+          <Row k="Risk" delay={0.85}>
             <Meter pct={22} mint delay={1.1} />
             <motion.span
               style={{ color: "#6ee7b7", fontSize: "11.5px", minWidth: 56, textAlign: "right" }}
@@ -213,11 +224,11 @@ export function HeroRunContract() {
               low
             </motion.span>
           </Row>
-          <Row k="Finish" delay={0.9}>
+          <Row k="Finish" delay={0.95}>
             <Pill>tests pass</Pill>
             <Pill>no forbidden writes</Pill>
           </Row>
-          <Row k="Sync" delay={1.0}>
+          <Row k="Sync" delay={1.05}>
             <motion.span
               style={{ color: "#6ee7b7", fontSize: "11.5px" }}
               initial={{ opacity: 0 }}

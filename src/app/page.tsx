@@ -10,16 +10,17 @@ import { HeroRunContract, MobileContractCard } from "@/components/app/hero-run-c
 import { planOrder, plans } from "@/lib/plans";
 import { PublicNav } from "@/components/app/public-nav";
 import { PublicFooter } from "@/components/app/public-footer";
+import { Eyebrow, LEDDot } from "@/components/app/rt-primitives";
 
 export const metadata: Metadata = {
   title: { absolute: "RunTrim | AI Agent Control Layer" },
   description:
-    "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first. No account required.",
+    "RunTrim helps developers scope, verify, recover and continue AI coding agent runs with local-first control.",
   alternates: { canonical: "https://www.runtrim.com" },
   openGraph: {
-    title: "RunTrim | AI Agent Control Layer",
+    title: "RunTrim | Control, verify and recover AI coding runs",
     description:
-      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
+      "Scope agent work, check risky changes, restore locally and continue after context limits.",
     url: "https://www.runtrim.com",
     type: "website",
     siteName: "RunTrim",
@@ -27,9 +28,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunTrim | AI Agent Control Layer",
+    title: "RunTrim | Control, verify and recover AI coding runs",
     description:
-      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
+      "Scope agent work, check risky changes, restore locally and continue after context limits.",
     images: ["/opengraph-image"],
   },
 };
@@ -227,31 +228,10 @@ export default function Home() {
             <div className="max-w-[620px]">
               {/* Eyebrow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â "Bridge Mode live" with pulsing mint dot */}
               <MotionFade>
-                <span
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    padding: "4px 10px 4px 8px",
-                    border: "1px solid rgba(110,231,183,0.2)",
-                    borderRadius: 999,
-                    background: "rgba(110,231,183,0.04)",
-                  }}
-                >
-                  <span
-                    className="rt-live-dot"
-                    style={{
-                      width: 6, height: 6, borderRadius: "50%",
-                      background: "#6ee7b7",
-                      display: "inline-block", flexShrink: 0,
-                    }}
-                  />
-                  <span style={{
-                    fontFamily: "var(--font-geist-mono)", fontSize: 11,
-                    color: "#6ee7b7", letterSpacing: "0.07em",
-                    textTransform: "uppercase",
-                  }}>
-                    AI AGENT CONTROL LAYER
-                  </span>
-                </span>
+                <Eyebrow>
+                  <LEDDot color="mint" pulse size={6} />
+                  AI Agent Control Layer
+                </Eyebrow>
               </MotionFade>
 
               <MotionFade delay={0.06}>

@@ -6,11 +6,13 @@ const MONO: React.CSSProperties = {
 };
 
 const PRODUCT_LINKS = [
-  { href: "/app/install", label: "Docs" },
+  { href: "/app/install", label: "Install" },
+  { href: "/how-it-works", label: "How it works" },
   { href: "/plans", label: "Plans" },
   { href: "/faq", label: "FAQ" },
   { href: "/changelog", label: "Changelog" },
   { href: "/status", label: "Status" },
+  { href: "/security", label: "Security" },
 ];
 
 const COMPANY_LINKS = [

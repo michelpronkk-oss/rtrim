@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "RunTrim - Stop paying twice for context your project already created.";
+export const alt = "RunTrim | Control, verify and recover AI coding runs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 const RUNTRIM_ICON_DATA_URI =
@@ -177,7 +177,7 @@ export default function OGImage() {
                     lineHeight: 1.07,
                   }}
                 >
-                  Stop paying twice
+                  Control, verify
                 </span>
                 <span
                   style={{
@@ -188,18 +188,18 @@ export default function OGImage() {
                     lineHeight: 1.07,
                   }}
                 >
-                  for context your
+                  and recover
                 </span>
                 <span
                   style={{
                     fontSize: 56,
                     fontWeight: 800,
-                    color: "rgba(237,238,255,0.36)",
+                    color: "rgba(237,238,255,0.7)",
                     letterSpacing: "-0.04em",
                     lineHeight: 1.07,
                   }}
                 >
-                  project already built.
+                  AI coding runs.
                 </span>
               </div>
             </div>
@@ -319,7 +319,7 @@ export default function OGImage() {
               >
                 {/* Prompt */}
                 <span style={{ color: "#9E91FF", fontWeight: 600 }}>
-                  {'$ runtrim guard "your task"'}
+                  {'$ runtrim agent "your task" --copy'}
                 </span>
 
                 <div style={{ height: 8, display: "flex" }} />

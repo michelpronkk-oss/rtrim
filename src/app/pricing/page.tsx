@@ -213,9 +213,17 @@ export default function PricingPage() {
         </div>
 
         <div className="mt-12 text-center">
-          <Link href="/" className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
-            Back to home
-          </Link>
+          <div className="flex items-center justify-center gap-5">
+            <Link href="/" className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
+              Back to home
+            </Link>
+            <Link href="/faq" className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
+              Read FAQ
+            </Link>
+            <Link href="/app/install" className="text-[13px] text-[#4D5070] transition-colors hover:text-[#9E91FF]">
+              Install CLI
+            </Link>
+          </div>
         </div>
       </main>
     </div>

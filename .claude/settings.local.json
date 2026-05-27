@@ -105,7 +105,13 @@
       "WebFetch(domain:www.runtrim.com)",
       "Bash(npm ls *)",
       "Bash(start \"http://localhost:3000/social/scope-drift.html\")",
-      "PowerShell(\\(Get-Content \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\lib\\\\admin-planning-data.ts\" -Raw\\) -replace ' — ', ' - ' | Set-Content \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\lib\\\\admin-planning-data.ts\" -Encoding utf8 -NoNewline)"
+      "PowerShell(\\(Get-Content \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\lib\\\\admin-planning-data.ts\" -Raw\\) -replace ' — ', ' - ' | Set-Content \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\src\\\\lib\\\\admin-planning-data.ts\" -Encoding utf8 -NoNewline)",
+      "Bash(start \"\" \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\design_handoff_runtrim_brand\\\\X Posts.html\")",
+      "Bash(npm list *)",
+      "Bash(node -e \"require\\('puppeteer'\\)\")",
+      "Bash(node scripts/export-x-posts.js)",
+      "Bash(start \"\" \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\design_handoff_runtrim_brand\\\\exports\")",
+      "Bash(powershell -Command \"\\(Get-Content 'design_handoff_runtrim_brand\\\\X Posts.html'\\) -replace 'runtrim\\\\.dev','runtrim.com' | Set-Content 'design_handoff_runtrim_brand\\\\X Posts.html'\")"
     ]
   }
 }

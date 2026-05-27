@@ -15,19 +15,19 @@ const HEADER_H = 60; // px — single source of truth for spacer + dropdown offs
 
 const NAV_LINKS = [
   { href: "/",            label: "Home"      },
-  { href: "/#protocol",   label: "Protocol"  },
+  { href: "/how-it-works", label: "How it works"  },
   { href: "/plans",       label: "Plans"     },
   { href: "/faq",         label: "FAQ"       },
-  { href: "/app/install", label: "Docs"      },
+  { href: "/app/install", label: "Install"   },
   { href: "/changelog",   label: "Changelog" },
 ];
 
 const DROPDOWN_LINKS = [
-  { href: "/#protocol",   label: "How it works" },
+  { href: "/how-it-works", label: "How it works" },
   { href: "/plans",       label: "Pricing"      },
   { href: "/faq",         label: "FAQ"          },
   { href: "/changelog",   label: "Changelog"    },
-  { href: "/app/install", label: "Docs"         },
+  { href: "/app/install", label: "Install"      },
 ];
 
 // ── Mobile CTA state ──────────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ export function PublicNav() {
   const primary   = getPrimary(ctaState);
   const secondary = getSecondary(ctaState);
 
-  // Shared header bar styles (solid dark, full-width)
+  // Shared header bar styles — spec: sticky, frosted glass treatment
   const headerBarStyle: React.CSSProperties = {
     position: "fixed",
     top: 0,
@@ -169,13 +169,13 @@ export function PublicNav() {
     right: 0,
     height: HEADER_H,
     zIndex: 200,
-    background: "#08090b",
-    borderBottom: "1px solid rgba(255,255,255,0.07)",
-    boxShadow: "0 1px 0 rgba(255,255,255,0.04)",
+    background: "rgba(8,9,11,0.78)",
+    backdropFilter: "saturate(140%) blur(12px)",
+    WebkitBackdropFilter: "saturate(140%) blur(12px)",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
     transform: hidden ? "translateY(-100%)" : "translateY(0)",
     transition: "transform 0.22s ease",
     willChange: "transform",
-    // Prevent horizontal overflow
     overflow: "hidden",
   };
 

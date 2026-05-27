@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter_Tight, Geist_Mono } from "next/font/google";
+import { Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { SiteAnalytics } from "@/components/app/site-analytics";
 import { AuthCodeInterceptor } from "@/components/app/auth-code-interceptor";
@@ -11,9 +11,10 @@ const interTight = Inter_Tight({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
+const jetbrainsMono = JetBrains_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s | RunTrim",
   },
   description:
-    "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first. No account required.",
+    "RunTrim helps developers scope, verify, recover and continue AI coding agent runs with local-first control.",
   keywords: [
     "runtrim", "RunTrim CLI", "AI coding agent control layer",
     "Claude Code guardrails", "Claude Code context limit", "Claude Code token waste",
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
     siteName: "RunTrim",
     title: "RunTrim | AI Agent Control Layer",
     description:
-      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
+      "RunTrim helps developers scope, verify, recover and continue AI coding agent runs with local-first control.",
     images: [
       {
         url: "/opengraph-image",
@@ -61,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "RunTrim | AI Agent Control Layer",
     description:
-      "Control, verify and recover AI coding runs with scoped contracts, memory, finish checks, CI gates and local restore points. Free CLI. Local-first.",
+      "RunTrim helps developers scope, verify, recover and continue AI coding agent runs with local-first control.",
     images: ["/opengraph-image"],
   },
   icons: {
@@ -78,6 +79,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "RunTrim",
+    url: "https://www.runtrim.com",
+    description: "RunTrim is the control, verification and recovery layer for AI coding agents.",
+  };
+
   const softwareJsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -89,7 +98,7 @@ export default function RootLayout({
     url: "https://www.runtrim.com",
     downloadUrl: "https://www.npmjs.com/package/runtrim",
     installUrl: "https://www.runtrim.com/app/install",
-    softwareVersion: "0.1.28",
+    softwareVersion: "0.1.30",
     featureList: [
       "Scoped task contracts for AI coding agents",
       "Project memory and agent file injection",
@@ -115,6 +124,22 @@ export default function RootLayout({
         billingIncrement: "P1M",
         description: "Cloud sync, memory sync, and dashboard run history at $29/month.",
       },
+      {
+        "@type": "Offer",
+        name: "Builder",
+        price: "49",
+        priceCurrency: "USD",
+        billingIncrement: "P1M",
+        description: "Unlimited projects and CI Gate.",
+      },
+      {
+        "@type": "Offer",
+        name: "Team",
+        price: "24",
+        priceCurrency: "USD",
+        billingIncrement: "P1M",
+        description: "Reviewed access governance for teams.",
+      },
     ],
   };
 
@@ -134,9 +159,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${interTight.variable} ${geistMono.variable} dark h-full antialiased`}
+      className={`${interTight.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}

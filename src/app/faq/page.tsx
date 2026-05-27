@@ -6,7 +6,7 @@ import { PublicFooter } from "@/components/app/public-footer";
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Answers about RunTrim privacy, local-first restore, BLOCKED runs, MCP, and Free/Pro/Builder/Team limits.",
+    "Direct answers about RunTrim scope contracts, local-first privacy, BLOCKED verdicts, restore flow, MCP, and supported coding agents.",
   alternates: { canonical: "https://www.runtrim.com/faq" },
 };
 
@@ -17,6 +17,10 @@ const FAQ_SECTIONS: FaqSection[] = [
   {
     title: "Trust and privacy",
     items: [
+      {
+        q: "What is RunTrim?",
+        a: "RunTrim is the control, verification and recovery layer for AI coding agents. It gives coding agents scope, memory, finish checks, restore points and continuation prompts while keeping source code local by default.",
+      },
       {
         q: "Does RunTrim upload my source code?",
         a: "No. Source code stays local by default. Cloud sync stores run metadata only.",
@@ -39,8 +43,8 @@ const FAQ_SECTIONS: FaqSection[] = [
     title: "Agent workflow",
     items: [
       {
-        q: "How does RunTrim work with Claude, Cursor, Codex, and ChatGPT?",
-        a: "RunTrim creates a guarded contract and handoff, tracks the run, then verifies it with runtrim finish.",
+        q: "Which agents does RunTrim work with?",
+        a: "RunTrim works with Claude, Codex, Cursor, ChatGPT, DeepSeek, and other coding agents through copy mode or MCP-compatible workflows.",
       },
       {
         q: "Do I need MCP to use RunTrim?",
@@ -49,6 +53,10 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         q: "Does RunTrim replace my coding agent?",
         a: "No. RunTrim is the control, verification and recovery layer around your agent.",
+      },
+      {
+        q: "How is RunTrim different from agent orchestrators?",
+        a: "RunTrim is not an orchestrator that routes model calls for you. It is a guard layer that adds scope contracts, verification and recovery around the agent workflow you already use.",
       },
       {
         q: "What is the recommended command flow?",
@@ -65,7 +73,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: "What happens when a run is BLOCKED?",
-        a: "The run is recorded as evidence but is not trusted yet. Review the changes, approve a scoped change, or restore.",
+        a: "BLOCKED means the run needs review and is not trusted yet. Review the changes, approve a scoped change, or restore.",
       },
       {
         q: "Is restore local or remote?",
@@ -83,6 +91,10 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         q: "What is included in Free vs Pro vs Builder vs Team?",
         a: "Free protects one project locally. Pro adds cloud sync and dashboard history for your main project. Builder adds unlimited projects and CI Gate. Team adds governance controls, with some capabilities marked reviewed access or coming soon.",
+      },
+      {
+        q: "How is RunTrim different from Git?",
+        a: "Git tracks version history. RunTrim adds run-level control, verification and local restore for AI coding agent workflows before and after changes are made.",
       },
       {
         q: "Why is cloud history locked on Free?",
@@ -118,8 +130,26 @@ const FAQ_SECTIONS: FaqSection[] = [
 ];
 
 export default function FaqPage() {
+  const flatFaq = FAQ_SECTIONS.flatMap((section) => section.items);
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: flatFaq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.a,
+      },
+    })),
+  };
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#08090b] text-[#f4f5f7]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <PublicNav />
 
       <section
