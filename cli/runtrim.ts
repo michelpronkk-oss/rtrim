@@ -852,7 +852,12 @@ function writeAgentContract(cwd: string, contractText: string): string {
   const dir = path.join(cwd, ".runtrim", "contracts");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   const contractPath = path.join(dir, "latest.md");
-  fs.writeFileSync(contractPath, contractText, "utf-8");
+  // Inject Status: active so runtrim approve can detect a live contract.
+  const statusLine = "Status: active";
+  const withStatus = contractText.includes(statusLine)
+    ? contractText
+    : `${statusLine}\n\n${contractText}`;
+  fs.writeFileSync(contractPath, withStatus, "utf-8");
   return contractPath;
 }
 
@@ -2471,11 +2476,17 @@ function writeMcpLastUsed(cwd: string, tool: string): void {
   }
 }
 
-function appendContractAmendment(cwd: string, approvalText: string): { ok: boolean; reason?: string; fileLimit?: number } {
+function appendContractAmendment(cwd: string, approvalText: string): { ok: boolean; reason?: string; fileLimit?: number; contractTask?: string; contractStatusNone?: boolean } {
   const p = path.join(cwd, ".runtrim", "contracts", "latest.md");
   if (!fs.existsSync(p)) return { ok: false, reason: "missing_contract" };
   const raw = fs.readFileSync(p, "utf-8");
-  if (!/Status:\s*active/i.test(raw)) return { ok: false, reason: "inactive_contract" };
+  if (!/Status:\s*active/i.test(raw)) {
+    // Distinguish: Status: none (resting/preview) vs finished (RUNTRIM GUARDED RUN CONTRACT with no active status)
+    const isNone = /Status:\s*none/i.test(raw);
+    const taskMatch = raw.match(/^(?:Task:|Compiled:|User task:)\s*(.+)/im);
+    const contractTask = taskMatch ? taskMatch[1].trim() : "";
+    return { ok: false, reason: "inactive_contract", contractTask, contractStatusNone: isNone };
+  }
   const timestamp = new Date().toISOString();
   const sanitized = approvalText.replace(/\r?\n/g, " ").trim();
   const fileLimit = parseApprovalFileLimit(sanitized);
@@ -5675,27 +5686,30 @@ mcpCommand
     const snippets = ensureProjectMcpSnippets(cwd);
     const detected = detectKnownMcpConfigPresence();
     console.log("");
-    console.log("RunTrim MCP");
-    console.log("RunTrim MCP lets compatible agents call local RunTrim tools before and during edits.");
-    console.log('Use runtrim agent or runtrim panel to prepare a guarded run locally without spending agent tokens.');
-    console.log("MCP can create and check contracts directly when the agent calls these tools.");
-    console.log("Without MCP or wrapper flow, external agents are not forced to call RunTrim before editing.");
+    console.log(BOLD("RunTrim MCP"));
     console.log("");
-    console.log("Tools available:");
-    console.log("- runtrim_create_contract");
-    console.log("- runtrim_check_path");
-    console.log("- runtrim_suggest_approval");
-    console.log("- runtrim_finish_guidance");
+    console.log(DIM("  MCP is optional. It lets compatible agents dispatch contracts and scope checks"));
+    console.log(DIM("  directly from inside the agent session, without a separate terminal step."));
+    console.log(DIM("  Works with Claude Code, Cursor, and any MCP-compatible agent."));
     console.log("");
-    console.log("Project-local snippets:");
+    console.log(DIM("  Without MCP: use runtrim agent \"task\" --copy, then paste the handoff into your agent."));
+    console.log(DIM("  With MCP:    the agent calls runtrim_create_contract automatically before editing."));
+    console.log("");
+    console.log(BOLD("Available tools"));
+    console.log(DIM("  runtrim_create_contract   ") + chalk.white("create a scoped contract for the current task"));
+    console.log(DIM("  runtrim_check_path        ") + chalk.white("check if a file path is in scope before editing"));
+    console.log(DIM("  runtrim_suggest_approval  ") + chalk.white("suggest a safe runtrim approve command for out-of-scope paths"));
+    console.log(DIM("  runtrim_finish_guidance   ") + chalk.white("get concise guidance on runtrim finish and verdicts"));
+    console.log("");
+    console.log(BOLD("Project config snippets"));
     for (const file of snippets.files) {
-      console.log(`- ${file.relativePath}`);
+      console.log(DIM("  - ") + chalk.white(file.relativePath));
     }
     console.log("");
-    console.log("How to connect:");
-    console.log(`- Open ${path.relative(cwd, path.join(getProjectMcpDir(cwd), "claude-desktop.json"))} or cursor.json`);
-    console.log("- Copy the runtrim mcpServers block into your MCP client config.");
-    console.log("- Then run: runtrim mcp start");
+    console.log(BOLD("How to connect (one-time setup)"));
+    console.log(chalk.white(`  1. Open ${path.relative(cwd, path.join(getProjectMcpDir(cwd), "claude-desktop.json"))} or cursor.json`));
+    console.log(chalk.white("  2. Copy the runtrim mcpServers block into your MCP client config."));
+    console.log(chalk.white("  3. Run: runtrim mcp start"));
     console.log("");
     console.log("Detected local app configs (read-only):");
     console.log(`- Claude Desktop: ${detected.claudeConfigFound ? "found" : "not found"}${detected.claudeConfigPath ? ` (${detected.claudeConfigPath})` : ""}`);
@@ -8911,26 +8925,46 @@ program
     console.log("");
     if (!result.ok) {
       if (result.reason === "missing_contract") {
-        console.log(chalk.red("No active guarded contract found."));
+        // Case B: no contract file at all
+        console.log(chalk.red("No active guarded run found."));
+        console.log("");
+        console.log(DIM("  Start one with:"));
+        console.log(chalk.white('  runtrim agent "your task" --copy'));
+        console.log("");
+      } else if (result.contractStatusNone) {
+        // Case D: contract exists but is in resting/preview state
+        console.log(chalk.red("Cannot approve scope: no active guarded run found."));
+        console.log(chalk.red("The latest contract is in resting state (no active task)."));
+        console.log("");
+        console.log(DIM("  Start a guarded run first:"));
+        console.log(chalk.white('  runtrim agent "your task" --copy'));
+        console.log("");
       } else {
-        console.log(chalk.red("This guarded run is already finished."));
+        // Case C: contract exists, was a real run, but status is not active (finished)
+        const taskDisplay = result.contractTask ? result.contractTask : "unknown task";
+        console.log(chalk.red("Cannot approve scope: the latest guarded run is already finished."));
+        console.log("");
+        console.log(DIM("  Latest run:"));
+        console.log(DIM("    task:   ") + chalk.white(taskDisplay));
+        console.log(DIM("    status: ") + chalk.white("finished"));
+        console.log("");
+        console.log(DIM("  To expand scope, start a new run with the updated scope in the task:"));
+        console.log(chalk.white(`  runtrim agent "${taskDisplay} -- allow up to 14 files" --copy`));
+        console.log("");
       }
-      console.log(chalk.white("Start a guarded run first:"));
-      console.log(chalk.white('runtrim agent "Your task" --copy'));
-      console.log("");
-      console.log(chalk.white("Then approve the scoped change:"));
-      console.log(chalk.white('runtrim approve "Allow editing <path or scope> for this run only"'));
-      console.log("");
       return;
     }
 
     console.log(GO_ACCENT.bold("RunTrim approve"));
-    console.log(chalk.green("  Amendment recorded in .runtrim/contracts/latest.md"));
+    console.log(chalk.green("  Scope approval applied."));
+    console.log(DIM("  Approved:      ") + chalk.white(approvalText));
+    console.log(DIM("  Amendment recorded in .runtrim/contracts/latest.md"));
     if (typeof result.fileLimit === "number") {
-      console.log(DIM("  File limit  ") + chalk.white(`allow up to ${result.fileLimit} files (run-only amendment)`));
+      console.log(DIM("  File limit:    ") + chalk.white(`allow up to ${result.fileLimit} files (run-only amendment)`));
     }
+    console.log(DIM("  Current run remains active."));
     console.log("");
-    console.log(DIM("  Next        ") + chalk.white("Continue the current run and finish with runtrim finish"));
+    console.log(DIM("  Next:          ") + chalk.white("Continue the current run and finish with runtrim finish"));
     console.log("");
   });
 
@@ -9387,19 +9421,30 @@ program
 
     if (finishVerdict === "BLOCKED") {
       console.log(chalk.red.bold("Run blocked."));
-      console.log(chalk.red("  This run is recorded for review, but should not be treated as completed work."));
-      console.log(chalk.red("  This run is not trusted yet."));
+      console.log(chalk.red("  This run has been recorded but is not trusted. Do not treat it as completed work."));
       console.log("");
-      console.log(chalk.red.bold("Next"));
-      console.log(chalk.red("  - Review the blocked files."));
-      console.log(chalk.red("  - Approve a scoped amendment."));
-      console.log(chalk.red("  - Run runtrim restore."));
       if (outOfContractFiles.length > 0) {
-        console.log(chalk.red("  Blocked because this exceeds the active contract."));
-        console.log(chalk.red(`  Try: runtrim approve "Allow ${outOfContractFiles[0]} for this run only"`));
+        console.log(chalk.red(`  Files changed (${changedFiles.length}) exceed the contract scope.`));
+        console.log(chalk.red(`  Out-of-contract: ${outOfContractFiles.slice(0, 3).join(", ")}${outOfContractFiles.length > 3 ? ` (+${outOfContractFiles.length - 3} more)` : ""}`));
+        console.log("");
+        console.log(chalk.red("  Safest next steps:"));
+        console.log(chalk.red("    1. Run runtrim restore to undo the changes."));
+        console.log(chalk.red(`    2. Or start a new run with expanded scope:`));
+        console.log(chalk.white(`       runtrim agent "${truncate(activeRun.task, 60)} -- allow ${outOfContractFiles[0]}" --copy`));
       } else if (scope.status === "limit_exceeded") {
-        console.log(chalk.red("  Blocked because file-limit checks were exceeded."));
-        console.log(chalk.red('  Try: runtrim approve "Allow up to 14 files for this run only"'));
+        const fileCount = changedFiles.length;
+        const limit = maxFiles;
+        console.log(chalk.red(`  Files changed: ${fileCount} (limit: ${limit}).`));
+        console.log("");
+        console.log(chalk.red("  Safest next steps:"));
+        console.log(chalk.red("    1. Run runtrim restore to undo the changes."));
+        console.log(chalk.red(`    2. Or start a new run with an expanded file limit:`));
+        console.log(chalk.white(`       runtrim agent "${truncate(activeRun.task, 60)} -- allow up to ${fileCount} files" --copy`));
+      } else {
+        console.log(chalk.red("  Safest next steps:"));
+        console.log(chalk.red("    1. Review the flagged files above."));
+        console.log(chalk.red("    2. Run runtrim restore to undo the changes."));
+        console.log(chalk.red("    3. Or start a new run with a more specific scope."));
       }
       console.log("");
     }
