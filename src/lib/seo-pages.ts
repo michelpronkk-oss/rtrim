@@ -36,7 +36,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
     slug: "claude-code-context-limit",
     title: "Claude Code context limit? Continue without starting over.",
     description:
-      "Hit a Claude Code context limit? Keep state, changed files, and next actions intact so you can continue the run without restarting.",
+      "Hit a Claude Code context limit? Keep task state, changed files, and next actions ready so the follow-up session picks up exactly where the last one stopped.",
     h1: "Claude Code context limit? Continue the run without losing state.",
     eyebrow: "Claude Code workflow",
     subheadline:
@@ -68,19 +68,19 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account is required for the Free CLI.",
-      "RunTrim tracks run metadata, generated RunTrim prompts, changed file paths, and local memory.",
-      "Cloud sync and hosted dashboard are Pro early access and metadata-only."
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
+      "RunTrim tracks run metadata, generated prompts, changed file paths, and local memory.",
+      "Cloud dashboard sync is optional and metadata-only."
     ],
     faqs: [
       {
         question: "Does RunTrim replace Claude Code?",
-        answer: "No. RunTrim controls the run around Claude, Codex, Cursor, ChatGPT, and other coding agents."
+        answer: "No. RunTrim is a control layer that runs around Claude Code, Codex, Cursor, and other coding agents."
       },
       {
         question: "Does RunTrim upload source code?",
-        answer: "No. Free CLI runs locally and source code stays local in V1."
+        answer: "No. The free CLI runs entirely locally. Source code stays on your machine."
       },
       {
         question: "What is a continuation prompt?",
@@ -98,7 +98,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
     relatedSlugs: [
       "ai-coding-continuation-prompts",
       "ai-coding-run-history",
-      "ai-coding-agent-guardrails",
+      "claude-code-guardrails",
       "local-first-ai-coding-tool"
     ],
     finalCtaTitle: "Install RunTrim",
@@ -106,9 +106,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
   },
   "ai-coding-continuation-prompts": {
     slug: "ai-coding-continuation-prompts",
-    title: "AI coding continuation prompts for Claude, Codex, Cursor and ChatGPT.",
+    title: "AI coding continuation prompts — Claude Code, Cursor, Codex.",
     description:
-      "Generate continuation prompts that carry task state, changed files, protected areas, and next action when an AI coding run stops.",
+      "Carry task state, changed files, and next action into the next AI coding session without starting over. Works with Claude Code, Cursor, Codex, and ChatGPT.",
     h1: "Create continuation prompts when AI coding runs stop mid-task.",
     eyebrow: "Continuation prompts",
     subheadline:
@@ -138,10 +138,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "Free CLI does not require an account.",
+      "Source code stays local. RunTrim never uploads it.",
+      "Free CLI requires no account.",
       "RunTrim stores metadata, generated prompts, changed file paths, and local memory for continuity.",
-      "Cloud sync in Pro early access is metadata-only."
+      "Cloud dashboard sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -154,7 +154,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim upload source code?",
-        answer: "No. Free CLI is local-first and source code stays local in V1."
+        answer: "No. The free CLI runs entirely locally. Source code stays on your machine."
       },
       {
         question: "Can continuation prompts reduce token waste?",
@@ -162,13 +162,13 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "What does runtrim finish produce?",
-        answer: "A PASS / WARN / BLOCKED verdict with a structured report of the run: status, changed paths, risk indicators, verification debt, and recommended follow-up actions."
+        answer: "A PASS / WARN / BLOCKED verdict with a structured report: status, changed paths, risk indicators, verification debt, and recommended follow-up actions."
       }
     ],
     relatedSlugs: [
       "claude-code-context-limit",
       "ai-coding-run-history",
-      "ai-coding-agent-guardrails",
+      "claude-code-guardrails",
       "local-first-ai-coding-tool"
     ],
     finalCtaTitle: "Generate cleaner continuations",
@@ -176,9 +176,9 @@ export const seoPages: Record<string, SeoLandingPageData> = {
   },
   "ai-coding-run-history": {
     slug: "ai-coding-run-history",
-    title: "AI coding run history for agent workflows.",
+    title: "AI coding run history — track agent sessions locally.",
     description:
-      "Keep AI coding run history across sessions with local memory for prompts, statuses, changed file paths, and follow-ups.",
+      "Keep a searchable local record of AI coding runs across sessions: prompts, changed files, verification status, and follow-up actions. Works with Claude Code, Cursor, and Codex.",
     h1: "Keep run history across Claude, Codex, Cursor and ChatGPT.",
     eyebrow: "Run history",
     subheadline:
@@ -209,10 +209,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "Free CLI runs without account setup.",
+      "Source code stays local. RunTrim never uploads it.",
+      "Free CLI requires no account setup.",
       "RunTrim tracks statuses, generated prompts, changed file paths, protected systems, and local memory.",
-      "Hosted dashboard and sync are Pro early access with metadata-only sync."
+      "Hosted dashboard sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -221,11 +221,11 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Is run history local or cloud?",
-        answer: "Free CLI history is local in V1. Cloud sync is optional Pro early access and metadata-only."
+        answer: "Free CLI history is local. Cloud sync is optional and metadata-only."
       },
       {
         question: "Can I use run history across different agent tools?",
-        answer: "Yes. RunTrim works as a control layer around Claude, Codex, Cursor, ChatGPT, and other agent workflows."
+        answer: "Yes. RunTrim works as a control layer around Claude Code, Codex, Cursor, ChatGPT, and other agent workflows."
       },
       {
         question: "Does this replace git history?",
@@ -243,13 +243,13 @@ export const seoPages: Record<string, SeoLandingPageData> = {
   },
   "local-first-ai-coding-tool": {
     slug: "local-first-ai-coding-tool",
-    title: "Local-first AI coding tool with no source code upload.",
+    title: "Local-first AI coding: source code stays local, no upload.",
     description:
-      "RunTrim is a local-first AI coding control layer. Free CLI requires no account and keeps source code local in V1.",
+      "RunTrim runs in your repo as a local control layer for AI coding agents. Source code never leaves your machine. Free CLI, no account required.",
     h1: "A local-first control layer for AI coding agents.",
     eyebrow: "Local-first AI coding",
     subheadline:
-      "RunTrim works in your repo. Free CLI has no account requirement. Cloud sync is optional Pro early access and metadata-only.",
+      "RunTrim works in your repo. Source code never leaves your machine. Free CLI requires no account. Cloud sync is optional and metadata-only.",
     problem: [
       "Developers need workflow support without uploading source code.",
       "Many tools combine local workflow with mandatory cloud accounts.",
@@ -276,43 +276,43 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks metadata, generated prompts, changed file paths, and local memory.",
-      "Pro early access cloud sync is optional and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
         question: "Does RunTrim upload source code?",
-        answer: "No. In V1, source code stays local when using the Free CLI."
+        answer: "No. Source code stays on your machine. The free CLI runs entirely locally."
       },
       {
         question: "Do I need an account to use RunTrim?",
-        answer: "No. The Free CLI works locally without an account."
+        answer: "No. The free CLI works locally without an account."
       },
       {
         question: "What does cloud sync store?",
-        answer: "Cloud sync stores run metadata, generated prompts, changed file paths, and project memory for approved Pro early access users."
+        answer: "Cloud sync stores run metadata, generated prompts, changed file paths, and project memory. Source code is never included."
       },
       {
         question: "Can I still use my preferred coding agent?",
-        answer: "Yes. RunTrim is agent-agnostic and supports copy mode across major AI coding tools."
+        answer: "Yes. RunTrim is agent-agnostic and supports copy mode across Claude Code, Cursor, Codex, and other major AI coding tools."
       }
     ],
     relatedSlugs: [
       "ai-coding-agent-guardrails",
       "ai-coding-run-history",
       "ai-coding-continuation-prompts",
-      "claude-code-context-limit"
+      "claude-code-guardrails"
     ],
     finalCtaTitle: "Start local",
-    finalCtaBody: "Install the Free CLI and run locally without source code upload in V1."
+    finalCtaBody: "Install the free CLI. Source code stays on your machine. No account required."
   },
   "ai-coding-agent-guardrails": {
     slug: "ai-coding-agent-guardrails",
-    title: "AI coding agent guardrails for safer agent runs.",
+    title: "AI coding agent guardrails: scope, protect, verify.",
     description:
-      "Set guardrails before AI agents edit files. Scope tasks, protect sensitive systems, and verify changed paths after each run.",
+      "Add guardrails to AI coding agents before they edit files. Define scope, protect sensitive systems, and verify changed paths after each run. Works with Claude Code, Cursor, and Codex.",
     h1: "Keep AI coding agents scoped before they edit.",
     eyebrow: "Agent guardrails",
     subheadline:
@@ -343,22 +343,26 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
-      "RunTrim tracks metadata, prompts it generates, changed file paths, and local memory.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
+      "RunTrim tracks metadata, generated prompts, changed file paths, and local memory.",
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
-        question: "What are agent guardrails?",
-        answer: "Guardrails define allowed scope, protected systems, and verification requirements before an agent starts editing."
+        question: "What are AI coding agent guardrails?",
+        answer: "Guardrails define the allowed file surface, protected systems, and verification requirements before an AI coding agent starts editing."
+      },
+      {
+        question: "How do I add guardrails to an AI coding agent?",
+        answer: "Run runtrim start in your repo, then runtrim agent \"your task\" --copy. RunTrim generates a scoped contract. Paste it into your agent and run runtrim finish after."
       },
       {
         question: "Can guardrails prevent every risky change?",
-        answer: "No tool can guarantee that. RunTrim reduces risk by making scope explicit and checking changed paths after the run."
+        answer: "No tool can guarantee that. RunTrim reduces risk by making scope explicit before the run and checking changed paths after."
       },
       {
-        question: "Does RunTrim work with Claude, Codex, Cursor, and ChatGPT?",
+        question: "Does RunTrim work with Claude Code, Codex, Cursor, and ChatGPT?",
         answer: "Yes. It works in copy mode with any UI and can wrap configured local CLIs in command mode."
       },
       {
@@ -367,10 +371,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     relatedSlugs: [
+      "claude-code-guardrails",
       "local-first-ai-coding-tool",
       "ai-coding-run-history",
-      "ai-coding-continuation-prompts",
-      "claude-code-context-limit"
+      "ai-agent-scope-drift"
     ],
     finalCtaTitle: "Add guardrails before edits",
     finalCtaBody: "Define scope first, then verify changed paths before shipping agent-generated code."
@@ -411,10 +415,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks run metadata, generated prompts, changed file paths, and local memory.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -423,7 +427,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim upload source code?",
-        answer: "No. Free CLI runs locally and source code stays local in V1."
+        answer: "No. The free CLI runs entirely locally. Source code stays on your machine."
       },
       {
         question: "What is a continuation prompt?",
@@ -482,10 +486,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
+      "Source code stays local. RunTrim never uploads it.",
       "Free CLI runs without account setup.",
       "RunTrim tracks statuses, generated prompts, changed file paths, and local memory.",
-      "Hosted dashboard and sync are Pro early access with metadata-only sync."
+      "Hosted dashboard sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -494,7 +498,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Is run history local or cloud?",
-        answer: "Free CLI history is local in V1. Cloud sync is optional Pro early access and metadata-only."
+        answer: "Free CLI history is local. Cloud sync is optional and metadata-only."
       },
       {
         question: "Does this replace Cursor's chat history?",
@@ -549,10 +553,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks metadata, generated prompts, changed file paths, and local memory.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -617,10 +621,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks run metadata, generated prompts, changed file paths, and local memory.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -629,7 +633,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim upload source code?",
-        answer: "No. Free CLI runs locally and source code stays local in V1."
+        answer: "No. The free CLI runs entirely locally. Source code stays on your machine."
       },
       {
         question: "Can RunTrim reduce Codex token waste?",
@@ -684,10 +688,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks metadata, generated prompts, changed file paths, and protected systems.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -752,8 +756,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks run metadata, generated prompts, changed file paths, and local memory.",
       "Savings estimates are local approximations based on run metadata, not billing data."
     ],
@@ -768,7 +772,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim upload source code to estimate savings?",
-        answer: "No. All estimation is local and source code stays on your machine in V1."
+        answer: "No. All estimation is local. Source code stays on your machine."
       },
       {
         question: "What is a guarded run contract?",
@@ -823,10 +827,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks metadata, generated prompts, changed file paths, and protected systems.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -895,8 +899,8 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks metadata, generated prompts, changed file paths, and local memory.",
       "Savings estimates are local approximations based on run metadata, not billing data."
     ],
@@ -919,7 +923,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim access API keys or billing accounts?",
-        answer: "No. RunTrim runs locally and does not access agent APIs, billing data, or source code in V1."
+        answer: "No. RunTrim runs locally and does not access agent APIs, billing data, or source code."
       }
     ],
     relatedSlugs: [
@@ -966,10 +970,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim tracks changed file paths, run status, verification debt, and local memory.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -990,7 +994,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Does RunTrim read file contents?",
-        answer: "RunTrim reads changed file paths and project config locally. It does not read file contents or upload source code in V1."
+        answer: "RunTrim reads changed file paths and project config locally. It does not read file contents or upload source code."
       }
     ],
     relatedSlugs: [
@@ -1001,6 +1005,82 @@ export const seoPages: Record<string, SeoLandingPageData> = {
     ],
     finalCtaTitle: "Check what actually changed",
     finalCtaBody: "Run runtrim finish after every agent session to surface scope violations and verification debt before they ship."
+  },
+  "claude-code-guardrails": {
+    slug: "claude-code-guardrails",
+    title: "Claude Code guardrails: scope, protect, and verify runs.",
+    description:
+      "Set guardrails for Claude Code before it edits your codebase. Define scope, protect sensitive systems, and verify changed paths after each run. Free CLI, no upload.",
+    h1: "Claude Code guardrails: scope runs before they edit.",
+    eyebrow: "Claude Code guardrails",
+    subheadline:
+      "Without explicit scope, Claude Code can drift into auth, billing, env, database, and other areas outside the task. RunTrim sets guardrails before the run starts.",
+    problem: [
+      "Claude Code interprets broad prompts broadly and may touch files outside the goal.",
+      "Sensitive systems can be modified during unrelated Claude Code work without warning.",
+      "Post-run diff review is difficult without pre-defined scope boundaries."
+    ],
+    whyThisHappens: [
+      "Claude Code optimizes for task completion and may expand scope unless explicitly constrained.",
+      "Natural language task descriptions do not encode file-level boundaries.",
+      "Teams rely on implicit rules that are not machine-readable by the agent."
+    ],
+    manualWorkflow: [
+      "Prepend a long system prompt describing files and systems to avoid before each session.",
+      "Manually review every changed file after Claude Code runs.",
+      "Block risky changes after the fact, once tokens are already spent."
+    ],
+    runtrimWorkflow: [
+      {
+        title: "RunTrim Claude Code guardrail workflow",
+        commands: [
+          "runtrim start",
+          'runtrim agent "your task" --copy',
+          "# paste into Claude Code",
+          "runtrim finish"
+        ]
+      }
+    ],
+    privacyPoints: [
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
+      "RunTrim tracks metadata, generated prompts, changed file paths, and local memory.",
+      "Cloud sync is optional and metadata-only."
+    ],
+    faqs: [
+      {
+        question: "What are Claude Code guardrails?",
+        answer: "Guardrails define the allowed file surface, protected systems, and verification requirements before Claude Code starts editing, so scope violations are caught early."
+      },
+      {
+        question: "How do I add guardrails to Claude Code?",
+        answer: "Run runtrim start in your repo, then runtrim agent \"your task\" --copy. RunTrim generates a scoped contract. Paste it into Claude Code and run runtrim finish after."
+      },
+      {
+        question: "Does RunTrim block Claude Code in real time?",
+        answer: "No. RunTrim defines scope before the run and checks changed paths after. It does not intercept Claude Code actions mid-run."
+      },
+      {
+        question: "Does RunTrim upload source code to set guardrails?",
+        answer: "No. Guardrails are defined locally from project config and task description. Source code stays on your machine."
+      },
+      {
+        question: "What systems does RunTrim protect by default?",
+        answer: "Auth, billing, env files, database, middleware, and other high-risk areas detected from your project structure."
+      },
+      {
+        question: "Can RunTrim prevent every unsafe Claude Code change?",
+        answer: "No tool can guarantee that. RunTrim makes scope explicit before the run and checks changed paths after, reducing risk at both points."
+      }
+    ],
+    relatedSlugs: [
+      "ai-coding-agent-guardrails",
+      "claude-code-context-limit",
+      "claude-code-token-waste",
+      "ai-agent-scope-drift"
+    ],
+    finalCtaTitle: "Add guardrails to Claude Code runs",
+    finalCtaBody: "Define scope before Claude Code starts editing. Verify changed paths before shipping."
   },
   "ai-coding-prompt-reuse": {
     slug: "ai-coding-prompt-reuse",
@@ -1037,10 +1117,10 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       }
     ],
     privacyPoints: [
-      "Source code stays local in V1.",
-      "No account required for the Free CLI.",
+      "Source code stays local. RunTrim never uploads it.",
+      "No account required for the free CLI.",
       "RunTrim stores generated prompts, run statuses, changed file paths, and local memory.",
-      "Cloud sync is Pro early access and metadata-only."
+      "Cloud sync is optional and metadata-only."
     ],
     faqs: [
       {
@@ -1061,7 +1141,7 @@ export const seoPages: Record<string, SeoLandingPageData> = {
       },
       {
         question: "Is prompt history stored locally or in the cloud?",
-        answer: "Prompt history is local in V1. Cloud sync is optional Pro early access and syncs metadata only."
+        answer: "Prompt history is local. Cloud sync is optional and metadata-only."
       }
     ],
     relatedSlugs: [
@@ -1105,9 +1185,10 @@ export const seoKeywords: Record<string, string[]> = {
     "local AI developer tool", "AI coding privacy",
   ],
   "ai-coding-agent-guardrails": [
-    "AI coding agent guardrails", "AI agent scope control", "AI coding safety",
+    "AI coding agent guardrails", "guardrails for coding agents", "ai code guardrails",
+    "how to add guardrails to AI coding agent", "AI agent scope control", "AI coding safety",
     "protect files from AI agent", "agent scope boundaries", "AI run guardrails",
-    "coding agent safety", "AI agent file protection",
+    "coding agent safety", "AI agent file protection", "add guardrails to coding agent",
   ],
   "cursor-context-limit": [
     "Cursor context limit", "Cursor AI context limit", "Cursor session restart",
@@ -1129,6 +1210,13 @@ export const seoKeywords: Record<string, string[]> = {
   "codex-cli-guardrails": [
     "Codex CLI guardrails", "Codex scope control", "Codex CLI safety",
     "OpenAI Codex guardrails", "Codex CLI file protection",
+  ],
+  "claude-code-guardrails": [
+    "Claude Code guardrails", "guardrails for Claude Code", "Claude Code scope control",
+    "Claude Code safety", "protect files from Claude Code", "Claude Code agent guardrails",
+    "how to add guardrails to Claude Code", "Claude Code scope boundaries",
+    "Claude Code file protection", "ai coding guardrails claude code",
+    "guardrails for ai coding agents claude",
   ],
   "claude-code-token-waste": [
     "Claude Code token waste", "reduce Claude Code tokens", "Claude Code token savings",

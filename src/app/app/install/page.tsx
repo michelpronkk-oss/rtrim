@@ -5,9 +5,9 @@ import { CopyButton } from "@/components/app/copy-button";
 import { PublicNav } from "@/components/app/public-nav";
 
 export const metadata: Metadata = {
-  title: "Install RunTrim",
+  title: "Install RunTrim CLI — npm install -g runtrim",
   description:
-    "Install RunTrim in one command. Set up your project with runtrim start, dispatch guarded runs with runtrim agent, and verify with runtrim finish. Free. Local-first. No account required.",
+    "Install RunTrim in one command: npm install -g runtrim. Set up any repo with runtrim start, dispatch scoped agent runs, and verify with runtrim finish. Free, local-first, no account required.",
   alternates: { canonical: "https://www.runtrim.com/app/install" },
   robots: { index: true, follow: true },
   keywords: [
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     "Cursor guardrails CLI", "AI coding guardrails install", "runtrim mcp",
   ],
   openGraph: {
-    title: "Install RunTrim | RunTrim",
+    title: "Install RunTrim CLI | RunTrim",
     description:
       "Install in one command. Set up your project, dispatch guarded agent runs, verify with finish checks. Free. Local-first. No account required.",
     url: "https://www.runtrim.com/app/install",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Install RunTrim | RunTrim",
+    title: "Install RunTrim CLI | RunTrim",
     description:
       "Install in one command. Set up your project, dispatch guarded agent runs, verify with finish checks.",
     images: ["/opengraph-image"],

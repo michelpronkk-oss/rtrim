@@ -336,7 +336,7 @@ export function SeoLandingPage({ page }: SeoLandingPageProps) {
               </Link>
             </div>
             <p className="mt-5 font-mono text-[11px] text-[#252540]">
-              Free in V1 · No account required · Local-first · Agent-agnostic
+              Free · No account required · Local-first · Agent-agnostic
             </p>
           </div>
         </section>

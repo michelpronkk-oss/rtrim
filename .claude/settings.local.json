@@ -117,7 +117,20 @@
       "Bash(start \"\" \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\design_handoff_runtrim_brand\\\\exports\\\\saas-hit.mp4\")",
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })",
       "Bash(python3 -c ' *)",
-      "Bash(not exist *)"
+      "Bash(not exist *)",
+      "Bash(mkdir \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\_cli_audit_test\")",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" start)",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" doctor)",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" agent \"Fix a small UI typo\" --copy)",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" approve \"Allow one extra file for this run only\")",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" finish)",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" approve \"Allow one extra file after finish\")",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" agent \"Add a new button component\" --copy)",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" mcp instructions)",
+      "Bash(node \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\dist-cli\\\\runtrim.cjs\" continue --reason usage_limit)",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\_cli_audit_test\")",
+      "Bash(Get-Item \"c:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\\\\design_handoff_runtrim_brand\\\\exports\\\\post-08.png\")",
+      "Bash(Select-Object Name, Length, LastWriteTime)"
     ]
   }
 }

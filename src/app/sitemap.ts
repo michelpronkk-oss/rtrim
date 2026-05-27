@@ -53,6 +53,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: "https://www.runtrim.com/claude-code-guardrails",
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
       url: "https://www.runtrim.com/claude-code-context-limit",
       lastModified: now,
       changeFrequency: "weekly",

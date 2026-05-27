@@ -246,13 +246,8 @@ export default function Home() {
                   Stop AI agents from{" "}
                   <span style={{
                     fontStyle: "italic",
-                    fontWeight: 600,
-                    background: "linear-gradient(110deg, #7C6DFA 0%, #B8AEFF 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                    paddingBottom: "0.25em",
-                    marginBottom: "-0.25em",
+                    fontWeight: 800,
+                    color: "#a78bfa",
                     display: "inline-block",
                   }}>drifting</span>{" "}
                   through your codebase.
