@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutGrid,
   FolderKanban,
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { RunTrimLogo } from "@/components/app/runtrim-logo";
 import { NewRunModal } from "@/components/app/new-run-modal";
+import { SearchModal } from "@/components/app/search-modal";
 
 const NAV_ITEMS = [
   { href: "/app",               label: "Overview",      icon: LayoutGrid    },
@@ -77,6 +78,18 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
   const pathname      = usePathname();
   const [mobileOpen,  setMobileOpen]  = useState(false);
   const [newRunOpen,  setNewRunOpen]  = useState(false);
+  const [searchOpen,  setSearchOpen]  = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   const badgeStyle  = PLAN_BADGE_STYLE[plan] ?? PLAN_BADGE_STYLE.free;
   const badgeLabel  = planBadgeLabel(plan, planStatus);
@@ -235,7 +248,9 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
             </div>
 
             {/* Search */}
-            <div
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
               style={{
                 marginLeft: "auto",
                 display: "flex", alignItems: "center", gap: 10,
@@ -245,10 +260,13 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
                 background: "#0c0e11",
                 minWidth: 260,
                 cursor: "text",
+                fontFamily: "inherit",
+                transition: "border-color 0.12s",
               }}
+              className="hover:border-white/20"
             >
               <Search size={12} style={{ color: "#5a5f68", flexShrink: 0 }} />
-              <span style={{ ...MONO, fontSize: 12, color: "#3a3e46", flex: 1 }}>
+              <span style={{ ...MONO, fontSize: 12, color: "#3a3e46", flex: 1, textAlign: "left" }}>
                 Search runs, contracts, agents…
               </span>
               <span style={{
@@ -259,27 +277,44 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
               }}>
                 ⌘K
               </span>
-            </div>
+            </button>
 
             {/* CLI status pill */}
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              ...MONO, fontSize: 11, letterSpacing: "0.06em",
-              color: hasConnectedCli ? "#8a8f98" : "#f5a524",
-              padding: "5px 10px",
-              border: `1px solid ${hasConnectedCli ? "rgba(255,255,255,0.10)" : "rgba(245,165,36,0.28)"}`,
-              borderRadius: 999,
-              background: hasConnectedCli ? "#0c0e11" : "rgba(245,165,36,0.06)",
-              flexShrink: 0,
-            }}>
-              <span style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: hasConnectedCli ? "#6ee7b7" : "#f5a524",
-                boxShadow: `0 0 6px ${hasConnectedCli ? "#6ee7b7" : "#f5a524"}`,
+            {hasConnectedCli ? (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                ...MONO, fontSize: 11, letterSpacing: "0.06em",
+                color: "#8a8f98",
+                padding: "5px 10px",
+                border: "1px solid rgba(255,255,255,0.10)",
+                borderRadius: 999,
+                background: "#0c0e11",
                 flexShrink: 0,
-              }} />
-              {hasConnectedCli ? "CLI connected" : "CLI not connected"}
-            </div>
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6ee7b7", boxShadow: "0 0 6px #6ee7b7", flexShrink: 0 }} />
+                CLI connected
+              </div>
+            ) : (
+              <Link
+                href="/app/connect"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  ...MONO, fontSize: 11, letterSpacing: "0.06em",
+                  color: "#f5a524",
+                  padding: "5px 10px",
+                  border: "1px solid rgba(245,165,36,0.28)",
+                  borderRadius: 999,
+                  background: "rgba(245,165,36,0.06)",
+                  flexShrink: 0,
+                  textDecoration: "none",
+                  transition: "background 0.12s, border-color 0.12s",
+                }}
+                className="hover:bg-[rgba(245,165,36,0.12)] hover:border-[rgba(245,165,36,0.45)]"
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f5a524", boxShadow: "0 0 6px #f5a524", flexShrink: 0 }} />
+                Connect CLI
+              </Link>
+            )}
 
             {/* New run CTA */}
             <button
@@ -420,6 +455,9 @@ export function AppShell({ children, userEmail, plan = "free", planStatus, hasCo
         onClose={() => setNewRunOpen(false)}
         hasConnectedCli={hasConnectedCli}
       />
+
+      {/* Search Modal */}
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

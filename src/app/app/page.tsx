@@ -333,7 +333,7 @@ export default async function OverviewPage() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden" style={{ maxWidth: 1320 }}>
+    <div className="w-full min-w-0 overflow-x-hidden">
 
       {/* ── Subscription banners ─────────────────────────────────── */}
       {isCanceledInPeriod && (
@@ -482,7 +482,7 @@ export default async function OverviewPage() {
             </div>
           </div>
           {/* Stages */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-white/[0.06]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 divide-y divide-white/[0.06] sm:divide-y-0 sm:divide-x">
             {PIPELINE_STAGES.map((stage, i) => {
               const status = stageDoneFlags[i] ? "done" : (i === 0 || !!stageDoneFlags[i - 1]) ? "active" : "future";
               const isDone    = status === "done";
@@ -491,7 +491,7 @@ export default async function OverviewPage() {
               return (
                 <div
                   key={stage.n}
-                  className="border-t border-white/[0.06] lg:border-t-0"
+                  className=""
                   style={{ padding: "20px 18px 18px", display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8, ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.08em" }}>
@@ -829,7 +829,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* ── Protection + Agents ───────────────────────────────────── */}
-      <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
 
         {/* Protection card */}
         <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", overflow: "hidden" }}>
@@ -897,7 +897,7 @@ export default async function OverviewPage() {
               {hasConnectedCli ? "available" : "not configured"}
             </div>
           </div>
-          <div style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ padding: 14, gap: 8 }}>
             {AGENT_TILES.map(({ icon, name }) => (
               <div
                 key={name}

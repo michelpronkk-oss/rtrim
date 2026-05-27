@@ -221,7 +221,7 @@ export default async function RunsPage({
       ) : (
         <>
           {/* Stats strip */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }} className="grid-cols-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
               { label: "Runs · this month", value: String(totalRuns), unit: "total", delta: null },
               { label: "Pass rate · first attempt", value: `${passRate}%`, unit: null, delta: null },

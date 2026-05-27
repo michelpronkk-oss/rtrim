@@ -208,57 +208,58 @@ export function AdminContentCalendarContent() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>content calendar</p>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, letterSpacing: "-0.02em", color: "#f4f5f7" }}>Content</h2>
-          <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "#8a8f98" }}>{items.length} items across all platforms</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+          <span style={{ fontSize: 15, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>Content</span>
+          <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68" }}>{items.length} items</span>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {/* View toggle */}
-          <div style={{ display: "flex", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 6, overflow: "hidden" }}>
+          <div style={{ display: "flex", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, overflow: "hidden" }}>
             {(["table", "board"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)}
-                style={{ ...MONO, height: 30, padding: "0 10px", border: "none", background: view === v ? "#16191e" : "transparent", color: view === v ? "#f4f5f7" : "#5a5f68", fontSize: 11, cursor: "pointer" }}>
+                style={{ ...MONO, height: 28, padding: "0 10px", border: "none", background: view === v ? "#16191e" : "transparent", color: view === v ? "#f4f5f7" : "#5a5f68", fontSize: 11, cursor: "pointer" }}>
                 {v}
               </button>
             ))}
           </div>
           <button
             onClick={openAdd}
-            style={{ height: 32, padding: "0 14px", borderRadius: 7, border: "1px solid rgba(167,139,250,0.40)", background: "rgba(167,139,250,0.10)", color: "#a78bfa", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+            style={{ height: 30, padding: "0 12px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.40)", background: "rgba(167,139,250,0.10)", color: "#a78bfa", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
           >
             + Add item
           </button>
         </div>
       </div>
 
-      {/* Status filters */}
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {STATUS_FILTER_LIST.map((s) => {
-          const active = statusFilter === s;
-          const color = s !== "all" ? (STATUS_COLOR[s as ContentStatus] ?? "#5a5f68") : "#8a8f98";
-          return (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              style={{ ...MONO, height: 27, padding: "0 9px", borderRadius: 5, border: `1px solid ${active ? `${color}40` : "rgba(255,255,255,0.07)"}`, background: active ? `${color}0d` : "transparent", color: active ? color : "#5a5f68", fontSize: 10.5, cursor: "pointer" }}>
-              {s}{statusCounts[s] > 0 ? ` ${statusCounts[s]}` : ""}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Bucket filters */}
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {BUCKET_FILTER_LIST.map((b) => {
-          const active = bucketFilter === b;
-          const color = b !== "all" ? (BUCKET_COLOR[b as ContentBucket] ?? "#5a5f68") : "#8a8f98";
-          return (
-            <button key={b} onClick={() => setBucketFilter(b)}
-              style={{ ...MONO, height: 25, padding: "0 8px", borderRadius: 4, border: `1px solid ${active ? `${color}35` : "rgba(255,255,255,0.05)"}`, background: active ? `${color}0a` : "transparent", color: active ? color : "#3a3e46", fontSize: 10, cursor: "pointer" }}>
-              {b}
-            </button>
-          );
-        })}
+      {/* Filters */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* Status */}
+        <div style={{ display: "flex", gap: 4, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+          {STATUS_FILTER_LIST.map((s) => {
+            const active = statusFilter === s;
+            const color = s !== "all" ? (STATUS_COLOR[s as ContentStatus] ?? "#5a5f68") : "#8a8f98";
+            return (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                style={{ ...MONO, flexShrink: 0, height: 26, padding: "0 9px", borderRadius: 5, border: `1px solid ${active ? `${color}40` : "rgba(255,255,255,0.07)"}`, background: active ? `${color}0d` : "transparent", color: active ? color : "#5a5f68", fontSize: 10.5, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {s}{statusCounts[s] > 0 ? ` · ${statusCounts[s]}` : ""}
+              </button>
+            );
+          })}
+        </div>
+        {/* Bucket */}
+        <div style={{ display: "flex", gap: 4, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+          {BUCKET_FILTER_LIST.map((b) => {
+            const active = bucketFilter === b;
+            const color = b !== "all" ? (BUCKET_COLOR[b as ContentBucket] ?? "#5a5f68") : "#8a8f98";
+            return (
+              <button key={b} onClick={() => setBucketFilter(b)}
+                style={{ ...MONO, flexShrink: 0, height: 24, padding: "0 8px", borderRadius: 4, border: `1px solid ${active ? `${color}35` : "rgba(255,255,255,0.05)"}`, background: active ? `${color}0a` : "transparent", color: active ? color : "#3a3e46", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {b}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Add / Edit form */}

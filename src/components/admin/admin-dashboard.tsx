@@ -275,94 +275,59 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
   return (
     <div style={{ minHeight: "100vh", background: "#08090b", color: "#f4f5f7" }}>
 
-      {/* Topbar */}
+      {/* Topbar + tabs — merged */}
       <header style={{
         position: "sticky", top: 0, zIndex: 30,
-        background: "rgba(8,9,11,0.88)",
+        background: "rgba(8,9,11,0.92)",
         backdropFilter: "saturate(140%) blur(12px)",
         WebkitBackdropFilter: "saturate(140%) blur(12px)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ ...MONO, fontSize: 10, color: "#a78bfa", letterSpacing: "0.10em", textTransform: "uppercase" }}>
-              RunTrim Admin
+        {/* Title row */}
+        <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 16px", height: 48, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ ...MONO, fontSize: 11.5, color: "#f4f5f7", fontWeight: 500, letterSpacing: "-0.01em" }}>
+            RunTrim Admin
+          </span>
+          <span style={{ ...MONO, fontSize: 9, padding: "1px 6px", borderRadius: 3, border: "1px solid rgba(167,139,250,0.25)", background: "rgba(167,139,250,0.08)", color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase", flexShrink: 0 }}>
+            {getRoleLabel(role)}
+          </span>
+          {lastFetched && (
+            <span className="hidden md:inline" style={{ ...MONO, fontSize: 10, color: "#3a3e46" }}>
+              {rel(lastFetched.toISOString())}
             </span>
-            <span style={{ ...MONO, fontSize: 9.5, padding: "1px 7px", borderRadius: 4, border: "1px solid rgba(167,139,250,0.25)", background: "rgba(167,139,250,0.08)", color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              {getRoleLabel(role)}
-            </span>
-            {lastFetched && (
-              <span style={{ ...MONO, fontSize: 10, color: "#3a3e46" }}>
-                {rel(lastFetched.toISOString())}
-              </span>
-            )}
-          </div>
+          )}
           <div style={{ flex: 1 }} />
+          {/* Actions */}
           <button
             onClick={() => void load(true)}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              height: 30, padding: "0 10px", borderRadius: 6,
-              border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
-              color: "#8a8f98", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-            }}
+            title="Refresh"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "#8a8f98", fontSize: 12, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
           >
-            <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
-            Refresh
+            <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
           <a
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              height: 30, padding: "0 10px", borderRadius: 6,
-              border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
-              color: "#8a8f98", fontSize: 12, textDecoration: "none",
-            }}
+            className="hidden md:inline-flex"
+            style={{ alignItems: "center", gap: 6, height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "#8a8f98", fontSize: 12, textDecoration: "none", flexShrink: 0 }}
           >
-            <ExternalLink size={11} />
+            <ExternalLink size={12} />
             Open site
           </a>
           <button
             onClick={logout}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              height: 30, padding: "0 10px", borderRadius: 6,
-              border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
-              color: "#8a8f98", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-            }}
+            title="Sign out"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "#8a8f98", fontSize: 12, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
           >
-            <LogOut size={11} />
-            Sign out
+            <LogOut size={12} />
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
-      </header>
 
-      <main style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px 64px" }}>
-
-        {/* Page header */}
-        <div style={{ marginBottom: 24 }}>
-          <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>
-            operator console
-          </p>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 500, letterSpacing: "-0.025em", color: "#f4f5f7", lineHeight: 1.1 }}>
-            RunTrim Admin
-          </h1>
-          <p style={{ marginTop: 4, fontSize: 13, color: "#8a8f98" }}>
-            Growth, activation and revenue console
-          </p>
-        </div>
-
-        {/* Error */}
-        {error ? (
-          <div style={{ marginBottom: 20, borderRadius: 8, border: "1px solid rgba(248,113,113,0.28)", background: "rgba(248,113,113,0.05)", padding: "12px 16px", fontSize: 12, color: "#f87171" }}>
-            {error}
-          </div>
-        ) : null}
-
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 24, overflowX: "auto", paddingBottom: 2 }}>
+        {/* Tab strip */}
+        <div style={{ maxWidth: 1400, margin: "0 auto", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
           {visibleTabs.map(({ id, label }) => {
             const active = tab === id;
             return (
@@ -371,20 +336,37 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
                 onClick={() => setTab(id as Tab)}
                 style={{
                   flexShrink: 0,
-                  height: 30, padding: "0 12px", borderRadius: 6,
-                  border: `1px solid ${active ? "rgba(167,139,250,0.50)" : "rgba(255,255,255,0.10)"}`,
-                  background: active ? "rgba(167,139,250,0.12)" : "transparent",
-                  color: active ? "#a78bfa" : "#8a8f98",
-                  fontSize: 12, fontWeight: 500,
-                  cursor: "pointer", fontFamily: "inherit",
-                  transition: "all 0.12s",
+                  padding: "10px 16px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: `2px solid ${active ? "#a78bfa" : "transparent"}`,
+                  color: active ? "#f4f5f7" : "#5a5f68",
+                  fontSize: 12.5,
+                  fontWeight: active ? 500 : 400,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: active ? "-0.005em" : "0",
+                  transition: "color 0.12s, border-color 0.12s",
+                  whiteSpace: "nowrap",
                 }}
+                className={!active ? "hover:text-[#c9ccd2]" : ""}
               >
                 {label}
               </button>
             );
           })}
         </div>
+      </header>
+
+      <main style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 16px 64px" }}
+            className="sm:px-6 md:px-8">
+
+        {/* Error */}
+        {error ? (
+          <div style={{ marginBottom: 20, borderRadius: 8, border: "1px solid rgba(248,113,113,0.28)", background: "rgba(248,113,113,0.05)", padding: "12px 16px", fontSize: 12, color: "#f87171" }}>
+            {error}
+          </div>
+        ) : null}
 
         {/* ── Planning tab ──────────────────────────────────────────── */}
         {tab === "planning" ? (

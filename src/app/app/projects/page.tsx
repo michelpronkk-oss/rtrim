@@ -145,7 +145,7 @@ export default async function ProjectsPage() {
 
       {projects.length === 0 ? (
         /* ── Empty state ──────────────────────────────────────── */
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }} className="md:grid-cols-2" >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
           {/* Add project dashed card */}
           <div style={{ border: "1px dashed rgba(255,255,255,0.16)", borderRadius: 12, background: "transparent", padding: 18, display: "flex", flexDirection: "column", gap: 12, justifyContent: "center", minHeight: 240, textAlign: "center", alignItems: "center" }}>
             <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.30)", display: "grid", placeItems: "center", color: "#a78bfa" }}>
@@ -166,9 +166,9 @@ export default async function ProjectsPage() {
             <p style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase", margin: 0 }}>Quick start</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {["runtrim start", "runtrim doctor", 'runtrim agent "your first task" --copy', "runtrim finish"].map((cmd) => (
-                <div key={cmd} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.07)", ...MONO, fontSize: 11.5, color: "#c9ccd2" }}>
-                  <span style={{ color: "#a78bfa" }}>$</span>
-                  <span>{cmd}</span>
+                <div key={cmd} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 6, background: "#16191e", border: "1px solid rgba(255,255,255,0.07)", ...MONO, fontSize: 11.5, color: "#c9ccd2", overflow: "hidden" }}>
+                  <span style={{ color: "#a78bfa", flexShrink: 0 }}>$</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{cmd}</span>
                 </div>
               ))}
             </div>
@@ -187,8 +187,7 @@ export default async function ProjectsPage() {
       ) : (
         /* ── Project grid ─────────────────────────────────────── */
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14, marginBottom: 24 }}
-               className="md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px] mb-6">
             {projects.map((project) => {
               const runs = runCounts[project.id] ?? 0;
               const verdict = verdictInfo(project.last_status);
@@ -236,7 +235,7 @@ export default async function ProjectsPage() {
                     )}
 
                     {/* Meta strip */}
-                    <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }} className="sm:grid-cols-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3" style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", gap: 10 }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <span style={{ ...MONO, fontSize: 9.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>Runs</span>
                         <span style={{ fontSize: 14, color: "#f4f5f7", fontWeight: 500, letterSpacing: "-0.01em" }}>{runs}</span>
@@ -276,7 +275,7 @@ export default async function ProjectsPage() {
 
           {/* Archive section */}
           <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", overflow: "hidden" }}>
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
               <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>archive</span>
               <span style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>Archived projects</span>
               <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.06em" }}>soft-deleted · 30 day retention</span>

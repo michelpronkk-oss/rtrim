@@ -147,6 +147,7 @@ export default async function ProjectAgentPage() {
     borderBottom: "1px solid rgba(255,255,255,0.05)",
     display: "flex",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 10,
   };
 

@@ -116,7 +116,7 @@ export default async function ConnectPage() {
       </div>
 
       {/* ── Install pipeline ──────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, overflow: "hidden", background: "linear-gradient(180deg, #0e1116, #0a0c10)", marginBottom: 24 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y divide-white/[0.06] sm:divide-y-0 sm:divide-x" style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, overflow: "hidden", background: "linear-gradient(180deg, #0e1116, #0a0c10)", marginBottom: 24 }}>
         {stages.map((stage, i) => {
           const isDone   = stage.status === "done";
           const isActive = stage.status === "active";
@@ -126,7 +126,6 @@ export default async function ConnectPage() {
               key={stage.n}
               style={{
                 padding: "22px 22px 20px",
-                borderRight: i < stages.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
                 display: "flex", flexDirection: "column", gap: 10,
               }}
             >
@@ -154,8 +153,7 @@ export default async function ConnectPage() {
       </div>
 
       {/* ── Install methods + token ───────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}
-           className="grid-cols-1 md:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {/* Install method tabs (client component) */}
         <ConnectInstallTabs />
 
@@ -194,7 +192,7 @@ export default async function ConnectPage() {
 
       {/* ── MCP config ───────────────────────────────────────── */}
       <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", overflow: "hidden", marginBottom: 24 }}>
-        <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>optional</span>
           <span style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>MCP server configuration</span>
           <span style={{ ...MONO, fontSize: 11, color: "#5a5f68", letterSpacing: "0.06em" }}>paste into your agent&apos;s MCP config</span>
@@ -236,7 +234,7 @@ export default async function ConnectPage() {
 
       {/* ── Doctor readiness ─────────────────────────────────── */}
       <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", overflow: "hidden" }}>
-        <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>readiness</span>
           <span style={{ fontSize: 14, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.005em" }}>runtrim doctor</span>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
