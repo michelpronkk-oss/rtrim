@@ -259,7 +259,7 @@ export default function Home() {
                 </h1>
               </MotionFade>
 
-                            <MotionFade delay={0.12}>
+              <MotionFade delay={0.12}>
                 <p
                   style={{
                     marginTop: 16,
@@ -269,7 +269,7 @@ export default function Home() {
                     maxWidth: 540,
                   }}
                 >
-                  RunTrim gives coding agents scope, memory, finish checks and restore points, so you waste fewer tokens and recover faster when an agent breaks something.
+                  RunTrim gives coding agents scope, memory, finish checks and restore points, which often reduces repeated context loading and shortens recovery loops.
                 </p>
               </MotionFade>
 
@@ -294,7 +294,7 @@ export default function Home() {
                   </MotionButton>
                   <MotionButton>
                     <Link
-                      href="/app/install"
+                      href="/how-it-works"
                       className="inline-flex items-center gap-2 h-[41px] px-[16px] sm:px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
                     >
                       See how it works
@@ -1160,10 +1160,10 @@ export default function Home() {
               </MotionButton>
               <MotionButton>
                 <Link
-                  href="/app/install"
+                  href="/how-it-works"
                   className="inline-flex items-center h-10 px-[18px] rounded-[7px] text-[14px] font-medium text-[#c9ccd2] border border-white/14 bg-transparent transition-colors hover:text-[#f4f5f7] hover:border-white/28 hover:bg-[#111317]"
                 >
-                  See how it works
+                  How RunTrim works
                 </Link>
               </MotionButton>
             </div>

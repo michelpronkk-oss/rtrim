@@ -239,6 +239,11 @@ export default function PlansPage() {
               Free CLI works without an account. Pro starts with a 3-day trial. Builder is for high-volume founder workflows. Team adds shared controls with next-stage policies and checks.
             </p>
           </MotionFade>
+          <MotionFade delay={0.15}>
+            <p className="mx-auto mt-3 text-[13px] leading-[1.6] text-[#8a8f98]" style={{ maxWidth: 560 }}>
+              As teams scale, scoped runs and synced memory usually reduce repeated context loading and speed up fix cycles.
+            </p>
+          </MotionFade>
 
           <MotionFade delay={0.18}>
             <div

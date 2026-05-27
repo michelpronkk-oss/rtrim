@@ -27,22 +27,24 @@ export default async function AppLayout({
   if (!user) redirect("/login");
 
   // Fetch plan
-  let plan       = "free";
+  let plan            = "free";
   let planStatus: string | undefined;
+  let hasConnectedCli = false;
   try {
     const supabase = getSupabaseServiceClient();
     if (supabase) {
       const { data } = await supabase
         .from("runtrim_profiles")
-        .select("plan, plan_status, current_period_end")
+        .select("plan, plan_status, current_period_end, cli_token_created_at")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
         const rawPlan   = (data.plan as string) || "free";
         const rawStatus = (data.plan_status as string | null) ?? null;
         const rawEnd    = (data.current_period_end as string | null) ?? null;
-        plan       = effectivePlanId(rawPlan, rawStatus, rawEnd);
-        planStatus = rawStatus ?? undefined;
+        plan            = effectivePlanId(rawPlan, rawStatus, rawEnd);
+        planStatus      = rawStatus ?? undefined;
+        hasConnectedCli = !!(data.cli_token_created_at as string | null);
       }
     }
   } catch {
@@ -61,7 +63,7 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell userEmail={user.email ?? undefined} plan={plan} planStatus={planStatus}>
+    <AppShell userEmail={user.email ?? undefined} plan={plan} planStatus={planStatus} hasConnectedCli={hasConnectedCli}>
       {children}
     </AppShell>
   );

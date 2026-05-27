@@ -72,6 +72,10 @@ const FAQ_SECTIONS: FaqSection[] = [
         a: "No. Restore is local recovery and does not require another agent run.",
       },
       {
+        q: "Does RunTrim help reduce token waste and speed up coding?",
+        a: "Usually yes. By keeping runs scoped and carrying forward project memory, RunTrim often reduces repeated context loading and shortens rework cycles. Results vary by workflow.",
+      },
+      {
         q: "What happens when a run is BLOCKED?",
         a: "BLOCKED means the run needs review and is not trusted yet. Review the changes, approve a scoped change, or restore.",
       },

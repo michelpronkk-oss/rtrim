@@ -1,7 +1,9 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { EarlyAccessModalTrigger } from "@/components/app/early-access-modal-trigger";
+import { PublicNav } from "@/components/app/public-nav";
+import { PublicFooter } from "@/components/app/public-footer";
+import { MotionFade } from "@/components/app/motion-section";
 
 export const metadata: Metadata = {
   title: "How RunTrim Works",
@@ -11,7 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "How RunTrim Works | RunTrim",
     description:
-      "Scoped contracts before, finish checks after, and run memory between sessions. Works with Claude Code, Cursor, Codex, and ChatGPT.",
+      "Start a guarded run, execute inside scope, run finish verification, and recover or continue with proof.",
     url: "https://www.runtrim.com/how-it-works",
     type: "website",
     siteName: "RunTrim",
@@ -21,197 +23,215 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "How RunTrim Works | RunTrim",
     description:
-      "Scoped contracts before, finish checks after, and run memory between sessions. Works with Claude Code, Cursor, Codex, and ChatGPT.",
+      "Start a guarded run, execute inside scope, run finish verification, and recover or continue with proof.",
     images: ["/opengraph-image"],
   },
 };
 
-const PROCESS_STEPS = [
+const STEPS = [
   {
-    title: "Setup",
+    n: "01",
+    title: "Start a guarded run",
     command: "runtrim start",
-    body: "Analyze the project, write memory, install agent instructions, and generate MCP snippets.",
+    body: "RunTrim prepares project memory, agent instructions, and protocol state before edits start.",
   },
   {
-    title: "Readiness",
-    command: "runtrim doctor",
-    body: "Check whether Claude, Cursor, Codex, and MCP setup are RunTrim-ready.",
-  },
-  {
-    title: "Paste into your agent",
+    n: "02",
+    title: "Create scoped contract",
     command: 'runtrim agent "your task" --copy',
-    body: "Create a scoped contract and guarded handoff, then paste into Claude, Codex, Cursor, ChatGPT, or your configured agent.",
+    body: "The run gets a contract with objective, allowed scope, and stop rules so the agent does not drift silently.",
   },
   {
-    title: "Verify",
+    n: "03",
+    title: "Agent works inside scope",
+    command: "agent executes task",
+    body: "Your agent applies changes inside the contract boundaries. Scope expansion requires explicit approval.",
+  },
+  {
+    n: "04",
+    title: "Finish verification",
     command: "runtrim finish",
-    body: "Check changed files, sensitive paths, scope drift, and proof gaps. Get PASS, WARN, or BLOCKED.",
+    body: "RunTrim checks changed files, risky paths, and proof gaps, then returns PASS, WARN, or BLOCKED.",
   },
   {
-    title: "Recover",
+    n: "05",
+    title: "Restore or continue",
     command: "runtrim restore last --preview",
-    body: "Preview and rewind a broken AI run locally without rolling back your whole branch.",
+    body: "If needed, restore locally or continue from a generated continuation prompt without starting cold.",
+  },
+];
+
+const VERDICTS = [
+  {
+    title: "PASS",
+    body: "Run evidence and scope checks passed. Safe to review and proceed.",
+  },
+  {
+    title: "WARN",
+    body: "Non-blocking risk found. Proceed only after explicit human review.",
+  },
+  {
+    title: "BLOCKED",
+    body: "Needs review and is not trusted yet. Approve scoped amendment or restore.",
   },
 ];
 
 export default function HowItWorksPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#07071A] text-[#EDEEFF]">
-      <header className="border-b border-white/10 bg-[#090A1D]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" aria-hidden className="size-6 rounded" />
-            <span className="text-[15px] font-bold tracking-tight text-[#EDEEFF]">RunTrim</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="rounded-md border border-white/12 px-2.5 py-1.5 text-[11px] text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF] sm:px-3 sm:text-[12px]"
-            >
-              Back to homepage
-            </Link>
-            <Link
-              href="/app/install"
-              data-rt-event="install_cta_clicked"
-              className="rounded-md bg-[#7C6DFA] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-85"
-            >
-              Install CLI
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="rt-page-in min-h-screen overflow-x-hidden bg-[#08090b] text-[#f4f5f7]">
+      <PublicNav />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
-        <section className="rounded-xl border border-white/10 bg-[#0C0D22] p-6 sm:p-8">
-          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#7682A6]">HOW IT WORKS</p>
-          <h1 className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-[#EDEEFF] sm:text-[34px]">
-            RunTrim controls the run around your agent.
-          </h1>
-          <p className="mt-3 max-w-3xl text-[14px] leading-7 text-[#9DABC4]">
-            Start with one command. RunTrim scopes the work before the agent starts, watches what changes, and preserves the next safe step.
-          </p>
-          <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#7F8BA3]">
-            If you are unsure, run <code className="font-mono text-[#C0C2E8]">runtrim start</code>.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link
-              href="/app/install"
-              data-rt-event="install_cta_clicked"
-              className="rounded-md bg-[#7C6DFA] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
-            >
-              Install CLI
-            </Link>
-            <Link
-              href="/"
-              className="rounded-md border border-white/12 px-4 py-2 text-[13px] font-medium text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-            >
-              Back to homepage
-            </Link>
-          </div>
-        </section>
+      <section
+        className="pt-14 pb-12 sm:pt-20 sm:pb-16"
+        style={{
+          position: "relative",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            backgroundImage:
+              "linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)",
+            backgroundSize: "64px 64px",
+            maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 80%)",
+          }}
+        />
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background: "radial-gradient(1200px 700px at 50% -200px, rgba(109,76,242,0.07), transparent 60%)",
+          }}
+        />
 
-        <section className="mt-6 grid min-w-0 gap-3 md:grid-cols-2">
-          {PROCESS_STEPS.map((step, idx) => (
-            <article key={step.title} className="min-w-0 rounded-xl border border-white/8 bg-[#0C0C20] p-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6870A0]">Step {idx + 1}</p>
-              <h2 className="mt-1 text-[16px] font-semibold text-[#EDEEFF]">{step.title}</h2>
-              {step.command ? (
-                <code className="mt-2 block max-w-full overflow-x-auto whitespace-pre rounded border border-white/8 bg-[#090918] px-2 py-1 font-mono text-[11px] text-[#D7DEE7]">
-                  {step.command}
-                </code>
-              ) : null}
-              <p className="mt-2 text-[13px] leading-6 text-[#9AA7B6]">{step.body}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="mt-6 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-white/8 bg-[#0C0C20] p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6870A0]">What local memory means</p>
-            <p className="mt-2 text-[13px] leading-6 text-[#9AA7B6]">
-              RunTrim stores project memory in <code className="font-mono text-[#C0C2E8]">.runtrim</code> so the next session does not restart from scratch.
+        <div className="mx-auto relative z-10" style={{ maxWidth: 1240, padding: "0 clamp(20px,4vw,40px)" }}>
+          <MotionFade>
+            <span className="inline-flex rounded-full border border-[#a78bfa]/25 bg-[#a78bfa]/10 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#a78bfa]">
+              How it works
+            </span>
+            <h1 className="mt-5 text-[clamp(34px,5.4vw,62px)] font-medium leading-[1.04] tracking-[-0.033em] text-[#f4f5f7]">
+              RunTrim controls the run lifecycle around your agent.
+            </h1>
+            <p className="mt-5 max-w-[760px] text-[17px] leading-[1.6] text-[#c9ccd2]">
+              RunTrim is the control, verification and recovery layer for AI coding agents. It enforces scope before edits, verifies changes after edits, and gives you safe recovery and continuation paths.
             </p>
-            <ul className="mt-3 space-y-2 text-[13px] text-[#B8C3D8]">
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/app/install"
+                data-rt-event="install_cta_clicked"
+                className="inline-flex h-10 items-center justify-center rounded-[7px] border border-white bg-[#f4f5f7] px-4 text-[13px] font-medium text-[#0b0d10] transition-colors hover:bg-white"
+              >
+                Install CLI
+              </Link>
+              <Link
+                href="/faq"
+                className="inline-flex h-10 items-center justify-center rounded-[7px] border border-white/14 px-4 text-[13px] font-medium text-[#c9ccd2] transition-colors hover:border-white/28 hover:bg-[#16191e] hover:text-[#f4f5f7]"
+              >
+                Read FAQ
+              </Link>
+            </div>
+          </MotionFade>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+        <MotionFade>
+          <section className="rounded-[10px] border border-white/10 bg-[#0c0e11] p-5 sm:p-6">
+            <h2 className="text-[20px] font-semibold tracking-[-0.015em] text-[#f4f5f7]">Five-step run flow</h2>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {STEPS.map((step) => (
+                <article key={step.n} className="rounded-[8px] border border-white/8 bg-[#090b0e] p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#7d8493]">Step {step.n}</p>
+                  <h3 className="mt-1 text-[15px] font-semibold text-[#f4f5f7]">{step.title}</h3>
+                  <code className="mt-2 block rounded border border-white/8 bg-[#08090b] px-2 py-1 font-mono text-[11px] text-[#c9ccd2]">
+                    {step.command}
+                  </code>
+                  <p className="mt-2 text-[13px] leading-[1.65] text-[#8a8f98]">{step.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        </MotionFade>
+
+        <MotionFade delay={0.06}>
+          <section className="mt-5 rounded-[10px] border border-white/10 bg-[#0c0e11] p-5 sm:p-6">
+            <h2 className="text-[20px] font-semibold tracking-[-0.015em] text-[#f4f5f7]">Finish verdicts</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {VERDICTS.map((item) => (
+                <article key={item.title} className="rounded-[8px] border border-white/8 bg-[#090b0e] p-4">
+                  <h3 className="text-[14px] font-semibold text-[#f4f5f7]">{item.title}</h3>
+                  <p className="mt-2 text-[13px] leading-[1.65] text-[#8a8f98]">{item.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        </MotionFade>
+
+        <MotionFade delay={0.1}>
+          <section className="mt-5 grid gap-3 md:grid-cols-2">
+            <article className="rounded-[10px] border border-white/10 bg-[#0c0e11] p-5 sm:p-6">
+              <h2 className="text-[18px] font-semibold tracking-[-0.015em] text-[#f4f5f7]">What stays local by default</h2>
+              <ul className="mt-4 space-y-2.5 text-[13px] text-[#c9ccd2]">
+                {[
+                  "Source code stays local by default.",
+                  "Restore apply happens locally.",
+                  "Env file contents are not uploaded.",
+                  "Cloud sync (paid plans) is metadata-oriented.",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <Check className="mt-0.5 size-3.5 text-[#a78bfa]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+
+            <article className="rounded-[10px] border border-white/10 bg-[#0c0e11] p-5 sm:p-6">
+              <h2 className="text-[18px] font-semibold tracking-[-0.015em] text-[#f4f5f7]">Why this is not Git or an orchestrator</h2>
+              <ul className="mt-4 space-y-2.5 text-[13px] text-[#c9ccd2]">
+                {[
+                  "Git tracks version history; RunTrim governs AI run behavior.",
+                  "Orchestrators route models; RunTrim adds contracts, verification, and recovery.",
+                  "RunTrim works with Claude, Codex, Cursor, ChatGPT, DeepSeek, and others.",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <Check className="mt-0.5 size-3.5 text-[#a78bfa]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </section>
+        </MotionFade>
+
+        <MotionFade delay={0.14}>
+          <section className="mt-5 rounded-[10px] border border-white/10 bg-[#0c0e11] p-5 sm:p-6">
+            <h2 className="text-[18px] font-semibold tracking-[-0.015em] text-[#f4f5f7]">Typical outcomes after guarded runs</h2>
+            <ul className="mt-4 space-y-2.5 text-[13px] text-[#c9ccd2]">
               {[
-                "Guarded prompts",
-                "Run status",
-                "Changed file paths",
-                "Protected systems",
-                "Verification debt",
-                "Next safe action",
-                "Continuation prompts",
+                "Less repeated context loading across sessions.",
+                "Fewer off-scope edits that require cleanup.",
+                "Faster recovery when a run needs rollback or continuation.",
               ].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="size-3.5 text-[#7C6DFA]" />
+                <li key={item} className="flex items-start gap-2">
+                  <Check className="mt-0.5 size-3.5 text-[#a78bfa]" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-[#0C0C20] p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6870A0]">What RunTrim reads</p>
-            <ul className="mt-3 space-y-2 text-[13px] text-[#B8C3D8]">
-              {[
-                "Task text",
-                "Project metadata",
-                "Package and framework signals",
-                "Local .runtrim memory",
-                "Git diff file paths",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="size-3.5 text-[#7C6DFA]" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-[#0C0C20] p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6870A0]">What RunTrim does not upload in V1</p>
-            <ul className="mt-3 space-y-2 text-[13px] text-[#B8C3D8]">
-              {["Source code", ".env files", "Secrets", "Raw file contents"].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="size-3.5 text-[#7C6DFA]" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-xl border border-white/8 bg-[#0C0C20] p-5">
-          <p className="text-[13px] leading-6 text-[#9AA7B6]">
-            RunTrim does not need to upload source code to create a guarded run contract. Cloud sync, when enabled, is metadata-only and currently part of Pro early access.
-          </p>
-        </section>
-
-        <section className="mt-6 rounded-xl border border-white/10 bg-[#0C0D22] p-6 sm:p-7">
-          <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-[#EDEEFF]">Start with the local CLI.</h2>
-          <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#9AA7B6]">
-            Free local CLI works without an account. Cloud memory is rolling out through Pro early access.
-          </p>
-          <code className="mt-4 block max-w-full overflow-x-auto whitespace-pre rounded border border-white/8 bg-[#090918] px-3 py-2 font-mono text-[11px] text-[#D7DEE7]">
-            npm install -g runtrim{"\n"}runtrim start{"\n"}runtrim doctor{"\n"}runtrim agent "your task" --copy{"\n"}runtrim finish
-          </code>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Link
-              href="/app/install"
-              data-rt-event="install_cta_clicked"
-              className="rounded-md bg-[#7C6DFA] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
-            >
-              Install CLI
-            </Link>
-            <EarlyAccessModalTrigger
-              label="Join Pro early access"
-              variant="pro"
-              className="inline-flex rounded-md border border-white/12 px-4 py-2 text-[13px] font-medium text-[#A7B2C6] transition-colors hover:border-white/20 hover:text-[#EDEEFF]"
-            />
-          </div>
-        </section>
+          </section>
+        </MotionFade>
       </main>
+
+      <PublicFooter />
     </div>
   );
 }
-

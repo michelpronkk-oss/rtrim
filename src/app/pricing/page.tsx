@@ -135,6 +135,9 @@ export default function PricingPage() {
           <p className="mx-auto mt-4 max-w-[560px] text-[14px] leading-[1.75] text-[#5E6A88]">
             Start local with Free, move to Pro for synced personal workflows, then scale to Builder and Team controls.
           </p>
+          <p className="mx-auto mt-2 max-w-[560px] text-[12px] leading-[1.7] text-[#4D5070]">
+            Scoped runs and memory continuity can reduce token waste from repeated context and shorten rework loops.
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
