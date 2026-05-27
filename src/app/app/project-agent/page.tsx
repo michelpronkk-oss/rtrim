@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/supabase-auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId } from "@/lib/entitlements";
-import { ProjectAgentChat } from "@/components/app/project-agent-chat";
 
 export const metadata: Metadata = {
   title: "Agent Autopilot",
@@ -107,7 +106,6 @@ export default async function ProjectAgentPage() {
   }
 
   runs.sort((a, b) => runSortTime(b) - runSortTime(a));
-  const latest = runs[0] ?? null;
 
   const rawPlan = profile?.plan ?? "free";
   const planStatus = profile?.plan_status ?? null;
@@ -115,20 +113,6 @@ export default async function ProjectAgentPage() {
   const effectivePlan = effectivePlanId(rawPlan, planStatus, periodEnd);
   const canUseAgent = effectivePlan !== "free";
 
-  const summary = {
-    recentRunsCount: runs.length,
-    latestRunTask: latest?.task ?? null,
-    latestRunRisk: latest?.risk_after ?? latest?.risk_before ?? null,
-    latestProofGaps: latest?.missing_proof_items?.length ?? 0,
-    estimatedTokensSaved: runs.reduce(
-      (sum, run) => sum + (run.estimated_tokens_saved ?? run.estimated_tokens_trimmed ?? 0),
-      0,
-    ),
-    estimatedCostSaved: runs.reduce(
-      (sum, run) => sum + (run.estimated_cost_saved ?? run.estimated_dollars_standard ?? 0),
-      0,
-    ),
-  };
 
   const MONO: React.CSSProperties = { fontFamily: "var(--font-geist-mono), ui-monospace, monospace" };
 
@@ -196,8 +180,8 @@ export default async function ProjectAgentPage() {
         )}
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-start">
+      {/* Config panels */}
+      <div>
 
         {/* LEFT: Config panels */}
         <div>
@@ -385,14 +369,6 @@ export default async function ProjectAgentPage() {
 
         </div>
 
-        {/* RIGHT: Agent chat (sticky) */}
-        <div className="lg:sticky lg:top-[calc(60px+24px)] lg:self-start">
-          <div style={{ marginBottom: 12, display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>agent chat</span>
-            <span style={{ ...MONO, fontSize: 10.5, color: "#a78bfa", letterSpacing: "0.06em" }}>↻ context-aware</span>
-          </div>
-          <ProjectAgentChat canUseAgent={canUseAgent} summary={summary} />
-        </div>
 
       </div>
     </div>

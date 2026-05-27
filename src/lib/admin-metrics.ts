@@ -1,5 +1,6 @@
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { effectivePlanId, isSubscriptionActive } from "@/lib/entitlements";
+import { getVercelAnalytics, type VercelAnalyticsData } from "@/lib/vercel-analytics";
 
 type EventRow = {
   event_name: string;
@@ -205,11 +206,14 @@ export async function getAdminMetrics() {
     })),
   ];
 
-  const profilesQuery = await supabase
-    .from("runtrim_profiles")
-    .select("id, plan, plan_status, current_period_end, payment_subscription_id, cli_token_hash")
-    .limit(10000);
-  const profiles = (profilesQuery.data ?? []) as ProfileRow[];
+  const [vercel, profilesQueryResult] = await Promise.all([
+    getVercelAnalytics(),
+    supabase
+      .from("runtrim_profiles")
+      .select("id, plan, plan_status, current_period_end, payment_subscription_id, cli_token_hash")
+      .limit(10000),
+  ]);
+  const profiles = (profilesQueryResult.data ?? []) as ProfileRow[];
 
   const normalizedProfiles = profiles.map((p) => {
     const rawPlan = (p.plan ?? "free").toLowerCase();
@@ -306,5 +310,6 @@ export async function getAdminMetrics() {
     referrerBreakdown,
     trackingGaps,
     earlyAccess,
+    vercel,
   };
 }

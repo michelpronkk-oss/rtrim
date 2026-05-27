@@ -207,59 +207,83 @@ export function AdminContentCalendarContent() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Header */}
+      {/* Toolbar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 500, color: "#f4f5f7", letterSpacing: "-0.01em" }}>Content</span>
-          <span style={{ ...MONO, fontSize: 10.5, color: "#5a5f68" }}>{items.length} items</span>
+          <span style={{ ...MONO, fontSize: 10.5, color: "#3a3e46" }}>{items.length} items</span>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {/* View toggle */}
-          <div style={{ display: "flex", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, overflow: "hidden" }}>
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
             {(["table", "board"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)}
-                style={{ ...MONO, height: 28, padding: "0 10px", border: "none", background: view === v ? "#16191e" : "transparent", color: view === v ? "#f4f5f7" : "#5a5f68", fontSize: 11, cursor: "pointer" }}>
+                style={{ ...MONO, height: 28, padding: "0 10px", border: "none", background: view === v ? "rgba(255,255,255,0.06)" : "transparent", color: view === v ? "#c9ccd2" : "#3a3e46", fontSize: 11, cursor: "pointer" }}>
                 {v}
               </button>
             ))}
           </div>
           <button
             onClick={openAdd}
-            style={{ height: 30, padding: "0 12px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.40)", background: "rgba(167,139,250,0.10)", color: "#a78bfa", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+            style={{ height: 28, padding: "0 12px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(167,139,250,0.08)", color: "#a78bfa", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
           >
-            + Add item
+            + Add
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {/* Status */}
-        <div style={{ display: "flex", gap: 4, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+      {/* Filters — underline tab style, no box borders */}
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        {/* Status row */}
+        <div style={{ display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
           {STATUS_FILTER_LIST.map((s) => {
             const active = statusFilter === s;
-            const color = s !== "all" ? (STATUS_COLOR[s as ContentStatus] ?? "#5a5f68") : "#8a8f98";
+            const color = s === "all" ? "#8a8f98" : (STATUS_COLOR[s as ContentStatus] ?? "#5a5f68");
             return (
               <button key={s} onClick={() => setStatusFilter(s)}
-                style={{ ...MONO, flexShrink: 0, height: 26, padding: "0 9px", borderRadius: 5, border: `1px solid ${active ? `${color}40` : "rgba(255,255,255,0.07)"}`, background: active ? `${color}0d` : "transparent", color: active ? color : "#5a5f68", fontSize: 10.5, cursor: "pointer", whiteSpace: "nowrap" }}>
-                {s}{statusCounts[s] > 0 ? ` · ${statusCounts[s]}` : ""}
+                style={{
+                  ...MONO, flexShrink: 0,
+                  padding: "8px 12px",
+                  background: "none", border: "none",
+                  borderBottom: `2px solid ${active ? color : "transparent"}`,
+                  color: active ? color : "#3a3e46",
+                  fontSize: 11, fontWeight: active ? 500 : 400,
+                  cursor: "pointer", whiteSpace: "nowrap",
+                  marginBottom: -1,
+                  transition: "color 0.1s, border-color 0.1s",
+                }}>
+                {s}{statusCounts[s] > 0 ? ` ${statusCounts[s]}` : ""}
               </button>
             );
           })}
         </div>
-        {/* Bucket */}
-        <div style={{ display: "flex", gap: 4, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
-          {BUCKET_FILTER_LIST.map((b) => {
-            const active = bucketFilter === b;
-            const color = b !== "all" ? (BUCKET_COLOR[b as ContentBucket] ?? "#5a5f68") : "#8a8f98";
-            return (
-              <button key={b} onClick={() => setBucketFilter(b)}
-                style={{ ...MONO, flexShrink: 0, height: 24, padding: "0 8px", borderRadius: 4, border: `1px solid ${active ? `${color}35` : "rgba(255,255,255,0.05)"}`, background: active ? `${color}0a` : "transparent", color: active ? color : "#3a3e46", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
-                {b}
-              </button>
-            );
-          })}
-        </div>
+      </div>
+
+      {/* Bucket row — dot + label, no borders */}
+      <div style={{ display: "flex", gap: 2, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
+        {BUCKET_FILTER_LIST.map((b) => {
+          const active = bucketFilter === b;
+          const color = b === "all" ? "#5a5f68" : (BUCKET_COLOR[b as ContentBucket] ?? "#5a5f68");
+          return (
+            <button key={b} onClick={() => setBucketFilter(b)}
+              style={{
+                ...MONO, flexShrink: 0,
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "4px 9px",
+                background: active ? "rgba(255,255,255,0.04)" : "none",
+                border: "none",
+                borderRadius: 5,
+                color: active ? color : "#3a3e46",
+                fontSize: 10.5,
+                cursor: "pointer", whiteSpace: "nowrap",
+                transition: "color 0.1s, background 0.1s",
+              }}>
+              {b !== "all" && (
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: active ? color : "rgba(255,255,255,0.12)", flexShrink: 0, transition: "background 0.1s" }} />
+              )}
+              {b}
+            </button>
+          );
+        })}
       </div>
 
       {/* Add / Edit form */}

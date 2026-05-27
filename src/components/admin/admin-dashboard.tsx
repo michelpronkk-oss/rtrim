@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, LogOut, ExternalLink, Activity, TrendingUp, CreditCard, Zap, Shield, Terminal } from "lucide-react";
+import { RefreshCw, LogOut, ExternalLink, Activity, TrendingUp, CreditCard, Zap, Shield, Terminal, BarChart2 } from "lucide-react";
+import type { VercelAnalyticsData } from "@/lib/vercel-analytics";
 import { AdminPlanningContent } from "@/components/admin/admin-planning-dashboard";
 import { AdminGrowthOpsContent }     from "@/components/admin/admin-growth-ops";
 import { AdminContentCalendarContent } from "@/components/admin/admin-content-calendar";
@@ -65,6 +66,7 @@ type MetricsResponse = {
   referrerBreakdown?: Array<{ source: string; count: number; limited?: boolean }>;
   trackingGaps?: Array<{ key: string; recommendedEvent: string; note: string }>;
   earlyAccess?: EarlyAccessEntry[];
+  vercel?: VercelAnalyticsData;
 };
 
 type Tab = "overview" | "activity" | "planning" | "growth" | "content" | "assets" | "replies" | "approvals" | "analytics-lite" | "checklist" | "team";
@@ -258,6 +260,9 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
     return order.map((k) => map.get(k) ?? { plan: k, users: 0, connectedCliUsers: 0, recentlyActiveUsers7d: 0 });
   }, [planSegments]);
 
+  const vercel      = data?.vercel ?? null;
+  const vercelOn    = vercel?.connected === true;
+
   const topPage     = topPages[0]?.pagePath ?? null;
   const hasRevenue  = revenue != null;
   const hasActivity = recentEvents.length > 0 || cliEvents.length > 0;
@@ -377,85 +382,152 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
 
         {/* ── Overview tab ──────────────────────────────────────────── */}
         {tab === "overview" ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {/* Traffic */}
+            {/* Traffic + Revenue — top row */}
+            <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+
+              {/* Traffic 4-up */}
+              <div>
+                <SectionLabel>
+                  <Activity size={10} style={{ display: "inline", marginRight: 6 }} />
+                  Traffic · 7d
+                  {vercelOn && (
+                    <span style={{ marginLeft: 8, color: "#6ee7b7", border: "1px solid rgba(110,231,183,0.25)", background: "rgba(110,231,183,0.06)", borderRadius: 3, padding: "1px 6px", fontSize: 9, letterSpacing: "0.08em" }}>
+                      VERCEL
+                    </span>
+                  )}
+                </SectionLabel>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <KpiCard
+                    label="Visitors 24h"
+                    value={vercelOn ? (vercel as { connected: true; stats24h: { visitors: number } }).stats24h.visitors : (summary.uniqueVisitors24h ?? 0)}
+                    source={vercelOn ? "vercel analytics" : "internal events"}
+                    dim={vercelOn ? false : !summary.uniqueVisitors24h}
+                  />
+                  <KpiCard
+                    label="Visitors 7d"
+                    value={vercelOn ? (vercel as { connected: true; stats7d: { visitors: number } }).stats7d.visitors : (summary.uniqueVisitors7d ?? 0)}
+                    source={vercelOn ? "vercel analytics" : "internal events"}
+                    dim={vercelOn ? false : !summary.uniqueVisitors7d}
+                  />
+                  <KpiCard
+                    label="Page views 7d"
+                    value={vercelOn ? (vercel as { connected: true; stats7d: { pageviews: number } }).stats7d.pageviews : (summary.pageViews7d ?? 0)}
+                    source={vercelOn ? "vercel analytics" : "internal events"}
+                    dim={vercelOn ? false : !summary.pageViews7d}
+                  />
+                  {vercelOn ? (() => {
+                    const vr = vercel as { connected: true; topPages: Array<{ key: string; total: number }> };
+                    const vTop = vr.topPages[0];
+                    return <KpiCard label="Top page" value={vTop?.key ?? "—"} note={vTop ? `${vTop.total} views` : undefined} source="vercel analytics" dim={!vTop} />;
+                  })() : (
+                    <KpiCard label="Top page" value={topPage ?? "—"} note={topPage ? `${topPages[0]?.views ?? 0} views` : undefined} source="internal events" dim={!topPage} />
+                  )}
+                </div>
+              </div>
+
+              {/* MRR highlight */}
+              <div style={{ border: "1px solid rgba(167,139,250,0.20)", borderRadius: 10, background: "linear-gradient(135deg,rgba(167,139,250,0.06),rgba(167,139,250,0.02))", padding: "14px 20px", minWidth: 160, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+                <span style={{ ...MONO, fontSize: 10, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase" }}>{revenue?.isEstimated ? "Est. MRR" : "MRR"}</span>
+                <span style={{ fontSize: 32, fontWeight: 500, color: "#a78bfa", letterSpacing: "-0.03em", lineHeight: 1 }}>{fmtMoney(revenue?.estimatedMrr ?? 0)}</span>
+                <span style={{ ...MONO, fontSize: 10, color: "#5a5f68" }}>{revenue?.paidUsers ?? 0} paid · billing</span>
+              </div>
+            </div>
+
+            {/* Activation pipeline — compact bar chart */}
             <section>
-              <SectionLabel>
-                <Activity size={10} style={{ display: "inline", marginRight: 6 }} />
-                Traffic
-              </SectionLabel>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <KpiCard
-                  label="Unique visitors 24h"
-                  value={summary.uniqueVisitors24h ?? 0}
-                  source="internal events"
-                  dim={!summary.uniqueVisitors24h}
-                />
-                <KpiCard
-                  label="Unique visitors 7d"
-                  value={summary.uniqueVisitors7d ?? 0}
-                  source="internal events"
-                  dim={!summary.uniqueVisitors7d}
-                />
-                <KpiCard
-                  label="Page views 7d"
-                  value={summary.pageViews7d ?? 0}
-                  source="internal events"
-                  dim={!summary.pageViews7d}
-                />
-                <KpiCard
-                  label="Top page"
-                  value={topPage ?? "—"}
-                  note={topPage ? `${topPages[0]?.views ?? 0} views` : undefined}
-                  source="internal events"
-                  dim={!topPage}
-                />
+              <SectionLabel><Zap size={10} style={{ display: "inline", marginRight: 6 }} />Activation funnel · 7d</SectionLabel>
+              <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, background: "#0c0e11", overflow: "hidden" }}>
+                {[
+                  { label: "Install CTA clicked",  value: summary.installCtaClicks7d ?? 0 },
+                  { label: "Install copied",        value: summary.installCommandCopies7d ?? 0 },
+                  { label: "CLI start",             value: summary.cliStarts7d ?? 0 },
+                  { label: "Guarded run",           value: summary.guardedRuns7d ?? 0 },
+                  { label: "Finish",                value: summary.cliFinishes7d ?? 0 },
+                  { label: "CLI connected",         value: summary.cliConnectedUsers7d ?? 0 },
+                ].map((step, i, arr) => {
+                  const max = Math.max(1, ...arr.map((s) => s.value));
+                  const pct = Math.round((step.value / max) * 100);
+                  const prevVal = i > 0 ? arr[i - 1].value : null;
+                  const cvr = prevVal && prevVal > 0 ? Math.round((step.value / prevVal) * 100) : null;
+                  return (
+                    <div key={step.label} style={{ display: "grid", gridTemplateColumns: "160px 1fr 52px 48px", gap: 12, alignItems: "center", padding: "10px 16px", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <span style={{ ...MONO, fontSize: 11, color: step.value > 0 ? "#c9ccd2" : "#3a3e46" }}>{step.label}</span>
+                      <div style={{ height: 4, background: "#16191e", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: step.value > 0 ? "linear-gradient(90deg,#7c5cff,#a78bfa)" : "transparent", borderRadius: 2, transition: "width 0.4s" }} />
+                      </div>
+                      <span style={{ ...MONO, fontSize: 12, color: step.value > 0 ? "#f4f5f7" : "#3a3e46", textAlign: "right" }}>{step.value}</span>
+                      <span style={{ ...MONO, fontSize: 10, color: "#3a3e46", textAlign: "right" }}>{cvr !== null ? `${cvr}%` : ""}</span>
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
-            {/* Activation */}
+            {/* Revenue breakdown */}
             <section>
-              <SectionLabel>
-                <Zap size={10} style={{ display: "inline", marginRight: 6 }} />
-                Activation
-              </SectionLabel>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                <KpiCard label="Install CTA clicks 7d"     value={summary.installCtaClicks7d ?? 0}      source="internal events" dim={!summary.installCtaClicks7d} />
-                <KpiCard label="Install copies 7d"         value={summary.installCommandCopies7d ?? 0}  source="internal events" dim={!summary.installCommandCopies7d} />
-                <KpiCard label="CLI starts 7d"             value={summary.cliStarts7d ?? 0}             source="internal events" dim={!summary.cliStarts7d} />
-                <KpiCard label="Guarded runs 7d"           value={summary.guardedRuns7d ?? 0}           source="internal events" dim={!summary.guardedRuns7d} />
-                <KpiCard label="Finishes 7d"               value={summary.cliFinishes7d ?? 0}           source="internal events" dim={!summary.cliFinishes7d} />
-                <KpiCard label="CLI connected users 7d"    value={summary.cliConnectedUsers7d ?? 0}     source="billing / profiles" dim={!summary.cliConnectedUsers7d} />
-              </div>
-            </section>
+              <SectionLabel><CreditCard size={10} style={{ display: "inline", marginRight: 6 }} />Revenue · billing</SectionLabel>
+              <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
 
-            {/* Revenue */}
-            <section>
-              <SectionLabel>
-                <CreditCard size={10} style={{ display: "inline", marginRight: 6 }} />
-                Revenue
-              </SectionLabel>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-                <KpiCard
-                  label={revenue?.isEstimated ? "Estimated MRR" : "MRR"}
-                  value={fmtMoney(revenue?.estimatedMrr ?? 0)}
-                  note={revenue?.isEstimated ? "derived from plan fields" : "from subscription records"}
-                  source="billing"
-                  dim={!(revenue?.estimatedMrr)}
-                />
-                <KpiCard label="Paid users"      value={revenue?.paidUsers ?? 0}    source="billing / subscriptions" dim={!(revenue?.paidUsers)} />
-                <KpiCard label="Pro users"        value={revenue?.proCount ?? 0}     source="billing"                 dim={!(revenue?.proCount)} />
-                <KpiCard label="Builder users"    value={revenue?.builderCount ?? 0} source="billing"                 dim={!(revenue?.builderCount)} />
-                <KpiCard
-                  label="Team users"
-                  value={revenue?.teamCount ?? 0}
-                  note={revenue?.teamSeats != null ? `${revenue.teamSeats} seats` : "seats not tracked"}
-                  source="billing"
-                  dim={!(revenue?.teamCount)}
-                />
-                <KpiCard label="Trial users"     value={revenue?.trialUsers ?? 0}         source="billing" dim={!(revenue?.trialUsers)} />
-                <KpiCard label="Payment issues"  value={revenue?.paymentIssueUsers ?? 0}  source="billing" dim={!(revenue?.paymentIssueUsers)} />
+                {/* Plan stats */}
+                <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, background: "#0c0e11", overflow: "hidden" }}>
+                  {[
+                    { label: "Pro",      count: revenue?.proCount ?? 0,      color: "#a78bfa", mrr: (revenue?.proCount ?? 0) * 29 },
+                    { label: "Builder",  count: revenue?.builderCount ?? 0,  color: "#6ee7b7", mrr: (revenue?.builderCount ?? 0) * 49 },
+                    { label: "Team",     count: revenue?.teamCount ?? 0,     color: "#f5a524", mrr: (revenue?.teamCount ?? 0) * 24 },
+                    { label: "Trial",    count: revenue?.trialUsers ?? 0,    color: "#8a8f98", mrr: 0 },
+                    { label: "Issues",   count: revenue?.paymentIssueUsers ?? 0, color: "#f87171", mrr: 0 },
+                  ].map((row, i, arr) => (
+                    <div key={row.label} style={{ display: "grid", gridTemplateColumns: "70px 1fr auto auto", gap: 12, alignItems: "center", padding: "10px 16px", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 2, background: row.color, flexShrink: 0 }} />
+                        <span style={{ ...MONO, fontSize: 10.5, color: row.color, letterSpacing: "0.06em" }}>{row.label}</span>
+                      </div>
+                      <div style={{ height: 3, background: "#16191e", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.round((row.count / Math.max(1, revenue?.paidUsers ?? 1, revenue?.trialUsers ?? 0)) * 100)}%`, background: row.color, opacity: 0.6, borderRadius: 2 }} />
+                      </div>
+                      <span style={{ ...MONO, fontSize: 12, color: row.count > 0 ? "#f4f5f7" : "#3a3e46", textAlign: "right", minWidth: 20 }}>{row.count}</span>
+                      <span style={{ ...MONO, fontSize: 10, color: "#5a5f68", textAlign: "right", minWidth: 44 }}>{row.mrr > 0 ? fmtMoney(row.mrr) : "—"}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Plan distribution stacked bar */}
+                <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, background: "#0c0e11", padding: "16px 18px" }}>
+                  <p style={{ ...MONO, fontSize: 10, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: 14 }}>User distribution</p>
+                  {(() => {
+                    const total = planSegmentRows.reduce((s, r) => s + r.users, 0);
+                    const PLAN_COLORS: Record<string, string> = { free: "#1c2026", pro: "#a78bfa", builder: "#6ee7b7", team: "#f5a524", unknown: "#111317" };
+                    const PLAN_LABEL: Record<string, string> = { free: "#5a5f68", pro: "#a78bfa", builder: "#6ee7b7", team: "#f5a524", unknown: "#3a3e46" };
+                    return (
+                      <>
+                        {/* Stacked bar */}
+                        <div style={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", marginBottom: 14, gap: 1 }}>
+                          {planSegmentRows.filter(r => r.users > 0).map((r) => (
+                            <div key={r.plan} style={{ flex: r.users, background: PLAN_COLORS[r.plan] ?? "#1c2026", minWidth: 2 }} />
+                          ))}
+                        </div>
+                        {/* Legend */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {planSegmentRows.filter(r => r.users > 0).map((r) => {
+                            const pct = total > 0 ? Math.round((r.users / total) * 100) : 0;
+                            return (
+                              <div key={r.plan} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: 2, background: PLAN_COLORS[r.plan] ?? "#1c2026", border: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                                <span style={{ ...MONO, fontSize: 10.5, color: PLAN_LABEL[r.plan] ?? "#5a5f68", flex: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.plan}</span>
+                                <span style={{ ...MONO, fontSize: 12, color: "#f4f5f7" }}>{r.users}</span>
+                                <span style={{ ...MONO, fontSize: 10, color: "#3a3e46", minWidth: 30, textAlign: "right" }}>{pct}%</span>
+                              </div>
+                            );
+                          })}
+                          {total === 0 && <p style={{ fontSize: 12, color: "#3a3e46" }}>No users synced yet.</p>}
+                        </div>
+                        <p style={{ ...MONO, fontSize: 10, color: "#3a3e46", marginTop: 14 }}>{total} total accounts · profiles</p>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </section>
 
@@ -560,52 +632,6 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
               </div>
             </div>
 
-            {/* User segmentation */}
-            <section>
-              <SectionLabel>User segmentation</SectionLabel>
-              <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, background: "#0c0e11", overflow: "hidden" }}>
-                <div style={{
-                  display: "grid", gridTemplateColumns: "120px 80px 80px 100px",
-                  gap: 14, padding: "10px 16px",
-                  background: "#111317",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  ...MONO, fontSize: 10, color: "#5a5f68", letterSpacing: "0.10em", textTransform: "uppercase",
-                }}>
-                  <span>Plan</span>
-                  <span>Users</span>
-                  <span>CLI connected</span>
-                  <span>Active 7d</span>
-                </div>
-                {planSegmentRows.length === 0 ? (
-                  <div style={{ padding: "28px 16px", textAlign: "center", fontSize: 12, color: "#5a5f68" }}>
-                    No synced users yet.
-                  </div>
-                ) : planSegmentRows.map((row) => {
-                  const planColors: Record<string, string> = {
-                    free: "#5a5f68", pro: "#a78bfa", builder: "#6ee7b7", team: "#f5a524", unknown: "#3a3e46",
-                  };
-                  return (
-                    <div
-                      key={row.plan}
-                      style={{
-                        display: "grid", gridTemplateColumns: "120px 80px 80px 100px",
-                        gap: 14, padding: "11px 16px",
-                        borderBottom: "1px dashed rgba(255,255,255,0.04)",
-                        fontSize: 13, alignItems: "center",
-                      }}
-                    >
-                      <span style={{ ...MONO, fontSize: 11, color: planColors[row.plan] ?? "#5a5f68", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        {row.plan}
-                      </span>
-                      <span style={{ ...MONO, fontSize: 13, color: row.users > 0 ? "#f4f5f7" : "#5a5f68" }}>{row.users}</span>
-                      <span style={{ ...MONO, fontSize: 13, color: row.connectedCliUsers > 0 ? "#6ee7b7" : "#5a5f68" }}>{row.connectedCliUsers}</span>
-                      <span style={{ ...MONO, fontSize: 13, color: row.recentlyActiveUsers7d > 0 ? "#c9ccd2" : "#5a5f68" }}>{row.recentlyActiveUsers7d}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
             {/* Data sources */}
             <section>
               <SectionLabel>
@@ -618,7 +644,18 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
                     [
                       { label: "Internal event tracking", active: hasActivity,           unknown: false, note: hasActivity           ? "active" : "not detected" },
                       { label: "Billing data",            active: hasRevenue,            unknown: false, note: hasRevenue            ? "active" : "not detected" },
-                      { label: "Vercel Analytics",        active: true,                  unknown: true,  note: "installed globally"                              },
+                      {
+                        label: "Vercel Analytics",
+                        active: vercelOn,
+                        unknown: !vercelOn && vercel?.connected === false && vercel?.reason === "not_configured",
+                        note: vercelOn
+                          ? "connected · live data"
+                          : vercel?.connected === false && vercel.reason === "auth_error"
+                          ? "token invalid"
+                          : vercel?.connected === false && vercel.reason === "fetch_error"
+                          ? "fetch failed"
+                          : "not configured · add env vars",
+                      },
                       { label: "CLI sync events",         active: cliEvents.length > 0,  unknown: false, note: cliEvents.length > 0  ? "active" : "not detected" },
                     ] as Array<{ label: string; active: boolean; unknown: boolean; note: string }>
                   ).map(({ label, active, unknown, note }) => (
@@ -634,7 +671,10 @@ export function AdminDashboard({ role = "owner" }: { role?: AdminRole }) {
                   ))}
                 </div>
                 <p style={{ ...MONO, fontSize: 10.5, color: "#3a3e46", marginTop: 14, lineHeight: 1.6, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  Vercel Analytics is installed globally. Use the Vercel dashboard for raw traffic data until a direct API import is connected. Internal events shown above reflect database-tracked actions only.
+                  {vercelOn
+                    ? "Vercel Analytics is connected. Traffic numbers (visitors, page views, top pages) are pulled live from the Vercel API."
+                    : "To connect Vercel Analytics, add these env vars: VERCEL_API_TOKEN (vercel.com/account/tokens), VERCEL_PROJECT_ID (Project Settings > General), and optionally VERCEL_TEAM_ID. Until then, traffic data falls back to the internal runtrim_events table."
+                  }
                 </p>
               </div>
             </section>
