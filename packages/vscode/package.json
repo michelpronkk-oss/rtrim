@@ -11,29 +11,58 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:runtrim.newGuardedRun",
-    "onCommand:runtrim.finishCheck",
-    "onCommand:runtrim.doctor",
-    "onCommand:runtrim.continuePrompt",
-    "onCommand:runtrim.refreshProjectDna",
-    "onCommand:runtrim.openDashboard",
-    "onCommand:runtrim.openControlPanel"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      { "command": "runtrim.newGuardedRun", "title": "RunTrim: New Guarded Run" },
-      { "command": "runtrim.finishCheck", "title": "RunTrim: Finish Check" },
-      { "command": "runtrim.doctor", "title": "RunTrim: Doctor" },
-      { "command": "runtrim.continuePrompt", "title": "RunTrim: Continue Prompt" },
+      { "command": "runtrim.newGuardedRun",    "title": "RunTrim: New Guarded Run" },
+      { "command": "runtrim.finishCheck",       "title": "RunTrim: Finish Check" },
+      { "command": "runtrim.doctor",            "title": "RunTrim: Doctor" },
+      { "command": "runtrim.continuePrompt",    "title": "RunTrim: Continue Prompt" },
       { "command": "runtrim.refreshProjectDna", "title": "RunTrim: Refresh Project DNA" },
-      { "command": "runtrim.openDashboard", "title": "RunTrim: Open Dashboard" },
-      { "command": "runtrim.openControlPanel", "title": "RunTrim: Open Control Panel" }
-    ]
+      { "command": "runtrim.openDashboard",     "title": "RunTrim: Open Dashboard" },
+      { "command": "runtrim.openControlPanel",  "title": "RunTrim: Open Control Panel" }
+    ],
+    "configuration": {
+      "title": "RunTrim Agent Launcher",
+      "properties": {
+        "runtrim.agent.defaultAgent": {
+          "type": "string",
+          "enum": ["Auto", "Claude Code", "Codex", "Cursor", "Custom"],
+          "default": "Auto",
+          "description": "Default selected agent for the RunTrim Agent Launcher."
+        },
+        "runtrim.agent.customCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Custom local command template. Supports {task}, {handoff}, {projectRoot}."
+        },
+        "runtrim.agent.claudeCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Claude Code local command template. Supports {task}, {handoff}, {projectRoot}."
+        },
+        "runtrim.agent.codexCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Codex local command template. Supports {task}, {handoff}, {projectRoot}."
+        },
+        "runtrim.agent.autoLaunchTerminal": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, launch configured agent commands in a local VS Code terminal."
+        }
+      }
+    }
   },
   "scripts": {
-    "build": "tsc -p ./tsconfig.json",
-    "watch": "tsc -w -p ./tsconfig.json"
+    "build":   "tsc -p ./tsconfig.json",
+    "compile": "tsc -p ./tsconfig.json",
+    "watch":   "tsc -w -p ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }

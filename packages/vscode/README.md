@@ -1,6 +1,13 @@
-# RunTrim VS Code/Cursor Extension MVP
+# RunTrim VS Code/Cursor Extension
 
-Local-first extension surface for running RunTrim commands and reading local `.runtrim` state.
+Local-first guarded run launcher for VS Code and Cursor.
+
+Flow in the control panel:
+
+1. Compose task
+2. Build Contract
+3. Run with Agent
+4. Finish Check
 
 ## Implemented Commands
 
@@ -11,6 +18,39 @@ Local-first extension surface for running RunTrim commands and reading local `.r
 - RunTrim: Refresh Project DNA
 - RunTrim: Open Dashboard
 - RunTrim: Open Control Panel
+
+## Agent Launcher Behavior
+
+- Task composer with placeholder `Describe the guarded run...`
+- Agent picker: `Auto`, `Claude Code`, `Codex`, `Cursor`, `Custom`
+- Mode picker: `Auto`, `Strict`, `UI only`, `Docs only`
+- Actions:
+  - `Build Contract`: local preview only, no file edits
+  - `Run with Agent`: runs `runtrim agent "<task>" --copy` first
+  - `Copy Handoff`: copies `.runtrim/agent/latest.md`
+
+Routing is honest and local:
+
+- `Codex` and `Claude Code`: launch only when CLI detection is positive and a command template is configured
+- `Cursor`: handoff copy only with explicit paste guidance
+- `Custom`: requires `runtrim.agent.customCommand`
+- `Auto`: prefers configured command template, then detected CLI with configured template, otherwise safe handoff copy
+
+No cloud execution is implied. Source stays local.
+
+## Settings
+
+- `runtrim.agent.defaultAgent`
+- `runtrim.agent.customCommand`
+- `runtrim.agent.claudeCommand`
+- `runtrim.agent.codexCommand`
+- `runtrim.agent.autoLaunchTerminal`
+
+Command templates support:
+
+- `{task}`
+- `{handoff}`
+- `{projectRoot}`
 
 ## Local Test Steps (VS Code)
 
