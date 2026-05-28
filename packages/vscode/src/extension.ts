@@ -207,6 +207,8 @@ let controlPanel: any = null;
 
 // undefined = not yet resolved; null = not found; string = resolved path
 let resolvedCliPath: string | null | undefined = undefined;
+let cliResolutionAttempts: string[] = [];
+let cliResolutionLastError = "";
 let composerState: ComposerState = {
   task: "",
   selectedAgent: "Auto",
@@ -1036,33 +1038,44 @@ async function refreshRuntrimJsonState(force = false): Promise<void> {
 
 function resolveCli(): string | null {
   if (resolvedCliPath !== undefined) return resolvedCliPath;
+  cliResolutionAttempts = [];
+  cliResolutionLastError = "";
 
   // 1. Configured path
   try {
     const cfgPath = String(vscode.workspace.getConfiguration("runtrim.cli").get("path") ?? "").trim();
+    if (cfgPath) cliResolutionAttempts.push(`configured runtrim.cli.path: ${cfgPath}`);
     if (cfgPath && fileExists(cfgPath)) {
       resolvedCliPath = cfgPath;
       logCli(`resolved via config: ${cfgPath}`);
       return resolvedCliPath;
     }
+    if (cfgPath) cliResolutionLastError = `Configured path not found: ${cfgPath}`;
   } catch { /* vscode not ready yet */ }
 
   // 2. PATH via where/which
   try {
     const which = process.platform === "win32" ? "where.exe" : "which";
-    const lines = execFileSync(which, ["runtrim"], { stdio: "pipe" })
-      .toString().trim().split(/\r?\n/).filter(Boolean);
-    const best = selectBestPath(lines);
-    if (best && fileExists(best)) {
-      resolvedCliPath = best;
-      logCli(`resolved via PATH: ${best}`);
-      return resolvedCliPath;
+    const probes = process.platform === "win32" ? ["runtrim", "runtrim.cmd"] : ["runtrim"];
+    for (const probe of probes) {
+      cliResolutionAttempts.push(`PATH probe: ${probe}`);
+      const lines = execFileSync(which, [probe], { stdio: "pipe" })
+        .toString().trim().split(/\r?\n/).filter(Boolean);
+      const best = selectBestPath(lines);
+      if (best && fileExists(best)) {
+        resolvedCliPath = best;
+        logCli(`resolved via PATH (${probe}): ${best}`);
+        return resolvedCliPath;
+      }
     }
-  } catch { /* not in PATH */ }
+  } catch (err) {
+    cliResolutionLastError = `PATH lookup failed: ${String(err)}`;
+  }
 
   // 3-5. Windows-specific fallbacks
   if (process.platform === "win32") {
     for (const c of winCandidates()) {
+      cliResolutionAttempts.push(`Windows fallback: ${c}`);
       if (fileExists(c)) {
         resolvedCliPath = c;
         logCli(`resolved via Windows fallback: ${c}`);
@@ -1072,6 +1085,8 @@ function resolveCli(): string | null {
   }
 
   resolvedCliPath = null;
+  for (const attempt of cliResolutionAttempts) logCli(`attempt: ${attempt}`);
+  if (cliResolutionLastError) logCli(`last error: ${cliResolutionLastError}`);
   logCli("CLI not found. Install: npm install -g runtrim");
   return null;
 }
@@ -1132,6 +1147,51 @@ function showInstallError(): void {
 function showNoProjectError(): void {
   void vscode.window.showErrorMessage("No RunTrim project found. Run runtrim start in this project first.", "Open terminal")
     .then((c: string | undefined) => { if (c) vscode.commands.executeCommand("workbench.action.terminal.new"); });
+}
+
+function clearCliCaches(): void {
+  resolvedCliPath = undefined;
+  mcpState = null;
+  runtrimStatusJson = null;
+  runtrimRestoreJson = null;
+  runtrimJsonCheckedAt = 0;
+}
+
+async function retryCliDetection(showToast = true): Promise<void> {
+  clearCliCaches();
+  const cli = resolveCli();
+  if (cli) {
+    await refreshRuntrimJsonState(true);
+    await detectMcpState();
+    if (showToast) void vscode.window.showInformationMessage("RunTrim CLI detected. Panel refreshed.");
+  } else if (showToast) {
+    void vscode.window.showWarningMessage("RunTrim CLI still not found. Check the Run tab for setup steps.");
+  }
+  await refreshStatusBar();
+  refreshControlPanel();
+}
+
+function cliPathGuideText(): string {
+  if (process.platform === "win32") {
+    return [
+      "Set runtrim.cli.path to a full executable path, for example:",
+      "C:\\Users\\<you>\\AppData\\Roaming\\npm\\runtrim.cmd",
+      "",
+      "Install command:",
+      "npm install -g runtrim",
+      "",
+      "Dev mode only:",
+      "npm link"
+    ].join("\n");
+  }
+  return [
+    "Set runtrim.cli.path to your runtrim executable if auto-detect fails.",
+    "Install command:",
+    "npm install -g runtrim",
+    "",
+    "Dev mode only:",
+    "npm link"
+  ].join("\n");
 }
 
 // ---- MCP detection and commands ----
@@ -1451,12 +1511,13 @@ function derivePhase(local: LocalState, contract: ContractSummary | null): Conso
 // ---- control panel ----
 
 function openControlPanel(): void {
-  if (controlPanel) { controlPanel.reveal(); refreshControlPanel(); return; }
+  if (controlPanel) { controlPanel.reveal(); void retryCliDetection(false); refreshControlPanel(); return; }
   controlPanel = vscode.window.createWebviewPanel(
     "runtrim.control", "RunTrim", vscode.ViewColumn.Beside,
     { enableScripts: true, retainContextWhenHidden: true }
   );
   refreshControlPanel();
+  void retryCliDetection(false);
   // Detect MCP state in background; refresh panel once we know
   void detectMcpState().then(() => refreshControlPanel());
   void refreshRuntrimJsonState(true).then(() => {
@@ -1478,6 +1539,11 @@ async function handleWebviewMessage(msg: any): Promise<void> {
       composerState.selectedMode  = isModeOption(msg.selectedMode)      ? msg.selectedMode  : composerState.selectedMode;
       break;
     case "startRun": {
+      if (!loadLocalState().cliInstalled) {
+        refreshControlPanel();
+        void showInstallError();
+        return;
+      }
       const task  = typeof msg.task  === "string" ? msg.task.trim()  : composerState.task.trim();
       const agent = isAgentOption(msg.agent)      ? msg.agent         : composerState.selectedAgent;
       composerState.task          = task;
@@ -1487,6 +1553,11 @@ async function handleWebviewMessage(msg: any): Promise<void> {
       break;
     }
     case "finishCheck":
+      if (!loadLocalState().cliInstalled) {
+        refreshControlPanel();
+        void showInstallError();
+        return;
+      }
       lastFinishVerdict = null;
       await runAndRefresh("finish", ["finish"]);
       break;
@@ -1543,12 +1614,34 @@ async function handleWebviewMessage(msg: any): Promise<void> {
       break;
 
     case "connectAgent":          await connectAgentFlow(); break;
-    case "checkMcpConnection":    await checkMcpConnection(true); break;
+    case "checkMcpConnection":
+      if (!loadLocalState().cliInstalled) {
+        mcpUxNotice = "CLI required before agent connection can be checked.";
+        refreshControlPanel();
+        void showInstallError();
+        return;
+      }
+      await checkMcpConnection(true);
+      break;
     case "viewRawMcpConfig":      await viewRawMcpConfig(); break;
     case "copyRawMcpConfig":      await copyMcpConfig(); break;
     case "copyHandoff":           await copyHandoff(); break;
     case "showMcpInstructions":   await showMcpInstructions(); break;
     case "copyMcpConfig":         await connectAgentFlow(); break;
+    case "copyInstallCommand":
+      await vscode.env.clipboard.writeText("npm install -g runtrim");
+      void vscode.window.showInformationMessage("Install command copied.");
+      break;
+    case "openCliPathSettings":
+      await vscode.commands.executeCommand("workbench.action.openSettings", "runtrim.cli.path");
+      break;
+    case "retryCliDetection":
+      await retryCliDetection(true);
+      break;
+    case "showCliPathGuide":
+      await vscode.env.clipboard.writeText(cliPathGuideText());
+      void vscode.window.showInformationMessage("CLI path guide copied to clipboard.");
+      break;
   }
 }
 
@@ -2440,8 +2533,34 @@ function renderIdleCards(local: LocalState, dna: DnaSummary | null, shortRoot: s
   const risk = dna?.riskZones ?? [];
   const countPart = dna?.riskPathCount ? ` Â· ${dna.riskPathCount} paths` : "";
   const mcpPanelStatus: McpStatus = mcpState?.status ?? "unknown";
+  const cfgPath = String(vscode.workspace.getConfiguration("runtrim.cli").get("path") ?? "").trim();
+  const attempts = cliResolutionAttempts.slice(0, 6);
+  const missingCliCard = !local.cliInstalled ? `
+<div class="sys-card">
+  <div class="sys-head">
+    <span class="ico rose">${icoWarn()}</span>
+    <span class="sys-label">RunTrim CLI not found</span>
+    <span class="sys-right">setup required</span>
+  </div>
+  <div class="sys-body">
+    <div class="copy">RunTrim needs the local CLI to create contracts, read Project DNA, run finish checks and connect agents.</div>
+    <div class="line"><span class="k">Install</span><span class="v"><code>npm install -g runtrim</code></span></div>
+    ${cfgPath ? `<div class="line"><span class="k">runtrim.cli.path</span><span class="v"><code>${h(cfgPath)}</code></span></div>` : ""}
+    ${process.platform === "win32" && attempts.length
+      ? `<div class="line"><span class="k">Windows attempts</span><span class="v">${attempts.map((a) => `<span class="pill muted">${h(a)}</span>`).join("")}</span></div>`
+      : ""}
+    ${cliResolutionLastError ? `<div class="line"><span class="k">Last error</span><span class="v"><code>${h(cliResolutionLastError.slice(0, 220))}</code></span></div>` : ""}
+  </div>
+  <div class="sys-actions">
+    <button class="act primary" data-action="copyInstallCommand">Copy install command</button>
+    <button class="act" data-action="openCliPathSettings">Open settings</button>
+    <button class="act" data-action="retryCliDetection">Retry detection</button>
+    <button class="act" data-action="showCliPathGuide">Set CLI path guide</button>
+  </div>
+</div>` : "";
   return `
 <div class="day-sep">ready</div>
+${missingCliCard}
 <div class="sys-card">
   <div class="sys-head">
     <span class="ico">${icoDna()}</span>
@@ -2472,7 +2591,9 @@ function renderIdleCards(local: LocalState, dna: DnaSummary | null, shortRoot: s
     <span class="sys-right">${mcpPanelStatus === "configured" ? "ready" : mcpPanelStatus === "not_configured" ? "not connected" : mcpPanelStatus === "unknown" ? "check connection" : "unavailable"}</span>
   </div>
   <div class="sys-body">
-    <div class="copy">${mcpPanelStatus === "configured"
+    <div class="copy">${!local.cliInstalled
+      ? "CLI required before agent connection can be checked."
+      : mcpPanelStatus === "configured"
       ? "MCP config is ready. Your connected agent can use RunTrim MCP tools."
       : mcpPanelStatus === "not_configured"
         ? "Connect RunTrim to supported AI agents so they can use Project DNA, guarded contracts, finish checks and continuation tools."
@@ -2482,11 +2603,11 @@ function renderIdleCards(local: LocalState, dna: DnaSummary | null, shortRoot: s
     ${mcpUxNotice ? `<div class="copy"><em>${h(mcpUxNotice)}</em></div>` : ""}
   </div>
   <div class="sys-actions">
-    <button class="act primary" data-action="connectAgent">Connect agent</button>
-    <button class="act" data-action="showMcpInstructions">Show instructions</button>
-    <button class="act" data-action="checkMcpConnection">Check connection</button>
-    <button class="act" data-action="viewRawMcpConfig">View config</button>
-    <button class="act" data-action="copyRawMcpConfig">Copy raw config</button>
+    <button class="act primary" data-action="${local.cliInstalled ? "connectAgent" : "retryCliDetection"}">${local.cliInstalled ? "Connect agent" : "CLI required"}</button>
+    <button class="act" data-action="${local.cliInstalled ? "showMcpInstructions" : "showCliPathGuide"}">${local.cliInstalled ? "Show instructions" : "Set CLI path guide"}</button>
+    <button class="act" data-action="${local.cliInstalled ? "checkMcpConnection" : "retryCliDetection"}">${local.cliInstalled ? "Check connection" : "Retry detection"}</button>
+    <button class="act" data-action="${local.cliInstalled ? "viewRawMcpConfig" : "openCliPathSettings"}">${local.cliInstalled ? "View config" : "Open settings"}</button>
+    <button class="act" data-action="${local.cliInstalled ? "copyRawMcpConfig" : "copyInstallCommand"}">${local.cliInstalled ? "Copy raw config" : "Copy install command"}</button>
   </div>
 </div>
 <div id="preview-card" class="sys-card">
@@ -2497,7 +2618,7 @@ function renderIdleCards(local: LocalState, dna: DnaSummary | null, shortRoot: s
   </div>
   <div class="sys-body" id="preview-body"></div>
   <div class="sys-actions">
-    <button class="act primary" data-action="startRun">Start guarded run <span class="kbd">âŒ˜â†µ</span></button>
+    <button class="act primary" data-action="${local.cliInstalled ? "startRun" : "retryCliDetection"}">${local.cliInstalled ? "Start guarded run <span class=\"kbd\">âŒ˜â†µ</span>" : "CLI required"}</button>
     <button class="act" data-action="copyHandoff">Copy handoff</button>
   </div>
 </div>`;
