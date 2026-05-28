@@ -106,6 +106,7 @@ const oraFactory: typeof ora =
 const ACCENT = chalk.hex("#C8901A");
 const GO_ACCENT = chalk.hex("#8B7CFF");
 const RUNTRIM_AGENT_INSTRUCTIONS_VERSION = "3";
+const PROJECT_DNA_VERSION = "1";
 const DIM = chalk.gray;
 const BOLD = chalk.white.bold;
 const MINT = chalk.hex("#6ee7b7");
@@ -872,18 +873,38 @@ function writeAgentHandoffArtifacts(
   const markdownPath = path.join(dir, "latest.md");
   fs.writeFileSync(jsonPath, JSON.stringify(apply, null, 2), "utf-8");
 
+  const dnaRules = loadProjectDnaRules(cwd);
+  const dnaSection: string[] = dnaRules.length > 0
+    ? [
+        "",
+        "Project DNA (from .runtrim/project-dna.md):",
+        ...dnaRules.map((r) => `- ${r}`),
+      ]
+    : [
+        "",
+        "Project DNA:",
+        "- Follow the project's existing style. Do not apply generic AI design.",
+        "- Use existing components and conventions. Do not create redundant alternatives.",
+        "- Do not use em dashes or emojis in generated copy.",
+        "- Preserve logic unless explicitly allowed to change it.",
+        "- Treat auth, billing, middleware, env/config and package publishing as risky unless explicitly allowed.",
+        "- Run runtrim finish before claiming done.",
+      ];
+
   const promptLines = [
     "You are working inside a RunTrim controlled apply run.",
     "",
     "Before editing:",
     "- read .runtrim/contracts/latest.md",
     "- read .runtrim/agent/latest.md",
+    "- read .runtrim/project-dna.md for project style and behavior rules",
     "- stay inside allowed scope",
     "- do not touch forbidden scope",
     "- treat auth, billing, env, middleware, migrations, secrets and config as risky unless explicitly in scope",
     "- stop if scope expansion is required and request approval instead of editing",
     "- preserve user objective",
     "- produce proof",
+    ...dnaSection,
     "",
     "Before saying done:",
     "1. Run project verification if available (lint, typecheck, build, test).",
@@ -942,6 +963,9 @@ function writeAgentHandoffArtifacts(
     "- If WARN: summarize risk. Ask user whether to continue.",
     "- If PASS: summarize changed files. Ask what is next.",
     "- Recovery: runtrim restore",
+    "",
+    "Project DNA guidance:",
+    ...dnaSection.filter((l) => l !== ""),
     "",
     "Agent instruction summary:",
     ...promptLines,
@@ -1961,6 +1985,221 @@ function syncStartAgentEnvironment(cwd: string): {
   };
 }
 
+// ── Project DNA helpers ───────────────────────────────────────────────────────
+
+async function getGitInfo(cwd: string): Promise<{ branch: string | null; commit: string | null }> {
+  let branch: string | null = null;
+  let commit: string | null = null;
+  try {
+    const { stdout: b } = await execa("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd });
+    branch = b.trim() || null;
+  } catch { branch = null; }
+  try {
+    const { stdout: c } = await execa("git", ["rev-parse", "HEAD"], { cwd });
+    commit = c.trim().slice(0, 12) || null;
+  } catch { commit = null; }
+  return { branch, commit };
+}
+
+function readPackageDepsForDna(cwd: string): { deps: Record<string, string>; packageName: string } {
+  try {
+    const raw = fs.readFileSync(path.join(cwd, "package.json"), "utf-8");
+    const pkg = JSON.parse(raw) as {
+      name?: string;
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    return {
+      deps: { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) },
+      packageName: pkg.name ?? "",
+    };
+  } catch {
+    return { deps: {}, packageName: "" };
+  }
+}
+
+function detectStylingSystem(packageDeps: Record<string, string>, paths: string[]): string {
+  if (packageDeps.tailwindcss) return "tailwindcss";
+  if (packageDeps["styled-components"]) return "styled-components";
+  if (packageDeps["@emotion/react"] || packageDeps["@emotion/styled"]) return "emotion";
+  if (packageDeps.sass || packageDeps["node-sass"]) return "sass";
+  if (paths.some((p) => p.endsWith(".module.css") || p.endsWith(".module.scss"))) return "css-modules";
+  return "css";
+}
+
+function detectComponentSystem(packageDeps: Record<string, string>, cwd: string): string {
+  const hasRadix = Object.keys(packageDeps).some((k) => k.startsWith("@radix-ui/"));
+  const hasShadcn = Boolean(packageDeps.shadcn) || fs.existsSync(path.join(cwd, "components.json"));
+  if (hasShadcn && hasRadix) return "shadcn/ui + radix-ui";
+  if (hasShadcn) return "shadcn/ui";
+  if (hasRadix) return "radix-ui";
+  if (packageDeps["@headlessui/react"]) return "headlessui";
+  if (packageDeps["@mui/material"]) return "material-ui";
+  if (packageDeps["antd"]) return "ant-design";
+  return "custom";
+}
+
+function buildProjectStructureSummary(paths: string[], appDirs: string[]): string[] {
+  const topDirs = new Map<string, number>();
+  for (const p of paths) {
+    const top = p.split("/")[0];
+    if (top) topDirs.set(top, (topDirs.get(top) ?? 0) + 1);
+  }
+  const summary: string[] = [];
+  for (const [dir, count] of [...topDirs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
+    summary.push(`${dir}/ (${count} files)`);
+  }
+  if (appDirs.length > 0) summary.push(`App dirs: ${appDirs.join(", ")}`);
+  return summary;
+}
+
+function writeProjectDna(cwd: string, profile: StartProjectProfile): string {
+  const configDir = getConfigDir(cwd);
+  if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+  const dnaPath = path.join(configDir, "project-dna.md");
+
+  const { deps } = readPackageDepsForDna(cwd);
+  const paths = scanProjectPathNames(cwd);
+  const stylingSystem = detectStylingSystem(deps, paths);
+  const componentSystem = detectComponentSystem(deps, cwd);
+  const structureSummary = buildProjectStructureSummary(paths, profile.app_directories);
+
+  const riskyZones: string[] = [
+    ...profile.detected_high_risk_paths.slice(0, 6).map((p) => `- ${p}`),
+    "- middleware.ts / proxy.ts",
+    "- app/api/auth/** and app/api/billing/**",
+    "- supabase/migrations/** and prisma/migrations/**",
+    "- .env* and any *.pem / *.key files",
+  ];
+
+  const lines = [
+    "# Project DNA",
+    "",
+    `Generated: ${new Date().toISOString()}`,
+    `DNA version: ${PROJECT_DNA_VERSION}`,
+    "",
+    "## Detected environment",
+    "",
+    `- Framework: ${profile.framework}`,
+    `- Package manager: ${profile.package_manager}`,
+    `- Language: ${profile.language}`,
+    `- Styling system: ${stylingSystem}`,
+    `- Component system: ${componentSystem}`,
+    "",
+    "## Project structure",
+    "",
+    ...structureSummary.map((s) => `- ${s}`),
+    "",
+    "## Copy and style rules",
+    "",
+    "- Do not use em dashes in any generated copy.",
+    "- Do not use emojis.",
+    "- Match the existing tone: direct, plain, no marketing fluff.",
+    "- Keep labels and button text concise.",
+    "- Do not invent new design patterns. Follow existing components.",
+    "",
+    "## Mobile and layout rules",
+    "",
+    "- Test all layout changes at mobile viewport widths.",
+    "- Do not introduce overflow. Preserve responsive classes.",
+    `- Use existing layout primitives from ${profile.app_directories[0] ?? "src"}.`,
+    "",
+    "## Risky zones",
+    "",
+    ...riskyZones,
+    "",
+    "## Forbidden broad rewrite rules",
+    "",
+    "- Do not refactor or rename outside the task scope.",
+    "- Do not touch unrelated files to clean up or improve them.",
+    "- Do not change billing, auth, middleware, env/config or package publishing unless explicitly in scope.",
+    "- Do not introduce new dependencies without approval.",
+    "- Do not reorganize folder structure.",
+    "- Do not change test setup or CI configuration unless in scope.",
+    "",
+    "## Agent behavior rules",
+    "",
+    "- Follow the project's existing style. Do not apply generic AI design.",
+    "- Use existing components and conventions. Do not create redundant alternatives.",
+    "- Preserve logic unless explicitly allowed to change it.",
+    "- Treat auth, billing, middleware, env/config and package publishing as risky unless explicitly allowed.",
+    "- Run runtrim finish before claiming done.",
+    "- If scope must expand, stop and request approval instead of editing.",
+    "- Never read or print env file contents.",
+    "",
+    "## Current project state",
+    "",
+    `- Project: ${profile.project_name}`,
+    `- App directories: ${profile.app_directories.join(", ") || "none detected"}`,
+    `- Scripts available: ${Object.keys(profile.scripts).join(", ") || "none"}`,
+    `- Total tracked files: ${paths.length}`,
+    `- High risk path count: ${profile.detected_high_risk_paths.length}`,
+  ];
+
+  fs.writeFileSync(dnaPath, lines.join("\n"), "utf-8");
+  return dnaPath;
+}
+
+async function writeBaselineHistory(
+  cwd: string,
+  profile: StartProjectProfile,
+  forceRefresh = false
+): Promise<string> {
+  const historyDir = path.join(getConfigDir(cwd), "history");
+  if (!fs.existsSync(historyDir)) fs.mkdirSync(historyDir, { recursive: true });
+  const baselinePath = path.join(historyDir, "baseline.json");
+
+  if (fs.existsSync(baselinePath) && !forceRefresh) return baselinePath;
+
+  const { deps, packageName } = readPackageDepsForDna(cwd);
+  const paths = scanProjectPathNames(cwd);
+  const { branch, commit } = await getGitInfo(cwd);
+  const stylingSystem = detectStylingSystem(deps, paths);
+  const componentSystem = detectComponentSystem(deps, cwd);
+
+  const baseline = {
+    dnaVersion: PROJECT_DNA_VERSION,
+    initializedAt: new Date().toISOString(),
+    projectRoot: cwd,
+    packageName,
+    framework: profile.framework,
+    packageManager: profile.package_manager,
+    language: profile.language,
+    stylingSystem,
+    componentSystem,
+    gitBranch: branch,
+    gitCommit: commit,
+    safeFileCount: paths.filter((p) => !isSensitivePath(p)).length,
+    totalFileCount: paths.length,
+  };
+
+  fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2), "utf-8");
+  return baselinePath;
+}
+
+function loadProjectDnaRules(cwd: string): string[] {
+  const dnaPath = path.join(getConfigDir(cwd), "project-dna.md");
+  if (!fs.existsSync(dnaPath)) return [];
+  try {
+    const content = fs.readFileSync(dnaPath, "utf-8");
+    const agentSection = content.match(/## Agent behavior rules\n([\s\S]*?)(?:\n##|$)/);
+    const copySection = content.match(/## Copy and style rules\n([\s\S]*?)(?:\n##|$)/);
+    const rules: string[] = [];
+    for (const match of [agentSection, copySection]) {
+      if (!match) continue;
+      for (const line of match[1].split("\n")) {
+        const trimmed = line.replace(/^- /, "").trim();
+        if (trimmed) rules.push(trimmed);
+      }
+    }
+    return rules.slice(0, 12);
+  } catch {
+    return [];
+  }
+}
+
+// ── End Project DNA helpers ───────────────────────────────────────────────────
+
 function buildStartProfile(cwd: string): StartProjectProfile {
   const audit = loadProjectAudit(cwd) ?? performBaselineProjectAudit(cwd, null);
   const packageJsonPath = path.join(cwd, "package.json");
@@ -2080,6 +2319,19 @@ function updateStartMemory(cwd: string, profile: StartProjectProfile): string {
     "- Recovery: suggest runtrim restore if the run broke the project.",
     "- Never read or print env file contents.",
     "- MCP unavailable: ask the user to run: runtrim agent \"task\" --copy",
+    "",
+    "MCP tools:",
+    "- runtrim_create_contract  — create a guarded contract",
+    "- runtrim_check_path       — check if a path is in scope",
+    "- runtrim_suggest_approval — get the approval command for scope expansion",
+    "- runtrim_finish_guidance  — get finish instructions",
+    "",
+    "Project DNA:",
+    "- Read .runtrim/project-dna.md for framework, styling, component system, risky zones, and agent behavior rules.",
+    "- Follow the project's existing style. Do not apply generic AI design.",
+    "- Use existing components and conventions. Do not create redundant alternatives.",
+    "- Do not use em dashes or emojis in generated copy.",
+    "- Preserve logic unless explicitly allowed to change it.",
     "",
     "MCP tools:",
     "- runtrim_create_contract  — create a guarded contract",
@@ -3910,7 +4162,8 @@ program
   .command("start")
   .description("Guided RunTrim onboarding and daily loop")
   .option("--task <task>", "Prepare a guarded run immediately")
-  .action(async (options: { task?: string }) => {
+  .option("--refresh-dna", "Force refresh of Project DNA and baseline even if they already exist")
+  .action(async (options: { task?: string; refreshDna?: boolean }) => {
     const cwd = process.cwd();
     const interactive = isInteractiveTerminal();
     const allowed = await ensureRepoAllowedForFree(cwd);
@@ -3955,6 +4208,9 @@ program
     const mcpSnippets = ensureProjectMcpSnippets(cwd);
     const mcpConfigPresence = detectKnownMcpConfigPresence();
 
+    const dnaPath = writeProjectDna(cwd, profile);
+    const baselinePath = await writeBaselineHistory(cwd, profile, options.refreshDna === true);
+
     console.log(BOLD("RunTrim project setup"));
     console.log("");
     console.log(HEAD("  Detected"));
@@ -3963,6 +4219,7 @@ program
     console.log(chalk.white(`  - Language: ${profile.language}`));
     console.log(chalk.white(`  - Scripts: ${Object.keys(profile.scripts).join(", ") || "none detected"}`));
     console.log(chalk.white("  - Memory: ") + MINT("updated"));
+    console.log(chalk.white("  - Project DNA: ") + MINT("updated"));
     console.log(chalk.white("  - Agent instructions: ") + MINT("updated"));
     console.log(chalk.white("  - MCP: ") + MINT("available"));
     console.log("");
@@ -3978,6 +4235,8 @@ program
     console.log(HEAD("  Generated local files"));
     console.log(chalk.white(`  - ${path.relative(cwd, profilePath)}`));
     console.log(chalk.white(`  - ${path.relative(cwd, memoryPath)}`));
+    console.log(chalk.white(`  - ${path.relative(cwd, dnaPath)}`));
+    console.log(chalk.white(`  - ${path.relative(cwd, baselinePath)}`));
     console.log(chalk.white(`  - ${path.relative(cwd, instructionsPath)}`));
     for (const snippet of mcpSnippets.files) {
       if (snippet.state === "generated") console.log(chalk.white(`  - ${snippet.relativePath}`));
@@ -4108,6 +4367,32 @@ program
       console.log(chalk.white("  runtrim sync"));
       console.log("");
     }
+  });
+
+// ── DNA command ───────────────────────────────────────────────────────────────
+
+const dnaCommand = program.command("dna").description("Project DNA management");
+
+dnaCommand
+  .command("refresh")
+  .description("Refresh Project DNA and baseline history from current project state")
+  .action(async () => {
+    const cwd = process.cwd();
+    if (!configExists(cwd)) {
+      console.log(chalk.yellow("  No config found. Run: runtrim start"));
+      console.log("");
+      return;
+    }
+    console.log("");
+    console.log(BOLD("RunTrim") + DIM("  dna refresh"));
+    console.log("");
+    const profile = buildStartProfile(cwd);
+    const dnaPath = writeProjectDna(cwd, profile);
+    const baselinePath = await writeBaselineHistory(cwd, profile, true);
+    console.log(chalk.white("  Project DNA refreshed:"));
+    console.log(chalk.white(`  - ${path.relative(cwd, dnaPath)}`));
+    console.log(chalk.white(`  - ${path.relative(cwd, baselinePath)}`));
+    console.log("");
   });
 
 // ── Protocol installer helpers ────────────────────────────────────────────────
