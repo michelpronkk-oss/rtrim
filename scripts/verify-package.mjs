@@ -2,9 +2,10 @@ import { execSync } from "node:child_process";
 import { gunzipSync } from "node:zlib";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
-function run(cmd) {
-  return execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+function run(cmd, opts = {}) {
+  return execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts });
 }
 
 function parsePackJson(raw) {
@@ -37,6 +38,32 @@ function extractFromTarball(tgzPath, targetPath) {
   return null;
 }
 
+// Count installed packages under node_modules, including scoped packages.
+function countInstalledPackages(nodeModulesDir) {
+  if (!fs.existsSync(nodeModulesDir)) return 0;
+  let count = 0;
+  for (const entry of fs.readdirSync(nodeModulesDir)) {
+    if (entry.startsWith(".")) continue;
+    const full = path.join(nodeModulesDir, entry);
+    try {
+      if (!fs.statSync(full).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    if (entry.startsWith("@")) {
+      // Scoped package dir — count each named child
+      try {
+        for (const scoped of fs.readdirSync(full)) {
+          if (!scoped.startsWith(".")) count++;
+        }
+      } catch { /* ignore unreadable scope dirs */ }
+    } else {
+      count++;
+    }
+  }
+  return count;
+}
+
 // ── Expected CLI-only runtime dependencies ───────────────────────────────────
 const EXPECTED_CLI_DEPS = [
   "chalk",
@@ -64,6 +91,14 @@ const FORBIDDEN_DEPS = [
   "class-variance-authority", "clsx", "fast-glob",
 ];
 
+// ── Forbidden scoped package prefixes (catches entire families) ───────────────
+const FORBIDDEN_PREFIXES = [
+  "@radix-ui/",
+  "@remotion/",
+  "@supabase/",
+  "@vercel/",
+];
+
 // ── Required files in the published package ───────────────────────────────────
 const REQUIRED_FILES = [
   "dist-cli/runtrim.cjs",
@@ -78,6 +113,12 @@ const FORBIDDEN_PATH_PATTERNS = [
   ".runtrim/runs/", ".runtrim/executions/", ".runtrim/contracts/", ".runtrim/memory/",
   ".vercel/", "tmp/", "logs/",
 ];
+
+// ── Maximum installed packages allowed (CLI deps + transitive, not web deps) ──
+// Actual CLI-only install is ~62 packages. Web deps produce 665+.
+// Threshold is set at 100 to give headroom for minor dep updates while still
+// catching any web dep bleed (which would jump the count above 100 immediately).
+const MAX_INSTALLED_PACKAGES = 100;
 
 // ── Step 1: Build and verify CLI ─────────────────────────────────────────────
 console.log("Building CLI...");
@@ -139,8 +180,17 @@ try {
       const missing = EXPECTED_CLI_DEPS.filter((d) => !packedDeps.includes(d));
       if (missing.length > 0) depErrors.push(`Missing expected CLI deps in tarball: ${missing.join(", ")}`);
 
+      // Exact-name forbidden check
       const forbidden = packedDeps.filter((d) => FORBIDDEN_DEPS.includes(d));
       if (forbidden.length > 0) depErrors.push(`Forbidden web deps in tarball: ${forbidden.join(", ")}`);
+
+      // Prefix-based forbidden check (catches entire scoped families)
+      const forbiddenByPrefix = packedDeps.filter((d) =>
+        FORBIDDEN_PREFIXES.some((prefix) => d.startsWith(prefix))
+      );
+      if (forbiddenByPrefix.length > 0) {
+        depErrors.push(`Forbidden scoped deps in tarball (prefix match): ${forbiddenByPrefix.join(", ")}`);
+      }
 
       const extra = packedDeps.filter((d) => !EXPECTED_CLI_DEPS.includes(d) && !FORBIDDEN_DEPS.includes(d));
       if (extra.length > 0) depErrors.push(`Unexpected extra deps in tarball: ${extra.join(", ")}`);
@@ -153,6 +203,39 @@ try {
         console.log(`  ✓ Tarball deps verified: ${packedDeps.join(", ")}`);
       }
     }
+
+    // ── Step 5: Install test ─────────────────────────────────────────────────
+    // Install the packed tarball into a temp dir and verify the dep tree is
+    // small (CLI-only). A full web manifest installs 665+ packages; CLI-only
+    // installs ~15-35. Threshold is set well below web dep bloat territory.
+    console.log("Running install test...");
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "runtrim-install-test-"));
+    try {
+      fs.writeFileSync(
+        path.join(tmpDir, "package.json"),
+        JSON.stringify({ name: "runtrim-install-test", version: "1.0.0", private: true })
+      );
+      const tgzArg = tarballPath.replace(/\\/g, "/");
+      const prefixArg = tmpDir.replace(/\\/g, "/");
+      run(
+        `npm install --prefix "${prefixArg}" --omit=dev --no-save --no-package-lock "${tgzArg}"`,
+        { timeout: 120000 }
+      );
+      const nodeModulesDir = path.join(tmpDir, "node_modules");
+      const installedCount = countInstalledPackages(nodeModulesDir);
+      if (installedCount > MAX_INSTALLED_PACKAGES) {
+        depErrors.push(
+          `Install test FAILED: ${installedCount} packages installed (max ${MAX_INSTALLED_PACKAGES}). ` +
+          `Web dep leak detected. Confirm only CLI deps are in package.json before publishing.`
+        );
+      } else {
+        console.log(`  ✓ Install test: ${installedCount} packages installed`);
+      }
+    } catch (installErr) {
+      depErrors.push(`Install test could not complete: ${String(installErr.message).slice(0, 300)}`);
+    } finally {
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
   } else {
     // npm_config_dry_run=true was inherited — tarball not written to disk.
     // Fall back: verify the on-disk CLI-only package.json directly.
@@ -164,6 +247,13 @@ try {
 
     const forbidden = onDiskDeps.filter((d) => FORBIDDEN_DEPS.includes(d));
     if (forbidden.length > 0) depErrors.push(`Forbidden web deps in manifest: ${forbidden.join(", ")}`);
+
+    const forbiddenByPrefix = onDiskDeps.filter((d) =>
+      FORBIDDEN_PREFIXES.some((prefix) => d.startsWith(prefix))
+    );
+    if (forbiddenByPrefix.length > 0) {
+      depErrors.push(`Forbidden scoped deps in manifest (prefix match): ${forbiddenByPrefix.join(", ")}`);
+    }
 
     const extra = onDiskDeps.filter((d) => !EXPECTED_CLI_DEPS.includes(d) && !FORBIDDEN_DEPS.includes(d));
     if (extra.length > 0) depErrors.push(`Unexpected extra deps: ${extra.join(", ")}`);
