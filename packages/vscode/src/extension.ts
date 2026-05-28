@@ -9,7 +9,7 @@ const vscode: any = require("vscode");
 type StatusState = "not_installed" | "no_project" | "ready" | "active" | "blocked";
 type AgentOption = "Auto" | "Claude Code" | "Codex" | "Cursor" | "Custom";
 type ModeOption = "Auto" | "Strict" | "UI only" | "Docs only";
-type ConsolePhase = "idle" | "composing" | "active" | "blocked" | "limit";
+type ConsolePhase = "idle" | "composing" | "active" | "blocked" | "limit" | "passed" | "warned";
 
 type LocalState = {
   cliInstalled: boolean;
@@ -57,6 +57,7 @@ type ComposerState = {
   selectedAgent: AgentOption;
   selectedMode: ModeOption;
   usageLimitHit: boolean;
+  activeTab: "run" | "history" | "rules";
 };
 
 // ---- constants ----
@@ -92,8 +93,12 @@ let composerState: ComposerState = {
   task: "",
   selectedAgent: "Auto",
   selectedMode: "Auto",
-  usageLimitHit: false
+  usageLimitHit: false,
+  activeTab: "run"
 };
+
+let lastFinishVerdict: "passed" | "warn" | "failed" | null = null;
+let limitReason = "";
 
 // ---- activation ----
 
@@ -166,7 +171,23 @@ async function runAndRefresh(name: string, args: string[]): Promise<void> {
       void vscode.window.showWarningMessage(`RunTrim ${name} failed. Check the RunTrim output panel.`);
     }
   }
-  if (LIMIT_PHRASES.some((p) => combined.includes(p))) composerState.usageLimitHit = true;
+
+  // Detect finish verdict
+  if (args[0] === "finish") {
+    const upper = (result.stdout + "\n" + result.stderr).toUpperCase();
+    if (/\bPASS\b/.test(upper)) {
+      lastFinishVerdict = "passed";
+    } else if (/\bWARN\b/.test(upper)) {
+      lastFinishVerdict = "warn";
+    } else if (/\b(FAIL|BLOCKED)\b/.test(upper) || result.exitCode !== 0) {
+      lastFinishVerdict = "failed";
+    }
+  }
+
+  // Detect limit phrases from any command output
+  if (LIMIT_PHRASES.some((p) => combined.includes(p))) {
+    composerState.usageLimitHit = true;
+  }
 
   await refreshStatusBar(combined);
   refreshControlPanel();
@@ -177,6 +198,8 @@ async function runWithAgent(task: string, agent: AgentOption): Promise<void> {
   if (!local.cliInstalled) return showInstallError();
   if (!local.workspaceRoot) { void vscode.window.showErrorMessage("No workspace folder is open."); return; }
   if (!local.dnaExists) { void vscode.window.showWarningMessage("Project DNA missing. Run RunTrim: Refresh Project DNA first."); return; }
+
+  lastFinishVerdict = null; // clear any previous verdict on new run
 
   outputChannel.show(true);
   outputChannel.appendLine(`$ runtrim agent "${task}" --copy`);
@@ -201,6 +224,9 @@ async function runWithAgent(task: string, agent: AgentOption): Promise<void> {
     return;
   }
 
+  void vscode.window.showInformationMessage(
+    `Guarded run ready. Handoff copied. Paste it into ${agent === "Auto" ? "your selected agent" : agent}.`
+  );
   await routeAgent(agent, task, handoff, local.workspaceRoot);
   await refreshStatusBar(`${result.stdout}\n${result.stderr}`);
   refreshControlPanel();
@@ -431,6 +457,8 @@ function readRecentRuns(runsDir: string, count: number): RunSummary[] {
 
 function derivePhase(local: LocalState, contract: ContractSummary | null): ConsolePhase {
   if (composerState.usageLimitHit) return "limit";
+  if (lastFinishVerdict === "passed") return "passed";
+  if (lastFinishVerdict === "warn")   return "warned";
   if (local.latestContractExists && contract) {
     if (contract.status === "blocked") return "blocked";
     if (contract.status === "active")  return "active";
@@ -471,17 +499,58 @@ async function handleWebviewMessage(msg: any): Promise<void> {
       await runWithAgent(task, agent);
       break;
     }
-    case "finishCheck":    await runAndRefresh("finish",  ["finish"]); break;
-    case "doctor":         await runAndRefresh("doctor",  ["doctor"]); break;
-    case "restore":        await runAndRefresh("restore", ["restore"]); break;
-    case "refreshDna":     await runAndRefresh("start",   ["start", "--refresh-dna"]); break;
+    case "finishCheck":
+      lastFinishVerdict = null;
+      await runAndRefresh("finish", ["finish"]);
+      break;
+    case "doctor":     await runAndRefresh("doctor",  ["doctor"]); break;
+    case "restore":    await runAndRefresh("restore", ["restore"]); break;
+    case "refreshDna": await runAndRefresh("start",   ["start", "--refresh-dna"]); break;
+
     case "continueLimit":
       composerState.usageLimitHit = false;
       await runAndRefresh("continue", ["continue", "--reason", "usage_limit"]);
       break;
-    case "clearLimit":     composerState.usageLimitHit = false;  refreshControlPanel(); break;
-    case "agentHitLimit":  composerState.usageLimitHit = true;   refreshControlPanel(); break;
-    case "copyHandoff":    await copyHandoff(); break;
+
+    case "clearLimit":
+      composerState.usageLimitHit = false;
+      limitReason = "";
+      refreshControlPanel();
+      break;
+
+    case "clearFinish":
+      lastFinishVerdict = null;
+      refreshControlPanel();
+      break;
+
+    case "agentHitLimit": {
+      const reasonItems = [
+        { label: "context limit",       cliReason: "context_limit"  },
+        { label: "usage limit",         cliReason: "usage_limit"    },
+        { label: "rate limit",          cliReason: "rate_limit"     },
+        { label: "agent stopped",       cliReason: "agent_stopped"  },
+        { label: "manual continuation", cliReason: "usage_limit"    }
+      ];
+      const picked = await vscode.window.showQuickPick(
+        reasonItems.map((r) => r.label),
+        { title: "Why did the agent stop?", placeHolder: "Select a reason to generate the continuation handoff" }
+      );
+      if (!picked) return;
+      limitReason = picked;
+      composerState.usageLimitHit = true;
+      const cliReason = reasonItems.find((r) => r.label === picked)?.cliReason ?? "usage_limit";
+      await runAndRefresh("continue", ["continue", "--reason", cliReason]);
+      break;
+    }
+
+    case "tabChanged":
+      if (msg.tab === "run" || msg.tab === "history" || msg.tab === "rules") {
+        composerState.activeTab = msg.tab;
+        // No panel refresh — tab switch is pure DOM, just persist the state
+      }
+      break;
+
+    case "copyHandoff": await copyHandoff(); break;
   }
 }
 
@@ -842,23 +911,23 @@ details[open] summary::before { content:"- "; }
 
 <!-- TABS -->
 <div class="ptabs">
-  <span class="pt active" data-tab="run">Run</span>
-  <span class="pt" data-tab="history">History${histCount > 0 ? ` <span class="badge">${histCount}</span>` : ""}</span>
-  <span class="pt" data-tab="rules">Rules</span>
+  <span class="pt${composerState.activeTab === "run"     ? " active" : ""}" data-tab="run">Run</span>
+  <span class="pt${composerState.activeTab === "history" ? " active" : ""}" data-tab="history">History${histCount > 0 ? ` <span class="badge">${histCount}</span>` : ""}</span>
+  <span class="pt${composerState.activeTab === "rules"   ? " active" : ""}" data-tab="rules">Rules</span>
 </div>
 
 <!-- RUN TAB -->
-<div class="tab-panel active" id="tab-run">
+<div class="tab-panel${composerState.activeTab === "run"     ? " active" : ""}" id="tab-run">
 ${renderRunTab(phase, local, dna, contract, shortRoot, branch)}
 </div>
 
 <!-- HISTORY TAB -->
-<div class="tab-panel" id="tab-history">
+<div class="tab-panel${composerState.activeTab === "history" ? " active" : ""}" id="tab-history">
 ${renderHistoryTab(recentRuns, archiveCount, baseline, shortRoot)}
 </div>
 
 <!-- RULES TAB -->
-<div class="tab-panel" id="tab-rules">
+<div class="tab-panel${composerState.activeTab === "rules"   ? " active" : ""}" id="tab-rules">
 ${renderRulesTab(dna, rawDna, local)}
 </div>
 
@@ -925,6 +994,7 @@ document.querySelectorAll(".pt").forEach(function(tab) {
       const tid = tab.getAttribute("data-tab");
       document.querySelectorAll(".pt").forEach(function(t) { t.classList.toggle("active", t.getAttribute("data-tab") === tid); });
       document.querySelectorAll(".tab-panel").forEach(function(p) { p.classList.toggle("active", p.id === "tab-" + tid); });
+      vscode.postMessage({ type: "tabChanged", tab: tid });
     } catch(e) { console.error("tab", e); }
   });
 });
@@ -1140,7 +1210,7 @@ ${task ? `<div class="msg-user">${h(task)}</div>` : ""}
   </div>
   <div class="sys-actions">
     <button class="act primary" data-action="doctor">Run doctor</button>
-    <button class="act" data-action="restore">Restore to baseline</button>
+    ${local.baselineExists ? `<button class="act" data-action="restore">Restore to baseline</button>` : ""}
     <button class="act" data-action="finishCheck">Finish check anyway</button>
   </div>
 </div>`;
@@ -1152,15 +1222,61 @@ ${task ? `<div class="msg-user">${h(task)}</div>` : ""}
   <div class="sys-head">
     <span class="ico">${icoContinue()}</span>
     <span class="sys-label">continuation ready</span>
-    <span class="sys-right">context limit</span>
+    <span class="sys-right">${h(limitReason || "context limit")}</span>
   </div>
   <div class="sys-body">
-    <div class="copy">Agent reached context or usage limit. RunTrim will generate a safe continuation prompt to resume where it left off.</div>
+    <div class="copy">Agent reached ${h(limitReason || "context or usage limit")}. RunTrim prepared a safe continuation prompt to resume where it left off.</div>
   </div>
   <div class="sys-actions">
     <button class="act primary" data-action="continueLimit">Continue in new session <span class="kbd">⌘⇧↵</span></button>
     <button class="act" data-action="copyHandoff">Copy handoff</button>
     <button class="act" data-action="clearLimit">Clear</button>
+  </div>
+</div>`;
+
+    case "passed":
+      return `
+${task ? `<div class="msg-user">${h(task)}</div>` : ""}
+<div class="sys-card">
+  <div class="sys-head">
+    <span class="ico">${icoCheck()}</span>
+    <span class="sys-label">finish verdict</span>
+    <span class="sys-right">PASS</span>
+  </div>
+  <div class="sys-body">
+    <div class="copy"><em>Scope held.</em> No risky writes detected. Contract complete.</div>
+    <div class="timeline">
+      <span class="tl-step done"><span class="dot"></span><span class="name">contract</span></span>
+      <span class="tl-sep"></span>
+      <span class="tl-step done"><span class="dot"></span><span class="name">agent</span></span>
+      <span class="tl-sep"></span>
+      <span class="tl-step done"><span class="dot"></span><span class="name">finish</span></span>
+      <span class="tl-sep"></span>
+      <span class="tl-step done"><span class="dot"></span><span class="name">verdict</span></span>
+    </div>
+  </div>
+  <div class="sys-actions">
+    <button class="act primary" data-action="clearFinish">New guarded run</button>
+    <button class="act" data-action="copyHandoff">Copy handoff</button>
+  </div>
+</div>`;
+
+    case "warned":
+      return `
+${task ? `<div class="msg-user">${h(task)}</div>` : ""}
+<div class="sys-card">
+  <div class="sys-head">
+    <span class="ico amber">${icoWarn()}</span>
+    <span class="sys-label">finish verdict</span>
+    <span class="sys-right">WARN</span>
+  </div>
+  <div class="sys-body">
+    <div class="copy"><em class="amber">Warnings detected.</em> Review the RunTrim output channel before continuing.</div>
+  </div>
+  <div class="sys-actions">
+    <button class="act primary" data-action="finishCheck">Run finish check again</button>
+    ${local.baselineExists ? `<button class="act" data-action="restore">Restore to baseline</button>` : ""}
+    <button class="act" data-action="clearFinish">Accept and continue</button>
   </div>
 </div>`;
   }
@@ -1308,6 +1424,9 @@ function renderRulesTab(dna: DnaSummary | null, rawDna: string, local: LocalStat
 
 // ---- inline SVG icons ----
 
+function icoCheck(): string {
+  return `<svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
 function icoDoc(): string {
   return `<svg viewBox="0 0 14 14" fill="none"><path d="M3 1h6l3 3v9H3V1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1v3h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5 7h4M5 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
 }
