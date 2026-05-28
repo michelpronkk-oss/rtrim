@@ -13,10 +13,11 @@ RunTrim is the control layer before the coding agent. The extension lets you com
 3. Click **Start guarded run** (or press `Ctrl+Enter`).
 4. RunTrim runs `runtrim agent "<task>" --copy` locally and prepares a guarded handoff.
 5. The handoff is routed to your selected agent:
-   - If a command template is configured, a terminal opens and the agent is launched.
+   - If a command template is configured, RunTrim launches a controlled local process.
    - Otherwise the handoff is copied to clipboard with paste guidance.
 6. Complete your edits in the agent.
-7. Click **Run finish check** to verify scope was held.
+7. If the run was controlled, RunTrim can run finish automatically after the process exits.
+8. If the run was copy-handoff, click **Run finish check** when edits are done.
 
 Source stays local. No cloud execution.
 
@@ -24,14 +25,22 @@ Source stays local. No cloud execution.
 
 ## Agent routing
 
+RunTrim Agent Adapter Layer v1 route types:
+
+- `process`: controlled local command, observable exit, auto-finish eligible
+- `handoff`: copy handoff fallback, manual finish required
+- `mcp`: connected tools available, no completion tracking
+- `bridge`: reserved lifecycle route (status/readiness only for now)
+
 ### Cursor
 
 Cursor does not currently support direct programmatic dispatch from an extension.
 RunTrim copies the handoff and shows a prompt to paste it into Cursor Agent.
+Auto finish is not available for this route.
 
 ### Claude Code
 
-If `runtrim.agent.claudeCommand` is configured, RunTrim opens a terminal and runs it.
+If `runtrim.agent.claudeCommand` is configured, RunTrim launches a controlled local process and can auto-run finish after exit.
 If not configured, RunTrim copies the handoff.
 
 Example setting:
@@ -50,7 +59,7 @@ Adjust for your local Claude CLI version. The command runs with `cwd` set to the
 
 ### Codex
 
-If `runtrim.agent.codexCommand` is configured, RunTrim opens a terminal and runs it.
+If `runtrim.agent.codexCommand` is configured, RunTrim launches a controlled local process and can auto-run finish after exit.
 If not configured, RunTrim copies the handoff.
 
 Example setting:
@@ -70,6 +79,7 @@ Adjust for your local Codex CLI. The command runs with `cwd` set to the workspac
 ### Custom
 
 Requires `runtrim.agent.customCommand`. If missing, RunTrim shows a settings prompt and copies the handoff.
+When configured, this route is controlled and supports auto finish.
 
 Example:
 
@@ -85,9 +95,49 @@ Auto routing uses this priority order:
 2. Any configured `claudeCommand` template
 3. Any configured `codexCommand` template
 4. Any configured `customCommand` template
-5. Safe copy fallback
+5. MCP-ready informational route
+6. Safe handoff fallback
 
 Auto never launches unknown commands.
+
+---
+
+## Connect agent (MCP setup UX)
+
+The panel now uses a **Connect agent** flow instead of exposing raw config as the primary action.
+
+1. In the RunTrim panel, use **Connect agent** in the **Agent connection** card.
+2. Pick one target:
+   - Cursor / Cursor Studio
+   - Claude Desktop
+   - Claude Code
+   - Generic MCP client
+3. RunTrim copies MCP config and shows agent-specific next steps.
+4. Use **Check connection** to rerun `runtrim mcp config --print`.
+
+### Agent-specific setup guidance
+
+- Cursor / Cursor Studio:
+  - Copy the RunTrim MCP config.
+  - Add it to Cursor MCP settings.
+  - Restart or reload Cursor if needed.
+  - Open your agent/chat workflow; RunTrim tools should then be available.
+- Claude Desktop:
+  - Copy the Claude Desktop snippet.
+  - Add it to Claude Desktop MCP config.
+  - Restart Claude Desktop.
+- Claude Code:
+  - Use `runtrim mcp instructions` guidance for your environment.
+  - If MCP is unsupported there, use RunTrim handoff copy fallback.
+- Generic MCP client:
+  - Use the generic JSON config from RunTrim.
+
+### Important limitation
+
+`MCP config is ready` means RunTrim could generate config locally.
+It does **not** guarantee an external agent has already loaded that config.
+
+Raw JSON remains available as secondary actions: **View config** and **Copy raw config**.
 
 ---
 
@@ -101,6 +151,7 @@ Auto never launches unknown commands.
 | `runtrim.agent.codexCommand` | `""` | Codex launch template. |
 | `runtrim.agent.customCommand` | `""` | Custom agent launch template. |
 | `runtrim.agent.autoLaunchTerminal` | `true` | When false, copies the rendered command instead of opening a terminal. |
+| `runtrim.agent.autoFinishAfterControlledRun` | `true` | Auto-run `runtrim finish` when a controlled local process exits. |
 
 ### Template variables
 
@@ -119,7 +170,8 @@ The handoff file is written inside `.runtrim` only. Nothing is sent externally.
 
 ## Terminal behavior
 
-RunTrim reuses a terminal named **RunTrim Agent** across runs. If the terminal has exited, a new one is created. The terminal `cwd` is set to the workspace root. A `cd` command is sent first on terminal reuse to ensure the right directory.
+Controlled launches run with `cwd` set to the workspace root and stream stdout/stderr into the RunTrim output channel.
+Copy-handoff routes are not completion-tracked.
 
 ---
 
@@ -147,9 +199,20 @@ RunTrim reuses a terminal named **RunTrim Agent** across runs. If the terminal h
 
 ---
 
+## Lifecycle Limits
+
+- Auto finish only works for controlled local launches where RunTrim can observe process exit.
+- Cursor copy-handoff cannot auto-finish because RunTrim does not know when Cursor is done.
+- MCP-ready means tools are available to connected agents, not that completion tracking exists.
+- Disable auto finish with:
+
+```
+runtrim.agent.autoFinishAfterControlledRun = false
+```
+
 ## Windows note
 
-On Windows, `runtrim` is installed as `runtrim.cmd`. The extension auto-detects this and calls it with `shell: true`. If auto-detection fails, set `runtrim.cli.path` to the full path, for example:
+On Windows, `runtrim` is installed as `runtrim.cmd`. If auto-detection fails, set `runtrim.cli.path` to the full path, for example:
 
 ```
 C:\Users\<you>\AppData\Roaming\npm\runtrim.cmd

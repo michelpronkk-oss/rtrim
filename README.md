@@ -47,6 +47,9 @@ runtrim mcp start
 MCP lets compatible agents use RunTrim tools like contract creation, path checks, approval suggestions, and finish guidance.
 RunTrim does not silently modify global MCP config files. Use `runtrim mcp instructions` and `runtrim mcp config --print` to inspect snippets, and `runtrim doctor` to check readiness.
 
+In the VS Code/Cursor extension, use **Connect agent** for a guided setup flow (Cursor/Cursor Studio, Claude Desktop, Claude Code, Generic MCP).
+`MCP config is ready` means config generation succeeded locally; it does not guarantee the external agent has loaded it yet.
+
 ## Local-first trust model
 
 - Free CLI runs locally.
