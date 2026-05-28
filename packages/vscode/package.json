@@ -21,12 +21,19 @@
       { "command": "runtrim.doctor",            "title": "RunTrim: Doctor" },
       { "command": "runtrim.continuePrompt",    "title": "RunTrim: Continue Prompt" },
       { "command": "runtrim.refreshProjectDna", "title": "RunTrim: Refresh Project DNA" },
-      { "command": "runtrim.openDashboard",     "title": "RunTrim: Open Dashboard" },
-      { "command": "runtrim.openControlPanel",  "title": "RunTrim: Open Control Panel" }
+      { "command": "runtrim.openDashboard",        "title": "RunTrim: Open Dashboard" },
+      { "command": "runtrim.openControlPanel",     "title": "RunTrim: Open Control Panel" },
+      { "command": "runtrim.showMcpInstructions",  "title": "RunTrim: Show MCP Instructions" },
+      { "command": "runtrim.copyMcpConfig",        "title": "RunTrim: Copy MCP Config" }
     ],
     "configuration": {
       "title": "RunTrim Agent Launcher",
       "properties": {
+        "runtrim.cli.path": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to the runtrim CLI executable (e.g. C:\\Users\\you\\AppData\\Roaming\\npm\\runtrim.cmd). Leave blank to auto-detect from PATH."
+        },
         "runtrim.agent.defaultAgent": {
           "type": "string",
           "enum": ["Auto", "Claude Code", "Codex", "Cursor", "Custom"],
@@ -36,17 +43,17 @@
         "runtrim.agent.customCommand": {
           "type": "string",
           "default": "",
-          "description": "Custom local command template. Supports {task}, {handoff}, {projectRoot}."
+          "description": "Custom local command template. Variables: {task}, {handoff}, {handoffPath}, {projectRoot}. Example: myagent {handoffPath}"
         },
         "runtrim.agent.claudeCommand": {
           "type": "string",
           "default": "",
-          "description": "Claude Code local command template. Supports {task}, {handoff}, {projectRoot}."
+          "description": "Claude Code local command template. Variables: {task}, {handoff}, {handoffPath}, {projectRoot}. Example: claude {handoffPath}"
         },
         "runtrim.agent.codexCommand": {
           "type": "string",
           "default": "",
-          "description": "Codex local command template. Supports {task}, {handoff}, {projectRoot}."
+          "description": "Codex local command template. Variables: {task}, {handoff}, {handoffPath}, {projectRoot}. Example: codex {handoffPath}"
         },
         "runtrim.agent.autoLaunchTerminal": {
           "type": "boolean",

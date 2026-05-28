@@ -52,6 +52,29 @@ type RunSummary = {
   date: string;
 };
 
+type McpStatus = "unknown" | "configured" | "not_configured" | "unavailable";
+
+type McpState = {
+  status: McpStatus;
+  configSnippet?: string; // first 120 chars of mcp config --print output
+  checkedAt: number;
+};
+
+type LastCommandResult = {
+  kind: "agent" | "doctor" | "dna" | "error";
+  success: boolean;
+  task?: string;
+  agent?: AgentOption;
+  scope?: string;
+  snippet?: string;
+  errorTitle?: string;
+  errorDetail?: string;
+  suggestedFix?: string;
+  launched?: boolean;      // true = terminal was opened; false = handoff was copied
+  agentLaunched?: string;  // resolved agent name used at launch time
+  mcpStatus?: McpStatus;   // MCP readiness at time of run
+};
+
 type ComposerState = {
   task: string;
   selectedAgent: AgentOption;
@@ -63,13 +86,15 @@ type ComposerState = {
 // ---- constants ----
 
 const COMMANDS = {
-  newGuardedRun:    "runtrim.newGuardedRun",
-  finishCheck:      "runtrim.finishCheck",
-  doctor:           "runtrim.doctor",
-  continuePrompt:   "runtrim.continuePrompt",
-  refreshProjectDna:"runtrim.refreshProjectDna",
-  openDashboard:    "runtrim.openDashboard",
-  openControlPanel: "runtrim.openControlPanel"
+  newGuardedRun:        "runtrim.newGuardedRun",
+  finishCheck:          "runtrim.finishCheck",
+  doctor:               "runtrim.doctor",
+  continuePrompt:       "runtrim.continuePrompt",
+  refreshProjectDna:    "runtrim.refreshProjectDna",
+  openDashboard:        "runtrim.openDashboard",
+  openControlPanel:     "runtrim.openControlPanel",
+  showMcpInstructions:  "runtrim.showMcpInstructions",
+  copyMcpConfig:        "runtrim.copyMcpConfig"
 };
 
 const SETTINGS = {
@@ -89,6 +114,9 @@ const LIMIT_PHRASES = [
 let statusBarItem: any;
 let outputChannel: any;
 let controlPanel: any = null;
+
+// undefined = not yet resolved; null = not found; string = resolved path
+let resolvedCliPath: string | null | undefined = undefined;
 let composerState: ComposerState = {
   task: "",
   selectedAgent: "Auto",
@@ -99,6 +127,9 @@ let composerState: ComposerState = {
 
 let lastFinishVerdict: "passed" | "warn" | "failed" | null = null;
 let limitReason = "";
+let lastCommandResult: LastCommandResult | null = null;
+let mcpState: McpState | null = null;
+const MCP_CACHE_TTL = 45_000; // 45 s — re-probe when stale
 
 // ---- activation ----
 
@@ -118,10 +149,23 @@ export function activate(context: any): void {
   registerCommand(context, COMMANDS.openDashboard, async () => {
     await vscode.env.openExternal(vscode.Uri.parse("https://www.runtrim.com/app"));
   });
+  registerCommand(context, COMMANDS.showMcpInstructions, () => showMcpInstructions());
+  registerCommand(context, COMMANDS.copyMcpConfig,       () => copyMcpConfig());
 
   const cfg = vscode.workspace.getConfiguration("runtrim.agent");
   const def = cfg.get("defaultAgent", "Auto");
   if (isAgentOption(def)) composerState.selectedAgent = def;
+
+  // Reset CLI cache when runtrim.cli.path setting changes
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e: { affectsConfiguration(s: string): boolean }) => {
+      if (e.affectsConfiguration("runtrim.cli.path")) {
+        resolvedCliPath = undefined;
+        void refreshStatusBar();
+        refreshControlPanel();
+      }
+    })
+  );
 
   refreshStatusBar();
 }
@@ -154,6 +198,9 @@ async function runAndRefresh(name: string, args: string[]): Promise<void> {
     void vscode.window.showErrorMessage("No workspace folder is open.");
     return;
   }
+
+  lastCommandResult = null; // clear previous result card
+
   outputChannel.show(true);
   outputChannel.appendLine(`$ runtrim ${args.join(" ")}`);
   const result = await runRuntrim(args);
@@ -163,33 +210,70 @@ async function runAndRefresh(name: string, args: string[]): Promise<void> {
 
   if (result.notFound) return showInstallError();
 
-  const combined = `${result.stdout}\n${result.stderr}`.toLowerCase();
+  const combined = `${result.stdout}\n${result.stderr}`;
+  const lower = combined.toLowerCase();
+
   if (result.exitCode !== 0) {
-    if (combined.includes("no project") || combined.includes("not initialized") || combined.includes("runtrim start")) {
+    if (lower.includes("no project") || lower.includes("not initialized") || lower.includes("runtrim start")) {
       showNoProjectError();
     } else {
+      // Show error card inside the panel instead of only a toast
+      lastCommandResult = {
+        kind: "error",
+        success: false,
+        errorTitle: `RunTrim ${name} failed`,
+        errorDetail: extractError(combined),
+        suggestedFix: suggestFix(combined)
+      };
       void vscode.window.showWarningMessage(`RunTrim ${name} failed. Check the RunTrim output panel.`);
     }
   }
 
   // Detect finish verdict
   if (args[0] === "finish") {
-    const upper = (result.stdout + "\n" + result.stderr).toUpperCase();
+    const upper = combined.toUpperCase();
     if (/\bPASS\b/.test(upper)) {
       lastFinishVerdict = "passed";
+      lastCommandResult = null; // phase card handles display
     } else if (/\bWARN\b/.test(upper)) {
       lastFinishVerdict = "warn";
+      lastCommandResult = null; // phase card handles display
     } else if (/\b(FAIL|BLOCKED)\b/.test(upper) || result.exitCode !== 0) {
       lastFinishVerdict = "failed";
+      // Keep error card set above, or set one if not yet set
+      if (!lastCommandResult) {
+        lastCommandResult = {
+          kind: "error",
+          success: false,
+          errorTitle: "Finish check failed",
+          errorDetail: extractError(combined),
+          suggestedFix: local.baselineExists ? "Review the output, then restore to baseline if needed." : "Review the output channel for full details."
+        };
+      }
     }
   }
 
-  // Detect limit phrases from any command output
-  if (LIMIT_PHRASES.some((p) => combined.includes(p))) {
+  // Detect limit phrases
+  if (LIMIT_PHRASES.some((p) => lower.includes(p))) {
     composerState.usageLimitHit = true;
   }
 
-  await refreshStatusBar(combined);
+  // Doctor — show brief result card
+  if (args[0] === "doctor" && !lastCommandResult) {
+    const snippet = combined.split(/\r?\n/).filter((l) => l.trim()).slice(0, 3).join(" · ").slice(0, 200);
+    lastCommandResult = {
+      kind: "doctor",
+      success: result.exitCode === 0,
+      snippet: snippet || undefined
+    };
+  }
+
+  // DNA refresh — show brief result card
+  if (args[0] === "start" && args.includes("--refresh-dna") && !lastCommandResult) {
+    lastCommandResult = { kind: "dna", success: result.exitCode === 0 };
+  }
+
+  await refreshStatusBar(lower);
   refreshControlPanel();
 }
 
@@ -199,7 +283,8 @@ async function runWithAgent(task: string, agent: AgentOption): Promise<void> {
   if (!local.workspaceRoot) { void vscode.window.showErrorMessage("No workspace folder is open."); return; }
   if (!local.dnaExists) { void vscode.window.showWarningMessage("Project DNA missing. Run RunTrim: Refresh Project DNA first."); return; }
 
-  lastFinishVerdict = null; // clear any previous verdict on new run
+  lastFinishVerdict = null;    // clear previous verdict
+  lastCommandResult = null;    // clear previous result card
 
   outputChannel.show(true);
   outputChannel.appendLine(`$ runtrim agent "${task}" --copy`);
@@ -209,26 +294,71 @@ async function runWithAgent(task: string, agent: AgentOption): Promise<void> {
   outputChannel.appendLine("");
 
   if (result.notFound) { showInstallError(); return; }
+
   if (result.exitCode !== 0) {
+    const combined = result.stdout + "\n" + result.stderr;
+    lastCommandResult = {
+      kind: "error",
+      success: false,
+      errorTitle: "Guarded run failed",
+      errorDetail: extractError(combined),
+      suggestedFix: suggestFix(combined)
+    };
     void vscode.window.showErrorMessage("Could not create guarded handoff. Check the RunTrim output channel.");
-    await refreshStatusBar(`${result.stdout}\n${result.stderr}`);
+    await refreshStatusBar(combined.toLowerCase());
     refreshControlPanel();
     return;
   }
 
-  const handoffPath = path.join(local.workspaceRoot, ".runtrim", "agent", "latest.md");
-  const handoff = readFile(handoffPath);
+  const agentHandoffPath = path.join(local.workspaceRoot, ".runtrim", "agent", "latest.md");
+  const handoff = readFile(agentHandoffPath);
   if (!handoff) {
+    lastCommandResult = {
+      kind: "error",
+      success: false,
+      errorTitle: "Handoff not found",
+      errorDetail: "runtrim agent completed but the handoff file was not created.",
+      suggestedFix: "Try again or run runtrim start --refresh-dna first."
+    };
     void vscode.window.showWarningMessage("Handoff not found after runtrim agent. Try again.");
     refreshControlPanel();
     return;
   }
 
-  void vscode.window.showInformationMessage(
-    `Guarded run ready. Handoff copied. Paste it into ${agent === "Auto" ? "your selected agent" : agent}.`
+  // Persist handoff inside .runtrim for {handoffPath} template variable
+  const bridgePath = path.join(local.workspaceRoot, ".runtrim", "bridge", "latest-extension-handoff.md");
+  try {
+    fs.mkdirSync(path.dirname(bridgePath), { recursive: true });
+    fs.writeFileSync(bridgePath, handoff, "utf8");
+    outputChannel.appendLine(`[handoff] saved to ${bridgePath}`);
+  } catch (e) {
+    outputChannel.appendLine(`[handoff] bridge file not written: ${String(e)}`);
+  }
+
+  // Read fresh contract to surface scope in the result card
+  const freshContract = parseContract(
+    path.join(local.workspaceRoot, ".runtrim", "contracts", "latest.md")
   );
-  await routeAgent(agent, task, handoff, local.workspaceRoot);
-  await refreshStatusBar(`${result.stdout}\n${result.stderr}`);
+
+  // Route to the selected agent, get back whether a terminal was launched
+  // Probe MCP state (cached — fast if already checked)
+  const mcp = await detectMcpState();
+
+  // Route to the selected agent, get back whether a terminal was launched
+  const routeResult = await routeAgent(agent, task, handoff, bridgePath, local.workspaceRoot, mcp.status);
+
+  lastCommandResult = {
+    kind: "agent",
+    success: true,
+    task,
+    agent,
+    scope:         freshContract?.scope ?? undefined,
+    launched:      routeResult.launched,
+    agentLaunched: routeResult.agentName,
+    mcpStatus:     mcp.status
+  };
+
+  await refreshStatusBar(`${result.stdout}\n${result.stderr}`.toLowerCase());
   refreshControlPanel();
 }
 
@@ -241,42 +371,161 @@ async function copyHandoff(): Promise<void> {
   void vscode.window.showInformationMessage("Guarded handoff copied. Source stays local.");
 }
 
-async function routeAgent(agent: AgentOption, task: string, handoff: string, projectRoot: string): Promise<void> {
-  const cfg = vscode.workspace.getConfiguration();
-  const customTpl  = String(cfg.get(SETTINGS.customCommand) ?? "").trim();
-  const claudeTpl  = String(cfg.get(SETTINGS.claudeCommand) ?? "").trim();
-  const codexTpl   = String(cfg.get(SETTINGS.codexCommand) ?? "").trim();
-  const autoLaunch = cfg.get(SETTINGS.autoLaunchTerminal, true);
-  const hasClaude  = commandExists("claude");
-  const hasCodex   = commandExists("codex");
+async function routeAgent(
+  agent: AgentOption,
+  task: string,
+  handoff: string,
+  handoffPath: string,
+  projectRoot: string,
+  mcpStatus: McpStatus = "unknown"
+): Promise<{ launched: boolean; agentName: string }> {
+  const cfg        = vscode.workspace.getConfiguration();
+  const customTpl  = String(cfg.get(SETTINGS.customCommand)  ?? "").trim();
+  const claudeTpl  = String(cfg.get(SETTINGS.claudeCommand)  ?? "").trim();
+  const codexTpl   = String(cfg.get(SETTINGS.codexCommand)   ?? "").trim();
+  const autoLaunch = cfg.get(SETTINGS.autoLaunchTerminal, true) as boolean;
+  const defaultCfg = String(cfg.get(SETTINGS.defaultAgent)   ?? "Auto").trim();
 
-  const launch = async (tpl: string, name: string): Promise<boolean> => {
-    if (!tpl) return false;
-    const cmd = renderTpl(tpl, task, handoff, projectRoot);
-    if (!cmd) return false;
-    if (!autoLaunch) { await vscode.env.clipboard.writeText(handoff); void vscode.window.showInformationMessage(`${name} command ready. Handoff copied.`); return true; }
-    const term = vscode.window.createTerminal({ name: `RunTrim ${name}`, cwd: projectRoot });
-    term.show(true); term.sendText(cmd, true);
+  // Reuse the named "RunTrim Agent" terminal if alive, otherwise create one.
+  const getTerminal = (): any => {
+    const existing = vscode.window.terminals.find(
+      (t: any) => t.name === "RunTrim Agent" && t.exitStatus === undefined
+    );
+    if (existing) {
+      // Ensure we are in the right project root before running the command
+      existing.sendText(`cd "${projectRoot.replace(/\\/g, "/")}"`, true);
+      return existing;
+    }
+    return vscode.window.createTerminal({ name: "RunTrim Agent", cwd: projectRoot });
+  };
+
+  // Launch a rendered command template in the shared terminal.
+  const launchInTerminal = async (tpl: string, name: string): Promise<boolean> => {
+    if (!tpl.trim()) return false;
+    const cmd = renderTpl(tpl, task, handoff, handoffPath, projectRoot);
+    if (!cmd.trim()) return false;
+    outputChannel.appendLine(`[route] ${name}: launching — ${cmd.slice(0, 140)}`);
+    if (!autoLaunch) {
+      await vscode.env.clipboard.writeText(handoff);
+      void vscode.window.showInformationMessage(`${name} command ready. Handoff copied.`);
+      return true;
+    }
+    const term = getTerminal();
+    term.show(true);
+    term.sendText(cmd, true);
     return true;
   };
 
-  if (agent === "Cursor") { await vscode.env.clipboard.writeText(handoff); void vscode.window.showInformationMessage("Handoff copied. Paste into Cursor Agent."); return; }
-  if (agent === "Custom") { if (!customTpl) { await vscode.env.clipboard.writeText(handoff); void vscode.window.showWarningMessage("Set runtrim.agent.customCommand. Handoff copied."); } else await launch(customTpl, "Custom"); return; }
-  if (agent === "Claude Code") { if (hasClaude && claudeTpl && await launch(claudeTpl, "Claude Code")) return; await vscode.env.clipboard.writeText(handoff); void vscode.window.showInformationMessage("Handoff copied. Paste into Claude Code."); return; }
-  if (agent === "Codex") { if (hasCodex && codexTpl && await launch(codexTpl, "Codex")) return; await vscode.env.clipboard.writeText(handoff); void vscode.window.showInformationMessage("Handoff copied. Paste into Codex."); return; }
-  if (customTpl && await launch(customTpl, "Auto")) return;
-  if (hasClaude && claudeTpl && await launch(claudeTpl, "Claude Code")) return;
-  if (hasCodex && codexTpl && await launch(codexTpl, "Codex")) return;
-  await vscode.env.clipboard.writeText(handoff);
-  void vscode.window.showInformationMessage(`Handoff copied. Paste into ${hasClaude ? "Claude Code" : hasCodex ? "Codex" : "your agent"}.`);
+  const copyFallback = async (reason: string): Promise<void> => {
+    await vscode.env.clipboard.writeText(handoff);
+    outputChannel.appendLine(`[route] copy fallback — ${reason}`);
+  };
+
+  const settingsPrompt = async (label: string, key: string): Promise<void> => {
+    const choice = await vscode.window.showInformationMessage(
+      `Handoff copied. Paste into ${label}. Set ${key} in settings to launch automatically.`,
+      "Open settings"
+    );
+    if (choice) vscode.commands.executeCommand("workbench.action.openSettings", key);
+  };
+
+  // ── Cursor ──────────────────────────────────────────────────────────────
+  if (agent === "Cursor") {
+    await copyFallback("Cursor uses copy-paste handoff");
+    if (mcpStatus === "configured") {
+      void vscode.window.showInformationMessage(
+        "Handoff copied. MCP ready — use Cursor Agent with RunTrim MCP tools active."
+      );
+    } else {
+      void vscode.window.showInformationMessage(
+        "Handoff copied. Open Cursor Agent and paste it."
+      );
+    }
+    return { launched: false, agentName: "Cursor" };
+  }
+
+  // ── Custom ───────────────────────────────────────────────────────────────
+  if (agent === "Custom") {
+    if (!customTpl) {
+      await copyFallback("Custom: no command configured");
+      const choice = await vscode.window.showWarningMessage(
+        "Set runtrim.agent.customCommand to launch your agent automatically. Handoff copied.",
+        "Open settings"
+      );
+      if (choice) vscode.commands.executeCommand("workbench.action.openSettings", SETTINGS.customCommand);
+      return { launched: false, agentName: "Custom" };
+    }
+    const ok = await launchInTerminal(customTpl, "Custom");
+    return { launched: ok, agentName: "Custom" };
+  }
+
+  // ── Claude Code ──────────────────────────────────────────────────────────
+  if (agent === "Claude Code") {
+    if (claudeTpl) {
+      const ok = await launchInTerminal(claudeTpl, "Claude Code");
+      if (ok) return { launched: true, agentName: "Claude Code" };
+    }
+    await copyFallback("Claude Code: no command template");
+    void settingsPrompt("Claude Code", SETTINGS.claudeCommand);
+    return { launched: false, agentName: "Claude Code" };
+  }
+
+  // ── Codex ────────────────────────────────────────────────────────────────
+  if (agent === "Codex") {
+    if (codexTpl) {
+      const ok = await launchInTerminal(codexTpl, "Codex");
+      if (ok) return { launched: true, agentName: "Codex" };
+    }
+    await copyFallback("Codex: no command template");
+    void settingsPrompt("Codex", SETTINGS.codexCommand);
+    return { launched: false, agentName: "Codex" };
+  }
+
+  // ── Auto ─────────────────────────────────────────────────────────────────
+  // Priority: runtrim.agent.defaultAgent setting > any configured template > copy fallback.
+  const preferredAgent = isAgentOption(defaultCfg) && defaultCfg !== "Auto" ? defaultCfg : null;
+
+  if (preferredAgent === "Claude Code" && claudeTpl) {
+    const ok = await launchInTerminal(claudeTpl, "Claude Code");
+    if (ok) return { launched: true, agentName: "Claude Code" };
+  }
+  if (preferredAgent === "Codex" && codexTpl) {
+    const ok = await launchInTerminal(codexTpl, "Codex");
+    if (ok) return { launched: true, agentName: "Codex" };
+  }
+  if (preferredAgent === "Custom" && customTpl) {
+    const ok = await launchInTerminal(customTpl, "Custom");
+    if (ok) return { launched: true, agentName: "Custom" };
+  }
+  // Try any configured template in safe precedence order
+  if (claudeTpl) {
+    const ok = await launchInTerminal(claudeTpl, "Claude Code");
+    if (ok) return { launched: true, agentName: "Claude Code" };
+  }
+  if (codexTpl) {
+    const ok = await launchInTerminal(codexTpl, "Codex");
+    if (ok) return { launched: true, agentName: "Codex" };
+  }
+  if (customTpl) {
+    const ok = await launchInTerminal(customTpl, "Custom");
+    if (ok) return { launched: true, agentName: "Custom" };
+  }
+  // Safe fallback: copy handoff
+  await copyFallback("Auto: no template configured");
+  void vscode.window.showInformationMessage(
+    "Handoff copied. Paste into your selected agent and run finish check when done."
+  );
+  return { launched: false, agentName: "Auto" };
 }
 
-function renderTpl(tpl: string, task: string, handoff: string, root: string): string {
+function renderTpl(tpl: string, task: string, handoff: string, handoffPath: string, root: string): string {
   const compact = handoff.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
+  const safeQ = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
   return tpl
-    .replace(/\{task\}/g, `"${task.replace(/"/g, '\\"')}"`)
-    .replace(/\{handoff\}/g, `"${compact.replace(/"/g, '\\"')}"`)
-    .replace(/\{projectRoot\}/g, `"${root.replace(/"/g, '\\"')}"`)
+    .replace(/\{task\}/g,        safeQ(task))
+    .replace(/\{handoff\}/g,     safeQ(compact))
+    .replace(/\{handoffPath\}/g, safeQ(handoffPath))
+    .replace(/\{projectRoot\}/g, safeQ(root))
     .trim();
 }
 
@@ -284,8 +533,18 @@ function renderTpl(tpl: string, task: string, handoff: string, root: string): st
 
 function runRuntrim(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number; notFound: boolean }> {
   return new Promise((resolve) => {
-    execFile("runtrim", args, { cwd: workspaceRoot(), windowsHide: true }, (error, stdout, stderr) => {
+    const cli = resolveCli();
+    if (!cli) {
+      resolve({ stdout: "", stderr: "", exitCode: 1, notFound: true });
+      return;
+    }
+
+    // .cmd files on Windows cannot be executed without a shell
+    const useShell = process.platform === "win32" && cli.toLowerCase().endsWith(".cmd");
+
+    execFile(cli, args, { cwd: workspaceRoot(), windowsHide: true, shell: useShell }, (error, stdout, stderr) => {
       if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {
+        resolvedCliPath = undefined; // path disappeared — reset cache
         resolve({ stdout: "", stderr: "", exitCode: 1, notFound: true });
         return;
       }
@@ -295,21 +554,163 @@ function runRuntrim(args: string[]): Promise<{ stdout: string; stderr: string; e
   });
 }
 
-function commandExists(cmd: string): boolean {
-  const which = process.platform === "win32" ? "where" : "which";
-  try { return execFileSync(which, [cmd], { stdio: "pipe" }).toString().trim().length > 0; } catch { return false; }
+// ---- CLI resolution (Windows .cmd aware) ----
+
+function resolveCli(): string | null {
+  if (resolvedCliPath !== undefined) return resolvedCliPath;
+
+  // 1. Configured path
+  try {
+    const cfgPath = String(vscode.workspace.getConfiguration("runtrim.cli").get("path") ?? "").trim();
+    if (cfgPath && fileExists(cfgPath)) {
+      resolvedCliPath = cfgPath;
+      logCli(`resolved via config: ${cfgPath}`);
+      return resolvedCliPath;
+    }
+  } catch { /* vscode not ready yet */ }
+
+  // 2. PATH via where/which
+  try {
+    const which = process.platform === "win32" ? "where.exe" : "which";
+    const lines = execFileSync(which, ["runtrim"], { stdio: "pipe" })
+      .toString().trim().split(/\r?\n/).filter(Boolean);
+    const best = selectBestPath(lines);
+    if (best && fileExists(best)) {
+      resolvedCliPath = best;
+      logCli(`resolved via PATH: ${best}`);
+      return resolvedCliPath;
+    }
+  } catch { /* not in PATH */ }
+
+  // 3-5. Windows-specific fallbacks
+  if (process.platform === "win32") {
+    for (const c of winCandidates()) {
+      if (fileExists(c)) {
+        resolvedCliPath = c;
+        logCli(`resolved via Windows fallback: ${c}`);
+        return resolvedCliPath;
+      }
+    }
+  }
+
+  resolvedCliPath = null;
+  logCli("CLI not found. Install: npm install -g runtrim");
+  return null;
+}
+
+function selectBestPath(lines: string[]): string | undefined {
+  if (process.platform !== "win32") return lines[0];
+  // Prefer .cmd, then anything that is not .ps1
+  return lines.find((l) => l.toLowerCase().endsWith(".cmd"))
+    ?? lines.find((l) => !l.toLowerCase().endsWith(".ps1"))
+    ?? lines[0];
+}
+
+function winCandidates(): string[] {
+  const out: string[] = [];
+  if (process.env.APPDATA)
+    out.push(path.join(process.env.APPDATA, "npm", "runtrim.cmd"));
+  if (process.env.USERPROFILE)
+    out.push(path.join(process.env.USERPROFILE, "AppData", "Roaming", "npm", "runtrim.cmd"));
+  try {
+    const prefix = execFileSync("npm", ["prefix", "-g"], { stdio: "pipe" }).toString().trim();
+    if (prefix) out.push(path.join(prefix, "runtrim.cmd"));
+  } catch { /* npm unavailable */ }
+  return out;
+}
+
+function logCli(msg: string): void {
+  if (outputChannel) outputChannel.appendLine(`[RunTrim CLI] ${msg}`);
+}
+
+function extractError(combined: string): string {
+  const lines = combined.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  return (lines.find((l) => /\berror\b/i.test(l)) ?? lines[0] ?? "Unknown error").slice(0, 200);
+}
+
+function suggestFix(combined: string): string {
+  const lower = combined.toLowerCase();
+  if (lower.includes("no project") || lower.includes("not initialized")) return "Run runtrim start in this workspace to initialize the project.";
+  if (lower.includes("blocked") || lower.includes("split required")) return "Split the task into separate single-system runs.";
+  if (lower.includes("project-dna") || lower.includes("dna missing")) return "Run RunTrim: Refresh Project DNA.";
+  return "Check the RunTrim output channel for full logs.";
 }
 
 // ---- error helpers ----
 
 function showInstallError(): void {
-  void vscode.window.showErrorMessage("RunTrim CLI is not installed. Run: npm install -g runtrim", "Copy command")
-    .then((c: string | undefined) => { if (c) vscode.env.clipboard.writeText("npm install -g runtrim"); });
+  void vscode.window
+    .showErrorMessage(
+      "RunTrim CLI not found. Install: npm install -g runtrim, or set runtrim.cli.path in VS Code settings.",
+      "Copy install command",
+      "Open settings"
+    )
+    .then((c: string | undefined) => {
+      if (c === "Copy install command") vscode.env.clipboard.writeText("npm install -g runtrim");
+      if (c === "Open settings") vscode.commands.executeCommand("workbench.action.openSettings", "runtrim.cli.path");
+    });
 }
 
 function showNoProjectError(): void {
   void vscode.window.showErrorMessage("No RunTrim project found. Run runtrim start in this project first.", "Open terminal")
     .then((c: string | undefined) => { if (c) vscode.commands.executeCommand("workbench.action.terminal.new"); });
+}
+
+// ---- MCP detection and commands ----
+
+async function detectMcpState(): Promise<McpState> {
+  const now = Date.now();
+  if (mcpState && now - mcpState.checkedAt < MCP_CACHE_TTL) return mcpState;
+
+  if (resolveCli() === null) {
+    mcpState = { status: "unavailable", checkedAt: now };
+    return mcpState;
+  }
+
+  try {
+    const result = await runRuntrim(["mcp", "config", "--print"]);
+    if (result.notFound) {
+      mcpState = { status: "unavailable", checkedAt: now };
+    } else if (result.exitCode === 0 && result.stdout.trim()) {
+      mcpState = { status: "configured", configSnippet: result.stdout.trim().slice(0, 120), checkedAt: now };
+      logCli("MCP configured");
+    } else {
+      mcpState = { status: "not_configured", checkedAt: now };
+      logCli("MCP not configured (mcp config --print returned no output)");
+    }
+  } catch {
+    mcpState = { status: "not_configured", checkedAt: now };
+  }
+  return mcpState;
+}
+
+async function showMcpInstructions(): Promise<void> {
+  const local = loadLocalState();
+  if (!local.cliInstalled) return showInstallError();
+  outputChannel.show(true);
+  outputChannel.appendLine("$ runtrim mcp instructions");
+  const result = await runRuntrim(["mcp", "instructions"]);
+  if (result.stdout) outputChannel.appendLine(result.stdout);
+  if (result.stderr) outputChannel.appendLine(result.stderr);
+  outputChannel.appendLine("");
+  if (result.exitCode !== 0) {
+    void vscode.window.showWarningMessage("Could not retrieve MCP instructions. Check RunTrim output channel.");
+  }
+}
+
+async function copyMcpConfig(): Promise<void> {
+  const local = loadLocalState();
+  if (!local.cliInstalled) return showInstallError();
+  const result = await runRuntrim(["mcp", "config", "--print"]);
+  if (result.exitCode !== 0 || !result.stdout.trim()) {
+    void vscode.window.showWarningMessage("No MCP config found. Run runtrim mcp instructions to set up.");
+    return;
+  }
+  await vscode.env.clipboard.writeText(result.stdout.trim());
+  // Refresh cached state
+  mcpState = { status: "configured", configSnippet: result.stdout.trim().slice(0, 120), checkedAt: Date.now() };
+  void vscode.window.showInformationMessage("MCP config copied to clipboard.");
+  refreshControlPanel();
 }
 
 // ---- status bar ----
@@ -344,7 +745,7 @@ function deriveStatus(local: LocalState, lastOutput: string): StatusState {
 
 function loadLocalState(): LocalState {
   const root = workspaceRoot();
-  const cliInstalled = commandExists("runtrim");
+  const cliInstalled = resolveCli() !== null;
   if (!root) return { cliInstalled, dnaExists: false, baselineExists: false, latestContractExists: false };
   const rt = path.join(root, ".runtrim");
   const latestContract = path.join(rt, "contracts", "latest.md");
@@ -476,6 +877,8 @@ function openControlPanel(): void {
     { enableScripts: true, retainContextWhenHidden: true }
   );
   refreshControlPanel();
+  // Detect MCP state in background; refresh panel once we know
+  void detectMcpState().then(() => refreshControlPanel());
   controlPanel.webview.onDidReceiveMessage(async (msg: any) => {
     try { await handleWebviewMessage(msg); } catch (err) { outputChannel.appendLine(`[panel error] ${String(err)}`); }
   });
@@ -523,6 +926,11 @@ async function handleWebviewMessage(msg: any): Promise<void> {
       refreshControlPanel();
       break;
 
+    case "clearResult":
+      lastCommandResult = null;
+      refreshControlPanel();
+      break;
+
     case "agentHitLimit": {
       const reasonItems = [
         { label: "context limit",       cliReason: "context_limit"  },
@@ -550,7 +958,9 @@ async function handleWebviewMessage(msg: any): Promise<void> {
       }
       break;
 
-    case "copyHandoff": await copyHandoff(); break;
+    case "copyHandoff":           await copyHandoff(); break;
+    case "showMcpInstructions":   await showMcpInstructions(); break;
+    case "copyMcpConfig":         await copyMcpConfig(); break;
   }
 }
 
@@ -1122,6 +1532,66 @@ if (taskEl && taskEl.value.trim()) updatePreview(taskEl.value);
 
 // ---- run tab ----
 
+// ---- result cards ----
+
+function renderTopCard(): string {
+  const r = lastCommandResult;
+  if (!r || r.kind === "agent") return ""; // agent result handled inline in "active" case
+
+  if (r.kind === "error") {
+    return `
+<div class="sys-card" style="border-color:rgba(248,113,113,0.22);background:rgba(248,113,113,0.04);">
+  <div class="sys-head">
+    <span class="ico rose">${icoBlocked()}</span>
+    <span class="sys-label">${h(r.errorTitle ?? "command failed")}</span>
+  </div>
+  <div class="sys-body">
+    ${r.errorDetail ? `<div class="copy"><em class="rose">${h(r.errorDetail)}</em></div>` : ""}
+    ${r.suggestedFix ? `<div class="copy" style="margin-top:4px">${h(r.suggestedFix)}</div>` : ""}
+    <div class="copy" style="margin-top:4px;opacity:.5">Open RunTrim output channel for full logs.</div>
+  </div>
+  <div class="sys-actions">
+    <button class="act" data-action="clearResult">Dismiss</button>
+  </div>
+</div>`;
+  }
+
+  if (r.kind === "doctor") {
+    const color = r.success ? "" : " amber";
+    return `
+<div class="sys-card">
+  <div class="sys-head">
+    <span class="ico${color}">${r.success ? icoCheck() : icoWarn()}</span>
+    <span class="sys-label">${r.success ? "doctor complete" : "doctor issues found"}</span>
+  </div>
+  <div class="sys-body">
+    ${r.snippet ? `<div class="copy">${h(r.snippet)}</div>` : `<div class="copy" style="opacity:.6">See RunTrim output channel for full diagnostics.</div>`}
+  </div>
+  <div class="sys-actions">
+    <button class="act" data-action="clearResult">Dismiss</button>
+  </div>
+</div>`;
+  }
+
+  if (r.kind === "dna") {
+    return `
+<div class="sys-card">
+  <div class="sys-head">
+    <span class="ico">${r.success ? icoDna() : icoWarn()}</span>
+    <span class="sys-label">${r.success ? "project DNA refreshed" : "DNA refresh failed"}</span>
+  </div>
+  <div class="sys-body">
+    <div class="copy" style="opacity:.7">${r.success ? "Project DNA is up to date." : "Check the RunTrim output channel for details."}</div>
+  </div>
+  <div class="sys-actions">
+    <button class="act" data-action="clearResult">Dismiss</button>
+  </div>
+</div>`;
+  }
+
+  return "";
+}
+
 function renderRunTab(
   phase: ConsolePhase,
   local: LocalState,
@@ -1132,12 +1602,15 @@ function renderRunTab(
 ): string {
   const task = composerState.task.trim() || contract?.task || "";
 
+  // Top-of-panel result card for error / doctor / dna (prepended to any phase)
+  const topCard = renderTopCard();
+
   switch (phase) {
     case "idle":
-      return renderIdleCards(local, dna, shortRoot);
+      return topCard + renderIdleCards(local, dna, shortRoot);
 
     case "composing":
-      return `
+      return topCard + `
 <div class="msg-user">${h(task)}</div>
 <div class="sys-card" id="preview-card">
   <div class="sys-head">
@@ -1152,8 +1625,67 @@ function renderRunTab(
   </div>
 </div>`;
 
-    case "active":
-      return `
+    case "active": {
+      // Fresh agent result: show "contract prepared" card in place of generic "run active"
+      const r = lastCommandResult?.kind === "agent" && lastCommandResult.success ? lastCommandResult : null;
+      if (r) {
+        const displayAgent = h(r.agentLaunched ?? r.agent ?? "your agent");
+        const statusLabel  = r.launched ? "agent launched" : "handoff copied";
+        const isCursor     = r.agent === "Cursor" || r.agentLaunched === "Cursor";
+        const mcpReady     = r.mcpStatus === "configured";
+        const nextStep     = r.launched
+          ? `<em class="violet">${displayAgent} launched in terminal.</em> Complete edits, then run finish check.`
+          : isCursor && mcpReady
+            ? `<em>MCP ready.</em> Use Cursor Agent — RunTrim MCP tools are active. Run finish check when done.`
+            : `<em>Handoff copied.</em> Paste into ${displayAgent} and complete edits. Then run finish check.`;
+        return `
+${task ? `<div class="msg-user">${h(task)}</div>` : ""}
+<div class="sys-card">
+  <div class="sys-head">
+    <span class="ico">${icoDoc()}</span>
+    <span class="sys-label">contract prepared</span>
+    <span class="sys-right">${statusLabel}</span>
+  </div>
+  <div class="sys-body">
+    ${r.task  ? `<div class="line"><span class="k">Task</span><span class="v"><code>${h(r.task.slice(0, 80))}</code></span></div>` : ""}
+    ${r.agentLaunched || r.agent ? `<div class="line"><span class="k">Agent</span><span class="v"><code>${displayAgent}</code></span></div>` : ""}
+    ${r.scope ? `<div class="line"><span class="k">Scope</span><span class="v"><span class="pill scope">${h(r.scope)}</span></span></div>` : ""}
+    ${local.dnaExists ? `<div class="line"><span class="k">DNA</span><span class="v"><span class="pill mem">active</span></span></div>` : ""}
+    ${r.mcpStatus === "configured"
+      ? `<div class="line"><span class="k">MCP</span><span class="v"><span class="pill scope">ready</span></span></div>`
+      : r.mcpStatus === "not_configured"
+        ? `<div class="line"><span class="k">MCP</span><span class="v"><span class="pill muted">not configured</span></span></div>`
+        : ""}
+  </div>
+  <div class="timeline">
+    <span class="tl-step done"><span class="dot"></span><span class="name">contract</span></span>
+    <span class="tl-sep"></span>
+    <span class="tl-step active"><span class="dot"></span><span class="name">agent</span></span>
+    <span class="tl-sep"></span>
+    <span class="tl-step"><span class="dot"></span><span class="name">finish</span></span>
+    <span class="tl-sep"></span>
+    <span class="tl-step"><span class="dot"></span><span class="name">verdict</span></span>
+  </div>
+</div>
+<div class="sys-card">
+  <div class="sys-head">
+    <span class="ico amber">${icoWarn()}</span>
+    <span class="sys-label">finish check needed</span>
+  </div>
+  <div class="sys-body">
+    <div class="copy">${nextStep}</div>
+  </div>
+  <div class="sys-actions">
+    <button class="act primary" data-action="finishCheck">Run finish check</button>
+    <button class="act" data-action="copyHandoff">Copy handoff</button>
+    <button class="act" data-action="agentHitLimit">Agent hit limit</button>
+    <button class="act" data-action="clearResult" style="margin-left:auto;opacity:.5">Dismiss</button>
+  </div>
+</div>`;
+      }
+
+      // Standard active (no fresh agent result)
+      return topCard + `
 ${task ? `<div class="msg-user">${h(task)}</div>` : ""}
 <div class="sys-card">
   <div class="sys-head">
@@ -1189,6 +1721,7 @@ ${task ? `<div class="msg-user">${h(task)}</div>` : ""}
     <button class="act" data-action="agentHitLimit">Agent hit limit</button>
   </div>
 </div>`;
+    }
 
     case "blocked":
       return `
@@ -1298,9 +1831,23 @@ function renderIdleCards(local: LocalState, dna: DnaSummary | null, shortRoot: s
     ${tech ? `<div class="line"><span class="k">Stack</span><span class="v"><code>${h(tech)}</code></span></div>` : ""}
     ${risk.length ? `<div class="line"><span class="k">Protected</span><span class="v">${risk.map((z) => `<span class="pill forbid">${h(z)}</span>`).join("")}${countPart ? `<span class="pill muted">${h(countPart.slice(3))}</span>` : ""}</span></div>` : ""}
     <div class="line"><span class="k">CLI</span><span class="v"><code>${local.cliInstalled ? "connected" : "not installed"}</code></span></div>
+    ${local.cliInstalled && mcpState?.status === "configured"
+      ? `<div class="line"><span class="k">MCP</span><span class="v"><span class="pill scope">ready</span></span></div>`
+      : local.cliInstalled && mcpState?.status === "not_configured"
+        ? `<div class="line"><span class="k">MCP</span><span class="v"><span class="pill muted">not configured</span></span></div>`
+        : ""}
     ${!local.cliInstalled ? `<div class="copy"><em class="amber">Install with: npm install -g runtrim</em></div>` : ""}
     ${!local.dnaExists ? `<div class="copy"><em class="amber">Run runtrim start to initialize this project.</em></div>` : ""}
   </div>
+  ${local.cliInstalled && mcpState?.status === "not_configured" ? `
+  <div class="sys-actions">
+    <button class="act" data-action="showMcpInstructions">MCP instructions</button>
+    <button class="act" data-action="copyMcpConfig">Copy MCP config</button>
+  </div>` : ""}
+  ${local.cliInstalled && mcpState?.status === "configured" ? `
+  <div class="sys-actions">
+    <button class="act" data-action="copyMcpConfig">Copy MCP config</button>
+  </div>` : ""}
 </div>
 <div id="preview-card" class="sys-card">
   <div class="sys-head">
