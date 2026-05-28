@@ -1,0 +1,39 @@
+{
+  "name": "runtrim-vscode",
+  "displayName": "RunTrim",
+  "description": "Local-first guarded run control surface for RunTrim in VS Code and Cursor.",
+  "version": "0.1.0",
+  "publisher": "runtrim",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:runtrim.newGuardedRun",
+    "onCommand:runtrim.finishCheck",
+    "onCommand:runtrim.doctor",
+    "onCommand:runtrim.continuePrompt",
+    "onCommand:runtrim.refreshProjectDna",
+    "onCommand:runtrim.openDashboard",
+    "onCommand:runtrim.openControlPanel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "runtrim.newGuardedRun", "title": "RunTrim: New Guarded Run" },
+      { "command": "runtrim.finishCheck", "title": "RunTrim: Finish Check" },
+      { "command": "runtrim.doctor", "title": "RunTrim: Doctor" },
+      { "command": "runtrim.continuePrompt", "title": "RunTrim: Continue Prompt" },
+      { "command": "runtrim.refreshProjectDna", "title": "RunTrim: Refresh Project DNA" },
+      { "command": "runtrim.openDashboard", "title": "RunTrim: Open Dashboard" },
+      { "command": "runtrim.openControlPanel", "title": "RunTrim: Open Control Panel" }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p ./tsconfig.json",
+    "watch": "tsc -w -p ./tsconfig.json"
+  }
+}

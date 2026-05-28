@@ -39,6 +39,7 @@
     "build": "npm run build:all",
     "build:web": "next build",
     "build:cli": "tsup --config tsup.config.ts && node scripts/verify-cli-build.mjs",
+    "build:vscode": "tsc -p packages/vscode/tsconfig.json",
     "build:all": "npm run build:cli && npm run build:web",
     "verify:cli": "node scripts/verify-cli.mjs",
     "verify:package": "node scripts/verify-package.mjs",
