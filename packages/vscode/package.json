@@ -59,6 +59,11 @@
           "type": "boolean",
           "default": true,
           "description": "When true, launch configured agent commands in a local VS Code terminal."
+        },
+        "runtrim.agent.autoFinishAfterControlledRun": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically run runtrim finish after a controlled local agent command exits. Applies only when RunTrim launched the process."
         }
       }
     }
