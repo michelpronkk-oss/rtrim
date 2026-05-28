@@ -104,6 +104,72 @@ type ComposerState = {
   activeTab: "run" | "history" | "rules";
 };
 
+type RuntrimJsonError = { code?: string; message?: string; details?: Record<string, unknown> };
+type RuntrimStatusJson = {
+  ok?: boolean;
+  projectInitialized?: boolean;
+  projectDna?: {
+    exists?: boolean;
+    framework?: string | null;
+    packageManager?: string | null;
+    language?: string | null;
+    stylingSystem?: string | null;
+    componentSystem?: string | null;
+    riskZones?: string[];
+  };
+  contract?: {
+    exists?: boolean;
+    status?: string | null;
+    task?: string | null;
+    risk?: string | null;
+    allowedScope?: string[];
+    forbiddenScope?: string[];
+  };
+  run?: {
+    phase?: string | null;
+    verdict?: string | null;
+    changedFiles?: string[];
+    blockedFiles?: string[];
+    warnings?: string[];
+    reason?: string | null;
+  };
+  restore?: { available?: boolean; latestRestorePoint?: string | null; guidance?: string | null };
+  continuation?: { available?: boolean; reason?: string | null; path?: string | null };
+  nextAction?: { kind?: string | null; label?: string | null; description?: string | null };
+  error?: RuntrimJsonError;
+};
+type RuntrimFinishJson = {
+  ok?: boolean;
+  verdict?: string | null;
+  status?: string | null;
+  changedFiles?: string[];
+  blockedFiles?: string[];
+  warnings?: string[];
+  errors?: string[];
+  restore?: { available?: boolean; guidance?: string | null; previewCommand?: string | null; applyCommand?: string | null };
+  continuation?: { recommended?: boolean; reason?: string | null; command?: string | null };
+  rawSummary?: string | null;
+  error?: RuntrimJsonError;
+};
+type RuntrimContinueJson = {
+  ok?: boolean;
+  reason?: string | null;
+  handoffCopied?: boolean;
+  handoffPath?: string | null;
+  summary?: string | null;
+  nextAction?: string | null;
+  error?: RuntrimJsonError;
+};
+type RuntrimRestoreStatusJson = {
+  ok?: boolean;
+  available?: boolean;
+  latestRestorePoint?: string | null;
+  previewAvailable?: boolean;
+  applyAvailable?: boolean;
+  commands?: { preview?: string | null; apply?: string | null };
+  error?: RuntrimJsonError;
+};
+
 // ---- constants ----
 
 const COMMANDS = {
@@ -154,6 +220,9 @@ let limitReason = "";
 let lastCommandResult: LastCommandResult | null = null;
 let mcpState: McpState | null = null;
 let mcpUxNotice = "";
+let runtrimStatusJson: RuntrimStatusJson | null = null;
+let runtrimRestoreJson: RuntrimRestoreStatusJson | null = null;
+let runtrimJsonCheckedAt = 0;
 let lastRunStartedFromPanel = false;
 let lastRouteKind: AdapterRouteKind | null = null;
 let lastSelectedAgent: AgentOption | null = null;
@@ -182,6 +251,7 @@ let lifecycleState: {
   autoFinishResult: null
 };
 const MCP_CACHE_TTL = 45_000; // 45 s â€” re-probe when stale
+const RUNTRIM_JSON_CACHE_TTL = 15_000;
 
 // ---- activation ----
 
@@ -256,8 +326,16 @@ async function runAndRefresh(name: string, args: string[]): Promise<void> {
   lastCommandResult = null; // clear previous result card
 
   outputChannel.show(true);
-  outputChannel.appendLine(`$ runtrim ${args.join(" ")}`);
-  const result = await runRuntrimArgs(args[0] ?? "", args.slice(1));
+  let cmd = `runtrim ${args.join(" ")}`;
+  if (args[0] === "finish") cmd = "runtrim finish --json";
+  if (args[0] === "continue") cmd = `runtrim continue ${args.slice(1).join(" ")} --json`;
+  outputChannel.appendLine(`$ ${cmd}`);
+  const result =
+    args[0] === "finish"
+      ? await runRuntrimArgs("finish", ["--json"])
+      : args[0] === "continue"
+        ? await runRuntrimArgs("continue", [...args.slice(1), "--json"])
+        : await runRuntrimArgs(args[0] ?? "", args.slice(1));
   if (result.stdout) outputChannel.appendLine(result.stdout);
   if (result.stderr) outputChannel.appendLine(result.stderr);
   outputChannel.appendLine("");
@@ -285,25 +363,80 @@ async function runAndRefresh(name: string, args: string[]): Promise<void> {
 
   // Detect finish verdict
   if (args[0] === "finish") {
-    const upper = combined.toUpperCase();
-    if (/\bPASS\b/.test(upper)) {
-      lastFinishVerdict = "passed";
-      lastCommandResult = null; // phase card handles display
-    } else if (/\bWARN\b/.test(upper)) {
-      lastFinishVerdict = "warn";
-      lastCommandResult = null; // phase card handles display
-    } else if (/\b(FAIL|BLOCKED)\b/.test(upper) || result.exitCode !== 0) {
-      lastFinishVerdict = "failed";
-      // Keep error card set above, or set one if not yet set
-      if (!lastCommandResult) {
+    try {
+      const payload = JSON.parse(result.stdout.trim()) as RuntrimFinishJson;
+      if (payload.ok === false || payload.error) {
+        lastFinishVerdict = "failed";
         lastCommandResult = {
           kind: "error",
           success: false,
-          errorTitle: "Finish check failed",
-          errorDetail: extractError(combined),
-          suggestedFix: local.baselineExists ? "Review the output, then restore to baseline if needed." : "Review the output channel for full details."
+          errorTitle: payload.error?.code ? `Finish error: ${payload.error.code}` : "Finish check failed",
+          errorDetail: payload.error?.message ?? extractError(combined),
+          suggestedFix: payload.restore?.guidance ?? (local.baselineExists ? "Review output and run restore guidance." : "Review output channel for full logs.")
         };
+      } else {
+        const verdict = (payload.verdict ?? "unknown").toLowerCase();
+        if (verdict === "pass") {
+          lastFinishVerdict = "passed";
+          lastCommandResult = null;
+        } else if (verdict === "warn") {
+          lastFinishVerdict = "warn";
+          lastCommandResult = {
+            kind: "doctor",
+            success: true,
+            snippet: [payload.rawSummary, ...(payload.warnings ?? []).slice(0, 2)].filter(Boolean).join(" · ").slice(0, 220)
+          };
+        } else {
+          lastFinishVerdict = "failed";
+          lastCommandResult = {
+            kind: "error",
+            success: false,
+            errorTitle: `Finish verdict: ${(payload.verdict ?? "unknown").toUpperCase()}`,
+            errorDetail: [payload.rawSummary, ...(payload.blockedFiles ?? []).slice(0, 2)].filter(Boolean).join(" · "),
+            suggestedFix: payload.restore?.guidance ?? payload.continuation?.command ?? "Review finish output details in RunTrim output."
+          };
+        }
       }
+    } catch {
+      const upper = combined.toUpperCase();
+      if (/\bPASS\b/.test(upper)) {
+        lastFinishVerdict = "passed";
+        lastCommandResult = null;
+      } else if (/\bWARN\b/.test(upper)) {
+        lastFinishVerdict = "warn";
+        lastCommandResult = null;
+      } else if (/\b(FAIL|BLOCKED)\b/.test(upper) || result.exitCode !== 0) {
+        lastFinishVerdict = "failed";
+        if (!lastCommandResult) {
+          lastCommandResult = {
+            kind: "error",
+            success: false,
+            errorTitle: "Finish check failed",
+            errorDetail: extractError(combined),
+            suggestedFix: local.baselineExists ? "Review the output, then restore to baseline if needed." : "Review the output channel for full details."
+          };
+        }
+      }
+    }
+  }
+
+  if (args[0] === "continue") {
+    try {
+      const payload = JSON.parse(result.stdout.trim()) as RuntrimContinueJson;
+      if (payload.ok === false || payload.error) {
+        lastCommandResult = {
+          kind: "error",
+          success: false,
+          errorTitle: payload.error?.code ? `Continue error: ${payload.error.code}` : "Continuation failed",
+          errorDetail: payload.error?.message ?? extractError(combined),
+          suggestedFix: "Check RunTrim output and retry continuation."
+        };
+      } else {
+        const parts = [payload.reason, payload.summary, payload.nextAction].filter((v) => typeof v === "string" && v.trim().length > 0) as string[];
+        lastCommandResult = { kind: "doctor", success: true, snippet: parts.join(" · ").slice(0, 220) };
+      }
+    } catch {
+      // fallback remains legacy behavior
     }
   }
 
@@ -327,6 +460,7 @@ async function runAndRefresh(name: string, args: string[]): Promise<void> {
     lastCommandResult = { kind: "dna", success: result.exitCode === 0 };
   }
 
+  await refreshRuntrimJsonState(true);
   await refreshStatusBar(lower);
   refreshControlPanel();
 }
@@ -422,6 +556,7 @@ async function runWithAgent(task: string, agent: AgentOption): Promise<void> {
     routeKind:     routeResult.routeKind
   };
 
+  await refreshRuntrimJsonState(true);
   await refreshStatusBar(`${result.stdout}\n${result.stderr}`.toLowerCase());
   refreshControlPanel();
 
@@ -745,42 +880,67 @@ async function observeControlledLaunchCompletion(completionPromise: Promise<numb
   refreshControlPanel();
   outputChannel.appendLine(`[auto-finish] Agent finished with exit code ${exitCode}. Running runtrim finish...`);
 
-  const finishResult = await runRuntrimArgs("finish", []);
+  const finishResult = await runRuntrimArgs("finish", ["--json"]);
   const combined = `${finishResult.stdout}\n${finishResult.stderr}`;
   if (finishResult.stdout) outputChannel.appendLine(finishResult.stdout);
   if (finishResult.stderr) outputChannel.appendLine(finishResult.stderr);
   outputChannel.appendLine("");
-
-  const upper = combined.toUpperCase();
-  lifecycleState.autoFinishResult = /\bPASS\b/.test(upper)
-    ? "pass"
-    : /\bWARN\b/.test(upper)
-      ? "warn"
-      : /\bBLOCKED\b/.test(upper)
-        ? "blocked"
-        : "unknown";
-
-  if (lifecycleState.autoFinishResult === "pass") {
-    lastFinishVerdict = "passed";
-    lastCommandResult = null;
-  } else if (lifecycleState.autoFinishResult === "warn") {
-    lastFinishVerdict = "warn";
-    lastCommandResult = null;
-  } else {
-    lastFinishVerdict = "failed";
-    const restoreAvailable = /\bruntrim restore\b/i.test(combined) || loadLocalState().baselineExists;
-    lastCommandResult = {
-      kind: "error",
-      success: false,
-      errorTitle: "Finish check failed",
-      errorDetail: extractError(combined),
-      suggestedFix: restoreAvailable
-        ? "Review risk output, then run runtrim restore if needed."
-        : "Restore guidance unavailable. Open Output for full logs."
-    };
+  try {
+    const payload = JSON.parse((finishResult.stdout || "").trim()) as RuntrimFinishJson;
+    const verdict = (payload.verdict ?? "unknown").toLowerCase();
+    lifecycleState.autoFinishResult = verdict === "pass" ? "pass" : verdict === "warn" ? "warn" : verdict === "blocked" ? "blocked" : "unknown";
+    if (lifecycleState.autoFinishResult === "pass") {
+      lastFinishVerdict = "passed";
+      lastCommandResult = null;
+    } else if (lifecycleState.autoFinishResult === "warn") {
+      lastFinishVerdict = "warn";
+      lastCommandResult = {
+        kind: "doctor",
+        success: true,
+        snippet: [payload.rawSummary, ...(payload.warnings ?? []).slice(0, 2)].filter(Boolean).join(" · ").slice(0, 220)
+      };
+    } else {
+      lastFinishVerdict = "failed";
+      lastCommandResult = {
+        kind: "error",
+        success: false,
+        errorTitle: `Finish verdict: ${(payload.verdict ?? "unknown").toUpperCase()}`,
+        errorDetail: [payload.rawSummary, ...(payload.blockedFiles ?? []).slice(0, 2)].filter(Boolean).join(" · "),
+        suggestedFix: payload.restore?.guidance ?? payload.continuation?.command ?? "Open output for full logs."
+      };
+    }
+  } catch {
+    const upper = combined.toUpperCase();
+    lifecycleState.autoFinishResult = /\bPASS\b/.test(upper)
+      ? "pass"
+      : /\bWARN\b/.test(upper)
+        ? "warn"
+        : /\bBLOCKED\b/.test(upper)
+          ? "blocked"
+          : "unknown";
+    if (lifecycleState.autoFinishResult === "pass") {
+      lastFinishVerdict = "passed";
+      lastCommandResult = null;
+    } else if (lifecycleState.autoFinishResult === "warn") {
+      lastFinishVerdict = "warn";
+      lastCommandResult = null;
+    } else {
+      lastFinishVerdict = "failed";
+      const restoreAvailable = /\bruntrim restore\b/i.test(combined) || loadLocalState().baselineExists;
+      lastCommandResult = {
+        kind: "error",
+        success: false,
+        errorTitle: "Finish check failed",
+        errorDetail: extractError(combined),
+        suggestedFix: restoreAvailable
+          ? "Review risk output, then run runtrim restore if needed."
+          : "Restore guidance unavailable. Open Output for full logs."
+      };
+    }
   }
 
   lifecycleState.autoFinishStarted = false;
+  await refreshRuntrimJsonState(true);
   await refreshStatusBar(combined.toLowerCase());
   refreshControlPanel();
 }
@@ -835,6 +995,41 @@ function runRuntrimArgs(command: string, args: string[]): Promise<{ stdout: stri
 
     execFile(cli, fullArgs, { cwd, windowsHide: true }, onDone);
   });
+}
+
+async function runRuntrimJson<T extends Record<string, unknown>>(command: string, args: string[]): Promise<{ ok: boolean; data?: T; raw: string; error?: string }> {
+  const result = await runRuntrimArgs(command, args);
+  const raw = `${result.stdout || ""}${result.stderr ? `\n${result.stderr}` : ""}`.trim();
+  if (result.notFound) return { ok: false, raw, error: "runtrim_not_found" };
+  if (result.exitCode !== 0 && !raw) return { ok: false, raw, error: `runtrim_${command}_failed` };
+  try {
+    const parsed = JSON.parse(result.stdout.trim()) as T;
+    return { ok: true, data: parsed, raw };
+  } catch {
+    return { ok: false, raw, error: "invalid_json" };
+  }
+}
+
+async function refreshRuntrimJsonState(force = false): Promise<void> {
+  const local = loadLocalState();
+  if (!local.cliInstalled) return;
+  const now = Date.now();
+  if (!force && runtrimStatusJson && now - runtrimJsonCheckedAt < RUNTRIM_JSON_CACHE_TTL) return;
+  const statusRes = await runRuntrimJson<RuntrimStatusJson>("status", ["--json"]);
+  if (statusRes.ok && statusRes.data) {
+    runtrimStatusJson = statusRes.data;
+  } else {
+    runtrimStatusJson = null;
+    if (statusRes.raw) outputChannel.appendLine(`[status --json fallback] ${statusRes.error ?? "failed"}`);
+  }
+  const restoreRes = await runRuntrimJson<RuntrimRestoreStatusJson>("restore", ["--status", "--json"]);
+  if (restoreRes.ok && restoreRes.data) {
+    runtrimRestoreJson = restoreRes.data;
+  } else {
+    runtrimRestoreJson = null;
+    if (restoreRes.raw) outputChannel.appendLine(`[restore --status --json fallback] ${restoreRes.error ?? "failed"}`);
+  }
+  runtrimJsonCheckedAt = Date.now();
 }
 
 // ---- CLI resolution (Windows .cmd aware) ----
@@ -1103,6 +1298,10 @@ async function refreshStatusBar(lastOutput = ""): Promise<void> {
 function deriveStatus(local: LocalState, lastOutput: string): StatusState {
   if (!local.cliInstalled) return "not_installed";
   if (!local.workspaceRoot || !local.dnaExists) return "no_project";
+  const jsonContractStatus = (runtrimStatusJson?.contract?.status ?? "").toLowerCase();
+  const jsonRunVerdict = (runtrimStatusJson?.run?.verdict ?? "").toLowerCase();
+  if (jsonContractStatus === "blocked" || jsonRunVerdict === "blocked") return "blocked";
+  if (jsonContractStatus === "active") return "active";
   const contract = (local.contractStatus ?? "").toLowerCase();
   const output = lastOutput.toLowerCase();
   if (contract.includes("blocked") || output.includes("blocked")) return "blocked";
@@ -1118,12 +1317,18 @@ function loadLocalState(): LocalState {
   if (!root) return { cliInstalled, dnaExists: false, baselineExists: false, latestContractExists: false };
   const rt = path.join(root, ".runtrim");
   const latestContract = path.join(rt, "contracts", "latest.md");
+  const fromJson = runtrimStatusJson;
+  const dnaExistsFromJson = fromJson?.projectDna?.exists === true;
+  const contractExistsFromJson = fromJson?.contract?.exists === true;
+  const contractStatusFromJson = fromJson?.contract?.status ?? undefined;
+  const baselineFromJsonKnown = typeof runtrimRestoreJson?.available === "boolean";
+  const baselineFromJson = runtrimRestoreJson?.available === true;
   return {
     cliInstalled, workspaceRoot: root,
-    dnaExists:           fileExists(path.join(rt, "project-dna.md")),
-    baselineExists:      fileExists(path.join(rt, "history", "baseline.json")),
-    latestContractExists:fileExists(latestContract),
-    contractStatus: fileExists(latestContract) ? findLine(latestContract, /^Status\s*:/i) : undefined
+    dnaExists:           dnaExistsFromJson || fileExists(path.join(rt, "project-dna.md")),
+    baselineExists:      baselineFromJsonKnown ? baselineFromJson : fileExists(path.join(rt, "history", "baseline.json")),
+    latestContractExists:contractExistsFromJson || fileExists(latestContract),
+    contractStatus: contractStatusFromJson ?? (fileExists(latestContract) ? findLine(latestContract, /^Status\s*:/i) : undefined)
   };
 }
 
@@ -1226,6 +1431,12 @@ function readRecentRuns(runsDir: string, count: number): RunSummary[] {
 // ---- phase ----
 
 function derivePhase(local: LocalState, contract: ContractSummary | null): ConsolePhase {
+  const jsonPhase = (runtrimStatusJson?.run?.phase ?? "").toLowerCase();
+  if (jsonPhase === "continuation_ready") return "limit";
+  if (jsonPhase === "passed") return "passed";
+  if (jsonPhase === "warn") return "warned";
+  if (jsonPhase === "blocked") return "blocked";
+  if (jsonPhase === "active" || jsonPhase === "finish_needed") return "active";
   if (composerState.usageLimitHit) return "limit";
   if (lastFinishVerdict === "passed") return "passed";
   if (lastFinishVerdict === "warn")   return "warned";
@@ -1248,6 +1459,10 @@ function openControlPanel(): void {
   refreshControlPanel();
   // Detect MCP state in background; refresh panel once we know
   void detectMcpState().then(() => refreshControlPanel());
+  void refreshRuntrimJsonState(true).then(() => {
+    void refreshStatusBar();
+    refreshControlPanel();
+  });
   controlPanel.webview.onDidReceiveMessage(async (msg: any) => {
     try { await handleWebviewMessage(msg); } catch (err) { outputChannel.appendLine(`[panel error] ${String(err)}`); }
   });
@@ -1347,9 +1562,31 @@ function refreshControlPanel(): void {
 function renderControlPanel(): string {
   const local = loadLocalState();
   const rt    = local.workspaceRoot ? path.join(local.workspaceRoot, ".runtrim") : "";
-  const dna   = rt && local.dnaExists          ? parseDna(path.join(rt, "project-dna.md"))                       : null;
+  const statusDna = runtrimStatusJson?.projectDna;
+  const statusContract = runtrimStatusJson?.contract;
+  const statusRun = runtrimStatusJson?.run;
+  const dnaFromJson: DnaSummary | null = statusDna
+    ? {
+        framework: statusDna.framework ?? undefined,
+        packageManager: statusDna.packageManager ?? undefined,
+        language: statusDna.language ?? undefined,
+        stylingSystem: statusDna.stylingSystem ?? undefined,
+        componentSystem: statusDna.componentSystem ?? undefined,
+        riskZones: Array.isArray(statusDna.riskZones) ? statusDna.riskZones : []
+      }
+    : null;
+  const contractFromJson: ContractSummary | null = statusContract
+    ? {
+        status: statusContract.status ?? undefined,
+        task: statusContract.task ?? undefined,
+        scope: statusContract.allowedScope?.[0],
+        blockedReason: statusRun?.reason ?? undefined,
+        detectedSystems: []
+      }
+    : null;
+  const dna   = dnaFromJson ?? (rt && local.dnaExists ? parseDna(path.join(rt, "project-dna.md")) : null);
   const baseline = rt && local.baselineExists  ? parseBaseline(path.join(rt, "history", "baseline.json"))         : null;
-  const contract = rt && local.latestContractExists ? parseContract(path.join(rt, "contracts", "latest.md"))      : null;
+  const contract = contractFromJson ?? (rt && local.latestContractExists ? parseContract(path.join(rt, "contracts", "latest.md")) : null);
 
   if (!composerState.task.trim() && contract?.task) composerState.task = contract.task;
 

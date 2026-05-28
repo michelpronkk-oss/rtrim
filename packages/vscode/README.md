@@ -141,6 +141,19 @@ Raw JSON remains available as secondary actions: **View config** and **Copy raw 
 
 ---
 
+## Upcoming JSON State API Integration
+
+The extension can now target machine-readable CLI state endpoints:
+
+- `runtrim status --json`
+- `runtrim finish --json`
+- `runtrim continue --reason <reason> --json`
+- `runtrim restore --status --json`
+
+These APIs are intended for stable panel state and action decisions, while preserving existing human-readable CLI output.
+
+---
+
 ## Settings
 
 | Setting | Default | Description |

@@ -5351,11 +5351,161 @@ autoCommand
 
 // ── runtrim status ────────────────────────────────────────────────────────────
 
+function jsonError(code: string, message: string, details: Record<string, unknown> = {}): Record<string, unknown> {
+  return { ok: false, error: { code, message, details } };
+}
+
+function printJson(payload: Record<string, unknown>): void {
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
+function parseProjectDnaSummary(cwd: string): {
+  exists: boolean;
+  framework: string | null;
+  packageManager: string | null;
+  language: string | null;
+  stylingSystem: string | null;
+  componentSystem: string | null;
+  riskZones: string[];
+  path: string;
+} {
+  const dnaPath = path.join(getConfigDir(cwd), "project-dna.md");
+  const profilePath = path.join(getConfigDir(cwd), "project-profile.json");
+  let framework: string | null = null;
+  let packageManager: string | null = null;
+  let language: string | null = null;
+  let stylingSystem: string | null = null;
+  let componentSystem: string | null = null;
+  if (fs.existsSync(profilePath)) {
+    try {
+      const profile = JSON.parse(fs.readFileSync(profilePath, "utf-8")) as Record<string, unknown>;
+      framework = typeof profile.framework === "string" ? profile.framework : null;
+      packageManager = typeof profile.package_manager === "string" ? profile.package_manager : null;
+      language = typeof profile.language === "string" ? profile.language : null;
+    } catch {
+      // fallback to markdown only
+    }
+  }
+  if (fs.existsSync(dnaPath)) {
+    const raw = fs.readFileSync(dnaPath, "utf-8");
+    const stylingMatch = raw.match(/^- Styling system:\s*(.+)$/im);
+    const componentMatch = raw.match(/^- Component system:\s*(.+)$/im);
+    if (stylingMatch) stylingSystem = stylingMatch[1]?.trim() || null;
+    if (componentMatch) componentSystem = componentMatch[1]?.trim() || null;
+  }
+  return {
+    exists: fs.existsSync(dnaPath),
+    framework,
+    packageManager,
+    language,
+    stylingSystem,
+    componentSystem,
+    riskZones: ["auth", "billing", "middleware", "env"],
+    path: ".runtrim/project-dna.md",
+  };
+}
+
+function readContractStatus(cwd: string): "active" | "finished" | "blocked" | "none" | "unknown" {
+  const p = path.join(cwd, ".runtrim", "contracts", "latest.md");
+  if (!fs.existsSync(p)) return "none";
+  const raw = fs.readFileSync(p, "utf-8");
+  const match = raw.match(/^Status:\s*(.+)$/im);
+  const value = (match?.[1] ?? "").trim().toLowerCase();
+  if (value === "active") return "active";
+  if (value === "none") return "none";
+  if (value.includes("blocked")) return "blocked";
+  if (value) return "finished";
+  return "unknown";
+}
+
+async function buildStatusJsonPayload(cwd: string): Promise<Record<string, unknown>> {
+  const contract = parseContractSummary(cwd);
+  const latest = loadLatestRun(cwd);
+  const changes = await getBridgeChanges(cwd);
+  const latestRestoreRow = buildRestoreCandidates(cwd).find((r) => r.hasRestorePoint) ?? null;
+  const latestRestore = latestRestoreRow ? loadRestorePoint(cwd, latestRestoreRow.runId) : null;
+  const continuationPath = resolveContinuationPath(cwd);
+  const continuationAvailable = fs.existsSync(continuationPath);
+  const next = await getBridgeNextAction(cwd);
+  const runStatus = (latest?.evaluation?.status ?? latest?.status ?? "").toLowerCase();
+  const verdict = runStatus === "passed" ? "pass" : runStatus === "warned" || runStatus === "warn" ? "warn" : runStatus === "blocked" || runStatus === "split_required" ? "blocked" : "unknown";
+  const phase = continuationAvailable
+    ? "continuation_ready"
+    : contract.active
+      ? "active"
+      : verdict === "pass"
+        ? "passed"
+        : verdict === "warn"
+          ? "warn"
+          : verdict === "blocked"
+            ? "blocked"
+            : changes.count > 0
+              ? "finish_needed"
+              : "idle";
+  return {
+    ok: true,
+    projectRoot: cwd,
+    cliVersion: resolveCliVersion(),
+    projectInitialized: configExists(cwd),
+    projectDna: parseProjectDnaSummary(cwd),
+    contract: {
+      exists: contract.exists,
+      status: readContractStatus(cwd),
+      task: contract.summary || "",
+      risk: contract.risk || "unknown",
+      allowedScope: contract.allowedScope ?? [],
+      forbiddenScope: contract.forbiddenScope ?? [],
+      path: contract.path,
+    },
+    run: {
+      phase,
+      lastRunId: latest?.id ?? null,
+      startedAt: latest?.createdAt ?? null,
+      finishedAt: null,
+      verdict,
+      changedFiles: latest?.evaluation?.changedFiles ?? changes.changedFiles ?? [],
+      blockedFiles: latestRestore?.postRun?.forbiddenFiles ?? [],
+      warnings: latest?.watchWarnings ?? [],
+      reason: null,
+    },
+    restore: {
+      available: Boolean(latestRestore),
+      latestRestorePoint: latestRestore?.runId ?? null,
+      guidance: latestRestore ? "runtrim restore last --preview" : null,
+    },
+    continuation: {
+      available: continuationAvailable,
+      reason: null,
+      path: continuationAvailable ? ".runtrim/continuation-prompt.md" : null,
+    },
+    nextAction: {
+      kind: String(next).includes("finish")
+        ? "finish_check"
+        : String(next).includes("agent")
+          ? "start_guarded_run"
+          : String(next).includes("paste")
+            ? "paste_handoff"
+            : "none",
+      label: String(next || "none"),
+      description: String(next || "No immediate action."),
+    },
+  };
+}
+
 program
   .command("status")
   .description("Show project guard state, active run, and unfinished changes")
-  .action(async () => {
+  .option("--json", "Print machine-readable status")
+  .action(async (options: { json?: boolean }) => {
     const cwd    = process.cwd();
+    if (options.json) {
+      try {
+        printJson(await buildStatusJsonPayload(cwd));
+      } catch (error) {
+        printJson(jsonError("status_json_failed", "Could not generate status JSON.", { message: String(error) }));
+      }
+      return;
+    }
     const config = configExists(cwd) ? loadConfig(cwd) : DEFAULT_CONFIG;
     const mode   = (config as Record<string, unknown>).autoGuardMode as AutoGuardMode ?? "smart";
 
@@ -6895,6 +7045,8 @@ async function runInteractiveRestorePicker(cwd: string): Promise<void> {
 
 restoreCommand
   .argument("[runId]", "Run ID to restore, or use 'last'")
+  .option("--status", "Show restore status")
+  .option("--json", "Print machine-readable restore output")
   .option("--preview", "Preview restore plan")
   .option("--apply", "Apply restore plan")
   .option("--force", "Apply even if unrelated new changes are detected")
@@ -6917,6 +7069,8 @@ Examples:
   .action(async (
     runIdArg?: string,
     options?: {
+      status?: boolean;
+      json?: boolean;
       preview?: boolean;
       apply?: boolean;
       force?: boolean;
@@ -6929,11 +7083,32 @@ Examples:
     const cwd = process.cwd();
     const doPreview = options?.preview === true;
     const doApply = options?.apply === true;
+    const doStatus = options?.status === true;
+    const jsonMode = options?.json === true;
     const force = options?.force === true;
     const doList = options?.list === true;
     const doAll = options?.all === true;
     const onlyOos = options?.onlyOutOfScope === true;
     const onlyForbidden = options?.onlyForbidden === true;
+
+    if (doStatus && jsonMode) {
+      const rows = buildRestoreCandidates(cwd);
+      const withRestore = rows.filter((r) => r.hasRestorePoint);
+      const latest = withRestore[0] ?? null;
+      printJson({
+        ok: true,
+        available: withRestore.length > 0,
+        latestRestorePoint: latest?.runId ?? null,
+        changedFiles: [],
+        previewAvailable: withRestore.length > 0,
+        applyAvailable: withRestore.length > 0,
+        commands: {
+          preview: "runtrim restore last --preview",
+          apply: "runtrim restore last --apply",
+        },
+      });
+      return;
+    }
 
     // --list: non-interactive, print and exit
     if (doList) {
@@ -8416,10 +8591,11 @@ program
   .description("Generate a local continuation prompt for a new agent session after usage, context, or interruption")
   .option("--reason <reason>", "Continuation reason: usage_limit, context_limit, blocked, manual")
   .option("--agent <agent>", "Target agent hint")
+  .option("--json", "Print machine-readable continuation result")
   .option("--print", "Print the full continuation prompt")
   .option("--open", "Open continuation prompt in editor")
   .option("--editor <editor>", "Editor command (code, cursor, or custom)")
-  .action(async (options: { reason?: string; agent?: string; print?: boolean; open?: boolean; editor?: string }) => {
+  .action(async (options: { reason?: string; agent?: string; json?: boolean; print?: boolean; open?: boolean; editor?: string }) => {
     const cwd = process.cwd();
     const hasConfig = configExists(cwd);
     const config = hasConfig ? loadConfig(cwd) : DEFAULT_CONFIG;
@@ -8712,6 +8888,18 @@ program
         continuationCreatedAt: nowIso,
       };
       saveConfig(nextConfig, cwd);
+    }
+
+    if (options.json) {
+      printJson({
+        ok: true,
+        reason,
+        handoffCopied: copied,
+        handoffPath: continuationPath.replace(/\\/g, "/"),
+        summary: `${latestStatus}. ${changedFiles.length} changed file${changedFiles.length === 1 ? "" : "s"}.`,
+        nextAction: "paste_into_new_agent_session",
+      });
+      return;
     }
 
     console.log("");
@@ -9257,8 +9445,16 @@ program
   .command("finish")
   .description("Bridge Mode: evaluate agent output, check scope, mark run completed, and sync")
   .option("--no-sync", "Skip cloud sync even if a CLI token is configured")
-  .action(async (options: { sync?: boolean }) => {
+  .option("--json", "Print machine-readable finish result")
+  .action(async (options: { sync?: boolean; json?: boolean }) => {
     const cwd = process.cwd();
+    const jsonMode = options.json === true;
+    const originalConsoleLog = console.log;
+    let finishJsonPayload: Record<string, unknown> | null = null;
+    if (jsonMode) {
+      console.log = (() => {}) as typeof console.log;
+    }
+    try {
 
     console.log("");
     console.log(GO_ACCENT.bold("RunTrim finish"));
@@ -9289,6 +9485,28 @@ program
         console.log(DIM("  No active run and no changed files detected."));
         console.log(DIM('  Start a new guarded run with: runtrim agent "Your task" --copy'));
         console.log("");
+        finishJsonPayload = {
+          ok: true,
+          verdict: "unknown",
+          status: "unknown",
+          changedFiles: [],
+          allowedFiles: [],
+          blockedFiles: [],
+          warnings: [],
+          errors: [],
+          restore: {
+            available: false,
+            guidance: null,
+            previewCommand: "runtrim restore last --preview",
+            applyCommand: "runtrim restore last --apply",
+          },
+          continuation: {
+            recommended: false,
+            reason: null,
+            command: "runtrim continue --reason manual",
+          },
+          rawSummary: "No active run and no changed files detected.",
+        };
         return;
       }
 
@@ -9383,6 +9601,28 @@ program
       console.log("");
       console.log(DIM("  Next  ") + chalk.white('runtrim agent "Your task" --copy to start a properly guarded run'));
       console.log("");
+      finishJsonPayload = {
+        ok: true,
+        verdict: "blocked",
+        status: "blocked",
+        changedFiles: agentChanged,
+        allowedFiles: [],
+        blockedFiles: sensitive,
+        warnings: fastReport.proofGaps ?? [],
+        errors: [],
+        restore: {
+          available: false,
+          guidance: "runtrim restore",
+          previewCommand: "runtrim restore last --preview",
+          applyCommand: "runtrim restore last --apply",
+        },
+        continuation: {
+          recommended: true,
+          reason: "manual",
+          command: "runtrim continue --reason manual",
+        },
+        rawSummary: `Fast run report created for ${agentChanged.length} changed files.`,
+      };
       return;
     }
 
@@ -9786,6 +10026,44 @@ program
       }
     }
     console.log("");
+    finishJsonPayload = {
+      ok: true,
+      verdict: finishVerdict.toLowerCase() === "pass" ? "pass" : finishVerdict.toLowerCase() === "warn" ? "warn" : finishVerdict.toLowerCase() === "blocked" ? "blocked" : "unknown",
+      status: finishVerdict === "BLOCKED" ? "blocked" : "finished",
+      changedFiles,
+      allowedFiles: changedFiles.filter((f) => !scope.forbiddenFiles.includes(f) && !forbiddenPathFiles.includes(f) && !outOfContractFiles.includes(f)),
+      blockedFiles: [...scope.forbiddenFiles, ...forbiddenPathFiles, ...outOfContractFiles, ...sensitiveUntracked],
+      warnings: [...scope.warnings, ...sensitiveIgnored],
+      errors: [],
+      restore: {
+        available: Boolean(restoreRecord),
+        guidance: restoreRecord ? "runtrim restore last --preview" : null,
+        previewCommand: "runtrim restore last --preview",
+        applyCommand: "runtrim restore last --apply",
+      },
+      continuation: {
+        recommended: finishVerdict !== "PASS",
+        reason: finishVerdict === "BLOCKED" ? "split_required" : finishVerdict === "WARN" ? "manual" : null,
+        command: finishVerdict === "PASS" ? null : "runtrim continue --reason manual",
+      },
+      rawSummary: reportSummary,
+    };
+    } catch (error) {
+      if (jsonMode) {
+        finishJsonPayload = jsonError("finish_json_failed", "Could not generate finish JSON.", { message: String(error) });
+      } else {
+        throw error;
+      }
+    } finally {
+      if (jsonMode) {
+        console.log = originalConsoleLog;
+        if (finishJsonPayload) {
+          printJson(finishJsonPayload);
+        } else {
+          printJson(jsonError("finish_json_missing_payload", "Finish JSON payload was not produced."));
+        }
+      }
+    }
   });
 
 // ── runtrim sync ──────────────────────────────────────────────────────────────
@@ -9904,8 +10182,3 @@ program
     }
   });
 program.parse(process.argv);
-
-
-
-
-
